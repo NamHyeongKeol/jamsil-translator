@@ -6,7 +6,15 @@ import { httpBatchLink } from '@trpc/client'
 import { api } from '@/lib/trpc'
 
 export function TRPCProvider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient())
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60 * 1000, // 1분
+        refetchOnWindowFocus: false,
+      },
+    },
+  }))
+
   const [trpcClient] = useState(() =>
     api.createClient({
       links: [

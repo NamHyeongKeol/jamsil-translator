@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,9 +13,18 @@ export default function Home() {
   const [email, setEmail] = useState('')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [mounted, setMounted] = useState(false)
 
-  const { data: users, refetch: refetchUsers } = api.user.getAll.useQuery()
-  const { data: posts, refetch: refetchPosts } = api.post.getAll.useQuery()
+  const { data: users, refetch: refetchUsers } = api.user.getAll.useQuery(undefined, {
+    enabled: mounted
+  })
+  const { data: posts, refetch: refetchPosts } = api.post.getAll.useQuery(undefined, {
+    enabled: mounted
+  })
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const createUser = api.user.create.useMutation({
     onSuccess: () => {
@@ -49,9 +58,13 @@ export default function Home() {
     }
   }
 
+  if (!mounted) {
+    return null
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="mx-auto max-w-md space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-responsive">
+      <div className="mx-auto max-w-md space-y-responsive">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900">Jamsil Translator</h1>
           <p className="text-gray-600 mt-2">모바일 친화적인 웹 애플리케이션</p>

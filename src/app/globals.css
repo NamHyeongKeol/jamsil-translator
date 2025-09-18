@@ -147,9 +147,12 @@
 html {
   font-size: clamp(14px, 4.2vw, 20px);
   overscroll-behavior: none;
-  /* 동적 viewport 높이 */
+}
+
+/* 동적 viewport 높이 - CSS만으로 처리 */
+:root {
   --full-height: 100vh;
-  --full-height: 100dvh;
+  --full-height: 100dvh; /* iOS Safari 지원 */
 }
 
 /* 기본 텍스트 크기들 - 뷰포트에 비례 */
