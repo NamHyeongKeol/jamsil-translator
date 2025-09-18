@@ -1,200 +1,127 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { api } from '@/lib/trpc'
-import { Loader2 } from 'lucide-react'
+import { Play } from 'lucide-react'
+
+const VOLUME_THRESHOLD = 0.05 // 목소리 감지 민감도
 
 export default function Home() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [mounted, setMounted] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [volume, setVolume] = useState(0)
 
-  const { data: users, refetch: refetchUsers } = api.user.getAll.useQuery(undefined, {
-    enabled: mounted
-  })
-  const { data: posts, refetch: refetchPosts } = api.post.getAll.useQuery(undefined, {
-    enabled: mounted
-  })
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+
+  const cleanup = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close()
+    }
+    streamRef.current = null
+    analyserRef.current = null
+    audioContextRef.current = null
+    setIsRecording(false)
+    setVolume(0)
+  }
+
+  const startRecording = async () => {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        streamRef.current = stream
+        const context = new (window.AudioContext || window.webkitAudioContext)()
+        audioContextRef.current = context
+        const source = context.createMediaStreamSource(stream)
+        const analyser = context.createAnalyser()
+        analyser.fftSize = 256
+        source.connect(analyser)
+        analyserRef.current = analyser
+        setIsRecording(true)
+        visualize()
+      } else {
+        alert('현재 브라우저에서는 음성 인식을 지원하지 않습니다.')
+      }
+    } catch (err) {
+      console.error('마이크 접근 오류:', err)
+      alert('마이크 사용 권한이 필요합니다. 페이지를 새로고침하고 다시 시도해주세요.')
+      cleanup()
+    }
+  }
+
+  const visualize = () => {
+    if (analyserRef.current) {
+      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount)
+      analyserRef.current.getByteTimeDomainData(dataArray)
+      let sum = 0
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += Math.pow((dataArray[i] - 128) / 128, 2)
+      }
+      const rms = Math.sqrt(sum / dataArray.length)
+      setVolume(rms)
+      animationFrameRef.current = requestAnimationFrame(visualize)
+    } else {
+      setVolume(0)
+    }
+  }
+
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      cleanup()
+    } else {
+      startRecording()
+    }
+  }
 
   useEffect(() => {
-    setMounted(true)
+    return () => {
+      cleanup()
+    }
   }, [])
 
-  const createUser = api.user.create.useMutation({
-    onSuccess: () => {
-      refetchUsers()
-      setName('')
-      setEmail('')
-    },
-  })
-
-  const createPost = api.post.create.useMutation({
-    onSuccess: () => {
-      refetchPosts()
-      setTitle('')
-      setContent('')
-    },
-  })
-
-  const handleCreateUser = () => {
-    if (name && email) {
-      createUser.mutate({ name, email })
-    }
-  }
-
-  const handleCreatePost = () => {
-    if (title && users && users[0]) {
-      createPost.mutate({
-        title,
-        content: content || undefined,
-        authorId: users[0].id
-      })
-    }
-  }
-
-  if (!mounted) {
-    return null
-  }
+  const showRipple = isRecording && volume > VOLUME_THRESHOLD
+  const rippleScale = showRipple ? 1 + (volume - VOLUME_THRESHOLD) * 5 : 1
+  const rippleOpacity = showRipple ? 0.3 : 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-responsive">
-      <div className="mx-auto max-w-md space-y-responsive">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Jamsil Translator</h1>
-          <p className="text-gray-600 mt-2">모바일 친화적인 웹 애플리케이션</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4 overflow-hidden">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold text-gray-900">Jamsil Translator</h1>
+        <p className="text-gray-600 mt-2">실시간 음성 번역</p>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">새 사용자 추가</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="name">이름</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="이름을 입력하세요"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="email">이메일</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="이메일을 입력하세요"
-                className="mt-1"
-              />
-            </div>
-            <Button
-              onClick={handleCreateUser}
-              disabled={createUser.isPending || !name || !email}
-              className="w-full"
-            >
-              {createUser.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              사용자 추가
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="relative flex items-center justify-center w-48 h-48">
+        <div
+          className="absolute h-28 w-28 rounded-full bg-blue-500 transition-all duration-300 ease-out"
+          style={{
+            transform: `scale(${rippleScale})`,
+            opacity: rippleOpacity,
+          }}
+        />
+        <Button
+          onClick={handleToggleRecording}
+          size="lg"
+          className="relative flex h-28 w-28 items-center justify-center rounded-full bg-white/50 text-gray-700 shadow-lg backdrop-blur-xl transition-transform duration-200 ease-in-out hover:scale-105 active:scale-95"
+        >
+          {isRecording ? (
+            <div className="h-8 w-8 bg-red-500 rounded-lg" />
+          ) : (
+            <Play size={100} className="text-gray-800" />
+          )}
+        </Button>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">새 포스트 작성</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="title">제목</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="제목을 입력하세요"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="content">내용</Label>
-              <Input
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="내용을 입력하세요 (선택사항)"
-                className="mt-1"
-              />
-            </div>
-            <Button
-              onClick={handleCreatePost}
-              disabled={createPost.isPending || !title || !users?.length}
-              className="w-full"
-            >
-              {createPost.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              포스트 작성
-            </Button>
-            {!users?.length && (
-              <p className="text-sm text-gray-500 text-center">
-                포스트를 작성하려면 먼저 사용자를 추가하세요
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">사용자 목록</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {users?.length ? (
-              <div className="space-y-3">
-                {users.map((user) => (
-                  <div key={user.id} className="bg-gray-50 p-3 rounded-lg">
-                    <h3 className="font-medium">{user.name}</h3>
-                    <p className="text-sm text-gray-600">{user.email}</p>
-                    <p className="text-xs text-gray-500">
-                      포스트 수: {user.posts.length}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center">사용자가 없습니다</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">최근 포스트</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {posts?.length ? (
-              <div className="space-y-3">
-                {posts.map((post) => (
-                  <div key={post.id} className="bg-gray-50 p-3 rounded-lg">
-                    <h3 className="font-medium">{post.title}</h3>
-                    {post.content && (
-                      <p className="text-sm text-gray-600 mt-1">{post.content}</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-2">
-                      작성자: {post.author.name}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center">포스트가 없습니다</p>
-            )}
-          </CardContent>
-        </Card>
+      <div className="mt-12 text-center h-10">
+        <p className="text-gray-600 transition-opacity duration-300">
+          {isRecording ? '음성 인식 중... 버튼을 눌러 중지하세요.' : '버튼을 눌러 실시간 번역을 시작하세요.'}
+        </p>
       </div>
     </div>
   )
