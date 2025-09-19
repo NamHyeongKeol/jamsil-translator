@@ -5,19 +5,46 @@ import { Button } from '@/components/ui/button'
 import { Play } from 'lucide-react'
 
 const VOLUME_THRESHOLD = 0.05 // 목소리 감지 민감도
+const STT_PROXY_URL = 'ws://localhost:3001'
+
+// Helper function to convert float audio data to base64 string
+function floatTo16BitPCM(input: Float32Array): Int16Array {
+  const output = new Int16Array(input.length)
+  for (let i = 0; i < input.length; i++) {
+    const s = Math.max(-1, Math.min(1, input[i]))
+    output[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+  }
+  return output
+}
+
+function toBase64(data: Int16Array): string {
+  return Buffer.from(data.buffer).toString('base64')
+}
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false)
   const [volume, setVolume] = useState(0)
+  const [finalTranscript, setFinalTranscript] = useState('')
+  const [partialTranscript, setPartialTranscript] = useState('')
 
   const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const socketRef = useRef<WebSocket | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const processorRef = useRef<ScriptProcessorNode | null>(null)
 
   const cleanup = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current)
+    }
+    if (processorRef.current) {
+      processorRef.current.disconnect()
+      processorRef.current = null
+    }
+    if (socketRef.current) {
+      socketRef.current.close()
+      socketRef.current = null
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
@@ -32,26 +59,88 @@ export default function Home() {
     setVolume(0)
   }
 
+  const startAudioProcessing = () => {
+    if (!audioContextRef.current || !streamRef.current || !socketRef.current) return;
+
+    const context = audioContextRef.current;
+    const stream = streamRef.current;
+    const socket = socketRef.current;
+
+    const source = context.createMediaStreamSource(stream)
+    const analyser = context.createAnalyser()
+    analyser.fftSize = 256
+    source.connect(analyser)
+    analyserRef.current = analyser
+    visualize()
+
+    const processor = context.createScriptProcessor(4096, 1, 1)
+    processorRef.current = processor;
+    source.connect(processor)
+    processor.connect(context.destination)
+    processor.onaudioprocess = (e) => {
+      if (socket.readyState === WebSocket.OPEN) {
+        const inputData = e.inputBuffer.getChannelData(0)
+        const pcmData = floatTo16BitPCM(inputData)
+        const base64Data = toBase64(pcmData)
+        socket.send(JSON.stringify({ 
+          type: 'audio_chunk',
+          data: {
+            chunk: base64Data
+          }
+        }))
+      }
+    }
+  }
+
   const startRecording = async () => {
     try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        streamRef.current = stream
-        const context = new (window.AudioContext || window.webkitAudioContext)()
-        audioContextRef.current = context
-        const source = context.createMediaStreamSource(stream)
-        const analyser = context.createAnalyser()
-        analyser.fftSize = 256
-        source.connect(analyser)
-        analyserRef.current = analyser
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+
+      const context = new (window.AudioContext || window.webkitAudioContext)()
+      audioContextRef.current = context
+
+      const socket = new WebSocket(STT_PROXY_URL)
+      socketRef.current = socket
+
+      socket.onopen = () => {
+        const config = {
+          sample_rate: context.sampleRate,
+        }
+        socket.send(JSON.stringify(config))
         setIsRecording(true)
-        visualize()
-      } else {
-        alert('현재 브라우저에서는 음성 인식을 지원하지 않습니다.')
+      }
+
+      socket.onmessage = (event) => {
+        const message = JSON.parse(event.data)
+        
+        if (message.status === 'ready') {
+          console.log('Server is ready, starting audio processing.');
+          startAudioProcessing();
+        } else if (message.type === 'transcript' && message.data && message.data.utterance) {
+          const text = message.data.utterance.text;
+          if (message.data.is_final) {
+            setFinalTranscript(prev => prev + text + ' ');
+            setPartialTranscript('');
+          } else {
+            setPartialTranscript(text);
+          }
+        }
+      }
+
+      socket.onerror = (error) => {
+        console.error('WebSocket Error:', error)
+        alert('WebSocket 연결에 오류가 발생했습니다.')
+        cleanup()
+      }
+
+      socket.onclose = () => {
+        console.log('WebSocket connection closed')
+        cleanup()
       }
     } catch (err) {
       console.error('마이크 접근 오류:', err)
-      alert('마이크 사용 권한이 필요합니다. 페이지를 새로고침하고 다시 시도해주세요.')
+      alert('마이크 사용 권한이 필요합니다.')
       cleanup()
     }
   }
@@ -79,6 +168,14 @@ export default function Home() {
       startRecording()
     }
   }
+
+  useEffect(() => {
+    // Clear transcription on new recording
+    if (isRecording) {
+      setFinalTranscript('')
+      setPartialTranscript('')
+    }
+  }, [isRecording])
 
   useEffect(() => {
     return () => {
@@ -122,6 +219,16 @@ export default function Home() {
         <p className="text-gray-600 transition-opacity duration-300">
           {isRecording ? '음성 인식 중... 버튼을 눌러 중지하세요.' : '버튼을 눌러 실시간 번역을 시작하세요.'}
         </p>
+      </div>
+
+      <div className="mt-8 w-full max-w-md p-4 bg-white/30 rounded-lg shadow-md min-h-[100px] text-gray-800 backdrop-blur-sm">
+        <p>
+          {finalTranscript}
+          <span className="text-gray-500">{partialTranscript}</span>
+        </p>
+        {!finalTranscript && !partialTranscript && (
+            <p className="text-gray-400">음성 인식 결과가 여기에 표시됩니다.</p>
+        )}
       </div>
     </div>
   )
