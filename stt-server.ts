@@ -23,10 +23,10 @@ wss.on('connection', (clientWs) => {
         return;
     }
 
-    const startGladiaConnection = async (config: { sample_rate: number }) => {
+    const startGladiaConnection = async (config: { sample_rate: number, languages: string[] }) => {
         try {
             // 1. Get a tokenized WebSocket URL from Gladia REST API
-            console.log('Requesting Gladia audio URL...');
+            console.log('Requesting Gladia audio URL with languages:', config.languages);
             const response = await fetch(GLADIA_API_URL, {
                 method: 'POST',
                 headers: {
@@ -40,8 +40,8 @@ wss.on('connection', (clientWs) => {
                     channels: 1,
                     model: 'solaria-1',
                     language_config: {
-                        languages: ['ko', 'en'],
-                        code_switching: true,
+                        languages: config.languages,
+                        code_switching: config.languages.length > 1,
                     },
                     messages_config: {
                         receive_partial_transcripts: true,
@@ -98,7 +98,7 @@ wss.on('connection', (clientWs) => {
         const message = event.data.toString();
         const data = JSON.parse(message);
 
-        if (data.sample_rate) {
+        if (data.sample_rate && data.languages) {
             // This is the first message from the client with config
             console.log("Received config from client:", data);
             startGladiaConnection(data);

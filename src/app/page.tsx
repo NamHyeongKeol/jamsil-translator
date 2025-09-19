@@ -7,6 +7,29 @@ import { Play } from 'lucide-react'
 const VOLUME_THRESHOLD = 0.05 // 목소리 감지 민감도
 const STT_PROXY_URL = 'ws://localhost:3001'
 
+const SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'th', name: 'Thai' },
+  { code: 'zh', name: 'Chinese' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'ru', name: 'Russian' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'vi', name: 'Vietnamese' },
+  { code: 'it', name: 'Italian' },
+  { code: 'id', name: 'Indonesian' },
+  { code: 'tr', name: 'Turkish' },
+  { code: 'pl', name: 'Polish' },
+  { code: 'nl', name: 'Dutch' },
+  { code: 'sv', name: 'Swedish' },
+  { code: 'ms', name: 'Malay' },
+];
+
 // Helper function to convert float audio data to base64 string
 function floatTo16BitPCM(input: Float32Array): Int16Array {
   const output = new Int16Array(input.length)
@@ -26,6 +49,9 @@ export default function Home() {
   const [volume, setVolume] = useState(0)
   const [finalTranscript, setFinalTranscript] = useState('')
   const [partialTranscript, setPartialTranscript] = useState('')
+  const [lang1, setLang1] = useState('en');
+  const [lang2, setLang2] = useState('ko');
+  const [lang3, setLang3] = useState('');
 
   const audioContextRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -33,6 +59,18 @@ export default function Home() {
   const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const processorRef = useRef<ScriptProcessorNode | null>(null)
+
+  useEffect(() => {
+    // Set default languages on mount
+    const browserLang = navigator.language.split('-')[0];
+    const defaultLang2 = browserLang === 'en' ? 'ko' : browserLang;
+    // Check if the browser language is supported, otherwise default to 'ko'
+    if (SUPPORTED_LANGUAGES.some(l => l.code === defaultLang2)) {
+      setLang2(defaultLang2);
+    } else {
+      setLang2('ko');
+    }
+  }, []);
 
   const cleanup = () => {
     if (animationFrameRef.current) {
@@ -104,8 +142,10 @@ export default function Home() {
       socketRef.current = socket
 
       socket.onopen = () => {
+        const languages = [lang1, lang2, lang3].filter(Boolean);
         const config = {
           sample_rate: context.sampleRate,
+          languages: languages
         }
         socket.send(JSON.stringify(config))
         setIsRecording(true)
@@ -189,9 +229,33 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4 overflow-hidden">
-      <div className="text-center mb-12">
+      <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-gray-900">Jamsil Translator</h1>
         <p className="text-gray-600 mt-2">실시간 음성 번역</p>
+      </div>
+
+      <div className="w-full max-w-md mx-auto mb-8 p-4 bg-white/30 rounded-lg shadow-md backdrop-blur-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="lang1" className="block text-sm font-medium text-gray-700">언어 1</label>
+            <select id="lang1" value={lang1} onChange={(e) => setLang1(e.target.value)} disabled={isRecording} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+              {SUPPORTED_LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="lang2" className="block text-sm font-medium text-gray-700">언어 2</label>
+            <select id="lang2" value={lang2} onChange={(e) => setLang2(e.target.value)} disabled={isRecording} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+              {SUPPORTED_LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="lang3" className="block text-sm font-medium text-gray-700">언어 3 (선택)</label>
+            <select id="lang3" value={lang3} onChange={(e) => setLang3(e.target.value)} disabled={isRecording} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+              <option value="">선택 안 함</option>
+              {SUPPORTED_LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="relative flex items-center justify-center w-48 h-48">
