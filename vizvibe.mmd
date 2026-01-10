@@ -1,0 +1,68 @@
+flowchart TD
+    %% === PROJECT GOALS ===
+    %% Ultimate Goal: 실시간 연속 번역이 가능한 크로스플랫폼 모바일 앱 구축
+    %% Current Goal: 번역 엔진 선택 (Gladia vs LLM) 및 실시간 번역 기능 구현
+    %% @lastActive: translation_engine_research
+
+    %% === START ===
+    %% @project_start [start, closed]
+    project_start("Next.js Project Start<br/><sub>Jamsil Translator 프로젝트의 기반이 되는<br/>Next.js 프레임워크와 기본 구조를<br/>설정하고 초기 환경을 구축함</sub>")
+
+    %% === COMPLETED WORK ===
+    %% @structure_refinement [ai-task, closed]
+    structure_refinement("Structure & Error Fix<br/><sub>불필요한 폴더 위계를 제거하여<br/>구조를 단순화하고, 클라이언트 컴포넌트<br/>하이드레이션 에러를 해결하여 안정성 확보</sub>")
+
+    %% @ui_ux_improvement [ai-task, closed]
+    ui_ux_improvement("UI/UX Improvement<br/><sub>반응형 레이아웃을 적용하여<br/>다양한 화면 크기에서 일관된 경험을<br/>제공하고, 현대적인 감각의 UI로 개선</sub>")
+
+    %% @gladia_stt_integration [ai-task, closed]
+    gladia_stt_integration("Gladia STT Integration<br/><sub>Gladia API와 통신하는 Node.js 기반<br/>WebSocket 프록시 서버를 구현하여<br/>실시간 음성 인식을 가능하게 함</sub>")
+
+    %% @language_selection [ai-task, closed]
+    language_selection("Language Selection<br/><sub>사용자가 번역할 언어를 직접<br/>선택할 수 있는 기능을 추가하여<br/>다양한 언어권 사용자를 지원함</sub>")
+
+    %% === FUTURE WORK ===
+    %% @translation_engine_research [ai-task, opened]
+    translation_engine_research("번역 기능 추가<br/><sub>Gladia 자체 번역 기능을 사용할지,<br/>아니면 다른 LLM(GPT, Claude 등)을<br/>활용할지 리서치하여 최적의 엔진 선택</sub>")
+
+    %% @mobile_app_development [ai-task, opened]
+    mobile_app_development("Cross-Platform Mobile App<br/><sub>React Native 등을 활용하여 실시간<br/>연속 번역 기능을 탑재한 크로스<br/>플랫폼 모바일 애플리케이션 개발</sub>")
+
+    %% @ultimate_goal [end, opened]
+    ultimate_goal("Ultimate Goal<br/><sub>실시간 연속 번역이 가능한<br/>크로스플랫폼 모바일 앱 구축을 통해<br/>언어 장벽 없는 소통 환경 제공</sub>")
+
+    %% === CONNECTIONS ===
+    project_start --> structure_refinement
+    structure_refinement --> ui_ux_improvement
+    ui_ux_improvement --> gladia_stt_integration
+    gladia_stt_integration --> language_selection
+    language_selection --> translation_engine_research
+    translation_engine_research --> mobile_app_development
+    mobile_app_development -.-> ultimate_goal
+
+    %% === RECENT WORK HIGHLIGHT ===
+    subgraph recent [RECENT]
+        language_selection
+    end
+
+    %% === STYLES ===
+    %% Start node (teal)
+    style project_start fill:#1a1a2e,stroke:#2dd4bf,color:#5eead4,stroke-width:2px
+
+    %% Ultimate Goal (gray)
+    style ultimate_goal fill:#1a1a2e,stroke:#6b7280,color:#9ca3af,stroke-width:1px
+
+    %% Closed tasks (soft purple)
+    style structure_refinement fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ui_ux_improvement fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gladia_stt_integration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    
+    %% Last active node (bright purple)
+    style language_selection fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+
+    %% Open tasks (soft green)
+    style translation_engine_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mobile_app_development fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+
+    %% Recent subgraph style
+    style recent fill:transparent,stroke:#c084fc,color:#c084fc,stroke-width:2px,stroke-dasharray:5 5
