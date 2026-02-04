@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
@@ -46,6 +46,28 @@ async function logButtonClick(buttonType: string) {
   } catch (error) {
     // Silently fail - don't block user interaction
     console.error('Failed to log click:', error)
+  }
+}
+
+// Log page visit with user info
+async function logVisit(pageLanguage: string) {
+  try {
+    await fetch('/api/log-visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        screenWidth: window.screen.width,
+        screenHeight: window.screen.height,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        platform: navigator.platform,
+        language: navigator.language,
+        pageLanguage,
+        referrer: document.referrer || null,
+        pathname: window.location.pathname,
+      }),
+    })
+  } catch (error) {
+    console.error('Failed to log visit:', error)
   }
 }
 
@@ -370,6 +392,11 @@ export default function HomePage() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // Log page visit on mount
+  useEffect(() => {
+    logVisit(i18n.language)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openModal = (buttonType: string) => {
     logButtonClick(buttonType)
