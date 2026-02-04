@@ -61,21 +61,11 @@
     "chatMsg2": "\"C'était génial de te rencontrer ! On se voit quand tu viens à Séoul.\"",
     "inviteBtn": "Inviter Jamie"
   },
-  "howItWorks": {
-    "label": "Comment ça marche",
-    "title": "Comment utiliser",
-    "step1": {
-      "title": "Commencer la conversation",
-      "desc": "Ouvrez l'app et appuyez sur enregistrer. Aucun réglage de langue nécessaire."
-    },
-    "step2": {
-      "title": "Traduction en temps réel",
-      "desc": "Les conversations sont automatiquement reconnues et traduites en temps réel."
-    },
-    "step3": {
-      "title": "Inviter des amis",
-      "desc": "Invitez des amis dans l'historique de chat et restez connectés à tout moment."
-    }
+  "talkToWorld": {
+    "label": "Connexion mondiale",
+    "title": "Parlez au monde entier",
+    "subtitle": "Rencontrez des gens du monde entier et discutez en ligne en toute simplicité.",
+    "description": "Nous éliminons complètement la barrière de la langue pour vous. Voix ou texte, concentrez-vous uniquement sur la conversation."
   },
   "cta": {
     "title1": "Brisez la barrière de la langue,",

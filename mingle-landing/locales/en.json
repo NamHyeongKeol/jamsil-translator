@@ -61,21 +61,11 @@
     "chatMsg2": "\"It was great meeting you! Let's definitely meet again when you come to Seoul.\"",
     "inviteBtn": "Invite Jamie"
   },
-  "howItWorks": {
-    "label": "How It Works",
-    "title": "How to use",
-    "step1": {
-      "title": "Start Conversation",
-      "desc": "Just open the app and press record. No language settings needed."
-    },
-    "step2": {
-      "title": "Real-time Translation",
-      "desc": "Conversations are automatically recognized and translated in real-time."
-    },
-    "step3": {
-      "title": "Invite Friends",
-      "desc": "Invite friends to the chat log and stay connected anytime."
-    }
+  "talkToWorld": {
+    "label": "Connect Globally",
+    "title": "Talk to the World",
+    "subtitle": "Meet people from all over the world and chat comfortably online.",
+    "description": "We'll completely remove the language barrier for you. Whether it's voice or text, just focus on the conversation."
   },
   "cta": {
     "title1": "Break the language barrier,",

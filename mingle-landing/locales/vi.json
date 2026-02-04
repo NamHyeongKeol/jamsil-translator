@@ -61,21 +61,11 @@
     "chatMsg2": "\"Rất vui được biết bạn! Hẹn gặp khi bạn đến Seoul.\"",
     "inviteBtn": "Mời Jamie"
   },
-  "howItWorks": {
-    "label": "Cách Hoạt Động",
-    "title": "Cách sử dụng",
-    "step1": {
-      "title": "Bắt Đầu Trò Chuyện",
-      "desc": "Mở ứng dụng và nhấn ghi âm. Không cần cài đặt ngôn ngữ."
-    },
-    "step2": {
-      "title": "Dịch Thời Gian Thực",
-      "desc": "Cuộc trò chuyện được tự động nhận dạng và dịch theo thời gian thực."
-    },
-    "step3": {
-      "title": "Mời Bạn Bè",
-      "desc": "Mời bạn bè vào lịch sử chat và giữ kết nối bất cứ lúc nào."
-    }
+  "talkToWorld": {
+    "label": "Kết Nối Toàn Cầu",
+    "title": "Nói chuyện với cả thế giới",
+    "subtitle": "Gặp gỡ mọi người từ khắp nơi trên thế giới và trò chuyện thoải mái trực tuyến.",
+    "description": "Chúng tôi sẽ loại bỏ hoàn toàn rào cản ngôn ngữ cho bạn. Dù là giọng nói hay văn bản, chỉ cần tập trung vào cuộc trò chuyện."
   },
   "cta": {
     "title1": "Phá vỡ rào cản ngôn ngữ,",

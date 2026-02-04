@@ -61,21 +61,11 @@
     "chatMsg2": "\"Foi ótimo te conhecer! Vamos nos encontrar quando você vier a Seul.\"",
     "inviteBtn": "Convidar Jamie"
   },
-  "howItWorks": {
-    "label": "Como Funciona",
-    "title": "Como usar",
-    "step1": {
-      "title": "Iniciar Conversa",
-      "desc": "Abra o app e pressione gravar. Sem necessidade de configurar idioma."
-    },
-    "step2": {
-      "title": "Tradução em Tempo Real",
-      "desc": "Conversas são automaticamente reconhecidas e traduzidas em tempo real."
-    },
-    "step3": {
-      "title": "Convidar Amigos",
-      "desc": "Convide amigos para o registro de chat e mantenha-se conectado a qualquer momento."
-    }
+  "talkToWorld": {
+    "label": "Conexão Global",
+    "title": "Fale com o mundo",
+    "subtitle": "Conheça pessoas de todo o mundo e converse confortavelmente online.",
+    "description": "Nós removemos completamente a barreira do idioma para você. Seja voz ou texto, apenas foque na conversa."
   },
   "cta": {
     "title1": "Quebre a barreira do idioma,",

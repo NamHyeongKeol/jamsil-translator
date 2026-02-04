@@ -380,9 +380,9 @@ function PartyScenario() {
             <span className="text-lg">🎊</span>
             <span className="text-sm text-text-primary">{isKorean ? '파티 후에도 친구로!' : 'Friends after the party!'}</span>
           </div>
-          <div className="flex items-center gap-2 bg-accent-green/10 px-4 py-2 rounded-full border border-accent-green/30">
-            <Send size={16} className="text-accent-green" />
-            <span className="text-sm text-accent-green font-medium">{isKorean ? '번역된 대화 기록 영구 저장' : 'Translated history saved forever'}</span>
+          <div className="flex items-center gap-2 bg-accent-primary/10 px-4 py-2 rounded-full border border-accent-primary/30">
+            <Send size={16} className="text-accent-primary" />
+            <span className="text-sm text-accent-primary font-medium">{isKorean ? '번역된 대화 기록 영구 저장' : 'Translated history saved forever'}</span>
           </div>
         </div>
       </div>
@@ -605,7 +605,7 @@ export default function HomePage() {
                 <p className="text-sm text-text-secondary mb-3">"너 만나서 정말 좋았어! 서울 가면 꼭 다시 보자."</p>
                 <div className="text-xs text-text-muted">22:47</div>
               </div>
-              <button className="w-full py-3.5 bg-accent-green rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:bg-accent-green/90 transition-colors">
+              <button className="w-full py-3.5 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-accent-primary/30 transition-all">
                 <UserPlus size={20} />
                 {t('coreValue.inviteBtn')}
               </button>
@@ -619,46 +619,38 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* How it Works */}
-      <section className="py-32 px-6">
+      {/* Talk to the World */}
+      <section className="pt-32 pb-0 px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <motion.div
-            className="text-center mb-20"
+            className="text-center"
             initial="initial"
             whileInView="animate"
             viewport={{ once: true }}
             variants={fadeInUp}
           >
             <div className="text-sm font-semibold text-accent-primary uppercase tracking-wider mb-4">
-              {t('howItWorks.label')}
+              {t('talkToWorld.label')}
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-text-primary">{t('howItWorks.title')}</h2>
-          </motion.div>
-          <motion.div
-            className="grid md:grid-cols-3 gap-12"
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-            variants={{ animate: { transition: { staggerChildren: 0.2 } } }}
-          >
-            {[
-              { icon: Mic, num: 1, key: 'step1' },
-              { icon: Languages, num: 2, key: 'step2' },
-              { icon: MessageSquare, num: 3, key: 'step3' }
-            ].map((step, i) => (
-              <motion.div key={i} className="text-center relative" variants={fadeInUp}>
-                {i < 2 && (
-                  <div className={`hidden md:block absolute top-10 ${isRTL ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'} w-full h-0.5 bg-gradient-to-r from-accent-primary to-transparent`} />
-                )}
-                <div className="w-20 h-20 rounded-full bg-white border-2 border-accent-primary/30 flex items-center justify-center mx-auto mb-6 text-accent-primary shadow-lg">
-                  <step.icon size={32} />
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-text-primary">{step.num}. {t(`howItWorks.${step.key}.title`)}</h3>
-                <p className="text-text-secondary leading-relaxed">{t(`howItWorks.${step.key}.desc`)}</p>
-              </motion.div>
-            ))}
+            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-text-primary">{t('talkToWorld.title')}</h2>
+            <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto">
+              {t('talkToWorld.subtitle')} {t('talkToWorld.description')}
+            </p>
           </motion.div>
         </div>
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="flex justify-center mb-16"
+        >
+          <img
+            src="/talk-to-the-world.png"
+            alt="Talk to the World"
+            className="w-2/3 h-auto"
+          />
+        </motion.div>
       </section>
 
       {/* Final CTA */}
