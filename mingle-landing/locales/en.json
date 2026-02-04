@@ -3,11 +3,11 @@
     "cta": "Download"
   },
   "hero": {
-    "badge": "Real-time Translation for Real Connections",
-    "title1": "Even with different languages,",
-    "title2": "deep conversations",
-    "title3": "are possible",
-    "subtitle": "Speak and see instant translations on your screen. Real-time voice continuous translation keeps long conversations flowing seamlessly. Chat logs are saved so you can reconnect anytime.",
+    "badge": "",
+    "title1": "Real-time translation",
+    "title2": "without breaking",
+    "title3": "your conversation",
+    "subtitle": "No more stopping after every sentence to translate. Mingle translates as you speak and shows it on screen, keeping long conversations flowing naturally. Every conversation is saved in a chat room, and you can invite others to continue talking online anytime.",
     "cta": "Download"
   },
   "problem": {
@@ -18,7 +18,8 @@
     "list": {
       "item1": "Conversation flow breaks while translating sentence by sentence",
       "item2": "Can't tell who said what in group conversations of 3+ people",
-      "item3": "No way to stay in touch after parting"
+      "item3": "No way to stay in touch after parting",
+      "item4": "Have to manually switch language selection for each turn"
     },
     "chat": {
       "msg1": "\"Hey, I really enjoyed talking with you tonight!\"",
@@ -29,19 +30,19 @@
   },
   "features": {
     "label": "Features",
-    "title": "Seamless translation, and beyond",
+    "title": "So you can focus on the conversation",
     "subtitle": "Mingle is not just a translation app. It has everything you need for real communication.",
     "realtime": {
       "title": "Real-time Translation",
       "desc": "Translation starts as you speak. Natural conversation without interruption."
     },
     "continuous": {
-      "title": "Continuous Translation",
-      "desc": "Long conversations are no problem. Translation continues while your partner speaks."
+      "title": "Long Conversation Translation",
+      "desc": "Long conversations are no problem. Translation continues while your partner speaks. Until you stop it."
     },
     "autoDetect": {
       "title": "Multi-language Detection",
-      "desc": "Auto-detects any language. Supports 3+ people speaking different languages simultaneously."
+      "desc": "No need to select a language. Auto-detects any language. Supports 3+ people speaking different languages simultaneously."
     },
     "speaker": {
       "title": "Speaker Separation",
@@ -50,7 +51,7 @@
   },
   "coreValue": {
     "label": "Core Value",
-    "highlight": "Offline to Online",
+    "highlight": "",
     "title": "Continue your offline conversation as a chat room",
     "desc1": "This is the true value of Mingle.",
     "desc2": "Invite the person you met in real life to your app. Your translated conversation becomes a permanent chat room. Continue talking the next day, next week, or anytime.",

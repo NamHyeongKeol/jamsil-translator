@@ -3,11 +3,11 @@
     "cta": "Télécharger"
   },
   "hero": {
-    "badge": "Traduction en temps réel pour de vraies connexions",
-    "title1": "Même avec des langues différentes,",
-    "title2": "des conversations profondes",
-    "title3": "sont possibles",
-    "subtitle": "Parlez et voyez la traduction instantanée à l'écran. La traduction vocale en temps réel continue permet des conversations fluides. Les historiques sont sauvegardés pour vous reconnecter à tout moment.",
+    "badge": "",
+    "title1": "Traduction en temps réel",
+    "title2": "sans interrompre",
+    "title3": "la conversation",
+    "subtitle": "Fini de s'arrêter après chaque phrase pour traduire. Mingle traduit instantanément ce que vous dites et l'affiche à l'écran, gardant les longues conversations fluides et naturelles. Toutes les conversations sont enregistrées dans un salon de chat, et vous pouvez inviter d'autres personnes à continuer en ligne à tout moment.",
     "cta": "Télécharger"
   },
   "problem": {
@@ -18,7 +18,8 @@
     "list": {
       "item1": "Le flux de conversation se brise en traduisant phrase par phrase",
       "item2": "Impossible de distinguer qui a dit quoi dans les conversations à 3+ personnes",
-      "item3": "Aucun moyen de rester en contact après s'être séparés"
+      "item3": "Aucun moyen de rester en contact après s'être séparés",
+      "item4": "Changer manuellement la sélection de langue à chaque tour de parole"
     },
     "chat": {
       "msg1": "\"Hey, j'ai vraiment aimé parler avec toi ce soir !\"",
@@ -29,19 +30,19 @@
   },
   "features": {
     "label": "Fonctionnalités",
-    "title": "Traduction fluide, et bien plus",
+    "title": "Pour vous concentrer sur la conversation",
     "subtitle": "Mingle n'est pas qu'une simple application de traduction. Elle a tout ce qu'il faut pour une vraie communication.",
     "realtime": {
       "title": "Traduction en temps réel",
       "desc": "La traduction commence dès que vous parlez. Conversation naturelle sans interruption."
     },
     "continuous": {
-      "title": "Traduction continue",
-      "desc": "Les longues conversations ne sont pas un problème. La traduction continue pendant que votre interlocuteur parle."
+      "title": "Traduction des longues conversations",
+      "desc": "Les longues conversations ne sont pas un problème. La traduction continue pendant que votre interlocuteur parle. Jusqu'à ce que vous l'arrêtiez."
     },
     "autoDetect": {
       "title": "Détection multi-langues",
-      "desc": "Détecte automatiquement n'importe quelle langue. Supporte 3+ personnes parlant différentes langues simultanément."
+      "desc": "Pas besoin de sélectionner une langue. Détecte automatiquement n'importe quelle langue. Supporte 3+ personnes parlant différentes langues simultanément."
     },
     "speaker": {
       "title": "Reconnaissance vocale",
@@ -50,7 +51,7 @@
   },
   "coreValue": {
     "label": "Valeur fondamentale",
-    "highlight": "Du hors-ligne à l'en-ligne",
+    "highlight": "",
     "title": "Continuez votre conversation hors-ligne dans un salon de chat",
     "desc1": "C'est la vraie valeur de Mingle.",
     "desc2": "Invitez la personne que vous avez rencontrée en vrai dans l'application. Votre conversation traduite devient un salon de chat permanent. Continuez à parler le lendemain, la semaine prochaine, ou quand vous voulez.",

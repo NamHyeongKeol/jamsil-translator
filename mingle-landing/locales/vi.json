@@ -3,11 +3,11 @@
     "cta": "Tải xuống"
   },
   "hero": {
-    "badge": "Dịch thời gian thực cho kết nối thực sự",
-    "title1": "Dù ngôn ngữ khác nhau,",
-    "title2": "cuộc trò chuyện sâu sắc",
-    "title3": "vẫn có thể",
-    "subtitle": "Nói và xem bản dịch tức thì trên màn hình. Dịch giọng nói thời gian thực liên tục giúp cuộc trò chuyện diễn ra mượt mà. Lịch sử chat được lưu để kết nối lại bất cứ lúc nào.",
+    "badge": "",
+    "title1": "Dịch thời gian thực",
+    "title2": "không làm gián đoạn",
+    "title3": "cuộc trò chuyện",
+    "subtitle": "Không còn phải dừng lại sau mỗi câu để dịch. Mingle dịch ngay lập tức những gì bạn nói và hiển thị trên màn hình, giữ cho các cuộc trò chuyện dài diễn ra tự nhiên. Tất cả cuộc trò chuyện được lưu trong phòng chat, và bạn có thể mời người khác tiếp tục nói chuyện trực tuyến bất cứ lúc nào.",
     "cta": "Tải xuống"
   },
   "problem": {
@@ -18,7 +18,8 @@
     "list": {
       "item1": "Dòng chảy cuộc trò chuyện bị gián đoạn khi dịch từng câu",
       "item2": "Trong cuộc trò chuyện 3+ người không thể phân biệt ai nói gì",
-      "item3": "Không có cách giữ liên lạc sau khi chia tay"
+      "item3": "Không có cách giữ liên lạc sau khi chia tay",
+      "item4": "Phải chuyển đổi ngôn ngữ thủ công mỗi lượt nói"
     },
     "chat": {
       "msg1": "\"Này, mình thực sự thích nói chuyện với bạn tối nay!\"",
@@ -29,19 +30,19 @@
   },
   "features": {
     "label": "Tính Năng",
-    "title": "Dịch liền mạch, và hơn thế nữa",
+    "title": "Để bạn tập trung vào cuộc trò chuyện",
     "subtitle": "Mingle không chỉ là ứng dụng dịch thuật. Nó có mọi thứ bạn cần cho giao tiếp thực sự.",
     "realtime": {
       "title": "Dịch Thời Gian Thực",
       "desc": "Bản dịch bắt đầu khi bạn nói. Trò chuyện tự nhiên không gián đoạn."
     },
     "continuous": {
-      "title": "Dịch Liên Tục",
-      "desc": "Cuộc trò chuyện dài không phải vấn đề. Bản dịch tiếp tục khi đối tác của bạn nói."
+      "title": "Dịch cuộc trò chuyện dài liên tục",
+      "desc": "Cuộc trò chuyện dài không phải vấn đề. Bản dịch tiếp tục khi đối tác của bạn nói. Cho đến khi bạn dừng."
     },
     "autoDetect": {
       "title": "Phát Hiện Đa Ngôn Ngữ",
-      "desc": "Tự động phát hiện bất kỳ ngôn ngữ nào. Hỗ trợ 3+ người nói các ngôn ngữ khác nhau cùng lúc."
+      "desc": "Không cần chọn ngôn ngữ. Tự động phát hiện bất kỳ ngôn ngữ nào. Hỗ trợ 3+ người nói các ngôn ngữ khác nhau cùng lúc."
     },
     "speaker": {
       "title": "Nhận Dạng Giọng Nói",
@@ -50,7 +51,7 @@
   },
   "coreValue": {
     "label": "Giá Trị Cốt Lõi",
-    "highlight": "Từ Offline đến Online",
+    "highlight": "",
     "title": "Tiếp tục cuộc trò chuyện offline như phòng chat",
     "desc1": "Đây là giá trị thực sự của Mingle.",
     "desc2": "Mời người bạn gặp ngoài đời vào ứng dụng. Cuộc trò chuyện đã dịch trở thành phòng chat vĩnh viễn. Tiếp tục nói chuyện ngày hôm sau, tuần sau, hoặc bất cứ khi nào.",

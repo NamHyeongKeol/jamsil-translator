@@ -236,13 +236,15 @@ function BeforeAfter() {
   const problems = [
     { icon: '⏳', text: isKorean ? '한 문장씩 번역하느라 대화 흐름이 끊김' : 'Conversation flow breaks while translating sentence by sentence' },
     { icon: '❓', text: isKorean ? '3명 이상 대화에서 누가 뭐라 했는지 구분 불가' : "Can't tell who said what in group conversations of 3+ people" },
-    { icon: '👋', text: isKorean ? '헤어지고 나면 연락할 방법이 없음' : 'No way to stay in touch after parting' }
+    { icon: '👋', text: isKorean ? '헤어지고 나면 연락할 방법이 없음' : 'No way to stay in touch after parting' },
+    { icon: '🔄', text: isKorean ? '대화 순서마다 언어 선택을 수동으로 바꿔줘야 함' : 'Have to manually switch language selection for each turn' }
   ]
 
   const solutions = [
     { icon: '⚡', text: isKorean ? '실시간으로 끊김 없이 자연스러운 대화' : 'Real-time seamless natural conversation' },
     { icon: '🎯', text: isKorean ? '음성 인식으로 발화자별 대화 자동 분리' : 'Voice recognition auto-separates by speaker' },
-    { icon: '💬', text: isKorean ? '대화록이 채팅방으로 변환, 언제든 연락 가능' : 'Conversation becomes chat room, stay connected' }
+    { icon: '💬', text: isKorean ? '대화록이 채팅방으로 변환, 언제든 연락 가능' : 'Conversation becomes chat room, stay connected' },
+    { icon: '🌐', text: isKorean ? '몇 개의 언어든 자동으로 감지해서 양방향 번역' : 'Auto-detects any number of languages for two-way translation' }
   ]
 
   return (
@@ -437,10 +439,6 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent-primary/10 border border-accent-primary/30 rounded-full text-sm text-accent-primary-dark mb-8">
-              <Sparkles size={16} />
-              <span>{t('hero.badge')}</span>
-            </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-4 text-text-primary">
               {t('hero.title1')}<br />
               <span className="bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">
@@ -566,10 +564,6 @@ export default function HomePage() {
             viewport={{ once: true }}
             variants={fadeInUp}
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent-green/10 border border-accent-green/30 rounded-full text-sm text-accent-green mb-6">
-              <Sparkles size={16} />
-              <span>{t('coreValue.highlight')}</span>
-            </div>
             <div className="text-sm font-semibold text-accent-primary uppercase tracking-wider mb-4">
               {t('coreValue.label')}
             </div>

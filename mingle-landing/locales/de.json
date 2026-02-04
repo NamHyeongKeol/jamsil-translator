@@ -3,11 +3,11 @@
     "cta": "Herunterladen"
   },
   "hero": {
-    "badge": "Echtzeit-Übersetzung für echte Verbindungen",
-    "title1": "Auch mit verschiedenen Sprachen,",
-    "title2": "tiefe Gespräche",
-    "title3": "sind möglich",
-    "subtitle": "Sprechen Sie und sehen Sie sofortige Übersetzungen auf dem Bildschirm. Echtzeit-Sprach-Kontinuierliche-Übersetzung ermöglicht flüssige Gespräche. Chat-Verläufe werden gespeichert für jederzeitige Verbindung.",
+    "badge": "",
+    "title1": "Echtzeit-Übersetzung",
+    "title2": "ohne das Gespräch",
+    "title3": "zu unterbrechen",
+    "subtitle": "Kein Stoppen mehr nach jedem Satz zum Übersetzen. Mingle übersetzt sofort, was Sie sagen, und zeigt es auf dem Bildschirm an, damit lange Gespräche natürlich fließen. Alle Gespräche werden in einem Chatroom gespeichert, und Sie können andere einladen, jederzeit online weiterzusprechen.",
     "cta": "Herunterladen"
   },
   "problem": {
@@ -18,7 +18,8 @@
     "list": {
       "item1": "Gesprächsfluss wird unterbrochen beim Übersetzen Satz für Satz",
       "item2": "Bei Gesprächen mit 3+ Personen kann nicht unterschieden werden, wer was gesagt hat",
-      "item3": "Keine Möglichkeit, nach dem Abschied in Kontakt zu bleiben"
+      "item3": "Keine Möglichkeit, nach dem Abschied in Kontakt zu bleiben",
+      "item4": "Sprachauswahl muss bei jedem Sprecherwechsel manuell geändert werden"
     },
     "chat": {
       "msg1": "\"Hey, es hat mir wirklich Spaß gemacht, heute Abend mit dir zu reden!\"",
@@ -29,19 +30,19 @@
   },
   "features": {
     "label": "Funktionen",
-    "title": "Nahtlose Übersetzung und mehr",
+    "title": "Damit Sie sich auf das Gespräch konzentrieren können",
     "subtitle": "Mingle ist nicht nur eine Übersetzungs-App. Sie hat alles, was Sie für echte Kommunikation brauchen.",
     "realtime": {
       "title": "Echtzeit-Übersetzung",
       "desc": "Die Übersetzung beginnt, während Sie sprechen. Natürliches Gespräch ohne Unterbrechung."
     },
     "continuous": {
-      "title": "Kontinuierliche Übersetzung",
-      "desc": "Lange Gespräche sind kein Problem. Die Übersetzung läuft weiter, während Ihr Partner spricht."
+      "title": "Übersetzung langer Gespräche",
+      "desc": "Lange Gespräche sind kein Problem. Die Übersetzung läuft weiter, während Ihr Partner spricht. Bis Sie es beenden."
     },
     "autoDetect": {
       "title": "Mehrsprachige Erkennung",
-      "desc": "Erkennt automatisch jede Sprache. Unterstützt 3+ Personen, die gleichzeitig verschiedene Sprachen sprechen."
+      "desc": "Keine Sprachauswahl nötig. Erkennt automatisch jede Sprache. Unterstützt 3+ Personen, die gleichzeitig verschiedene Sprachen sprechen."
     },
     "speaker": {
       "title": "Stimmerkennung",
@@ -50,7 +51,7 @@
   },
   "coreValue": {
     "label": "Kernwert",
-    "highlight": "Von Offline zu Online",
+    "highlight": "",
     "title": "Setzen Sie Ihr Offline-Gespräch als Chatroom fort",
     "desc1": "Das ist der wahre Wert von Mingle.",
     "desc2": "Laden Sie die Person, die Sie persönlich getroffen haben, in die App ein. Ihr übersetztes Gespräch wird zu einem permanenten Chatroom. Setzen Sie das Gespräch am nächsten Tag, nächste Woche oder wann immer Sie möchten fort.",
