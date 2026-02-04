@@ -574,8 +574,8 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="bg-gray-50 rounded-xl p-5 mb-6">
-                <p className="text-sm text-text-secondary mb-2">{t('coreValue.chatMsg1')}</p>
-                <p className="text-sm text-text-secondary mb-3">{t('coreValue.chatMsg2')}</p>
+                <p className="text-sm text-text-secondary mb-2">"It was so nice meeting you! Let's definitely hang out again when I visit Seoul."</p>
+                <p className="text-sm text-text-secondary mb-3">"너 만나서 정말 좋았어! 서울 가면 꼭 다시 보자."</p>
                 <div className="text-xs text-text-muted">22:47</div>
               </div>
               <button className="w-full py-3.5 bg-accent-green rounded-xl text-white font-semibold flex items-center justify-center gap-2 hover:bg-accent-green/90 transition-colors">
