@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: landing_ui_refinement
+    %% @lastActive: click_analytics
 
     %% === START ===
     %% @project_start [start, closed]
@@ -33,6 +33,9 @@ flowchart TD
     %% @landing_ui_refinement [ai-task, closed]
     landing_ui_refinement("UI 개선 & 테마 변경<br/><sub>다크→라이트 모드, 파란색→노란색 테마<br/>CSS 기반 폰 목업으로 3인 대화 시연<br/>Before/After 3문제-3해결 세로 나열</sub>")
 
+    %% @click_analytics [ai-task, closed]
+    click_analytics("클릭 분석 & 유저 추적<br/><sub>버튼 클릭 시 IP/UA/언어/화면크기 등<br/>유저 정보 자동 저장, ButtonClick 모델<br/>이메일 없이도 방문자 행동 추적</sub>")
+
     %% === FUTURE WORK ===
     %% @translation_engine_research [ai-task, opened]
     translation_engine_research("번역 기능 추가<br/><sub>Gladia 자체 번역 기능을 사용할지,<br/>아니면 다른 LLM(GPT, Claude 등)을<br/>활용할지 리서치하여 최적의 엔진 선택</sub>")
@@ -55,15 +58,16 @@ flowchart TD
     mingle_landing_prototype --> landing_i18n
     landing_i18n --> landing_email_mockups
     landing_email_mockups --> landing_ui_refinement
-    landing_ui_refinement --> translation_engine_research
-    landing_ui_refinement --> chat_invite_feature
+    landing_ui_refinement --> click_analytics
+    click_analytics --> translation_engine_research
+    click_analytics --> chat_invite_feature
     translation_engine_research --> mobile_app_development
     chat_invite_feature --> mobile_app_development
     mobile_app_development -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        landing_ui_refinement
+        click_analytics
     end
 
     %% === STYLES ===
@@ -86,8 +90,11 @@ flowchart TD
     %% Previous recent node (now closed)
     style landing_email_mockups fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
 
+    %% Previous recent node (now closed)
+    style landing_ui_refinement fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
     %% Recent node (bright purple)
-    style landing_ui_refinement fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style click_analytics fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Open tasks (soft green)
     style translation_engine_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
