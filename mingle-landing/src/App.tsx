@@ -170,16 +170,10 @@ function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
 function PhoneMockup() {
   return (
     <div className="relative mx-auto w-[420px]">
-      {/* Gradient overlay to blend edges */}
-      <div className="absolute inset-0 pointer-events-none z-10"
-        style={{
-          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(255,255,255,0.8) 85%, rgba(255,255,255,1) 100%)'
-        }}
-      />
       <img
         src="/image.png"
         alt="Mingle App Screenshot"
-        className="w-full h-auto"
+        className="w-full h-auto drop-shadow-2xl"
       />
     </div>
   )
@@ -377,8 +371,8 @@ function App() {
       </nav>
 
       {/* Hero Section */}
-      <section className="min-h-screen flex items-center justify-center pt-32 pb-20 px-6 relative overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(245,158,11,0.1)_0%,transparent_70%)] pointer-events-none" />
+      <section className="min-h-screen flex items-center justify-center pt-32 pb-20 px-6 relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-100">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(245,158,11,0.08)_0%,transparent_70%)] pointer-events-none" />
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <motion.div
             className="relative z-10"
