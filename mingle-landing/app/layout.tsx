@@ -3,8 +3,28 @@ import { Providers } from './providers'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Mingle - Real-time Voice Translation',
-  description: 'Voice-to-text translation in real time. Have deep conversations with anyone, no matter what language they speak.',
+  title: 'Mingle, Seamless Translator',
+  description: 'Just stay in the conversation. Mingle lets you talk without translating sentence by sentence.',
+  openGraph: {
+    title: 'Mingle, Seamless Translator',
+    description: 'Just stay in the conversation. Mingle lets you talk without translating sentence by sentence.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Mingle - Seamless Translator',
+      },
+    ],
+    type: 'website',
+    siteName: 'Mingle',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Mingle, Seamless Translator',
+    description: 'Just stay in the conversation. Mingle lets you talk without translating sentence by sentence.',
+    images: ['/og-image.png'],
+  },
 }
 
 export default function RootLayout({
