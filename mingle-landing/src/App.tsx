@@ -166,104 +166,15 @@ function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
   )
 }
 
-// Phone Mockup Component - CSS-based app preview
+// Phone Mockup Component - Uses actual screenshot image
 function PhoneMockup() {
-  const { t, i18n } = useTranslation()
-  const isKorean = i18n.language === 'ko'
-
   return (
     <div className="relative mx-auto w-[320px]">
-      {/* Phone frame */}
-      <div className="relative bg-gray-900 rounded-[3rem] p-3 shadow-2xl">
-        {/* Notch */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-gray-900 rounded-b-2xl z-10" />
-
-        {/* Screen */}
-        <div className="relative bg-white rounded-[2.5rem] overflow-hidden">
-          {/* Status bar */}
-          <div className="flex justify-between items-center px-8 py-3 bg-gray-50 text-xs text-gray-600">
-            <span>9:41</span>
-            <div className="flex gap-1">
-              <div className="w-4 h-2 border border-gray-600 rounded-sm">
-                <div className="w-3 h-full bg-gray-600 rounded-sm" />
-              </div>
-            </div>
-          </div>
-
-          {/* App header */}
-          <div className="px-5 py-4 border-b border-gray-100">
-            <div className="text-center">
-              <span className="text-lg font-bold bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">Mingle</span>
-            </div>
-          </div>
-
-          {/* Recording indicator */}
-          <div className="px-5 py-4">
-            <div className="flex items-center justify-center gap-2 bg-red-50 border border-red-200 rounded-full py-2 px-4 mx-auto w-fit">
-              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-xs text-red-600 font-medium">{t('mockup.recording')}</span>
-            </div>
-          </div>
-
-          {/* Conversation */}
-          <div className="px-4 py-3 space-y-3 h-[280px] overflow-hidden">
-            {/* Speaker 1 - English */}
-            <div className="flex gap-2">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-600 flex-shrink-0">
-                JM
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] text-gray-400 mb-1">{t('mockup.speaker1')} · EN</div>
-                <div className="bg-blue-50 rounded-2xl rounded-tl-sm px-3 py-2">
-                  <p className="text-xs text-gray-700">"I really love Korean food!"</p>
-                  <p className="text-[10px] text-blue-600 mt-1 border-t border-blue-100 pt-1">{isKorean ? '"한국 음식 정말 좋아해요!"' : '"I really love Korean food!"'}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Speaker 2 - Korean */}
-            <div className="flex gap-2">
-              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-xs font-medium text-amber-600 flex-shrink-0">
-                민수
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] text-gray-400 mb-1">{t('mockup.speaker2')} · KO</div>
-                <div className="bg-amber-50 rounded-2xl rounded-tl-sm px-3 py-2">
-                  <p className="text-xs text-gray-700">"진짜요? 어떤 음식 좋아해요?"</p>
-                  <p className="text-[10px] text-amber-600 mt-1 border-t border-amber-100 pt-1">{isKorean ? '"진짜요? 어떤 음식 좋아해요?"' : '"Really? What food do you like?"'}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Speaker 3 - Japanese */}
-            <div className="flex gap-2">
-              <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-xs font-medium text-pink-600 flex-shrink-0">
-                ゆき
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] text-gray-400 mb-1">{t('mockup.speaker3')} · JA</div>
-                <div className="bg-pink-50 rounded-2xl rounded-tl-sm px-3 py-2">
-                  <p className="text-xs text-gray-700">"私もビビンバが好き！"</p>
-                  <p className="text-[10px] text-pink-600 mt-1 border-t border-pink-100 pt-1">{isKorean ? '"나도 비빔밥 좋아해!"' : '"I also love bibimbap!"'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom bar */}
-          <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
-            <div className="flex items-center justify-center gap-2 text-accent-primary">
-              <Languages size={14} />
-              <span className="text-xs font-medium">{t('mockup.translate')}</span>
-            </div>
-          </div>
-
-          {/* Home indicator */}
-          <div className="flex justify-center py-2">
-            <div className="w-32 h-1 bg-gray-300 rounded-full" />
-          </div>
-        </div>
-      </div>
+      <img
+        src="/image.png"
+        alt="Mingle App Screenshot"
+        className="w-full h-auto rounded-3xl shadow-2xl"
+      />
     </div>
   )
 }
