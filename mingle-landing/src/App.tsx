@@ -169,7 +169,7 @@ function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
 // Phone Mockup Component - Uses actual screenshot image
 function PhoneMockup() {
   return (
-    <div className="relative mx-auto w-[420px]">
+    <div className="relative mx-auto w-[280px] md:w-[350px] lg:w-[420px]">
       <img
         src="/image.png?v=2"
         alt="Mingle App Screenshot"
@@ -403,10 +403,10 @@ function App() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="hidden lg:block"
+            className="flex justify-center lg:justify-end"
           >
             <PhoneMockup />
           </motion.div>
