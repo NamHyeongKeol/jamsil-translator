@@ -169,11 +169,17 @@ function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
 // Phone Mockup Component - Uses actual screenshot image
 function PhoneMockup() {
   return (
-    <div className="relative mx-auto w-[320px]">
+    <div className="relative mx-auto w-[420px]">
+      {/* Gradient overlay to blend edges */}
+      <div className="absolute inset-0 pointer-events-none z-10"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(255,255,255,0.8) 85%, rgba(255,255,255,1) 100%)'
+        }}
+      />
       <img
         src="/image.png"
         alt="Mingle App Screenshot"
-        className="w-full h-auto rounded-3xl shadow-2xl"
+        className="w-full h-auto"
       />
     </div>
   )
