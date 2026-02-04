@@ -439,11 +439,11 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-4 text-text-primary">
-              {t('hero.title1')}<br />
-              <span className="bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">
+            <h1 className="font-extrabold leading-tight mb-4 text-text-primary">
+              <span className="text-3xl md:text-4xl lg:text-5xl">{t('hero.title1')}</span><br />
+              <span className="text-4xl md:text-5xl lg:text-6xl bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">
                 {t('hero.title2')}
-              </span> {t('hero.title3')}
+              </span> <span className="text-4xl md:text-5xl lg:text-6xl">{t('hero.title3')}</span>
             </h1>
             <p className="text-lg md:text-xl text-text-secondary max-w-xl mb-10 leading-relaxed">
               {t('hero.subtitle')}
