@@ -430,7 +430,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="min-h-screen flex items-center justify-center pt-10 pb-20 px-6 relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-100">
+      <section className="min-h-screen flex items-center justify-center pt-24 md:pt-10 pb-20 px-6 relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-100">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(245,158,11,0.08)_0%,transparent_70%)] pointer-events-none" />
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <motion.div
@@ -648,7 +648,7 @@ export default function HomePage() {
           <img
             src="/talk-to-the-world.png"
             alt="Talk to the World"
-            className="w-2/3 h-auto"
+            className="w-full md:w-2/3 h-auto"
           />
         </motion.div>
       </section>
