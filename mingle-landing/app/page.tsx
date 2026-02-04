@@ -77,7 +77,13 @@ function LanguageSelector() {
               {languages.map((lang) => (
                 <button
                   key={lang.code}
-                  onClick={() => { i18n.changeLanguage(lang.code); setIsOpen(false) }}
+                  onClick={() => {
+                    i18n.changeLanguage(lang.code)
+                    // URL 경로 업데이트
+                    const newPath = lang.code === 'en' ? '/' : `/${lang.code}`
+                    window.history.pushState({}, '', newPath)
+                    setIsOpen(false)
+                  }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-3 transition-colors ${lang.code === i18n.language ? 'text-accent-primary' : 'text-text-secondary'}`}
                 >
                   <span>{lang.flag}</span>

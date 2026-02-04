@@ -1,12 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import '@/lib/i18n'
+import i18n from '@/lib/i18n'
+
+const locales = ['en', 'ko', 'ja', 'zh-CN', 'zh-TW', 'fr', 'de', 'es', 'pt', 'it', 'ru', 'ar', 'hi', 'th', 'vi']
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    // URL 경로에서 언어 감지 (최우선)
+    const pathname = window.location.pathname
+    const pathLocale = pathname.split('/')[1]
+
+    if (pathLocale && locales.includes(pathLocale)) {
+      i18n.changeLanguage(pathLocale)
+    }
+
     setMounted(true)
   }, [])
 
