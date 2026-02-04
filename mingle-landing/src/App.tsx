@@ -28,6 +28,28 @@ const fadeInUp = {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+// Log button click with user info
+async function logButtonClick(buttonType: string) {
+  try {
+    await fetch(`${API_URL}/api/log-click`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        buttonType,
+        screenWidth: window.screen.width,
+        screenHeight: window.screen.height,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        platform: navigator.platform,
+        language: navigator.language,
+        referrer: document.referrer || null,
+      }),
+    })
+  } catch (error) {
+    // Silently fail - don't block user interaction
+    console.error('Failed to log click:', error)
+  }
+}
+
 function LanguageSelector() {
   const { i18n } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -344,7 +366,10 @@ function App() {
   const isRTL = i18n.language === 'ar'
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const openModal = () => setIsModalOpen(true)
+  const openModal = (buttonType: string) => {
+    logButtonClick(buttonType)
+    setIsModalOpen(true)
+  }
   const closeModal = () => setIsModalOpen(false)
 
   return (
@@ -360,7 +385,7 @@ function App() {
           <div className="flex items-center gap-4">
             <LanguageSelector />
             <button
-              onClick={openModal}
+              onClick={() => openModal('nav')}
               className="px-6 py-2.5 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-lg font-semibold text-white hover:-translate-y-0.5 hover:shadow-lg hover:shadow-accent-primary/30 transition-all text-sm flex items-center gap-2"
             >
               <Download size={16} />
@@ -394,7 +419,7 @@ function App() {
               {t('hero.subtitle')}
             </p>
             <button
-              onClick={openModal}
+              onClick={() => openModal('hero')}
               className="px-8 py-4 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-xl font-semibold text-white flex items-center gap-2 hover:-translate-y-1 hover:shadow-2xl hover:shadow-accent-primary/40 transition-all"
             >
               <Download size={20} />
@@ -626,7 +651,7 @@ function App() {
               {t('cta.subtitle')}
             </p>
             <button
-              onClick={openModal}
+              onClick={() => openModal('cta')}
               className="px-10 py-5 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-xl font-semibold text-lg text-white flex items-center gap-3 mx-auto hover:-translate-y-1 hover:shadow-2xl hover:shadow-accent-primary/40 transition-all"
             >
               <Download size={24} />

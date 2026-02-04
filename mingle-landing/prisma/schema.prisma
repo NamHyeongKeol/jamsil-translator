@@ -13,3 +13,17 @@ model Subscriber {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model ButtonClick {
+  id          String   @id @default(cuid())
+  buttonType  String   // "nav", "hero", "cta"
+  ipAddress   String?
+  userAgent   String?
+  language    String?  // browser language
+  referrer    String?
+  screenWidth Int?
+  screenHeight Int?
+  timezone    String?
+  platform    String?
+  createdAt   DateTime @default(now())
+}
