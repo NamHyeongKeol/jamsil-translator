@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "cta": "Télécharger"
+  },
+  "hero": {
+    "badge": "Traduction en temps réel pour de vraies connexions",
+    "title1": "Même avec des langues différentes,",
+    "title2": "des conversations profondes",
+    "title3": "sont possibles",
+    "subtitle": "Les longues conversations avec des amis étrangers sont traduites en temps réel sans interruption. Les historiques sont sauvegardés pour vous reconnecter à tout moment.",
+    "cta": "Télécharger"
+  },
+  "problem": {
+    "label": "Le problème",
+    "title1": "Se faire des amis étrangers,",
+    "title2": "pourquoi est-ce si difficile ?",
+    "description": "Vous rencontrez quelqu'un de formidable à une fête, mais traduire phrase par phrase brise le flux de la conversation, ne laissant qu'un silence gênant.",
+    "list": {
+      "item1": "Le flux de conversation se brise en traduisant phrase par phrase",
+      "item2": "Impossible de distinguer qui a dit quoi dans les conversations à 3+ personnes",
+      "item3": "Aucun moyen de rester en contact après s'être séparés"
+    },
+    "chat": {
+      "msg1": "\"Hey, j'ai vraiment aimé parler avec toi ce soir !\"",
+      "msg2": "\"Euh... attendez... traducteur...\"",
+      "msg3": "\"...on pourrait échanger nos contacts ?\"",
+      "msg4": "\"Ah oui... eh bien...\""
+    }
+  },
+  "features": {
+    "label": "Fonctionnalités",
+    "title": "Traduction fluide, et bien plus",
+    "subtitle": "Mingle n'est pas qu'une simple application de traduction. Elle a tout ce qu'il faut pour une vraie communication.",
+    "realtime": {
+      "title": "Traduction en temps réel",
+      "desc": "La traduction commence dès que vous parlez. Conversation naturelle sans interruption."
+    },
+    "continuous": {
+      "title": "Traduction continue",
+      "desc": "Les longues conversations ne sont pas un problème. La traduction continue pendant que votre interlocuteur parle."
+    },
+    "autoDetect": {
+      "title": "Détection multi-langues",
+      "desc": "Détecte automatiquement n'importe quelle langue. Supporte 3+ personnes parlant différentes langues simultanément."
+    },
+    "speaker": {
+      "title": "Reconnaissance vocale",
+      "desc": "L'IA identifie la voix de chaque interlocuteur. Même dans les conversations à 3+ personnes, montre clairement qui a dit quoi."
+    }
+  },
+  "coreValue": {
+    "label": "Valeur fondamentale",
+    "highlight": "Du hors-ligne à l'en-ligne",
+    "title": "Continuez votre conversation hors-ligne dans un salon de chat",
+    "desc1": "C'est la vraie valeur de Mingle.",
+    "desc2": "Invitez la personne que vous avez rencontrée en vrai dans l'application. Votre conversation traduite devient un salon de chat permanent. Continuez à parler le lendemain, la semaine prochaine, ou quand vous voulez.",
+    "desc3": "Le moment où une rencontre fortuite à une fête devient une vraie amitié, c'est",
+    "chatDate": "Conversation du 4 février 2024",
+    "chatMsg1": "\"C'était super de te rencontrer ! On se revoit quand je visite Séoul.\"",
+    "chatMsg2": "\"C'était génial de te rencontrer ! On se voit quand tu viens à Séoul.\"",
+    "inviteBtn": "Inviter Jamie"
+  },
+  "howItWorks": {
+    "label": "Comment ça marche",
+    "title": "Comment utiliser",
+    "step1": {
+      "title": "Commencer la conversation",
+      "desc": "Ouvrez l'app et appuyez sur enregistrer. Aucun réglage de langue nécessaire."
+    },
+    "step2": {
+      "title": "Traduction en temps réel",
+      "desc": "Les conversations sont automatiquement reconnues et traduites en temps réel."
+    },
+    "step3": {
+      "title": "Inviter des amis",
+      "desc": "Invitez des amis dans l'historique de chat et restez connectés à tout moment."
+    }
+  },
+  "cta": {
+    "title1": "Brisez la barrière de la langue,",
+    "title2": "commencez à vraiment communiquer",
+    "subtitle": "Avec Mingle, vous pouvez avoir des conversations profondes avec n'importe qui, quelle que soit sa langue.",
+    "button": "Télécharger maintenant"
+  },
+  "footer": {
+    "copyright": "© 2024 Mingle. Tous droits réservés."
+  },
+  "modal": {
+    "title": "Accès anticipé",
+    "subtitle": "Entrez votre email pour être notifié du lancement de Mingle.",
+    "placeholder": "votre@email.com",
+    "submit": "Me notifier",
+    "success": "Vous êtes inscrit !",
+    "successDesc": "Nous vous notifierons quand Mingle sera prêt.",
+    "error": "Une erreur s'est produite. Veuillez réessayer.",
+    "close": "Fermer"
+  },
+  "mockup": {
+    "recording": "Enregistrement...",
+    "translate": "Traduction en temps réel",
+    "speaker1": "Locuteur 1",
+    "speaker2": "Locuteur 2",
+    "speaker3": "Locuteur 3"
+  }
+}

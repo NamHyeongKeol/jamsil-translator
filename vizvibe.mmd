@@ -1,8 +1,8 @@
 flowchart TD
     %% === PROJECT GOALS ===
-    %% Ultimate Goal: 실시간 연속 번역이 가능한 크로스플랫폼 모바일 앱 구축
-    %% Current Goal: 번역 엔진 선택 (Gladia vs LLM) 및 실시간 번역 기능 구현
-    %% @lastActive: translation_engine_research
+    %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
+    %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
+    %% @lastActive: landing_ui_refinement
 
     %% === START ===
     %% @project_start [start, closed]
@@ -21,28 +21,49 @@ flowchart TD
     %% @language_selection [ai-task, closed]
     language_selection("Language Selection<br/><sub>사용자가 번역할 언어를 직접<br/>선택할 수 있는 기능을 추가하여<br/>다양한 언어권 사용자를 지원함</sub>")
 
+    %% @mingle_landing_prototype [ai-task, closed]
+    mingle_landing_prototype("Mingle Landing Page<br/><sub>서비스명 Mingle로 확정하고 소셜링<br/>핵심 가치를 담은 랜딩페이지 프리토타입<br/>React+Vite+Tailwind CSS v4로 구현</sub>")
+
+    %% @landing_i18n [ai-task, closed]
+    landing_i18n("Landing i18n 15개 언어<br/><sub>react-i18next로 다국어 지원 구현<br/>EN/KO/JA/ZH/FR/DE/ES/PT/IT/RU<br/>AR/HI/TH/VI 포함, RTL 지원</sub>")
+
+    %% @landing_email_mockups [ai-task, closed]
+    landing_email_mockups("이메일 수집 & UI 모킵<br/><sub>다운로드 버튼→이메일 모달 전환<br/>Prisma+PostgreSQL 백엔드 구축<br/>3인 대화 모킵/파티 시나리오/비포애프터 추가</sub>")
+
+    %% @landing_ui_refinement [ai-task, closed]
+    landing_ui_refinement("UI 개선 & 테마 변경<br/><sub>다크→라이트 모드, 파란색→노란색 테마<br/>CSS 기반 폰 목업으로 3인 대화 시연<br/>Before/After 3문제-3해결 세로 나열</sub>")
+
     %% === FUTURE WORK ===
     %% @translation_engine_research [ai-task, opened]
     translation_engine_research("번역 기능 추가<br/><sub>Gladia 자체 번역 기능을 사용할지,<br/>아니면 다른 LLM(GPT, Claude 등)을<br/>활용할지 리서치하여 최적의 엔진 선택</sub>")
+
+    %% @chat_invite_feature [ai-task, opened]
+    chat_invite_feature("대화록 초대 기능<br/><sub>번역된 대화를 채팅방으로 저장하고<br/>상대방을 초대하여 헤어진 후에도<br/>연락을 이어갈 수 있는 핵심 기능</sub>")
 
     %% @mobile_app_development [ai-task, opened]
     mobile_app_development("Cross-Platform Mobile App<br/><sub>React Native 등을 활용하여 실시간<br/>연속 번역 기능을 탑재한 크로스<br/>플랫폼 모바일 애플리케이션 개발</sub>")
 
     %% @ultimate_goal [end, opened]
-    ultimate_goal("Ultimate Goal<br/><sub>실시간 연속 번역이 가능한<br/>크로스플랫폼 모바일 앱 구축을 통해<br/>언어 장벽 없는 소통 환경 제공</sub>")
+    ultimate_goal("Mingle Launch<br/><sub>소셜링 중심의 실시간 번역 앱으로<br/>외국인과 깊이 있는 대화를 나누고<br/>지속적인 관계를 만들어가는 서비스</sub>")
 
     %% === CONNECTIONS ===
     project_start --> structure_refinement
     structure_refinement --> ui_ux_improvement
     ui_ux_improvement --> gladia_stt_integration
     gladia_stt_integration --> language_selection
-    language_selection --> translation_engine_research
+    language_selection --> mingle_landing_prototype
+    mingle_landing_prototype --> landing_i18n
+    landing_i18n --> landing_email_mockups
+    landing_email_mockups --> landing_ui_refinement
+    landing_ui_refinement --> translation_engine_research
+    landing_ui_refinement --> chat_invite_feature
     translation_engine_research --> mobile_app_development
+    chat_invite_feature --> mobile_app_development
     mobile_app_development -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        language_selection
+        landing_ui_refinement
     end
 
     %% === STYLES ===
@@ -56,12 +77,21 @@ flowchart TD
     style structure_refinement fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style ui_ux_improvement fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style gladia_stt_integration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    
-    %% Last active node (bright purple)
-    style language_selection fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style language_selection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_landing_prototype fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style landing_i18n fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style landing_email_mockups fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Recent node (bright purple)
+    style landing_ui_refinement fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Open tasks (soft green)
     style translation_engine_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style chat_invite_feature fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mobile_app_development fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Recent subgraph style

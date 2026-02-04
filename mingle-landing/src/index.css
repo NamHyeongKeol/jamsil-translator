@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  /* Light mode backgrounds */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8f9fa;
+  --color-bg-card: #ffffff;
+
+  /* Yellow/warm accent colors */
+  --color-accent-primary: #f59e0b;
+  --color-accent-primary-light: #fbbf24;
+  --color-accent-primary-dark: #d97706;
+  --color-accent-green: #10b981;
+  --color-accent-secondary: #f97316;
+  --color-accent-pink: #ef4444;
+
+  /* Text colors for light mode */
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg-primary text-text-primary antialiased;
+    font-family: var(--font-family-sans);
+  }
+}

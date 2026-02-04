@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "cta": "Tải xuống"
+  },
+  "hero": {
+    "badge": "Dịch thời gian thực cho kết nối thực sự",
+    "title1": "Dù ngôn ngữ khác nhau,",
+    "title2": "cuộc trò chuyện sâu sắc",
+    "title3": "vẫn có thể",
+    "subtitle": "Cuộc trò chuyện dài với bạn bè nước ngoài được dịch liền mạch theo thời gian thực. Lịch sử chat được lưu lại để bạn kết nối lại bất cứ lúc nào.",
+    "cta": "Tải xuống"
+  },
+  "problem": {
+    "label": "Vấn Đề",
+    "title1": "Kết bạn với người nước ngoài,",
+    "title2": "tại sao lại khó đến vậy?",
+    "description": "Bạn gặp một người tuyệt vời tại bữa tiệc, nhưng việc dịch từng câu một làm gián đoạn dòng chảy cuộc trò chuyện, chỉ để lại sự im lặng ngượng ngùng.",
+    "list": {
+      "item1": "Dòng chảy cuộc trò chuyện bị gián đoạn khi dịch từng câu",
+      "item2": "Trong cuộc trò chuyện 3+ người không thể phân biệt ai nói gì",
+      "item3": "Không có cách giữ liên lạc sau khi chia tay"
+    },
+    "chat": {
+      "msg1": "\"Này, mình thực sự thích nói chuyện với bạn tối nay!\"",
+      "msg2": "\"Ừm...đợi chút...ứng dụng dịch...\"",
+      "msg3": "\"...chúng ta có thể trao đổi liên lạc không?\"",
+      "msg4": "\"À vâng...cái đó...\""
+    }
+  },
+  "features": {
+    "label": "Tính Năng",
+    "title": "Dịch liền mạch, và hơn thế nữa",
+    "subtitle": "Mingle không chỉ là ứng dụng dịch thuật. Nó có mọi thứ bạn cần cho giao tiếp thực sự.",
+    "realtime": {
+      "title": "Dịch Thời Gian Thực",
+      "desc": "Bản dịch bắt đầu khi bạn nói. Trò chuyện tự nhiên không gián đoạn."
+    },
+    "continuous": {
+      "title": "Dịch Liên Tục",
+      "desc": "Cuộc trò chuyện dài không phải vấn đề. Bản dịch tiếp tục khi đối tác của bạn nói."
+    },
+    "autoDetect": {
+      "title": "Phát Hiện Đa Ngôn Ngữ",
+      "desc": "Tự động phát hiện bất kỳ ngôn ngữ nào. Hỗ trợ 3+ người nói các ngôn ngữ khác nhau cùng lúc."
+    },
+    "speaker": {
+      "title": "Nhận Dạng Giọng Nói",
+      "desc": "AI nhận dạng giọng nói của từng người. Ngay cả trong cuộc trò chuyện 3+ người cũng hiển thị rõ ai nói gì."
+    }
+  },
+  "coreValue": {
+    "label": "Giá Trị Cốt Lõi",
+    "highlight": "Từ Offline đến Online",
+    "title": "Tiếp tục cuộc trò chuyện offline như phòng chat",
+    "desc1": "Đây là giá trị thực sự của Mingle.",
+    "desc2": "Mời người bạn gặp ngoài đời vào ứng dụng. Cuộc trò chuyện đã dịch trở thành phòng chat vĩnh viễn. Tiếp tục nói chuyện ngày hôm sau, tuần sau, hoặc bất cứ khi nào.",
+    "desc3": "Khoảnh khắc cuộc gặp gỡ tình cờ tại bữa tiệc trở thành tình bạn thực sự, đó là",
+    "chatDate": "Cuộc trò chuyện ngày 4 tháng 2 năm 2024",
+    "chatMsg1": "\"Thật vui được gặp bạn! Hẹn gặp lại khi mình đến Seoul nhé.\"",
+    "chatMsg2": "\"Rất vui được biết bạn! Hẹn gặp khi bạn đến Seoul.\"",
+    "inviteBtn": "Mời Jamie"
+  },
+  "howItWorks": {
+    "label": "Cách Hoạt Động",
+    "title": "Cách sử dụng",
+    "step1": {
+      "title": "Bắt Đầu Trò Chuyện",
+      "desc": "Mở ứng dụng và nhấn ghi âm. Không cần cài đặt ngôn ngữ."
+    },
+    "step2": {
+      "title": "Dịch Thời Gian Thực",
+      "desc": "Cuộc trò chuyện được tự động nhận dạng và dịch theo thời gian thực."
+    },
+    "step3": {
+      "title": "Mời Bạn Bè",
+      "desc": "Mời bạn bè vào lịch sử chat và giữ kết nối bất cứ lúc nào."
+    }
+  },
+  "cta": {
+    "title1": "Phá vỡ rào cản ngôn ngữ,",
+    "title2": "bắt đầu giao tiếp thực sự",
+    "subtitle": "Với Mingle, bạn có thể có những cuộc trò chuyện sâu sắc với bất kỳ ai, dù họ nói ngôn ngữ gì.",
+    "button": "Tải Xuống Ngay"
+  },
+  "footer": {
+    "copyright": "© 2024 Mingle. Bảo lưu mọi quyền."
+  },
+  "modal": {
+    "title": "Đăng Ký Sớm",
+    "subtitle": "Nhập email để được thông báo khi Mingle ra mắt.",
+    "placeholder": "your@email.com",
+    "submit": "Thông báo cho tôi",
+    "success": "Bạn đã trong danh sách!",
+    "successDesc": "Chúng tôi sẽ thông báo khi Mingle sẵn sàng.",
+    "error": "Đã xảy ra lỗi. Vui lòng thử lại.",
+    "close": "Đóng"
+  },
+  "mockup": {
+    "recording": "Đang ghi âm...",
+    "translate": "Đang dịch thời gian thực",
+    "speaker1": "Người nói 1",
+    "speaker2": "Người nói 2",
+    "speaker3": "Người nói 3"
+  }
+}
