@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "cta": "Download"
+  },
+  "hero": {
+    "badge": "Real-time Translation for Real Connections",
+    "title1": "Even with different languages,",
+    "title2": "deep conversations",
+    "title3": "are possible",
+    "subtitle": "Speak and see instant translations on your screen. Real-time voice continuous translation keeps long conversations flowing seamlessly. Chat logs are saved so you can reconnect anytime.",
+    "cta": "Download"
+  },
+  "problem": {
+    "label": "The Problem",
+    "title1": "Making foreign friends,",
+    "title2": "why is it so hard?",
+    "description": "You meet an amazing person at a party, but translating one sentence at a time breaks the flow of conversation, leaving only awkward silence.",
+    "list": {
+      "item1": "Conversation flow breaks while translating sentence by sentence",
+      "item2": "Can't tell who said what in group conversations of 3+ people",
+      "item3": "No way to stay in touch after parting"
+    },
+    "chat": {
+      "msg1": "\"Hey, I really enjoyed talking with you tonight!\"",
+      "msg2": "\"Um... hold on... translator...\"",
+      "msg3": "\"...maybe we can exchange contacts?\"",
+      "msg4": "\"Ah yes... well...\""
+    }
+  },
+  "features": {
+    "label": "Features",
+    "title": "Seamless translation, and beyond",
+    "subtitle": "Mingle is not just a translation app. It has everything you need for real communication.",
+    "realtime": {
+      "title": "Real-time Translation",
+      "desc": "Translation starts as you speak. Natural conversation without interruption."
+    },
+    "continuous": {
+      "title": "Continuous Translation",
+      "desc": "Long conversations are no problem. Translation continues while your partner speaks."
+    },
+    "autoDetect": {
+      "title": "Multi-language Detection",
+      "desc": "Auto-detects any language. Supports 3+ people speaking different languages simultaneously."
+    },
+    "speaker": {
+      "title": "Speaker Separation",
+      "desc": "AI voice recognition distinguishes each person's voice and separates the conversation by speaker. Works with 3+ people."
+    }
+  },
+  "coreValue": {
+    "label": "Core Value",
+    "highlight": "Offline to Online",
+    "title": "Continue your offline conversation as a chat room",
+    "desc1": "This is the true value of Mingle.",
+    "desc2": "Invite the person you met in real life to your app. Your translated conversation becomes a permanent chat room. Continue talking the next day, next week, or anytime.",
+    "desc3": "The moment a chance meeting at a party becomes a real friendship, that's",
+    "chatDate": "Conversation from Feb 4, 2024",
+    "chatMsg1": "\"It was so nice meeting you! Let's definitely hang out again when I visit Seoul.\"",
+    "chatMsg2": "\"It was great meeting you! Let's definitely meet again when you come to Seoul.\"",
+    "inviteBtn": "Invite Jamie"
+  },
+  "howItWorks": {
+    "label": "How It Works",
+    "title": "How to use",
+    "step1": {
+      "title": "Start Conversation",
+      "desc": "Just open the app and press record. No language settings needed."
+    },
+    "step2": {
+      "title": "Real-time Translation",
+      "desc": "Conversations are automatically recognized and translated in real-time."
+    },
+    "step3": {
+      "title": "Invite Friends",
+      "desc": "Invite friends to the chat log and stay connected anytime."
+    }
+  },
+  "cta": {
+    "title1": "Break the language barrier,",
+    "title2": "start real communication",
+    "subtitle": "With Mingle, you can have deep conversations with anyone, no matter what language they speak.",
+    "button": "Download Now"
+  },
+  "footer": {
+    "copyright": "© 2026 Mingle. All rights reserved."
+  },
+  "modal": {
+    "title": "Get Early Access",
+    "subtitle": "Enter your email to be notified when Mingle launches.",
+    "placeholder": "your@email.com",
+    "submit": "Notify Me",
+    "success": "You're on the list!",
+    "successDesc": "We'll notify you when Mingle is ready.",
+    "error": "Something went wrong. Please try again.",
+    "close": "Close"
+  },
+  "mockup": {
+    "recording": "Recording...",
+    "translate": "Translating in real-time",
+    "speaker1": "Speaker 1",
+    "speaker2": "Speaker 2",
+    "speaker3": "Speaker 3"
+  }
+}

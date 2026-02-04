@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "cta": "Herunterladen"
+  },
+  "hero": {
+    "badge": "Echtzeit-Übersetzung für echte Verbindungen",
+    "title1": "Auch mit verschiedenen Sprachen,",
+    "title2": "tiefe Gespräche",
+    "title3": "sind möglich",
+    "subtitle": "Sprechen Sie und sehen Sie sofortige Übersetzungen auf dem Bildschirm. Echtzeit-Sprach-Kontinuierliche-Übersetzung ermöglicht flüssige Gespräche. Chat-Verläufe werden gespeichert für jederzeitige Verbindung.",
+    "cta": "Herunterladen"
+  },
+  "problem": {
+    "label": "Das Problem",
+    "title1": "Ausländische Freunde finden,",
+    "title2": "warum ist das so schwer?",
+    "description": "Sie treffen jemand Tolles auf einer Party, aber Satz für Satz zu übersetzen unterbricht den Gesprächsfluss und hinterlässt nur peinliches Schweigen.",
+    "list": {
+      "item1": "Gesprächsfluss wird unterbrochen beim Übersetzen Satz für Satz",
+      "item2": "Bei Gesprächen mit 3+ Personen kann nicht unterschieden werden, wer was gesagt hat",
+      "item3": "Keine Möglichkeit, nach dem Abschied in Kontakt zu bleiben"
+    },
+    "chat": {
+      "msg1": "\"Hey, es hat mir wirklich Spaß gemacht, heute Abend mit dir zu reden!\"",
+      "msg2": "\"Ähm...warte kurz...Übersetzer...\"",
+      "msg3": "\"...können wir Kontaktdaten austauschen?\"",
+      "msg4": "\"Ah ja...also...\""
+    }
+  },
+  "features": {
+    "label": "Funktionen",
+    "title": "Nahtlose Übersetzung und mehr",
+    "subtitle": "Mingle ist nicht nur eine Übersetzungs-App. Sie hat alles, was Sie für echte Kommunikation brauchen.",
+    "realtime": {
+      "title": "Echtzeit-Übersetzung",
+      "desc": "Die Übersetzung beginnt, während Sie sprechen. Natürliches Gespräch ohne Unterbrechung."
+    },
+    "continuous": {
+      "title": "Kontinuierliche Übersetzung",
+      "desc": "Lange Gespräche sind kein Problem. Die Übersetzung läuft weiter, während Ihr Partner spricht."
+    },
+    "autoDetect": {
+      "title": "Mehrsprachige Erkennung",
+      "desc": "Erkennt automatisch jede Sprache. Unterstützt 3+ Personen, die gleichzeitig verschiedene Sprachen sprechen."
+    },
+    "speaker": {
+      "title": "Stimmerkennung",
+      "desc": "KI identifiziert die Stimme jeder Person. Selbst bei Gesprächen mit 3+ Personen zeigt klar, wer was gesagt hat."
+    }
+  },
+  "coreValue": {
+    "label": "Kernwert",
+    "highlight": "Von Offline zu Online",
+    "title": "Setzen Sie Ihr Offline-Gespräch als Chatroom fort",
+    "desc1": "Das ist der wahre Wert von Mingle.",
+    "desc2": "Laden Sie die Person, die Sie persönlich getroffen haben, in die App ein. Ihr übersetztes Gespräch wird zu einem permanenten Chatroom. Setzen Sie das Gespräch am nächsten Tag, nächste Woche oder wann immer Sie möchten fort.",
+    "desc3": "Der Moment, wenn eine zufällige Begegnung auf einer Party zu echter Freundschaft wird, das ist",
+    "chatDate": "Gespräch vom 4. Februar 2024",
+    "chatMsg1": "\"Es war so schön, dich kennenzulernen! Lass uns unbedingt wieder treffen, wenn ich Seoul besuche.\"",
+    "chatMsg2": "\"Es war toll, dich kennenzulernen! Lass uns treffen, wenn du nach Seoul kommst.\"",
+    "inviteBtn": "Jamie einladen"
+  },
+  "howItWorks": {
+    "label": "So funktioniert's",
+    "title": "Wie man es benutzt",
+    "step1": {
+      "title": "Gespräch starten",
+      "desc": "Öffnen Sie die App und drücken Sie Aufnahme. Keine Spracheinstellungen nötig."
+    },
+    "step2": {
+      "title": "Echtzeit-Übersetzung",
+      "desc": "Gespräche werden automatisch erkannt und in Echtzeit übersetzt."
+    },
+    "step3": {
+      "title": "Freunde einladen",
+      "desc": "Laden Sie Freunde zum Chat-Verlauf ein und bleiben Sie jederzeit verbunden."
+    }
+  },
+  "cta": {
+    "title1": "Durchbrechen Sie die Sprachbarriere,",
+    "title2": "beginnen Sie echte Kommunikation",
+    "subtitle": "Mit Mingle können Sie tiefe Gespräche mit jedem führen, egal welche Sprache er spricht.",
+    "button": "Jetzt herunterladen"
+  },
+  "footer": {
+    "copyright": "© 2026 Mingle. Alle Rechte vorbehalten."
+  },
+  "modal": {
+    "title": "Frühen Zugang erhalten",
+    "subtitle": "Geben Sie Ihre E-Mail ein, um benachrichtigt zu werden, wenn Mingle startet.",
+    "placeholder": "ihre@email.com",
+    "submit": "Benachrichtigen",
+    "success": "Sie sind auf der Liste!",
+    "successDesc": "Wir benachrichtigen Sie, wenn Mingle bereit ist.",
+    "error": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
+    "close": "Schließen"
+  },
+  "mockup": {
+    "recording": "Aufnahme...",
+    "translate": "Echtzeit-Übersetzung",
+    "speaker1": "Sprecher 1",
+    "speaker2": "Sprecher 2",
+    "speaker3": "Sprecher 3"
+  }
+}
