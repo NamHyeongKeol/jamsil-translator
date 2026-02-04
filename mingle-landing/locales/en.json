@@ -4,9 +4,9 @@
   },
   "hero": {
     "badge": "",
-    "title1": "Real-time translation",
-    "title2": "without breaking",
-    "title3": "your conversation",
+    "title1": "Stop pausing after",
+    "title2": "every sentence.",
+    "title3": "",
     "subtitle": "No more stopping after every sentence to translate. Mingle translates as you speak and shows it on screen, keeping long conversations flowing continuously. Every conversation is saved in a chat room, and you can invite others to continue talking online anytime.",
     "cta": "Download"
   },
@@ -52,7 +52,7 @@
   "coreValue": {
     "label": "Core Value",
     "highlight": "",
-    "title": "Continue your offline conversation as a chat room",
+    "title": "Continue your offline conversation in an online chat room",
     "desc1": "This is the true value of Mingle.",
     "desc2": "Invite the person you met in real life to your app. Your translated conversation becomes a permanent chat room. Continue talking the next day, next week, or anytime.",
     "desc3": "The moment a chance meeting at a party becomes a real friendship, that's",

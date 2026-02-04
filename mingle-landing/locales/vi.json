@@ -4,9 +4,9 @@
   },
   "hero": {
     "badge": "",
-    "title1": "Dịch thời gian thực",
-    "title2": "không làm gián đoạn",
-    "title3": "cuộc trò chuyện",
+    "title1": "Ứng dụng dịch dừng",
+    "title2": "sau mỗi câu?",
+    "title3": "Đủ rồi.",
     "subtitle": "Không còn phải dừng lại sau mỗi câu để dịch. Mingle dịch ngay lập tức những gì bạn nói và hiển thị trên màn hình, giữ cho các cuộc trò chuyện dài được dịch liên tục. Tất cả cuộc trò chuyện được lưu trong phòng chat, và bạn có thể mời người khác tiếp tục nói chuyện trực tuyến bất cứ lúc nào.",
     "cta": "Tải xuống"
   },
@@ -52,7 +52,7 @@
   "coreValue": {
     "label": "Giá Trị Cốt Lõi",
     "highlight": "",
-    "title": "Tiếp tục cuộc trò chuyện offline như phòng chat",
+    "title": "Tiếp tục cuộc trò chuyện offline trong phòng chat trực tuyến",
     "desc1": "Đây là giá trị thực sự của Mingle.",
     "desc2": "Mời người bạn gặp ngoài đời vào ứng dụng. Cuộc trò chuyện đã dịch trở thành phòng chat vĩnh viễn. Tiếp tục nói chuyện ngày hôm sau, tuần sau, hoặc bất cứ khi nào.",
     "desc3": "Khoảnh khắc cuộc gặp gỡ tình cờ tại bữa tiệc trở thành tình bạn thực sự, đó là",
