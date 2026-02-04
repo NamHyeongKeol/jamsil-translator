@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: nextjs_fullstack_migration
+    %% @lastActive: landing_copy_update
 
     %% === START ===
     %% @project_start [start, closed]
@@ -38,7 +38,10 @@ flowchart TD
 
     %% === COMPLETED WORK (continued) ===
     %% @nextjs_fullstack_migration [ai-task, closed]
-    nextjs_fullstack_migration("Next.js 풀스택 전환<br/><sub>mingle-landing을 Vite+Express에서<br/>Next.js App Router로 마이그레이션<br/>Vercel 배포 완료, 히어로 UI 미세조정</sub>")
+    nextjs_fullstack_migration("Next.js 풀스택 전환<br/><sub>mingle-landing을 Vite+Express에서<br/>Next.js App Router로 마이그레이션<br/>Vercel 배포, 방문자/클릭 추적, 다국어 라우팅</sub>")
+
+    %% @landing_copy_update [ai-task, closed]
+    landing_copy_update("랜딩 카피 전면 개편<br/><sub>15개 언어 hero/problem/features/coreValue<br/>문구 업데이트, 대화 끊김 없는 번역 강조<br/>4번째 문제점 추가, 불필요한 배지 삭제</sub>")
 
     %% @translation_engine_research [ai-task, opened]
     translation_engine_research("번역 기능 추가<br/><sub>Gladia 자체 번역 기능을 사용할지,<br/>아니면 다른 LLM(GPT, Claude 등)을<br/>활용할지 리서치하여 최적의 엔진 선택</sub>")
@@ -63,18 +66,19 @@ flowchart TD
     landing_email_mockups --> landing_ui_refinement
     landing_ui_refinement --> click_analytics
     click_analytics --> nextjs_fullstack_migration
-    nextjs_fullstack_migration --> translation_engine_research
-    nextjs_fullstack_migration --> chat_invite_feature
+    nextjs_fullstack_migration --> landing_copy_update
+    landing_copy_update --> translation_engine_research
+    landing_copy_update --> chat_invite_feature
     translation_engine_research --> mobile_app_development
     chat_invite_feature --> mobile_app_development
     mobile_app_development -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        nextjs_fullstack_migration
+        landing_copy_update
     end
 
-    %% Note: nextjs_fullstack_migration is now closed but highlighted as most recent completed work
+    %% Note: landing_copy_update is now closed but highlighted as most recent completed work
 
     %% === STYLES ===
     %% Start node (teal)
@@ -102,8 +106,11 @@ flowchart TD
     %% Previous recent node (now closed)
     style click_analytics fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
 
+    %% Previous recent node (now closed)
+    style nextjs_fullstack_migration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
     %% Recent node (bright purple - most recent completed work)
-    style nextjs_fullstack_migration fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style landing_copy_update fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Open tasks (soft green)
     style translation_engine_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
