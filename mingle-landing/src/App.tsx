@@ -171,7 +171,7 @@ function PhoneMockup() {
   return (
     <div className="relative mx-auto w-[420px]">
       <img
-        src="/image.png"
+        src="/image.png?v=2"
         alt="Mingle App Screenshot"
         className="w-full h-auto drop-shadow-2xl"
       />
@@ -388,7 +388,7 @@ function App() {
               {t('hero.title1')}<br />
               <span className="bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">
                 {t('hero.title2')}
-              </span>{t('hero.title3')}
+              </span> {t('hero.title3')}
             </h1>
             <p className="text-lg md:text-xl text-text-secondary max-w-xl mb-10 leading-relaxed">
               {t('hero.subtitle')}
