@@ -23,7 +23,7 @@ wss.on('connection', (clientWs) => {
         return;
     }
 
-    const startGladiaConnection = async (config: { sample_rate: number, languages: string[] }) => {
+    const startGladiaConnection = async (config: { sample_rate: number, languages: string[], target_languages?: string[] }) => {
         try {
             // 1. Get a tokenized WebSocket URL from Gladia REST API
             console.log('Requesting Gladia audio URL with languages:', config.languages);
@@ -46,6 +46,10 @@ wss.on('connection', (clientWs) => {
                     messages_config: {
                         receive_partial_transcripts: true,
                     },
+                    translation_config: config.target_languages && config.target_languages.length > 0 ? {
+                        target_languages: config.target_languages,
+                        model: 'base',
+                    } : undefined,
                 }),
             });
 
