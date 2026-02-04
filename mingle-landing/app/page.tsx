@@ -408,7 +408,7 @@ export default function HomePage() {
               <Sparkles size={16} />
               <span>{t('hero.badge')}</span>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-6 text-text-primary">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight mb-4 text-text-primary">
               {t('hero.title1')}<br />
               <span className="bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">
                 {t('hero.title2')}
