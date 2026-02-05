@@ -6,6 +6,7 @@ import 'dotenv/config';
 const PORT = 3001;
 const GLADIA_API_URL = 'https://api.gladia.io/v2/live';
 const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen';
+const FIREWORKS_WS_URL = 'wss://audio-streaming.api.fireworks.ai/v1/audio/transcriptions/streaming';
 
 const server = createServer();
 const wss = new WebSocketServer({ server });
@@ -15,7 +16,7 @@ console.log('Starting STT WebSocket proxy server...');
 interface ClientConfig {
     sample_rate: number;
     languages: string[];
-    stt_model: 'gladia' | 'deepgram';
+    stt_model: 'gladia' | 'deepgram' | 'fireworks';
 }
 
 wss.on('connection', (clientWs) => {
@@ -24,10 +25,11 @@ wss.on('connection', (clientWs) => {
     let sttWs: WebSocket | null = null;
     let isClientConnected = true;
     let abortController: AbortController | null = null;
-    let currentModel: 'gladia' | 'deepgram' = 'gladia';
+    let currentModel: 'gladia' | 'deepgram' | 'fireworks' = 'gladia';
 
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
+    const fireworksApiKey = process.env.FIREWORKS_API_KEY;
 
     const cleanup = () => {
         isClientConnected = false;
@@ -301,6 +303,104 @@ wss.on('connection', (clientWs) => {
         }
     };
 
+    // ===== FIREWORKS 연결 =====
+    const startFireworksConnection = async (config: ClientConfig) => {
+        if (!fireworksApiKey) {
+            console.error("FIREWORKS_API_KEY environment variable not set!");
+            clientWs.close(1011, "Server configuration error: Fireworks API key not found.");
+            return;
+        }
+
+        try {
+            // Fireworks URL 생성
+            const wsUrl = new URL(FIREWORKS_WS_URL);
+            
+            // Fireworks 언어 코드 매핑
+            const langMap: Record<string, string> = {
+                'en': 'en', 'ko': 'ko', 'zh': 'zh', 'ja': 'ja',
+                'es': 'es', 'fr': 'fr', 'de': 'de', 'ru': 'ru',
+                'pt': 'pt', 'it': 'it'
+            };
+            // 1순위 언어 사용
+            const language = langMap[config.languages[0]] || 'en';
+            
+            // 최신 V2 모델 사용 (더 빠르고 정확함)
+            wsUrl.searchParams.set('model', 'fireworks-asr-v2');
+            wsUrl.searchParams.set('language', language);
+            wsUrl.searchParams.set('response_format', 'verbose_json');
+            wsUrl.searchParams.set('sample_rate', config.sample_rate.toString()); // 필수: 클라이언트 샘플 레이트(48000 등) 전달
+
+            console.log('Connecting to Fireworks with URL:', wsUrl.toString());
+
+            sttWs = new WebSocket(wsUrl.toString(), {
+                headers: {
+                    'Authorization': `Bearer ${fireworksApiKey}`,
+                },
+            });
+
+            sttWs.onopen = () => {
+                console.log('Proxy connected to Fireworks WebSocket');
+                if (isClientConnected) {
+                    clientWs.send(JSON.stringify({ status: 'ready' }));
+                } else {
+                    sttWs?.close();
+                }
+            };
+
+            sttWs.onmessage = (event) => {
+                if (isClientConnected) {
+                    try {
+                        const msg = JSON.parse(event.data.toString());
+                        // Fireworks (Whisper format) -> Gladia/Client format
+                        // Expected msg: { text: "...", segments: [...] } or partial?
+                        // Fireworks documentation says it sends JSON. 
+                        // Let's assume standard field 'text'.
+                        
+                        const text = msg.text || '';
+                        const isFinal = msg.is_final || false; // Fireworks might verify 'is_final'
+
+                        if (text) {
+                            const gladiaStyleMsg = {
+                                type: 'transcript',
+                                data: {
+                                    is_final: isFinal, 
+                                    utterance: {
+                                        text: text,
+                                        language: language // Fireworks might not return detected language in stream
+                                    }
+                                }
+                            };
+                            console.log(`[Fireworks] text="${text.slice(0, 30)}..." final=${isFinal}`);
+                            clientWs.send(JSON.stringify(gladiaStyleMsg));
+                        }
+                    } catch (e) {
+                        console.error('Error parsing Fireworks msg:', e);
+                    }
+                }
+            };
+
+            sttWs.onerror = (error) => {
+                console.error('Fireworks WebSocket error:', error);
+                if (isClientConnected) {
+                    clientWs.close();
+                }
+            };
+
+            sttWs.onclose = (event) => {
+                console.log('Fireworks connection closed:', event.code, event.reason);
+                if (isClientConnected) {
+                    clientWs.close();
+                }
+            };
+
+        } catch (error) {
+            console.error('Error starting Fireworks connection:', error);
+            if (isClientConnected) {
+                clientWs.close(1011, 'Failed to connect to Fireworks service.');
+            }
+        }
+    };
+
     // ===== 클라이언트 메시지 핸들러 =====
     clientWs.onmessage = (event) => {
         const message = event.data.toString();
@@ -313,13 +413,15 @@ wss.on('connection', (clientWs) => {
             
             if (currentModel === 'deepgram') {
                 startDeepgramConnection(data as ClientConfig);
+            } else if (currentModel === 'fireworks') {
+                startFireworksConnection(data as ClientConfig);
             } else {
                 startGladiaConnection(data as ClientConfig);
             }
         } else if (sttWs && sttWs.readyState === WebSocket.OPEN) {
             // 오디오 프레임 전송
-            if (currentModel === 'deepgram') {
-                // Deepgram은 바이너리 데이터를 직접 전송해야 함
+            if (currentModel === 'deepgram' || currentModel === 'fireworks') {
+                // Deepgram, Fireworks는 바이너리 데이터를 직접 전송해야 함
                 if (data.type === 'audio_chunk' && data.data?.chunk) {
                     const pcmData = Buffer.from(data.data.chunk, 'base64');
                     sttWs.send(pcmData);
