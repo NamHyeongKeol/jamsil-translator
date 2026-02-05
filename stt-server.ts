@@ -66,6 +66,15 @@ wss.on('connection', (clientWs) => {
                         languages: config.languages,
                         code_switching: config.languages.length > 1,
                     },
+                    endpointing: 0.05, // 50ms 침묵 후 발화 종료
+                    maximum_duration_without_endpointing: 15, // 최대 15초 후 강제 발화 종료
+                    realtime_processing: {
+                        translation: true,
+                        translation_config: {
+                            target_languages: config.languages,
+                            model: 'enhanced',
+                        },
+                    },
                     messages_config: {
                         receive_partial_transcripts: true,
                     },
@@ -116,6 +125,15 @@ wss.on('connection', (clientWs) => {
 
             gladiaWs.onmessage = (event) => {
                 if (isClientConnected) {
+                    const msg = JSON.parse(event.data.toString());
+                    // 로그: transcript와 translation 순서 확인
+                    if (msg.type === 'transcript') {
+                        console.log(`[Gladia] transcript is_final=${msg.data?.is_final}, lang=${msg.data?.utterance?.language}, text="${msg.data?.utterance?.text?.slice(0, 20)}..."`);
+                    } else if (msg.type === 'translation') {
+                        console.log(`[Gladia] translation target=${msg.data?.target_language}, text="${msg.data?.translated_utterance?.text?.slice(0, 20)}..."`);
+                    } else if (msg.type !== 'audio_chunk') {
+                        console.log(`[Gladia] ${msg.type}`);
+                    }
                     clientWs.send(event.data.toString());
                 }
             };

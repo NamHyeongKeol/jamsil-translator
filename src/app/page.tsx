@@ -10,6 +10,14 @@ const STT_PROXY_URL = 'ws://localhost:3001'
 // 연결 상태: idle(대기) -> connecting(연결 중) -> ready(음성 인식 가능)
 type ConnectionStatus = 'idle' | 'connecting' | 'ready'
 
+// 발화 타입: 원본 + 번역들
+interface Utterance {
+  id: string
+  originalText: string
+  originalLang: string
+  translations: Record<string, string>  // { 'ko': '한국어 번역', 'ja': '일본어 번역' }
+}
+
 const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English' },
   { code: 'ko', name: 'Korean' },
@@ -50,8 +58,9 @@ function toBase64(data: Int16Array): string {
 export default function Home() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   const [volume, setVolume] = useState(0)
-  const [finalTranscript, setFinalTranscript] = useState('')
+  const [utterances, setUtterances] = useState<Utterance[]>([])
   const [partialTranscript, setPartialTranscript] = useState('')
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['en', 'ko'])
   const [lang1, setLang1] = useState('en');
   const [lang2, setLang2] = useState('ko');
   const [lang3, setLang3] = useState('');
@@ -166,11 +175,38 @@ export default function Home() {
           startAudioProcessing();
         } else if (message.type === 'transcript' && message.data && message.data.utterance) {
           const text = message.data.utterance.text;
+          const lang = message.data.utterance.language || 'unknown';
+          
           if (message.data.is_final) {
-            setFinalTranscript(prev => prev + text + ' ');
+            // 발화 완료 - 배열에 추가
+            const newUtterance: Utterance = {
+              id: Date.now().toString(), // 간단한 ID 생성
+              originalText: text,
+              originalLang: lang,
+              translations: {}
+            };
+            setUtterances(prev => [...prev, newUtterance]);
             setPartialTranscript('');
           } else {
+            // 부분 결과 - 임시 표시
             setPartialTranscript(text);
+          }
+        } else if (message.type === 'translation' && message.data) {
+          // 번역 결과 - 마지막 발화에 추가
+          const targetLang = message.data.target_language;
+          const translatedText = message.data.translated_utterance?.text;
+          
+          if (targetLang && translatedText) {
+            setUtterances(prev => {
+              if (prev.length === 0) return prev;
+              // 마지막 발화에 번역 추가
+              const lastIndex = prev.length - 1;
+              const lastUtterance = prev[lastIndex];
+              return [
+                ...prev.slice(0, lastIndex),
+                { ...lastUtterance, translations: { ...lastUtterance.translations, [targetLang]: translatedText } }
+              ];
+            });
           }
         }
       }
@@ -219,7 +255,7 @@ export default function Home() {
   // 연결 시작 시 transcription 초기화
   useEffect(() => {
     if (connectionStatus === 'connecting') {
-      setFinalTranscript('')
+      setUtterances([])
       setPartialTranscript('')
     }
   }, [connectionStatus])
@@ -311,14 +347,35 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="mt-8 w-full max-w-md p-4 bg-white/30 rounded-lg shadow-md min-h-[100px] text-gray-800 backdrop-blur-sm">
-        <p>
-          {finalTranscript}
-          <span className="text-gray-500">{partialTranscript}</span>
-        </p>
-        {!finalTranscript && !partialTranscript && (
+      <div className="mt-8 w-full max-w-md p-4 bg-white/30 rounded-lg shadow-md min-h-[100px] max-h-[400px] overflow-y-auto text-gray-800 backdrop-blur-sm">
+        <div className="space-y-4">
+          {utterances.filter(u => u.originalText).map((utterance) => (
+            <div key={utterance.id} className="border-l-2 border-blue-400 pl-3 py-2 space-y-1">
+              {/* 원본 */}
+              <p className="font-medium">
+                <span className="text-xs text-blue-600 mr-2">[{utterance.originalLang.toUpperCase()}]</span>
+                {utterance.originalText}
+              </p>
+              {/* 번역들 (원본 언어 제외) */}
+              {Object.entries(utterance.translations)
+                .filter(([lang]) => lang !== utterance.originalLang)
+                .map(([lang, text]) => (
+                  <p key={lang} className="text-gray-600 text-sm">
+                    <span className="text-xs text-gray-400 mr-2">[{lang.toUpperCase()}]</span>
+                    {text}
+                  </p>
+                ))}
+            </div>
+          ))}
+          {partialTranscript && (
+            <p className="border-l-2 border-gray-300 pl-3 py-1 text-gray-500">
+              {partialTranscript}
+            </p>
+          )}
+          {utterances.length === 0 && !partialTranscript && (
             <p className="text-gray-400">음성 인식 결과가 여기에 표시됩니다.</p>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
