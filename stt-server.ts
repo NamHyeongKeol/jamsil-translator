@@ -15,6 +15,8 @@ wss.on('connection', (clientWs) => {
     console.log('Client connected to proxy');
 
     let gladiaWs: WebSocket | null = null;
+    let isClientConnected = true;
+    let abortController: AbortController | null = null;
 
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     if (!gladiaApiKey) {
@@ -23,8 +25,29 @@ wss.on('connection', (clientWs) => {
         return;
     }
 
+    const cleanup = () => {
+        isClientConnected = false;
+        
+        // 진행 중인 fetch 요청 취소
+        if (abortController) {
+            abortController.abort();
+            abortController = null;
+        }
+        
+        // Gladia WebSocket 연결 정리 (모든 상태에서)
+        if (gladiaWs) {
+            if (gladiaWs.readyState === WebSocket.OPEN || gladiaWs.readyState === WebSocket.CONNECTING) {
+                gladiaWs.close();
+            }
+            gladiaWs = null;
+        }
+    };
+
     const startGladiaConnection = async (config: { sample_rate: number, languages: string[] }) => {
         try {
+            // AbortController 생성
+            abortController = new AbortController();
+            
             // 1. Get a tokenized WebSocket URL from Gladia REST API
             console.log('Requesting Gladia audio URL with languages:', config.languages);
             const response = await fetch(GLADIA_API_URL, {
@@ -47,7 +70,14 @@ wss.on('connection', (clientWs) => {
                         receive_partial_transcripts: true,
                     },
                 }),
+                signal: abortController.signal,
             });
+
+            // 클라이언트가 이미 떠났으면 연결 진행하지 않음
+            if (!isClientConnected) {
+                console.log('Client already disconnected, aborting Gladia connection');
+                return;
+            }
 
             if (!response.ok) {
                 const errorBody = await response.text();
@@ -62,6 +92,12 @@ wss.on('connection', (clientWs) => {
                 throw new Error('No url in Gladia response');
             }
 
+            // 다시 한번 클라이언트 상태 확인
+            if (!isClientConnected) {
+                console.log('Client already disconnected, aborting Gladia WebSocket connection');
+                return;
+            }
+
             console.log('Got Gladia URL, connecting to WebSocket...');
 
             // 2. Connect to the tokenized WebSocket URL
@@ -69,27 +105,45 @@ wss.on('connection', (clientWs) => {
 
             gladiaWs.onopen = () => {
                 console.log('Proxy connected to Gladia WebSocket');
-                // Notify the client that we are ready to receive audio
-                clientWs.send(JSON.stringify({ status: 'ready' }));
+                if (isClientConnected) {
+                    // Notify the client that we are ready to receive audio
+                    clientWs.send(JSON.stringify({ status: 'ready' }));
+                } else {
+                    // 클라이언트가 이미 떠났으면 Gladia 연결도 닫기
+                    gladiaWs?.close();
+                }
             };
 
             gladiaWs.onmessage = (event) => {
-                clientWs.send(event.data.toString());
+                if (isClientConnected) {
+                    clientWs.send(event.data.toString());
+                }
             };
 
             gladiaWs.onerror = (error) => {
                 console.error('Gladia WebSocket error:', error);
-                clientWs.close();
+                if (isClientConnected) {
+                    clientWs.close();
+                }
             };
 
             gladiaWs.onclose = (event) => {
                 console.log('Gladia connection closed:', event.code, event.reason);
-                clientWs.close();
+                if (isClientConnected) {
+                    clientWs.close();
+                }
             };
 
         } catch (error) {
+            // AbortError는 정상적인 취소이므로 무시
+            if (error instanceof Error && error.name === 'AbortError') {
+                console.log('Gladia connection request was aborted');
+                return;
+            }
             console.error('Error starting Gladia connection:', error);
-            clientWs.close(1011, 'Failed to connect to transcription service.');
+            if (isClientConnected) {
+                clientWs.close(1011, 'Failed to connect to transcription service.');
+            }
         }
     };
 
@@ -110,9 +164,7 @@ wss.on('connection', (clientWs) => {
 
     clientWs.onclose = () => {
         console.log('Client disconnected from proxy');
-        if (gladiaWs && gladiaWs.readyState === WebSocket.OPEN) {
-            gladiaWs.close();
-        }
+        cleanup();
     };
 });
 
