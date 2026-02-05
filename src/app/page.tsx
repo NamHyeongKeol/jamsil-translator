@@ -65,6 +65,9 @@ export default function Home() {
   const [lang2, setLang2] = useState('ko');
   const [lang3, setLang3] = useState('');
 
+  // 유니크 ID 생성을 위한 카운터
+  const utteranceIdRef = useRef(0);
+
   const audioContextRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
@@ -179,8 +182,9 @@ export default function Home() {
           
           if (message.data.is_final) {
             // 발화 완료 - 배열에 추가
+            utteranceIdRef.current += 1;
             const newUtterance: Utterance = {
-              id: Date.now().toString(), // 간단한 ID 생성
+              id: `utterance-${utteranceIdRef.current}`,
               originalText: text,
               originalLang: lang,
               translations: {}

@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: talk_to_world_section
+    %% @lastActive: gladia_user_onboarding
 
     %% === START ===
     %% @project_start [start, closed]
@@ -46,6 +46,9 @@ flowchart TD
     %% @talk_to_world_section [ai-task, closed]
     talk_to_world_section("Talk to the World 섹션<br/><sub>사용 방법→글로벌 연결 섹션 교체<br/>15개 언어 번역, 전체너비 이미지 배치<br/>favicon 설정 완료</sub>")
 
+    %% @gladia_user_onboarding [blocker, closed]
+    gladia_user_onboarding("Gladia 유저 온보딩<br/><sub>Gladia 온보딩 500 에러로 신규 가입 불가<br/>버튼 코드 제거 완료, 서버 버그 해결 시<br/>재구현 필요 (key 중복 버그도 수정됨)</sub>")
+
     %% @translation_engine_research [ai-task, opened]
     translation_engine_research("번역 기능 추가<br/><sub>Gladia 자체 번역 기능을 사용할지,<br/>아니면 다른 LLM(GPT, Claude 등)을<br/>활용할지 리서치하여 최적의 엔진 선택</sub>")
 
@@ -71,15 +74,17 @@ flowchart TD
     click_analytics --> nextjs_fullstack_migration
     nextjs_fullstack_migration --> landing_copy_update
     landing_copy_update --> talk_to_world_section
+    talk_to_world_section --> gladia_user_onboarding
     talk_to_world_section --> translation_engine_research
     talk_to_world_section --> chat_invite_feature
+    gladia_user_onboarding --> mobile_app_development
     translation_engine_research --> mobile_app_development
     chat_invite_feature --> mobile_app_development
     mobile_app_development -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
-    subgraph recent [RECENT]
-        talk_to_world_section
+    subgraph recent [BLOCKED]
+        gladia_user_onboarding
     end
 
     %% === STYLES ===
@@ -114,13 +119,16 @@ flowchart TD
     %% Previous recent node (now closed)
     style landing_copy_update fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
 
-    %% Recent node (bright purple - most recent completed work)
-    style talk_to_world_section fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    %% Previous recent node (now closed)
+    style talk_to_world_section fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Blocker node (soft red)
+    style gladia_user_onboarding fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
 
     %% Open tasks (soft green)
     style translation_engine_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style chat_invite_feature fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mobile_app_development fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
-    %% Recent subgraph style
-    style recent fill:transparent,stroke:#c084fc,color:#c084fc,stroke-width:2px,stroke-dasharray:5 5
+    %% Blocked subgraph style (red dashed)
+    style recent fill:transparent,stroke:#f87171,color:#f87171,stroke-width:2px,stroke-dasharray:5 5
