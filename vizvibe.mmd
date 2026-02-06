@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: gladia_stt_only
+    %% @lastActive: soniox_integration
 
     %% === START ===
     %% @project_start [start, closed]
@@ -64,6 +64,9 @@ flowchart TD
     %% @gladia_stt_only [ai-task, closed]
     gladia_stt_only("Gladia STT 전용 옵션<br/><sub>번역 없이 순수 STT만 사용하는<br/>옵션 추가, enableTranslation 파라미터로<br/>번역 on/off 제어</sub>")
 
+    %% @soniox_integration [ai-task, closed]
+    soniox_integration("Soniox V4 실시간 STT 통합<br/><sub>stt-rt-v4 모델 WebSocket 연동<br/>60+ 언어 자동 감지, 토큰 기반 응답을<br/>utterance 형식으로 변환하여 UI 호환</sub>")
+
     %% @translation_engine_research [ai-task, opened]
     translation_engine_research("번역 기능 고도화<br/><sub>Deepgram/Fireworks는 번역 미지원<br/>별도 번역 엔진(GPT/DeepL 등)을<br/>붙이는 파이프라인 구축 필요</sub>")
 
@@ -95,16 +98,17 @@ flowchart TD
     fireworks_integration --> deepgram_multi
     deepgram_multi --> deepgram_multi_fix
     deepgram_multi --> gladia_stt_only
+    deepgram_multi --> soniox_integration
     deepgram_multi_fix --> translation_engine_research
     gladia_stt_only --> translation_engine_research
+    soniox_integration --> translation_engine_research
     translation_engine_research --> chat_invite_feature
     chat_invite_feature --> mobile_app_development
     mobile_app_development -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        deepgram_multi_fix
-        gladia_stt_only
+        soniox_integration
     end
 
     %% === STYLES ===
@@ -152,9 +156,12 @@ flowchart TD
     %% Previous recent node (now closed)
     style deepgram_multi fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
 
-    %% Recent nodes (highlighted purple)
-    style deepgram_multi_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
-    style gladia_stt_only fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    %% Previous recent nodes (now closed)
+    style deepgram_multi_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gladia_stt_only fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Recent node (highlighted purple)
+    style soniox_integration fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Open tasks (soft green)
     style translation_engine_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
