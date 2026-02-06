@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: fireworks_integration
+    %% @lastActive: gladia_stt_only
 
     %% === START ===
     %% @project_start [start, closed]
@@ -55,6 +55,15 @@ flowchart TD
     %% @fireworks_integration [ai-task, closed]
     fireworks_integration("Fireworks AI 통합<br/><sub>Whisper 기반 V2 모델 연동 완료<br/>48kHz 샘플레이트 지원 패치<br/>다중 모델 선택 아키텍처 구축</sub>")
 
+    %% @deepgram_multi [ai-task, closed]
+    deepgram_multi("Deepgram Multi 모드 추가<br/><sub>language=multi 파라미터로 다국어<br/>코드 스위칭 전사 모드 추가<br/>기존 단일언어 모드와 별도 메뉴로 구성</sub>")
+
+    %% @deepgram_multi_fix [ai-task, closed]
+    deepgram_multi_fix("Deepgram Multi 언어감지 수정<br/><sub>detected_language→words[0].language<br/>+ channel.languages 폴백으로 변경<br/>지원 언어 10개 안내 UI 추가</sub>")
+
+    %% @gladia_stt_only [ai-task, closed]
+    gladia_stt_only("Gladia STT 전용 옵션<br/><sub>번역 없이 순수 STT만 사용하는<br/>옵션 추가, enableTranslation 파라미터로<br/>번역 on/off 제어</sub>")
+
     %% @translation_engine_research [ai-task, opened]
     translation_engine_research("번역 기능 고도화<br/><sub>Deepgram/Fireworks는 번역 미지원<br/>별도 번역 엔진(GPT/DeepL 등)을<br/>붙이는 파이프라인 구축 필요</sub>")
 
@@ -83,14 +92,19 @@ flowchart TD
     talk_to_world_section --> gladia_user_onboarding
     gladia_user_onboarding --> deepgram_integration
     deepgram_integration --> fireworks_integration
-    fireworks_integration --> translation_engine_research
+    fireworks_integration --> deepgram_multi
+    deepgram_multi --> deepgram_multi_fix
+    deepgram_multi --> gladia_stt_only
+    deepgram_multi_fix --> translation_engine_research
+    gladia_stt_only --> translation_engine_research
     translation_engine_research --> chat_invite_feature
     chat_invite_feature --> mobile_app_development
     mobile_app_development -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        fireworks_integration
+        deepgram_multi_fix
+        gladia_stt_only
     end
 
     %% === STYLES ===
@@ -133,8 +147,14 @@ flowchart TD
 
     style deepgram_integration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
 
-    %% Closed recent node (soft purple)
-    style fireworks_integration fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style fireworks_integration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style deepgram_multi fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Recent nodes (highlighted purple)
+    style deepgram_multi_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style gladia_stt_only fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Open tasks (soft green)
     style translation_engine_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px

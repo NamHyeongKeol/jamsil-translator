@@ -16,7 +16,7 @@ console.log('Starting STT WebSocket proxy server...');
 interface ClientConfig {
     sample_rate: number;
     languages: string[];
-    stt_model: 'gladia' | 'deepgram' | 'fireworks';
+    stt_model: 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks';
 }
 
 wss.on('connection', (clientWs) => {
@@ -25,7 +25,7 @@ wss.on('connection', (clientWs) => {
     let sttWs: WebSocket | null = null;
     let isClientConnected = true;
     let abortController: AbortController | null = null;
-    let currentModel: 'gladia' | 'deepgram' | 'fireworks' = 'gladia';
+    let currentModel: 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' = 'gladia';
 
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
@@ -50,7 +50,7 @@ wss.on('connection', (clientWs) => {
     };
 
     // ===== GLADIA 연결 =====
-    const startGladiaConnection = async (config: ClientConfig) => {
+    const startGladiaConnection = async (config: ClientConfig, enableTranslation = true) => {
         if (!gladiaApiKey) {
             console.error("GLADIA_API_KEY environment variable not set!");
             clientWs.close(1011, "Server configuration error: Gladia API key not found.");
@@ -60,36 +60,41 @@ wss.on('connection', (clientWs) => {
         try {
             abortController = new AbortController();
             
-            console.log('Requesting Gladia audio URL with languages:', config.languages);
+            console.log(`Requesting Gladia audio URL with languages: ${config.languages}, translation: ${enableTranslation}`);
+            const requestBody: Record<string, unknown> = {
+                sample_rate: config.sample_rate,
+                encoding: 'wav/pcm',
+                bit_depth: 16,
+                channels: 1,
+                model: 'solaria-1',
+                language_config: {
+                    languages: config.languages,
+                    code_switching: config.languages.length > 1,
+                },
+                endpointing: 0.05,
+                maximum_duration_without_endpointing: 15,
+                messages_config: {
+                    receive_partial_transcripts: true,
+                },
+            };
+
+            if (enableTranslation) {
+                requestBody.realtime_processing = {
+                    translation: true,
+                    translation_config: {
+                        target_languages: config.languages,
+                        model: 'enhanced',
+                    },
+                };
+            }
+
             const response = await fetch(GLADIA_API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'x-gladia-key': gladiaApiKey,
                 },
-                body: JSON.stringify({
-                    sample_rate: config.sample_rate,
-                    encoding: 'wav/pcm',
-                    bit_depth: 16,
-                    channels: 1,
-                    model: 'solaria-1',
-                    language_config: {
-                        languages: config.languages,
-                        code_switching: config.languages.length > 1,
-                    },
-                    endpointing: 0.05,
-                    maximum_duration_without_endpointing: 15,
-                    realtime_processing: {
-                        translation: true,
-                        translation_config: {
-                            target_languages: config.languages,
-                            model: 'enhanced',
-                        },
-                    },
-                    messages_config: {
-                        receive_partial_transcripts: true,
-                    },
-                }),
+                body: JSON.stringify(requestBody),
                 signal: abortController.signal,
             });
 
@@ -303,6 +308,130 @@ wss.on('connection', (clientWs) => {
         }
     };
 
+    // ===== DEEPGRAM MULTI 연결 (다국어 코드 스위칭) =====
+    const startDeepgramMultiConnection = async (config: ClientConfig) => {
+        if (!deepgramApiKey) {
+            console.error("DEEPGRAM_API_KEY environment variable not set!");
+            clientWs.close(1011, "Server configuration error: Deepgram API key not found.");
+            return;
+        }
+
+        try {
+            // Deepgram WebSocket URL 생성 - multi 언어 모드
+            const wsUrl = new URL(DEEPGRAM_WS_URL);
+            wsUrl.searchParams.set('model', 'nova-3');
+            wsUrl.searchParams.set('encoding', 'linear16');
+            wsUrl.searchParams.set('sample_rate', config.sample_rate.toString());
+            wsUrl.searchParams.set('channels', '1');
+            wsUrl.searchParams.set('interim_results', 'true');
+            wsUrl.searchParams.set('punctuate', 'true');
+            wsUrl.searchParams.set('smart_format', 'true');
+            wsUrl.searchParams.set('endpointing', '100');
+
+            // multi 언어 모드: 여러 언어를 자동 감지하여 전사
+            wsUrl.searchParams.set('language', 'multi');
+
+            console.log('Connecting to Deepgram Multi with URL:', wsUrl.toString());
+            console.log('Languages (multi mode):', config.languages);
+
+            sttWs = new WebSocket(wsUrl.toString(), {
+                headers: {
+                    'Authorization': `Token ${deepgramApiKey}`,
+                },
+            });
+
+            sttWs.onopen = () => {
+                console.log('Proxy connected to Deepgram Multi WebSocket');
+                if (isClientConnected) {
+                    clientWs.send(JSON.stringify({ status: 'ready' }));
+                } else {
+                    sttWs?.close();
+                }
+            };
+
+            sttWs.onmessage = (event) => {
+                if (isClientConnected) {
+                    try {
+                        const msg = JSON.parse(event.data.toString());
+
+                        if (msg.type === 'Results' || msg.channel) {
+                            const channel = msg.channel;
+                            const alternatives = channel?.alternatives;
+                            if (alternatives && alternatives.length > 0) {
+                                const transcript = alternatives[0].transcript;
+                                const isFinal = msg.is_final;
+
+                                // multi 모드 언어 감지 우선순위:
+                                // 1) alternatives[0].languages: 이 utterance에서 감지된 언어 배열
+                                // 2) channel.languages: channel 레벨 감지 언어 배열
+                                // 3) word[0].language: 첫 단어의 언어 태그
+                                // 4) fallback: 'multi'
+                                const words = alternatives[0].words;
+                                let detectedLang = 'multi';
+
+                                // 디버그: raw 응답 구조 확인 (final 결과만)
+                                if (isFinal && transcript) {
+                                    const wordLangs = words?.slice(0, 5).map((w: { word: string; language?: string }) => `${w.word}(${w.language || '?'})`);
+                                    console.log(`[Deepgram-Multi DEBUG] channel.languages=${JSON.stringify(channel?.languages)}, word_langs=[${wordLangs}], alternatives[0].languages=${JSON.stringify(alternatives[0]?.languages)}`);
+                                }
+
+                                if (alternatives[0]?.languages && alternatives[0].languages.length > 0) {
+                                    detectedLang = alternatives[0].languages[0];
+                                } else if (channel?.languages && channel.languages.length > 0) {
+                                    detectedLang = channel.languages[0];
+                                } else if (words && words.length > 0 && words[0].language) {
+                                    detectedLang = words[0].language;
+                                }
+
+                                if (transcript) {
+                                    const gladiaStyleMsg = {
+                                        type: 'transcript',
+                                        data: {
+                                            is_final: isFinal,
+                                            utterance: {
+                                                text: transcript,
+                                                language: detectedLang,
+                                            },
+                                        },
+                                    };
+
+                                    console.log(`[Deepgram-Multi] transcript is_final=${isFinal}, lang=${detectedLang}, text="${transcript.slice(0, 30)}..."`);
+                                    clientWs.send(JSON.stringify(gladiaStyleMsg));
+                                }
+                            }
+                        } else if (msg.type === 'Metadata') {
+                            console.log('[Deepgram-Multi] Metadata received:', msg);
+                        } else if (msg.type === 'UtteranceEnd') {
+                            console.log('[Deepgram-Multi] Utterance ended');
+                        }
+                    } catch (parseError) {
+                        console.error('Error parsing Deepgram Multi message:', parseError);
+                    }
+                }
+            };
+
+            sttWs.onerror = (error) => {
+                console.error('Deepgram Multi WebSocket error:', error);
+                if (isClientConnected) {
+                    clientWs.close();
+                }
+            };
+
+            sttWs.onclose = (event) => {
+                console.log('Deepgram Multi connection closed:', event.code, event.reason);
+                if (isClientConnected) {
+                    clientWs.close();
+                }
+            };
+
+        } catch (error) {
+            console.error('Error starting Deepgram Multi connection:', error);
+            if (isClientConnected) {
+                clientWs.close(1011, 'Failed to connect to Deepgram Multi transcription service.');
+            }
+        }
+    };
+
     // ===== FIREWORKS 연결 =====
     const startFireworksConnection = async (config: ClientConfig) => {
         if (!fireworksApiKey) {
@@ -413,15 +542,19 @@ wss.on('connection', (clientWs) => {
             
             if (currentModel === 'deepgram') {
                 startDeepgramConnection(data as ClientConfig);
+            } else if (currentModel === 'deepgram-multi') {
+                startDeepgramMultiConnection(data as ClientConfig);
             } else if (currentModel === 'fireworks') {
                 startFireworksConnection(data as ClientConfig);
+            } else if (currentModel === 'gladia-stt') {
+                startGladiaConnection(data as ClientConfig, false);
             } else {
-                startGladiaConnection(data as ClientConfig);
+                startGladiaConnection(data as ClientConfig, true);
             }
         } else if (sttWs && sttWs.readyState === WebSocket.OPEN) {
             // 오디오 프레임 전송
-            if (currentModel === 'deepgram' || currentModel === 'fireworks') {
-                // Deepgram, Fireworks는 바이너리 데이터를 직접 전송해야 함
+            if (currentModel === 'deepgram' || currentModel === 'deepgram-multi' || currentModel === 'fireworks') {
+                // Deepgram, Fireworks는 바이너리 데이터를 직접 전송해야 함 (Gladia/Gladia-STT는 JSON 형식)
                 if (data.type === 'audio_chunk' && data.data?.chunk) {
                     const pcmData = Buffer.from(data.data.chunk, 'base64');
                     sttWs.send(pcmData);

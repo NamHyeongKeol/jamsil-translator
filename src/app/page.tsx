@@ -64,7 +64,7 @@ export default function Home() {
   const [lang1, setLang1] = useState('en');
   const [lang2, setLang2] = useState('ko');
   const [lang3, setLang3] = useState('zh');
-  const [sttModel, setSttModel] = useState<'gladia' | 'deepgram' | 'fireworks'>('deepgram');
+  const [sttModel, setSttModel] = useState<'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks'>('deepgram');
 
   // 유니크 ID 생성을 위한 카운터
   const utteranceIdRef = useRef(0);
@@ -314,16 +314,21 @@ export default function Home() {
           <select 
             id="sttModel" 
             value={sttModel} 
-            onChange={(e) => setSttModel(e.target.value as 'gladia' | 'deepgram' | 'fireworks')} 
+            onChange={(e) => setSttModel(e.target.value as 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks')}
             disabled={isActive} 
             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           >
             <option value="gladia">Gladia (번역 지원)</option>
-            <option value="deepgram">Deepgram (번역 미지원)</option>
+            <option value="gladia-stt">Gladia STT (번역 미지원, 다국어 코드 스위칭)</option>
+            <option value="deepgram">Deepgram (번역 미지원, 언어 1만 전사)</option>
+            <option value="deepgram-multi">Deepgram Multi (번역 미지원, 다국어 자동 감지)</option>
             <option value="fireworks">Fireworks (번역 미지원)</option>
           </select>
-          {(sttModel === 'deepgram' || sttModel === 'fireworks') && (
-            <p className="mt-1 text-xs text-amber-600">{sttModel === 'deepgram' ? 'Deepgram' : 'Fireworks'}은 음성 인식만 지원합니다. 번역 기능은 Gladia에서만 사용 가능합니다.</p>
+          {(sttModel === 'gladia-stt' || sttModel === 'deepgram' || sttModel === 'deepgram-multi' || sttModel === 'fireworks') && (
+            <p className="mt-1 text-xs text-amber-600">
+              {sttModel === 'gladia-stt' ? 'Gladia STT' : sttModel === 'deepgram' ? 'Deepgram' : sttModel === 'deepgram-multi' ? 'Deepgram Multi' : 'Fireworks'}은 음성 인식만 지원합니다. 번역 기능은 Gladia에서만 사용 가능합니다.
+              {sttModel === 'deepgram-multi' && <><br/>언어 선택 무시됨 - 10개 언어 자동 감지: EN, ES, FR, DE, HI, RU, PT, JA, IT, NL</>}
+            </p>
           )}
         </div>
         {/* 언어 선택 */}
