@@ -60,10 +60,11 @@ export default function Home() {
   const [volume, setVolume] = useState(0)
   const [utterances, setUtterances] = useState<Utterance[]>([])
   const [partialTranscript, setPartialTranscript] = useState('')
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['en', 'ko'])
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['en', 'ko', 'zh'])
   const [lang1, setLang1] = useState('en');
   const [lang2, setLang2] = useState('ko');
-  const [lang3, setLang3] = useState('');
+  const [lang3, setLang3] = useState('zh');
+  const [sttModel, setSttModel] = useState<'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox'>('soniox');
 
   // 유니크 ID 생성을 위한 카운터
   const utteranceIdRef = useRef(0);
@@ -74,6 +75,7 @@ export default function Home() {
   const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const transcriptContainerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     // Set default languages on mount
@@ -163,7 +165,8 @@ export default function Home() {
         const languages = [lang1, lang2, lang3].filter(Boolean);
         const config = {
           sample_rate: context.sampleRate,
-          languages: languages
+          languages: languages,
+          stt_model: sttModel
         }
         socket.send(JSON.stringify(config))
         // 아직 connecting 상태 유지 - Gladia ready 까지 대기
@@ -270,6 +273,13 @@ export default function Home() {
     }
   }, [])
 
+  // 자동 스크롤 - 전사 결과가 추가될 때마다 맨 아래로 스크롤
+  useEffect(() => {
+    if (transcriptContainerRef.current) {
+      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight
+    }
+  }, [utterances, partialTranscript])
+
   // 파생 상태
   const isActive = connectionStatus !== 'idle'
   const isReady = connectionStatus === 'ready'
@@ -298,6 +308,31 @@ export default function Home() {
       </div>
 
       <div className="w-full max-w-md mx-auto mb-8 p-4 bg-white/30 rounded-lg shadow-md backdrop-blur-sm">
+        {/* STT 모델 선택 */}
+        <div className="mb-4">
+          <label htmlFor="sttModel" className="block text-sm font-medium text-gray-700">STT 모델</label>
+          <select 
+            id="sttModel" 
+            value={sttModel} 
+            onChange={(e) => setSttModel(e.target.value as 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox')}
+            disabled={isActive} 
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          >
+            <option value="gladia">Gladia (번역 지원)</option>
+            <option value="gladia-stt">Gladia STT (번역 미지원, 다국어 코드 스위칭)</option>
+            <option value="deepgram">Deepgram (번역 미지원, 언어 1만 전사)</option>
+            <option value="deepgram-multi">Deepgram Multi (번역 미지원, 다국어 자동 감지)</option>
+            <option value="fireworks">Fireworks (번역 미지원)</option>
+            <option value="soniox">Soniox V4 (번역 미지원, 60+ 언어 자동 감지)</option>
+          </select>
+          {(sttModel === 'gladia-stt' || sttModel === 'deepgram' || sttModel === 'deepgram-multi' || sttModel === 'fireworks' || sttModel === 'soniox') && (
+            <p className="mt-1 text-xs text-amber-600">
+              {sttModel === 'gladia-stt' ? 'Gladia STT' : sttModel === 'deepgram' ? 'Deepgram' : sttModel === 'deepgram-multi' ? 'Deepgram Multi' : sttModel === 'soniox' ? 'Soniox V4' : 'Fireworks'}은 음성 인식만 지원합니다. 번역 기능은 Gladia에서만 사용 가능합니다.
+              {sttModel === 'deepgram-multi' && <><br/>언어 선택 무시됨 - 10개 언어 자동 감지: EN, ES, FR, DE, HI, RU, PT, JA, IT, NL</>}
+            </p>
+          )}
+        </div>
+        {/* 언어 선택 */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label htmlFor="lang1" className="block text-sm font-medium text-gray-700">언어 1</label>
@@ -351,7 +386,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="mt-8 w-full max-w-md p-4 bg-white/30 rounded-lg shadow-md min-h-[100px] max-h-[400px] overflow-y-auto text-gray-800 backdrop-blur-sm">
+      <div ref={transcriptContainerRef} className="mt-8 w-full max-w-md p-4 bg-white/30 rounded-lg shadow-md min-h-[100px] max-h-[400px] overflow-y-auto text-gray-800 backdrop-blur-sm">
         <div className="space-y-4">
           {utterances.filter(u => u.originalText).map((utterance) => (
             <div key={utterance.id} className="border-l-2 border-blue-400 pl-3 py-2 space-y-1">
