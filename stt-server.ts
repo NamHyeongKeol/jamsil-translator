@@ -2,6 +2,11 @@ import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import fetch from 'node-fetch';
 import 'dotenv/config';
+import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 const PORT = 3001;
 const GLADIA_API_URL = 'https://api.gladia.io/v2/live';
@@ -14,10 +19,13 @@ const wss = new WebSocketServer({ server });
 
 
 
+type TranslateModel = 'gpt-5-nano' | 'claude-haiku-4-5';
+
 interface ClientConfig {
     sample_rate: number;
     languages: string[];
     stt_model: 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox';
+    translate_model?: TranslateModel;
 }
 
 wss.on('connection', (clientWs) => {
@@ -25,6 +33,8 @@ wss.on('connection', (clientWs) => {
     let isClientConnected = true;
     let abortController: AbortController | null = null;
     let currentModel: 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox' = 'gladia';
+    let selectedLanguages: string[] = [];
+    let translateModel: TranslateModel = 'claude-haiku-4-5';
 
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
@@ -129,7 +139,18 @@ wss.on('connection', (clientWs) => {
 
             sttWs.onmessage = (event) => {
                 if (isClientConnected) {
-                    clientWs.send(event.data.toString());
+                    const raw = event.data.toString();
+                    clientWs.send(raw);
+
+                    // Gladia-STT (번역 미사용) 모드에서 GPT 번역 적용
+                    if (!enableTranslation && selectedLanguages.length > 0) {
+                        try {
+                            const msg = JSON.parse(raw);
+                            if (msg.type === 'transcript' && msg.data?.is_final && msg.data?.utterance?.text) {
+                                translateText(msg.data.utterance.text, msg.data.utterance.language || 'en', selectedLanguages, clientWs);
+                            }
+                        } catch { /* ignore parse errors for non-JSON messages */ }
+                    }
                 }
             };
 
@@ -248,6 +269,10 @@ wss.on('connection', (clientWs) => {
                                         },
                                     };
                                     clientWs.send(JSON.stringify(gladiaStyleMsg));
+
+                                    if (isFinal && selectedLanguages.length > 0) {
+                                        translateText(transcript, detectedLang, selectedLanguages, clientWs);
+                                    }
                                 }
                             }
                         }
@@ -350,6 +375,10 @@ wss.on('connection', (clientWs) => {
                                         },
                                     };
                                     clientWs.send(JSON.stringify(gladiaStyleMsg));
+
+                                    if (isFinal && selectedLanguages.length > 0) {
+                                        translateText(transcript, detectedLang, selectedLanguages, clientWs);
+                                    }
                                 }
                             }
                         }
@@ -440,6 +469,10 @@ wss.on('connection', (clientWs) => {
                                 },
                             };
                             clientWs.send(JSON.stringify(gladiaStyleMsg));
+
+                            if (isFinal && selectedLanguages.length > 0) {
+                                translateText(text, language, selectedLanguages, clientWs);
+                            }
                         }
                     } catch (e) {
                         console.error('Error parsing Fireworks msg:', e);
@@ -492,6 +525,7 @@ wss.on('connection', (clientWs) => {
                     sample_rate: config.sample_rate,
                     num_channels: 1,
                     language_hints: config.languages,
+                    language_hints_strict: true,
                     enable_endpoint_detection: true,
                     enable_language_identification: true,
                     enable_speaker_diarization: true,
@@ -570,17 +604,23 @@ wss.on('connection', (clientWs) => {
                         clientWs.send(JSON.stringify(partialMsg));
                     } else if (newFinalText && hadNonFinal) {
                         // 모델이 엔드포인트를 감지하여 토큰을 확정함 → 발화 완료
+                        const finalText = finalizedText.trim();
                         const finalMsg = {
                             type: 'transcript',
                             data: {
                                 is_final: true,
                                 utterance: {
-                                    text: finalizedText.trim(),
+                                    text: finalText,
                                     language: detectedLang,
                                 },
                             },
                         };
                         clientWs.send(JSON.stringify(finalMsg));
+
+                        if (selectedLanguages.length > 0) {
+                            translateText(finalText, detectedLang, selectedLanguages, clientWs);
+                        }
+
                         finalizedText = '';
                         hadNonFinal = false;
                     }
@@ -599,17 +639,23 @@ wss.on('connection', (clientWs) => {
             sttWs.onclose = () => {
                 // 남은 텍스트가 있으면 마지막 발화로 전송
                 if (isClientConnected && finalizedText) {
+                    const remainingText = finalizedText.trim();
                     const finalMsg = {
                         type: 'transcript',
                         data: {
                             is_final: true,
                             utterance: {
-                                text: finalizedText.trim(),
+                                text: remainingText,
                                 language: detectedLang,
                             },
                         },
                     };
                     clientWs.send(JSON.stringify(finalMsg));
+
+                    if (selectedLanguages.length > 0) {
+                        translateText(remainingText, detectedLang, selectedLanguages, clientWs);
+                    }
+
                     finalizedText = '';
                 }
                 if (isClientConnected) {
@@ -625,6 +671,70 @@ wss.on('connection', (clientWs) => {
         }
     };
 
+    // ===== GPT 번역 =====
+    const LANG_NAMES: Record<string, string> = {
+        en: 'English', ko: 'Korean', zh: 'Chinese', ja: 'Japanese',
+        es: 'Spanish', fr: 'French', de: 'German', ru: 'Russian',
+        pt: 'Portuguese', ar: 'Arabic', hi: 'Hindi', vi: 'Vietnamese',
+        it: 'Italian', id: 'Indonesian', tr: 'Turkish', pl: 'Polish',
+        nl: 'Dutch', sv: 'Swedish', th: 'Thai', ms: 'Malay',
+    };
+
+    const translateText = async (text: string, sourceLang: string, targetLangs: string[], ws: WebSocket) => {
+        const langs = targetLangs.filter(l => l !== sourceLang);
+        if (langs.length === 0 || !text.trim()) return;
+
+        const langList = langs.map(l => `${l} (${LANG_NAMES[l] || l})`).join(', ');
+        const systemPrompt = `You are a translator. Translate the given text into the requested languages. Respond ONLY with a JSON object mapping language codes to translations. No extra text.`;
+        const userPrompt = `Translate to ${langList}:\n"${text}"`;
+
+        try {
+            let content: string | undefined;
+
+            if (translateModel === 'claude-haiku-4-5') {
+                const resp = await anthropic.messages.create({
+                    model: 'claude-haiku-4-5-20251001',
+                    max_tokens: 1024,
+                    system: systemPrompt,
+                    messages: [{ role: 'user', content: userPrompt }],
+                });
+                const block = resp.content[0];
+                if (block.type === 'text') content = block.text.trim();
+            } else {
+                const resp = await openai.chat.completions.create({
+                    model: 'gpt-5-nano',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt },
+                    ],
+                    temperature: 0.1,
+                });
+                content = resp.choices[0]?.message?.content?.trim();
+            }
+
+            if (!content) return;
+
+            // parse JSON (handle possible markdown code fences)
+            const jsonStr = content.replace(/^```json?\n?/, '').replace(/\n?```$/, '');
+            const translations: Record<string, string> = JSON.parse(jsonStr);
+
+            for (const lang of langs) {
+                const translated = translations[lang];
+                if (translated && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'translation',
+                        data: {
+                            target_language: lang,
+                            translated_utterance: { text: translated },
+                        },
+                    }));
+                }
+            }
+        } catch (err) {
+            console.error('Translation error:', err);
+        }
+    };
+
     // ===== 클라이언트 메시지 핸들러 =====
     clientWs.onmessage = (event) => {
         const message = event.data.toString();
@@ -632,6 +742,8 @@ wss.on('connection', (clientWs) => {
 
         if (data.sample_rate && data.languages) {
             currentModel = data.stt_model || 'gladia';
+            selectedLanguages = data.languages;
+            translateModel = data.translate_model || 'claude-haiku-4-5';
             
             if (currentModel === 'deepgram') {
                 startDeepgramConnection(data as ClientConfig);

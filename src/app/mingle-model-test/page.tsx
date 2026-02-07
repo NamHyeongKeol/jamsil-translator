@@ -60,11 +60,13 @@ export default function Home() {
   const [volume, setVolume] = useState(0)
   const [utterances, setUtterances] = useState<Utterance[]>([])
   const [partialTranscript, setPartialTranscript] = useState('')
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['en', 'ko', 'zh'])
   const [lang1, setLang1] = useState('en');
   const [lang2, setLang2] = useState('ko');
   const [lang3, setLang3] = useState('zh');
+  // selectedLanguages is derived from individual lang selectors
+  const selectedLanguages = [lang1, lang2, lang3].filter(Boolean);
   const [sttModel, setSttModel] = useState<'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox'>('soniox');
+  const [translateModel, setTranslateModel] = useState<'gpt-5-nano' | 'claude-haiku-4-5'>('claude-haiku-4-5');
   const [sessionUsageSec, setSessionUsageSec] = useState(0)
   const [cumulativeUsageSec, setCumulativeUsageSec] = useState(0)
   const sessionUsageRef = useRef(0)
@@ -185,7 +187,8 @@ export default function Home() {
         const config = {
           sample_rate: context.sampleRate,
           languages: languages,
-          stt_model: sttModel
+          stt_model: sttModel,
+          translate_model: translateModel
         }
         socket.send(JSON.stringify(config))
         // 아직 connecting 상태 유지 - Gladia ready 까지 대기
@@ -338,20 +341,35 @@ export default function Home() {
             disabled={isActive} 
             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           >
-            <option value="gladia">Gladia (번역 지원)</option>
-            <option value="gladia-stt">Gladia STT (번역 미지원, 다국어 코드 스위칭)</option>
-            <option value="deepgram">Deepgram (번역 미지원, 언어 1만 전사)</option>
-            <option value="deepgram-multi">Deepgram Multi (번역 미지원, 다국어 자동 감지)</option>
-            <option value="fireworks">Fireworks (번역 미지원)</option>
-            <option value="soniox">Soniox V4 (번역 미지원, 60+ 언어 자동 감지)</option>
+            <option value="gladia">Gladia (자체 번역)</option>
+            <option value="gladia-stt">Gladia STT (AI 번역, 다국어 코드 스위칭)</option>
+            <option value="deepgram">Deepgram (AI 번역, 언어 1만 전사)</option>
+            <option value="deepgram-multi">Deepgram Multi (AI 번역, 다국어 자동 감지)</option>
+            <option value="fireworks">Fireworks (AI 번역)</option>
+            <option value="soniox">Soniox V4 (AI 번역, 60+ 언어 자동 감지)</option>
           </select>
-          {(sttModel === 'gladia-stt' || sttModel === 'deepgram' || sttModel === 'deepgram-multi' || sttModel === 'fireworks' || sttModel === 'soniox') && (
+          {sttModel === 'deepgram-multi' && (
             <p className="mt-1 text-xs text-amber-600">
-              {sttModel === 'gladia-stt' ? 'Gladia STT' : sttModel === 'deepgram' ? 'Deepgram' : sttModel === 'deepgram-multi' ? 'Deepgram Multi' : sttModel === 'soniox' ? 'Soniox V4' : 'Fireworks'}은 음성 인식만 지원합니다. 번역 기능은 Gladia에서만 사용 가능합니다.
-              {sttModel === 'deepgram-multi' && <><br/>언어 선택 무시됨 - 10개 언어 자동 감지: EN, ES, FR, DE, HI, RU, PT, JA, IT, NL</>}
+              언어 선택 무시됨 - 10개 언어 자동 감지: EN, ES, FR, DE, HI, RU, PT, JA, IT, NL
             </p>
           )}
         </div>
+        {/* 번역 모델 선택 (Gladia 자체 번역 제외) */}
+        {sttModel !== 'gladia' && (
+          <div className="mb-4">
+            <label htmlFor="translateModel" className="block text-sm font-medium text-gray-700">번역 모델</label>
+            <select
+              id="translateModel"
+              value={translateModel}
+              onChange={(e) => setTranslateModel(e.target.value as 'gpt-5-nano' | 'claude-haiku-4-5')}
+              disabled={isActive}
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            >
+              <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+              <option value="gpt-5-nano">GPT-5-nano</option>
+            </select>
+          </div>
+        )}
         {/* 언어 선택 */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
@@ -415,9 +433,9 @@ export default function Home() {
                 <span className="text-xs text-blue-600 mr-2">[{utterance.originalLang.toUpperCase()}]</span>
                 {utterance.originalText}
               </p>
-              {/* 번역들 (원본 언어 제외) */}
+              {/* 번역들 (선택한 언어만, 원본 언어 제외) */}
               {Object.entries(utterance.translations)
-                .filter(([lang]) => lang !== utterance.originalLang)
+                .filter(([lang]) => selectedLanguages.includes(lang) && lang !== utterance.originalLang)
                 .map(([lang, text]) => (
                   <p key={lang} className="text-gray-600 text-sm">
                     <span className="text-xs text-gray-400 mr-2">[{lang.toUpperCase()}]</span>
