@@ -456,7 +456,7 @@ wss.on('connection', (clientWs) => {
             const language = langMap[config.languages[0]] || 'en';
             
             // 최신 V2 모델 사용 (더 빠르고 정확함)
-            wsUrl.searchParams.set('model', 'fireworks-asr-v2');
+            wsUrl.searchParams.set('model', 'fireworks-asr-large');
             wsUrl.searchParams.set('language', language);
             wsUrl.searchParams.set('response_format', 'verbose_json');
             wsUrl.searchParams.set('sample_rate', config.sample_rate.toString()); // 필수: 클라이언트 샘플 레이트(48000 등) 전달
@@ -481,14 +481,12 @@ wss.on('connection', (clientWs) => {
             sttWs.onmessage = (event) => {
                 if (isClientConnected) {
                     try {
-                        const msg = JSON.parse(event.data.toString());
-                        // Fireworks (Whisper format) -> Gladia/Client format
-                        // Expected msg: { text: "...", segments: [...] } or partial?
-                        // Fireworks documentation says it sends JSON. 
-                        // Let's assume standard field 'text'.
-                        
+                        const raw = event.data.toString();
+                        console.log(`[Fireworks DEBUG] raw:`, raw.slice(0, 200));
+                        const msg = JSON.parse(raw);
+
                         const text = msg.text || '';
-                        const isFinal = msg.is_final || false; // Fireworks might verify 'is_final'
+                        const isFinal = msg.is_final || false;
 
                         if (text) {
                             const gladiaStyleMsg = {
@@ -584,8 +582,17 @@ wss.on('connection', (clientWs) => {
                         return;
                     }
 
+                    // 오디오 처리 시간 로깅
+                    if (msg.final_audio_proc_ms !== undefined || msg.total_audio_proc_ms !== undefined) {
+                        const finalSec = ((msg.final_audio_proc_ms || 0) / 1000).toFixed(1);
+                        const totalSec = ((msg.total_audio_proc_ms || 0) / 1000).toFixed(1);
+                        console.log(`[Soniox USAGE] final=${finalSec}s, total=${totalSec}s`);
+                    }
+
                     if (msg.finished) {
-                        console.log('[Soniox] Session finished');
+                        const finalSec = ((msg.final_audio_proc_ms || 0) / 1000).toFixed(1);
+                        const totalSec = ((msg.total_audio_proc_ms || 0) / 1000).toFixed(1);
+                        console.log(`[Soniox] Session finished. Total audio: final=${finalSec}s, total=${totalSec}s`);
                         return;
                     }
 
@@ -709,9 +716,12 @@ wss.on('connection', (clientWs) => {
         } else if (sttWs && sttWs.readyState === WebSocket.OPEN) {
             // 오디오 프레임 전송
             if (currentModel === 'deepgram' || currentModel === 'deepgram-multi' || currentModel === 'fireworks' || currentModel === 'soniox') {
-                // Deepgram, Fireworks는 바이너리 데이터를 직접 전송해야 함 (Gladia/Gladia-STT는 JSON 형식)
+                // Deepgram, Fireworks, Soniox는 바이너리 데이터를 직접 전송해야 함 (Gladia/Gladia-STT는 JSON 형식)
                 if (data.type === 'audio_chunk' && data.data?.chunk) {
                     const pcmData = Buffer.from(data.data.chunk, 'base64');
+                    if (currentModel === 'fireworks') {
+                        console.log(`[Fireworks DEBUG] sending ${pcmData.length} bytes, ws state=${sttWs.readyState}`);
+                    }
                     sttWs.send(pcmData);
                 }
             } else {

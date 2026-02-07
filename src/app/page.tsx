@@ -64,7 +64,7 @@ export default function Home() {
   const [lang1, setLang1] = useState('en');
   const [lang2, setLang2] = useState('ko');
   const [lang3, setLang3] = useState('zh');
-  const [sttModel, setSttModel] = useState<'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox'>('deepgram');
+  const [sttModel, setSttModel] = useState<'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox'>('soniox');
 
   // 유니크 ID 생성을 위한 카운터
   const utteranceIdRef = useRef(0);
