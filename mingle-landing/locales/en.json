@@ -8,7 +8,8 @@
     "title2": "no more.",
     "title3": "",
     "subtitle": "No more stopping after every sentence to translate. Mingle keeps long conversations flowing continuously, translating in real-time as you speak and showing it on screen. Every conversation is saved in a chat room, and you can invite others to continue talking online anytime.",
-    "cta": "Download"
+    "cta": "Download",
+    "tryDemo": "Try it out"
   },
   "problem": {
     "label": "The Problem",
@@ -68,8 +69,8 @@
     "description": "We'll completely remove the language barrier for you. Whether it's voice or text, just focus on the conversation."
   },
   "cta": {
-    "title1": "Break the language barrier,",
-    "title2": "start real communication",
+    "title1": "The easiest way to",
+    "title2": "befriend anyone — Mingle",
     "subtitle": "With Mingle, you can have deep conversations with anyone, no matter what language they speak.",
     "button": "Download Now"
   },
@@ -85,6 +86,10 @@
     "successDesc": "We'll notify you when Mingle is ready.",
     "error": "Something went wrong. Please try again.",
     "close": "Close"
+  },
+  "demo": {
+    "limitReached": "Demo limit reached (30s)",
+    "limitDesc": "Sign up for early access to continue"
   },
   "mockup": {
     "recording": "Recording...",

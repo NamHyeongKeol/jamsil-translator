@@ -8,7 +8,8 @@
     "title2": "Schluss damit.",
     "title3": "",
     "subtitle": "Kein Stoppen mehr nach jedem Satz zum Übersetzen. Mingle übersetzt lange Gespräche kontinuierlich und zeigt in Echtzeit auf dem Bildschirm an, was Sie sagen. Alle Gespräche werden in einem Chatroom gespeichert, und Sie können andere einladen, jederzeit online weiterzusprechen.",
-    "cta": "Herunterladen"
+    "cta": "Herunterladen",
+    "tryDemo": "Jetzt testen"
   },
   "problem": {
     "label": "Das Problem",
@@ -68,8 +69,8 @@
     "description": "Wir beseitigen die Sprachbarriere komplett für Sie. Ob Sprache oder Text, konzentrieren Sie sich einfach auf das Gespräch."
   },
   "cta": {
-    "title1": "Durchbrechen Sie die Sprachbarriere,",
-    "title2": "beginnen Sie echte Kommunikation",
+    "title1": "Der einfachste Weg,",
+    "title2": "Freunde zu finden — Mingle",
     "subtitle": "Mit Mingle können Sie tiefe Gespräche mit jedem führen, egal welche Sprache er spricht.",
     "button": "Jetzt herunterladen"
   },
@@ -85,6 +86,10 @@
     "successDesc": "Wir benachrichtigen Sie, wenn Mingle bereit ist.",
     "error": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
     "close": "Schließen"
+  },
+  "demo": {
+    "limitReached": "Demo-Limit erreicht (30s)",
+    "limitDesc": "Registrieren Sie sich für den Early Access"
   },
   "mockup": {
     "recording": "Aufnahme...",

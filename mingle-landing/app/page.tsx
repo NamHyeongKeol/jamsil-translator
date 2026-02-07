@@ -1,25 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
   Mic,
-  Languages,
   Users,
-  MessageSquare,
   Zap,
   Globe,
   UserPlus,
   ArrowRight,
   X,
-  Sparkles,
   ChevronDown,
   Download,
   Check,
   Send
 } from 'lucide-react'
 import { languages } from '@/lib/i18n'
+import LivePhoneDemo from '@/components/LivePhoneDemo/LivePhoneDemo'
+import type { LivePhoneDemoRef } from '@/components/LivePhoneDemo/LivePhoneDemo'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -215,18 +214,6 @@ function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
   )
 }
 
-// Phone Mockup Component - Uses actual screenshot image
-function PhoneMockup() {
-  return (
-    <div className="relative mx-auto w-[280px] md:w-[350px] lg:w-[420px]">
-      <img
-        src="/image.png?v=2"
-        alt="Mingle App Screenshot"
-        className="w-full h-auto drop-shadow-2xl"
-      />
-    </div>
-  )
-}
 
 // Before/After Comparison with 3 problems and 3 solutions
 function BeforeAfter() {
@@ -394,9 +381,13 @@ export default function HomePage() {
   const { t, i18n } = useTranslation()
   const isRTL = i18n.language === 'ar'
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const demoRef = useRef<LivePhoneDemoRef>(null)
 
-  // Log page visit on mount
+  // Log page visit on mount (ref guard prevents Strict Mode double-fire)
+  const visitLoggedRef = useRef(false)
   useEffect(() => {
+    if (visitLoggedRef.current) return
+    visitLoggedRef.current = true
     logVisit(i18n.language)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -430,7 +421,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="min-h-screen flex items-center justify-center pt-24 md:pt-10 pb-20 px-6 relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-100">
+      <section className="min-h-screen flex items-center justify-center pt-24 lg:pt-10 pb-20 px-6 relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-100">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(245,158,11,0.08)_0%,transparent_70%)] pointer-events-none" />
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <motion.div
@@ -448,13 +439,25 @@ export default function HomePage() {
             <p className="text-lg md:text-xl text-text-secondary max-w-xl mb-10 leading-relaxed">
               {t('hero.subtitle')}
             </p>
-            <button
-              onClick={() => openModal('hero')}
-              className="px-8 py-4 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-xl font-semibold text-white flex items-center gap-2 hover:-translate-y-1 hover:shadow-2xl hover:shadow-accent-primary/40 transition-all"
-            >
-              <Download size={20} />
-              {t('hero.cta')}
-            </button>
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                onClick={() => openModal('hero')}
+                className="px-8 py-4 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-xl font-semibold text-white flex items-center gap-2 hover:-translate-y-1 hover:shadow-2xl hover:shadow-accent-primary/40 transition-all"
+              >
+                <Download size={20} />
+                {t('hero.cta')}
+              </button>
+              <button
+                onClick={() => {
+                  logButtonClick('try-translator')
+                  demoRef.current?.startRecording()
+                }}
+                className="px-8 py-4 bg-white border-2 border-accent-primary rounded-xl font-semibold text-accent-primary flex items-center gap-2 hover:-translate-y-1 hover:shadow-xl hover:shadow-accent-primary/20 transition-all"
+              >
+                <Mic size={20} />
+                {t('hero.tryDemo')}
+              </button>
+            </div>
           </motion.div>
 
           <motion.div
@@ -463,7 +466,7 @@ export default function HomePage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="flex justify-center lg:justify-end pt-10"
           >
-            <PhoneMockup />
+            <LivePhoneDemo ref={demoRef} onLimitReached={() => openModal('demo-limit')} />
           </motion.div>
         </div>
       </section>

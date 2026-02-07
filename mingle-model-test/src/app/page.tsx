@@ -62,11 +62,12 @@ export default function Home() {
   const [partialTranscript, setPartialTranscript] = useState('')
   const [lang1, setLang1] = useState('en');
   const [lang2, setLang2] = useState('ko');
-  const [lang3, setLang3] = useState('zh');
+  const [lang3, setLang3] = useState('ja');
   // selectedLanguages is derived from individual lang selectors
   const selectedLanguages = [lang1, lang2, lang3].filter(Boolean);
   const [sttModel, setSttModel] = useState<'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox'>('soniox');
-  const [translateModel, setTranslateModel] = useState<'gpt-5-nano' | 'claude-haiku-4-5'>('claude-haiku-4-5');
+  const [translateModel, setTranslateModel] = useState<'gpt-5-nano' | 'claude-haiku-4-5' | 'gemini-2.5-flash-lite' | 'gemini-3-flash-preview'>('gemini-2.5-flash-lite');
+  const [langHintsStrict, setLangHintsStrict] = useState(true);
   const [sessionUsageSec, setSessionUsageSec] = useState(0)
   const [cumulativeUsageSec, setCumulativeUsageSec] = useState(0)
   const sessionUsageRef = useRef(0)
@@ -188,7 +189,8 @@ export default function Home() {
           sample_rate: context.sampleRate,
           languages: languages,
           stt_model: sttModel,
-          translate_model: translateModel
+          translate_model: translateModel,
+          lang_hints_strict: langHintsStrict
         }
         socket.send(JSON.stringify(config))
         // 아직 connecting 상태 유지 - Gladia ready 까지 대기
@@ -201,7 +203,8 @@ export default function Home() {
           setConnectionStatus('ready')
           startAudioProcessing();
         } else if (message.type === 'transcript' && message.data && message.data.utterance) {
-          const text = message.data.utterance.text;
+          const rawText = message.data.utterance.text || '';
+          const text = rawText.replace(/<\/?end>/gi, '').trim();
           const lang = message.data.utterance.language || 'unknown';
           
           if (message.data.is_final) {
@@ -224,10 +227,13 @@ export default function Home() {
           setSessionUsageSec(totalSec)
           sessionUsageRef.current = totalSec
         } else if (message.type === 'translation' && message.data) {
+          // 부분 번역은 model-test에서 무시
+          if (message.data.is_partial) return;
           // 번역 결과 - 마지막 발화에 추가
           const targetLang = message.data.target_language;
-          const translatedText = message.data.translated_utterance?.text;
-          
+          const rawTranslated = message.data.translated_utterance?.text;
+          const translatedText = rawTranslated ? rawTranslated.replace(/<\/?end>/gi, '').trim() : '';
+
           if (targetLang && translatedText) {
             setUtterances(prev => {
               if (prev.length === 0) return prev;
@@ -353,6 +359,18 @@ export default function Home() {
               언어 선택 무시됨 - 10개 언어 자동 감지: EN, ES, FR, DE, HI, RU, PT, JA, IT, NL
             </p>
           )}
+          {sttModel === 'soniox' && (
+            <label className="mt-2 flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={langHintsStrict}
+                onChange={(e) => setLangHintsStrict(e.target.checked)}
+                disabled={isActive}
+                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              선택 언어만 인식 (language_hints_strict)
+            </label>
+          )}
         </div>
         {/* 번역 모델 선택 (Gladia 자체 번역 제외) */}
         {sttModel !== 'gladia' && (
@@ -361,12 +379,14 @@ export default function Home() {
             <select
               id="translateModel"
               value={translateModel}
-              onChange={(e) => setTranslateModel(e.target.value as 'gpt-5-nano' | 'claude-haiku-4-5')}
+              onChange={(e) => setTranslateModel(e.target.value as 'gpt-5-nano' | 'claude-haiku-4-5' | 'gemini-2.5-flash-lite' | 'gemini-3-flash-preview')}
               disabled={isActive}
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             >
               <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
               <option value="gpt-5-nano">GPT-5-nano</option>
+              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+              <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
             </select>
           </div>
         )}
