@@ -28,6 +28,16 @@ model ButtonClick {
   createdAt   DateTime @default(now())
 }
 
+model DemoConversation {
+  id                String   @id @default(cuid())
+  ipAddress         String?
+  userAgent         String?
+  utterances        Json     // Array of { originalText, originalLang, translations }
+  selectedLanguages String[]
+  usageSec          Int?
+  createdAt         DateTime @default(now())
+}
+
 model Visitor {
   id           String   @id @default(cuid())
   ipAddress    String?

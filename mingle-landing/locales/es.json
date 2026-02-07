@@ -8,7 +8,8 @@
     "title2": "basta ya.",
     "title3": "",
     "subtitle": "No más pausas después de cada frase para traducir. Mingle traduce las conversaciones largas continuamente, mostrando en tiempo real en pantalla lo que dices. Todas las conversaciones se guardan en una sala de chat, y puedes invitar a otros a continuar hablando en línea en cualquier momento.",
-    "cta": "Descargar"
+    "cta": "Descargar",
+    "tryDemo": "Pruébalo"
   },
   "problem": {
     "label": "El Problema",
@@ -68,8 +69,8 @@
     "description": "Nosotros eliminamos completamente la barrera del idioma por ti. Ya sea voz o texto, solo concéntrate en la conversación."
   },
   "cta": {
-    "title1": "Rompe la barrera del idioma,",
-    "title2": "comienza la comunicación real",
+    "title1": "La forma más fácil de",
+    "title2": "hacer amigos — Mingle",
     "subtitle": "Con Mingle, puedes tener conversaciones profundas con cualquiera, sin importar qué idioma hable.",
     "button": "Descargar Ahora"
   },
@@ -85,6 +86,10 @@
     "successDesc": "Te notificaremos cuando Mingle esté listo.",
     "error": "Algo salió mal. Por favor, intenta de nuevo.",
     "close": "Cerrar"
+  },
+  "demo": {
+    "limitReached": "Límite de demo alcanzado (30s)",
+    "limitDesc": "Regístrate para acceso anticipado"
   },
   "mockup": {
     "recording": "Grabando...",

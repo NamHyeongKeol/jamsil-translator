@@ -4,9 +4,11 @@ import fetch from 'node-fetch';
 import 'dotenv/config';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const PORT = 3001;
 const GLADIA_API_URL = 'https://api.gladia.io/v2/live';
@@ -19,13 +21,14 @@ const wss = new WebSocketServer({ server });
 
 
 
-type TranslateModel = 'gpt-5-nano' | 'claude-haiku-4-5';
+type TranslateModel = 'gpt-5-nano' | 'claude-haiku-4-5' | 'gemini-2.5-flash-lite' | 'gemini-3-flash-preview';
 
 interface ClientConfig {
     sample_rate: number;
     languages: string[];
     stt_model: 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox';
     translate_model?: TranslateModel;
+    lang_hints_strict?: boolean;
 }
 
 wss.on('connection', (clientWs) => {
@@ -516,6 +519,8 @@ wss.on('connection', (clientWs) => {
             let finalizedText = '';
             let detectedLang = config.languages[0] || 'en';
             let hadNonFinal = false;
+            let lastPartialTranslateTime = 0;
+            let partialTranslateInFlight = false;
 
             sttWs.onopen = () => {
                 const sonioxConfig = {
@@ -525,7 +530,7 @@ wss.on('connection', (clientWs) => {
                     sample_rate: config.sample_rate,
                     num_channels: 1,
                     language_hints: config.languages,
-                    language_hints_strict: true,
+                    language_hints_strict: config.lang_hints_strict !== false,
                     enable_endpoint_detection: true,
                     enable_language_identification: true,
                     enable_speaker_diarization: true,
@@ -602,6 +607,16 @@ wss.on('connection', (clientWs) => {
                             },
                         };
                         clientWs.send(JSON.stringify(partialMsg));
+
+                        // 부분 번역: ~1.5초마다 중간 번역 실행
+                        const now = Date.now();
+                        if (selectedLanguages.length > 0 && !partialTranslateInFlight && now - lastPartialTranslateTime > 1500 && fullText.trim().length > 3) {
+                            partialTranslateInFlight = true;
+                            lastPartialTranslateTime = now;
+                            translateText(fullText.trim(), detectedLang, selectedLanguages, clientWs, true).finally(() => {
+                                partialTranslateInFlight = false;
+                            });
+                        }
                     } else if (newFinalText && hadNonFinal) {
                         // 모델이 엔드포인트를 감지하여 토큰을 확정함 → 발화 완료
                         const finalText = finalizedText.trim();
@@ -623,6 +638,8 @@ wss.on('connection', (clientWs) => {
 
                         finalizedText = '';
                         hadNonFinal = false;
+                        lastPartialTranslateTime = 0;
+                        partialTranslateInFlight = false;
                     }
                 } catch (parseError) {
                     console.error('Error parsing Soniox message:', parseError);
@@ -680,7 +697,7 @@ wss.on('connection', (clientWs) => {
         nl: 'Dutch', sv: 'Swedish', th: 'Thai', ms: 'Malay',
     };
 
-    const translateText = async (text: string, sourceLang: string, targetLangs: string[], ws: WebSocket) => {
+    const translateText = async (text: string, sourceLang: string, targetLangs: string[], ws: WebSocket, isPartial = false) => {
         const langs = targetLangs.filter(l => l !== sourceLang);
         if (langs.length === 0 || !text.trim()) return;
 
@@ -700,6 +717,13 @@ wss.on('connection', (clientWs) => {
                 });
                 const block = resp.content[0];
                 if (block.type === 'text') content = block.text.trim();
+            } else if (translateModel === 'gemini-2.5-flash-lite' || translateModel === 'gemini-3-flash-preview') {
+                const model = genAI.getGenerativeModel({
+                    model: translateModel,
+                    systemInstruction: systemPrompt,
+                });
+                const result = await model.generateContent(userPrompt);
+                content = result.response.text()?.trim();
             } else {
                 const resp = await openai.chat.completions.create({
                     model: 'gpt-5-nano',
@@ -719,13 +743,17 @@ wss.on('connection', (clientWs) => {
             const translations: Record<string, string> = JSON.parse(jsonStr);
 
             for (const lang of langs) {
-                const translated = translations[lang];
+                let translated = translations[lang];
                 if (translated && ws.readyState === WebSocket.OPEN) {
+                    // Clean <end> tokens from translation output
+                    translated = translated.replace(/<\/?end>/gi, '').trim();
+                    if (!translated) continue;
                     ws.send(JSON.stringify({
                         type: 'translation',
                         data: {
                             target_language: lang,
                             translated_utterance: { text: translated },
+                            is_partial: isPartial,
                         },
                     }));
                 }
@@ -778,4 +806,4 @@ wss.on('connection', (clientWs) => {
     };
 });
 
-server.listen(PORT);
+server.listen(PORT, '0.0.0.0');

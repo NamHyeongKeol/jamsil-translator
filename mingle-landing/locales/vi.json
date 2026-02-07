@@ -8,7 +8,8 @@
     "title2": "đủ rồi.",
     "title3": "",
     "subtitle": "Không còn phải dừng lại sau mỗi câu để dịch. Mingle dịch các cuộc trò chuyện dài liên tục, hiển thị theo thời gian thực trên màn hình những gì bạn nói. Tất cả cuộc trò chuyện được lưu trong phòng chat, và bạn có thể mời người khác tiếp tục nói chuyện trực tuyến bất cứ lúc nào.",
-    "cta": "Tải xuống"
+    "cta": "Tải xuống",
+    "tryDemo": "Dùng thử"
   },
   "problem": {
     "label": "Vấn Đề",
@@ -68,8 +69,8 @@
     "description": "Chúng tôi sẽ loại bỏ hoàn toàn rào cản ngôn ngữ cho bạn. Dù là giọng nói hay văn bản, chỉ cần tập trung vào cuộc trò chuyện."
   },
   "cta": {
-    "title1": "Phá vỡ rào cản ngôn ngữ,",
-    "title2": "bắt đầu giao tiếp thực sự",
+    "title1": "Cách dễ nhất để",
+    "title2": "kết bạn — Mingle",
     "subtitle": "Với Mingle, bạn có thể có những cuộc trò chuyện sâu sắc với bất kỳ ai, dù họ nói ngôn ngữ gì.",
     "button": "Tải Xuống Ngay"
   },
@@ -85,6 +86,10 @@
     "successDesc": "Chúng tôi sẽ thông báo khi Mingle sẵn sàng.",
     "error": "Đã xảy ra lỗi. Vui lòng thử lại.",
     "close": "Đóng"
+  },
+  "demo": {
+    "limitReached": "Đã hết giới hạn demo (30 giây)",
+    "limitDesc": "Đăng ký truy cập sớm để tiếp tục"
   },
   "mockup": {
     "recording": "Đang ghi âm...",

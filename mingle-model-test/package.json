@@ -1,15 +1,16 @@
 {
-  "name": "jamsil-translator-app",
+  "name": "mingle-model-test",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev --port 4000\" \"ts-node stt-server.ts\"",
+    "dev": "concurrently \"next dev --port 3000\" \"ts-node stt-server.ts\"",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 3000",
     "lint": "eslint"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^6.16.2",
     "@radix-ui/react-label": "^2.1.7",

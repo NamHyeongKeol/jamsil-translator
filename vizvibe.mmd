@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: gpt_translation
+    %% @lastActive: stt_server_landing_merge
 
     %% === START ===
     %% @project_start [start, closed]
@@ -71,10 +71,34 @@ flowchart TD
     cleanup_and_usage_ui("로그 제거 & 사용량 UI<br/><sub>서버/클라이언트 console.log 전부 제거<br/>Soniox 오디오 사용량을 WebSocket으로<br/>클라이언트 전달, 세션/누적 사용량 UI 표시</sub>")
 
     %% @gpt_translation [ai-task, closed]
-    gpt_translation("AI 번역 통합 (모델 선택)<br/><sub>Claude Haiku 4.5 / GPT-5-nano 선택 가능<br/>모든 STT 프로바이더에 번역 적용<br/>Soniox language_hints_strict 추가</sub>")
+    gpt_translation("AI 번역 통합 (모델 선택)<br/><sub>Claude Haiku 4.5 / GPT-5-nano 선택 가능<br/>모든 STT 프로바이더에 번역 적용<br/>Soniox language_hints_strict 토글 UI</sub>")
 
     %% @translation_engine_research [ai-task, closed]
     translation_engine_research("번역 기능 고도화<br/><sub>Deepgram/Fireworks는 번역 미지원<br/>별도 번역 엔진(GPT/DeepL 등)을<br/>붙이는 파이프라인 구축 필요</sub>")
+
+    %% @live_phone_demo [ai-task, closed]
+    live_phone_demo("랜딩 라이브 폰 데모<br/><sub>hero 정적 이미지를 CSS 스마트폰 프레임<br/>+ 실시간 STT 채팅 UI로 교체<br/>마이크 버튼으로 직접 체험 가능</sub>")
+
+    %% @gemini_translation [ai-task, closed]
+    gemini_translation("Gemini 번역 모델 추가<br/><sub>Gemini 2.5 Flash Lite / 3 Flash Preview<br/>번역 모델 추가, 데모는 Gemini Lite 사용<br/>@google/generative-ai SDK 연동</sub>")
+
+    %% @demo_ux_and_restructure [ai-task, closed]
+    demo_ux_and_restructure("데모 UX 개선 & 폴더 정리<br/><sub>폰 데모 반응형/노치/에러처리 개선<br/>hero에 번역기 테스트 버튼 추가<br/>레포를 mingle-landing + mingle-model-test로 분리</sub>")
+
+    %% @demo_streaming_polish [ai-task, closed]
+    demo_streaming_polish("스트리밍 번역 & UI 폴리시<br/><sub>부분 번역 ~2초 스트리밍, 국기 이모지 pill<br/>iPhone 녹음 인디케이터, bouncing dots<br/>기본언어 EN/KO/JA, Gemini Lite 기본값</sub>")
+
+    %% @demo_usage_limit_ux [ai-task, closed]
+    demo_usage_limit_ux("데모 사용량 제한 & UX 개선<br/><sub>30초/브라우저 사용량 제한 + 얼리액세스 모달<br/>언어 선택 드롭다운(최대5개), localStorage 영속성<br/>부분 번역 bouncing dots, 노치 확대, i18n 완성</sub>")
+
+    %% @demo_bugfix_db_logging [ai-task, closed]
+    demo_bugfix_db_logging("버그 수정 & 대화 DB 적재<br/><sub>React Strict Mode 중복 말풍선 수정<br/>대화록 DB 저장(번역 포함), 사용량 프로그레스바<br/>30초 제한 i18n, iPad 여백, Prisma directUrl</sub>")
+
+    %% @prisma_local_simplify [ai-task, closed]
+    prisma_local_simplify("Prisma 로컬 DB 단순화<br/><sub>prisma dev 임베디드 postgres → Homebrew PG14<br/>prisma+postgres:// 프록시 제거, 포트 5432<br/>directUrl 제거, Studio 안정 작동</sub>")
+
+    %% @stt_server_landing_merge [ai-task, closed]
+    stt_server_landing_merge("STT 서버 랜딩 통합<br/><sub>stt-server.ts를 mingle-landing으로 이동<br/>pnpm dev로 Next.js+STT 동시 실행<br/>WS URL 동적 hostname 지원</sub>")
 
     %% @chat_invite_feature [ai-task, opened]
     chat_invite_feature("대화록 초대 기능<br/><sub>번역된 대화를 채팅방으로 저장하고<br/>상대방을 초대하여 헤어진 후에도<br/>연락을 이어갈 수 있는 핵심 기능</sub>")
@@ -110,13 +134,22 @@ flowchart TD
     soniox_integration --> cleanup_and_usage_ui
     cleanup_and_usage_ui --> gpt_translation
     gpt_translation --> translation_engine_research
+    gpt_translation --> live_phone_demo
+    live_phone_demo --> gemini_translation
+    gemini_translation --> demo_ux_and_restructure
+    demo_ux_and_restructure --> demo_streaming_polish
+    demo_streaming_polish --> demo_usage_limit_ux
+    demo_usage_limit_ux --> demo_bugfix_db_logging
+    demo_bugfix_db_logging --> prisma_local_simplify
+    prisma_local_simplify --> stt_server_landing_merge
+    stt_server_landing_merge --> chat_invite_feature
     translation_engine_research --> chat_invite_feature
     chat_invite_feature --> mobile_app_development
     mobile_app_development -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        gpt_translation
+        stt_server_landing_merge
     end
 
     %% === STYLES ===
@@ -174,8 +207,32 @@ flowchart TD
     %% Previous recent node (now closed)
     style cleanup_and_usage_ui fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
 
+    %% Previous recent node (now closed)
+    style gpt_translation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style live_phone_demo fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style gemini_translation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style demo_ux_and_restructure fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style demo_streaming_polish fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style demo_usage_limit_ux fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style demo_bugfix_db_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style prisma_local_simplify fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
     %% Recent node (highlighted purple)
-    style gpt_translation fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style stt_server_landing_merge fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Closed tasks (soft purple)
     style translation_engine_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -183,4 +240,5 @@ flowchart TD
     style mobile_app_development fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Blocked subgraph style (red dashed)
+    %% Recent subgraph style
     style recent fill:transparent,stroke:#c084fc,color:#c084fc,stroke-width:2px,stroke-dasharray:5 5
