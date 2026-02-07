@@ -12,7 +12,7 @@ const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
 const server = createServer();
 const wss = new WebSocketServer({ server });
 
-console.log('Starting STT WebSocket proxy server...');
+
 
 interface ClientConfig {
     sample_rate: number;
@@ -21,8 +21,6 @@ interface ClientConfig {
 }
 
 wss.on('connection', (clientWs) => {
-    console.log('Client connected to proxy');
-
     let sttWs: WebSocket | null = null;
     let isClientConnected = true;
     let abortController: AbortController | null = null;
@@ -62,7 +60,6 @@ wss.on('connection', (clientWs) => {
         try {
             abortController = new AbortController();
             
-            console.log(`Requesting Gladia audio URL with languages: ${config.languages}, translation: ${enableTranslation}`);
             const requestBody: Record<string, unknown> = {
                 sample_rate: config.sample_rate,
                 encoding: 'wav/pcm',
@@ -101,7 +98,6 @@ wss.on('connection', (clientWs) => {
             });
 
             if (!isClientConnected) {
-                console.log('Client already disconnected, aborting Gladia connection');
                 return;
             }
 
@@ -111,7 +107,6 @@ wss.on('connection', (clientWs) => {
             }
 
             const data = await response.json() as { url?: string };
-            console.log("Full response from Gladia:", data);
             const gladiaWsUrl = data.url;
 
             if (!gladiaWsUrl) {
@@ -119,15 +114,12 @@ wss.on('connection', (clientWs) => {
             }
 
             if (!isClientConnected) {
-                console.log('Client already disconnected, aborting Gladia WebSocket connection');
                 return;
             }
 
-            console.log('Got Gladia URL, connecting to WebSocket...');
             sttWs = new WebSocket(gladiaWsUrl);
 
             sttWs.onopen = () => {
-                console.log('Proxy connected to Gladia WebSocket');
                 if (isClientConnected) {
                     clientWs.send(JSON.stringify({ status: 'ready' }));
                 } else {
@@ -137,14 +129,6 @@ wss.on('connection', (clientWs) => {
 
             sttWs.onmessage = (event) => {
                 if (isClientConnected) {
-                    const msg = JSON.parse(event.data.toString());
-                    if (msg.type === 'transcript') {
-                        console.log(`[Gladia] transcript is_final=${msg.data?.is_final}, lang=${msg.data?.utterance?.language}, text="${msg.data?.utterance?.text?.slice(0, 20)}..."`);
-                    } else if (msg.type === 'translation') {
-                        console.log(`[Gladia] translation target=${msg.data?.target_language}, text="${msg.data?.translated_utterance?.text?.slice(0, 20)}..."`);
-                    } else if (msg.type !== 'audio_chunk') {
-                        console.log(`[Gladia] ${msg.type}`);
-                    }
                     clientWs.send(event.data.toString());
                 }
             };
@@ -156,8 +140,7 @@ wss.on('connection', (clientWs) => {
                 }
             };
 
-            sttWs.onclose = (event) => {
-                console.log('Gladia connection closed:', event.code, event.reason);
+            sttWs.onclose = () => {
                 if (isClientConnected) {
                     clientWs.close();
                 }
@@ -165,7 +148,6 @@ wss.on('connection', (clientWs) => {
 
         } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') {
-                console.log('Gladia connection request was aborted');
                 return;
             }
             console.error('Error starting Gladia connection:', error);
@@ -224,9 +206,6 @@ wss.on('connection', (clientWs) => {
             // 항상 첫 번째 선택된 언어로 지정 (detect_language는 스트리밍에서 400 에러 유발)
             wsUrl.searchParams.set('language', primaryLang);
 
-            console.log('Connecting to Deepgram with URL:', wsUrl.toString());
-            console.log('Language:', primaryLang);
-
             sttWs = new WebSocket(wsUrl.toString(), {
                 headers: {
                     'Authorization': `Token ${deepgramApiKey}`,
@@ -234,7 +213,6 @@ wss.on('connection', (clientWs) => {
             });
 
             sttWs.onopen = () => {
-                console.log('Proxy connected to Deepgram WebSocket');
                 if (isClientConnected) {
                     clientWs.send(JSON.stringify({ status: 'ready' }));
                 } else {
@@ -246,22 +224,19 @@ wss.on('connection', (clientWs) => {
                 if (isClientConnected) {
                     try {
                         const msg = JSON.parse(event.data.toString());
-                        
-                        // Deepgram 응답 형식을 Gladia 형식으로 변환
+
                         if (msg.type === 'Results' || msg.channel) {
                             const channel = msg.channel;
                             const alternatives = channel?.alternatives;
                             if (alternatives && alternatives.length > 0) {
                                 const transcript = alternatives[0].transcript;
                                 const isFinal = msg.is_final;
-                                // Deepgram multi 모드에서 감지된 언어
-                                const detectedLang = alternatives[0].detected_language || 
-                                                     channel?.detected_language || 
+                                const detectedLang = alternatives[0].detected_language ||
+                                                     channel?.detected_language ||
                                                      msg.metadata?.detected_language ||
                                                      config.languages[0] || 'en';
-                                
+
                                 if (transcript) {
-                                    // Gladia 형식으로 변환하여 클라이언트에 전송
                                     const gladiaStyleMsg = {
                                         type: 'transcript',
                                         data: {
@@ -272,15 +247,9 @@ wss.on('connection', (clientWs) => {
                                             },
                                         },
                                     };
-                                    
-                                    console.log(`[Deepgram] transcript is_final=${isFinal}, lang=${detectedLang}, text="${transcript.slice(0, 30)}..."`);
                                     clientWs.send(JSON.stringify(gladiaStyleMsg));
                                 }
                             }
-                        } else if (msg.type === 'Metadata') {
-                            console.log('[Deepgram] Metadata received:', msg);
-                        } else if (msg.type === 'UtteranceEnd') {
-                            console.log('[Deepgram] Utterance ended');
                         }
                     } catch (parseError) {
                         console.error('Error parsing Deepgram message:', parseError);
@@ -295,8 +264,7 @@ wss.on('connection', (clientWs) => {
                 }
             };
 
-            sttWs.onclose = (event) => {
-                console.log('Deepgram connection closed:', event.code, event.reason);
+            sttWs.onclose = () => {
                 if (isClientConnected) {
                     clientWs.close();
                 }
@@ -333,9 +301,6 @@ wss.on('connection', (clientWs) => {
             // multi 언어 모드: 여러 언어를 자동 감지하여 전사
             wsUrl.searchParams.set('language', 'multi');
 
-            console.log('Connecting to Deepgram Multi with URL:', wsUrl.toString());
-            console.log('Languages (multi mode):', config.languages);
-
             sttWs = new WebSocket(wsUrl.toString(), {
                 headers: {
                     'Authorization': `Token ${deepgramApiKey}`,
@@ -343,7 +308,6 @@ wss.on('connection', (clientWs) => {
             });
 
             sttWs.onopen = () => {
-                console.log('Proxy connected to Deepgram Multi WebSocket');
                 if (isClientConnected) {
                     clientWs.send(JSON.stringify({ status: 'ready' }));
                 } else {
@@ -363,19 +327,8 @@ wss.on('connection', (clientWs) => {
                                 const transcript = alternatives[0].transcript;
                                 const isFinal = msg.is_final;
 
-                                // multi 모드 언어 감지 우선순위:
-                                // 1) alternatives[0].languages: 이 utterance에서 감지된 언어 배열
-                                // 2) channel.languages: channel 레벨 감지 언어 배열
-                                // 3) word[0].language: 첫 단어의 언어 태그
-                                // 4) fallback: 'multi'
                                 const words = alternatives[0].words;
                                 let detectedLang = 'multi';
-
-                                // 디버그: raw 응답 구조 확인 (final 결과만)
-                                if (isFinal && transcript) {
-                                    const wordLangs = words?.slice(0, 5).map((w: { word: string; language?: string }) => `${w.word}(${w.language || '?'})`);
-                                    console.log(`[Deepgram-Multi DEBUG] channel.languages=${JSON.stringify(channel?.languages)}, word_langs=[${wordLangs}], alternatives[0].languages=${JSON.stringify(alternatives[0]?.languages)}`);
-                                }
 
                                 if (alternatives[0]?.languages && alternatives[0].languages.length > 0) {
                                     detectedLang = alternatives[0].languages[0];
@@ -396,15 +349,9 @@ wss.on('connection', (clientWs) => {
                                             },
                                         },
                                     };
-
-                                    console.log(`[Deepgram-Multi] transcript is_final=${isFinal}, lang=${detectedLang}, text="${transcript.slice(0, 30)}..."`);
                                     clientWs.send(JSON.stringify(gladiaStyleMsg));
                                 }
                             }
-                        } else if (msg.type === 'Metadata') {
-                            console.log('[Deepgram-Multi] Metadata received:', msg);
-                        } else if (msg.type === 'UtteranceEnd') {
-                            console.log('[Deepgram-Multi] Utterance ended');
                         }
                     } catch (parseError) {
                         console.error('Error parsing Deepgram Multi message:', parseError);
@@ -419,8 +366,7 @@ wss.on('connection', (clientWs) => {
                 }
             };
 
-            sttWs.onclose = (event) => {
-                console.log('Deepgram Multi connection closed:', event.code, event.reason);
+            sttWs.onclose = () => {
                 if (isClientConnected) {
                     clientWs.close();
                 }
@@ -461,8 +407,6 @@ wss.on('connection', (clientWs) => {
             wsUrl.searchParams.set('response_format', 'verbose_json');
             wsUrl.searchParams.set('sample_rate', config.sample_rate.toString()); // 필수: 클라이언트 샘플 레이트(48000 등) 전달
 
-            console.log('Connecting to Fireworks with URL:', wsUrl.toString());
-
             sttWs = new WebSocket(wsUrl.toString(), {
                 headers: {
                     'Authorization': `Bearer ${fireworksApiKey}`,
@@ -470,7 +414,6 @@ wss.on('connection', (clientWs) => {
             });
 
             sttWs.onopen = () => {
-                console.log('Proxy connected to Fireworks WebSocket');
                 if (isClientConnected) {
                     clientWs.send(JSON.stringify({ status: 'ready' }));
                 } else {
@@ -481,10 +424,7 @@ wss.on('connection', (clientWs) => {
             sttWs.onmessage = (event) => {
                 if (isClientConnected) {
                     try {
-                        const raw = event.data.toString();
-                        console.log(`[Fireworks DEBUG] raw:`, raw.slice(0, 200));
-                        const msg = JSON.parse(raw);
-
+                        const msg = JSON.parse(event.data.toString());
                         const text = msg.text || '';
                         const isFinal = msg.is_final || false;
 
@@ -492,14 +432,13 @@ wss.on('connection', (clientWs) => {
                             const gladiaStyleMsg = {
                                 type: 'transcript',
                                 data: {
-                                    is_final: isFinal, 
+                                    is_final: isFinal,
                                     utterance: {
                                         text: text,
-                                        language: language // Fireworks might not return detected language in stream
-                                    }
-                                }
+                                        language: language,
+                                    },
+                                },
                             };
-                            console.log(`[Fireworks] text="${text.slice(0, 30)}..." final=${isFinal}`);
                             clientWs.send(JSON.stringify(gladiaStyleMsg));
                         }
                     } catch (e) {
@@ -515,8 +454,7 @@ wss.on('connection', (clientWs) => {
                 }
             };
 
-            sttWs.onclose = (event) => {
-                console.log('Fireworks connection closed:', event.code, event.reason);
+            sttWs.onclose = () => {
                 if (isClientConnected) {
                     clientWs.close();
                 }
@@ -539,7 +477,6 @@ wss.on('connection', (clientWs) => {
         }
 
         try {
-            console.log('Connecting to Soniox with languages:', config.languages);
             sttWs = new WebSocket(SONIOX_WS_URL);
 
             // 토큰 누적 상태 (Soniox는 토큰 단위로 반환)
@@ -548,8 +485,6 @@ wss.on('connection', (clientWs) => {
             let hadNonFinal = false;
 
             sttWs.onopen = () => {
-                console.log('Proxy connected to Soniox WebSocket');
-
                 const sonioxConfig = {
                     api_key: sonioxApiKey,
                     model: 'stt-rt-v4',
@@ -582,17 +517,20 @@ wss.on('connection', (clientWs) => {
                         return;
                     }
 
-                    // 오디오 처리 시간 로깅
+                    // 오디오 처리 시간을 클라이언트에 전송
                     if (msg.final_audio_proc_ms !== undefined || msg.total_audio_proc_ms !== undefined) {
-                        const finalSec = ((msg.final_audio_proc_ms || 0) / 1000).toFixed(1);
-                        const totalSec = ((msg.total_audio_proc_ms || 0) / 1000).toFixed(1);
-                        console.log(`[Soniox USAGE] final=${finalSec}s, total=${totalSec}s`);
+                        const usageMsg = {
+                            type: 'usage',
+                            data: {
+                                final_audio_sec: (msg.final_audio_proc_ms || 0) / 1000,
+                                total_audio_sec: (msg.total_audio_proc_ms || 0) / 1000,
+                                finished: !!msg.finished,
+                            },
+                        };
+                        clientWs.send(JSON.stringify(usageMsg));
                     }
 
                     if (msg.finished) {
-                        const finalSec = ((msg.final_audio_proc_ms || 0) / 1000).toFixed(1);
-                        const totalSec = ((msg.total_audio_proc_ms || 0) / 1000).toFixed(1);
-                        console.log(`[Soniox] Session finished. Total audio: final=${finalSec}s, total=${totalSec}s`);
                         return;
                     }
 
@@ -629,7 +567,6 @@ wss.on('connection', (clientWs) => {
                                 },
                             },
                         };
-                        console.log(`[Soniox] partial lang=${detectedLang}, text="${fullText.trim().slice(0, 30)}..."`);
                         clientWs.send(JSON.stringify(partialMsg));
                     } else if (newFinalText && hadNonFinal) {
                         // 모델이 엔드포인트를 감지하여 토큰을 확정함 → 발화 완료
@@ -643,7 +580,6 @@ wss.on('connection', (clientWs) => {
                                 },
                             },
                         };
-                        console.log(`[Soniox] FINAL lang=${detectedLang}, text="${finalizedText.trim().slice(0, 30)}..."`);
                         clientWs.send(JSON.stringify(finalMsg));
                         finalizedText = '';
                         hadNonFinal = false;
@@ -660,8 +596,7 @@ wss.on('connection', (clientWs) => {
                 }
             };
 
-            sttWs.onclose = (event) => {
-                console.log('Soniox connection closed:', event.code, event.reason);
+            sttWs.onclose = () => {
                 // 남은 텍스트가 있으면 마지막 발화로 전송
                 if (isClientConnected && finalizedText) {
                     const finalMsg = {
@@ -696,8 +631,6 @@ wss.on('connection', (clientWs) => {
         const data = JSON.parse(message);
 
         if (data.sample_rate && data.languages) {
-            // 첫 번째 메시지 - 설정 정보
-            console.log("Received config from client:", data);
             currentModel = data.stt_model || 'gladia';
             
             if (currentModel === 'deepgram') {
@@ -719,9 +652,6 @@ wss.on('connection', (clientWs) => {
                 // Deepgram, Fireworks, Soniox는 바이너리 데이터를 직접 전송해야 함 (Gladia/Gladia-STT는 JSON 형식)
                 if (data.type === 'audio_chunk' && data.data?.chunk) {
                     const pcmData = Buffer.from(data.data.chunk, 'base64');
-                    if (currentModel === 'fireworks') {
-                        console.log(`[Fireworks DEBUG] sending ${pcmData.length} bytes, ws state=${sttWs.readyState}`);
-                    }
                     sttWs.send(pcmData);
                 }
             } else {
@@ -732,11 +662,8 @@ wss.on('connection', (clientWs) => {
     };
 
     clientWs.onclose = () => {
-        console.log('Client disconnected from proxy');
         cleanup();
     };
 });
 
-server.listen(PORT, () => {
-    console.log(`STT WebSocket proxy server listening on port ${PORT}`);
-});
+server.listen(PORT);
