@@ -10,7 +10,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-const PORT = 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 const GLADIA_API_URL = 'https://api.gladia.io/v2/live';
 const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen';
 const FIREWORKS_WS_URL = 'wss://audio-streaming.api.fireworks.ai/v1/audio/transcriptions/streaming';
