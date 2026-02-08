@@ -3,10 +3,8 @@
     "cta": "다운로드"
   },
   "hero": {
-    "badge": "",
     "title1": "한 문장씩 멈추는 번역은",
     "title2": "이제 그만.",
-    "title3": "",
     "subtitle": "한 문장씩 멈춰야 하는 번역기는 이제 그만. Mingle은 긴 대화도 끊김 없이 계속해서 번역하며, 말하는 즉시 실시간으로 번역해 화면에 보여줍니다. 모든 대화는 채팅방에 기록되고, 상대를 초대해 언제든 온라인으로 다시 대화할 수 있어요.",
     "cta": "다운로드",
     "tryDemo": "테스트 해보기"
@@ -15,19 +13,7 @@
     "label": "문제점",
     "title1": "외국인 친구 사귀기,",
     "title2": "왜 이렇게 어려울까요?",
-    "description": "파티에서 만난 멋진 친구, 통역 앱 켜고 한마디씩 번역하다 보면 대화의 흐름이 끊기고, 어색한 침묵만 남습니다.",
-    "list": {
-      "item1": "한 문장씩 번역하느라 대화 흐름이 끊김",
-      "item2": "3명 이상 대화에서 누가 뭐라 했는지 구분 불가",
-      "item3": "헤어지고 나면 연락할 방법이 없음",
-      "item4": "대화 순서마다 언어 선택을 수동으로 바꿔줘야 함"
-    },
-    "chat": {
-      "msg1": "\"Hey, I really enjoyed talking with you tonight!\"",
-      "msg2": "\"어... 잠시만요... 번역기...\"",
-      "msg3": "\"...maybe we can exchange contacts?\"",
-      "msg4": "\"아 네... 그게...\""
-    }
+    "description": "파티에서 만난 멋진 친구, 통역 앱 켜고 한마디씩 번역하다 보면 대화의 흐름이 끊기고, 어색한 침묵만 남습니다."
   },
   "beforeAfter": {
     "beforeLabel": "Before",
@@ -72,14 +58,11 @@
   },
   "coreValue": {
     "label": "핵심 가치",
-    "highlight": "",
     "title": "오프라인 대화를 온라인 채팅방에서 이어가세요",
     "desc1": "Mingle의 진짜 가치는 여기에 있습니다.",
     "desc2": "실제로 만난 사람을 앱에 초대하세요. 번역된 대화가 영구적인 채팅방이 됩니다. 다음날도, 다음 주에도, 언제든 대화를 이어갈 수 있어요.",
     "desc3": "파티에서 만난 인연이 진짜 친구가 되는 순간, 그게 바로",
     "chatDate": "2024년 2월 4일 대화",
-    "chatMsg1": "\"It was so nice meeting you! Let's definitely hang out again when I visit Seoul.\"",
-    "chatMsg2": "\"너 만나서 정말 좋았어! 서울 가면 꼭 다시 보자.\"",
     "inviteBtn": "Jamie 초대하기"
   },
   "talkToWorld": {
@@ -111,13 +94,6 @@
   "demo": {
     "limitReached": "데모 제한 도달 (30초)",
     "limitDesc": "계속 사용하려면 얼리 액세스에 등록하세요"
-  },
-  "mockup": {
-    "recording": "녹음 중...",
-    "translate": "실시간 번역 중",
-    "speaker1": "화자 1",
-    "speaker2": "화자 2",
-    "speaker3": "화자 3"
   },
   "partyScenario": {
     "step1Title": "1. 파티에서 만남",

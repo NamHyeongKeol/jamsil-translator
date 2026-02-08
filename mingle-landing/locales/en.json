@@ -3,10 +3,8 @@
     "cta": "Download"
   },
   "hero": {
-    "badge": "",
     "title1": "Sentence-by-sentence translation,",
     "title2": "no more.",
-    "title3": "",
     "subtitle": "No more stopping after every sentence to translate. Mingle keeps long conversations flowing continuously, translating in real-time as you speak and showing it on screen. Every conversation is saved in a chat room, and you can invite others to continue talking online anytime.",
     "cta": "Download",
     "tryDemo": "Try it out"
@@ -15,19 +13,7 @@
     "label": "The Problem",
     "title1": "Making foreign friends,",
     "title2": "why is it so hard?",
-    "description": "You meet an amazing person at a party, but translating one sentence at a time breaks the flow of conversation, leaving only awkward silence.",
-    "list": {
-      "item1": "Conversation flow breaks while translating sentence by sentence",
-      "item2": "Can't tell who said what in group conversations of 3+ people",
-      "item3": "No way to stay in touch after parting",
-      "item4": "Have to manually switch language selection for each turn"
-    },
-    "chat": {
-      "msg1": "\"Hey, I really enjoyed talking with you tonight!\"",
-      "msg2": "\"Um... hold on... translator...\"",
-      "msg3": "\"...maybe we can exchange contacts?\"",
-      "msg4": "\"Ah yes... well...\""
-    }
+    "description": "You meet an amazing person at a party, but translating one sentence at a time breaks the flow of conversation, leaving only awkward silence."
   },
   "beforeAfter": {
     "beforeLabel": "Before",
@@ -72,14 +58,11 @@
   },
   "coreValue": {
     "label": "Core Value",
-    "highlight": "",
     "title": "Continue your offline conversation in an online chat room",
     "desc1": "This is the true value of Mingle.",
     "desc2": "Invite the person you met in real life to your app. Your translated conversation becomes a permanent chat room. Continue talking the next day, next week, or anytime.",
     "desc3": "The moment a chance meeting at a party becomes a real friendship, that's",
     "chatDate": "Conversation from Feb 4, 2024",
-    "chatMsg1": "\"It was so nice meeting you! Let's definitely hang out again when I visit Seoul.\"",
-    "chatMsg2": "\"It was great meeting you! Let's definitely meet again when you come to Seoul.\"",
     "inviteBtn": "Invite Jamie"
   },
   "talkToWorld": {
@@ -111,13 +94,6 @@
   "demo": {
     "limitReached": "Demo limit reached (30s)",
     "limitDesc": "Sign up for early access to continue"
-  },
-  "mockup": {
-    "recording": "Recording...",
-    "translate": "Translating in real-time",
-    "speaker1": "Speaker 1",
-    "speaker2": "Speaker 2",
-    "speaker3": "Speaker 3"
   },
   "partyScenario": {
     "step1Title": "1. Meet at Party",

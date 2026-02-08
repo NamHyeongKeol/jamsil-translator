@@ -3,10 +3,8 @@
     "cta": "Scarica"
   },
   "hero": {
-    "badge": "",
     "title1": "Traduzione frase per frase,",
     "title2": "basta così.",
-    "title3": "",
     "subtitle": "Basta fermarsi dopo ogni frase per tradurre. Mingle traduce le conversazioni lunghe continuamente, mostrando in tempo reale sullo schermo quello che dici. Tutte le conversazioni vengono salvate in una chat room, e puoi invitare altri a continuare a parlare online in qualsiasi momento.",
     "cta": "Scarica",
     "tryDemo": "Provalo"
@@ -15,19 +13,7 @@
     "label": "Il Problema",
     "title1": "Fare amicizia con stranieri,",
     "title2": "perché è così difficile?",
-    "description": "Incontri qualcuno di fantastico a una festa, ma tradurre frase per frase interrompe il flusso della conversazione, lasciando solo un silenzio imbarazzante.",
-    "list": {
-      "item1": "Il flusso della conversazione si interrompe traducendo frase per frase",
-      "item2": "Nelle conversazioni con 3+ persone è impossibile distinguere chi ha detto cosa",
-      "item3": "Nessun modo per restare in contatto dopo essersi separati",
-      "item4": "Bisogna cambiare manualmente la selezione della lingua ad ogni turno"
-    },
-    "chat": {
-      "msg1": "\"Ehi, mi è piaciuto molto parlare con te stasera!\"",
-      "msg2": "\"Uhm...aspetta...traduttore...\"",
-      "msg3": "\"...possiamo scambiarci i contatti?\"",
-      "msg4": "\"Ah sì...cioè...\""
-    }
+    "description": "Incontri qualcuno di fantastico a una festa, ma tradurre frase per frase interrompe il flusso della conversazione, lasciando solo un silenzio imbarazzante."
   },
   "beforeAfter": {
     "beforeLabel": "Prima",
@@ -72,14 +58,11 @@
   },
   "coreValue": {
     "label": "Valore Fondamentale",
-    "highlight": "",
     "title": "Continua la tua conversazione offline in una chat room online",
     "desc1": "Questo è il vero valore di Mingle.",
     "desc2": "Invita la persona che hai incontrato di persona nell'app. La tua conversazione tradotta diventa una chat room permanente. Continua a parlare il giorno dopo, la settimana prossima, o quando vuoi.",
     "desc3": "Il momento in cui un incontro casuale a una festa diventa vera amicizia, questo è",
     "chatDate": "Conversazione del 4 febbraio 2024",
-    "chatMsg1": "\"È stato bellissimo conoscerti! Vediamoci quando visito Seoul.\"",
-    "chatMsg2": "\"È stato fantastico conoscerti! Incontriamoci quando vieni a Seoul.\"",
     "inviteBtn": "Invita Jamie"
   },
   "talkToWorld": {
@@ -111,13 +94,6 @@
   "demo": {
     "limitReached": "Limite demo raggiunto (30s)",
     "limitDesc": "Registrati per l'accesso anticipato"
-  },
-  "mockup": {
-    "recording": "Registrazione...",
-    "translate": "Traduzione in tempo reale",
-    "speaker1": "Parlante 1",
-    "speaker2": "Parlante 2",
-    "speaker3": "Parlante 3"
   },
   "partyScenario": {
     "step1Title": "1. Incontrarsi alla festa",

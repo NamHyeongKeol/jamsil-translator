@@ -3,10 +3,8 @@
     "cta": "Tải xuống"
   },
   "hero": {
-    "badge": "",
     "title1": "Dịch từng câu một,",
     "title2": "đủ rồi.",
-    "title3": "",
     "subtitle": "Không còn phải dừng lại sau mỗi câu để dịch. Mingle dịch các cuộc trò chuyện dài liên tục, hiển thị theo thời gian thực trên màn hình những gì bạn nói. Tất cả cuộc trò chuyện được lưu trong phòng chat, và bạn có thể mời người khác tiếp tục nói chuyện trực tuyến bất cứ lúc nào.",
     "cta": "Tải xuống",
     "tryDemo": "Dùng thử"
@@ -15,19 +13,7 @@
     "label": "Vấn Đề",
     "title1": "Kết bạn với người nước ngoài,",
     "title2": "tại sao lại khó đến vậy?",
-    "description": "Bạn gặp một người tuyệt vời tại bữa tiệc, nhưng việc dịch từng câu một làm gián đoạn dòng chảy cuộc trò chuyện, chỉ để lại sự im lặng ngượng ngùng.",
-    "list": {
-      "item1": "Dòng chảy cuộc trò chuyện bị gián đoạn khi dịch từng câu",
-      "item2": "Trong cuộc trò chuyện 3+ người không thể phân biệt ai nói gì",
-      "item3": "Không có cách giữ liên lạc sau khi chia tay",
-      "item4": "Phải chuyển đổi ngôn ngữ thủ công mỗi lượt nói"
-    },
-    "chat": {
-      "msg1": "\"Này, mình thực sự thích nói chuyện với bạn tối nay!\"",
-      "msg2": "\"Ừm...đợi chút...ứng dụng dịch...\"",
-      "msg3": "\"...chúng ta có thể trao đổi liên lạc không?\"",
-      "msg4": "\"À vâng...cái đó...\""
-    }
+    "description": "Bạn gặp một người tuyệt vời tại bữa tiệc, nhưng việc dịch từng câu một làm gián đoạn dòng chảy cuộc trò chuyện, chỉ để lại sự im lặng ngượng ngùng."
   },
   "beforeAfter": {
     "beforeLabel": "Trước",
@@ -72,14 +58,11 @@
   },
   "coreValue": {
     "label": "Giá Trị Cốt Lõi",
-    "highlight": "",
     "title": "Tiếp tục cuộc trò chuyện offline trong phòng chat trực tuyến",
     "desc1": "Đây là giá trị thực sự của Mingle.",
     "desc2": "Mời người bạn gặp ngoài đời vào ứng dụng. Cuộc trò chuyện đã dịch trở thành phòng chat vĩnh viễn. Tiếp tục nói chuyện ngày hôm sau, tuần sau, hoặc bất cứ khi nào.",
     "desc3": "Khoảnh khắc cuộc gặp gỡ tình cờ tại bữa tiệc trở thành tình bạn thực sự, đó là",
     "chatDate": "Cuộc trò chuyện ngày 4 tháng 2 năm 2024",
-    "chatMsg1": "\"Thật vui được gặp bạn! Hẹn gặp lại khi mình đến Seoul nhé.\"",
-    "chatMsg2": "\"Rất vui được biết bạn! Hẹn gặp khi bạn đến Seoul.\"",
     "inviteBtn": "Mời Jamie"
   },
   "talkToWorld": {
@@ -111,13 +94,6 @@
   "demo": {
     "limitReached": "Đã hết giới hạn demo (30 giây)",
     "limitDesc": "Đăng ký truy cập sớm để tiếp tục"
-  },
-  "mockup": {
-    "recording": "Đang ghi âm...",
-    "translate": "Đang dịch thời gian thực",
-    "speaker1": "Người nói 1",
-    "speaker2": "Người nói 2",
-    "speaker3": "Người nói 3"
   },
   "partyScenario": {
     "step1Title": "1. Gặp nhau tại bữa tiệc",

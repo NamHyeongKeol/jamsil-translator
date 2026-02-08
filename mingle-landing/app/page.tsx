@@ -74,9 +74,30 @@ function LanguageSelector() {
   const { i18n } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // 바깥 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    // 약간의 딜레이를 주어 현재 클릭 이벤트가 처리된 후 리스너 추가
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 0)
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [isOpen])
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors text-sm text-text-primary"
@@ -87,37 +108,35 @@ function LanguageSelector() {
       </button>
       <AnimatePresence>
         {isOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute right-0 top-full mt-2 py-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 min-w-[160px] max-h-[400px] overflow-y-auto"
-            >
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    i18n.changeLanguage(lang.code)
-                    // URL 경로 업데이트
-                    const newPath = lang.code === 'en' ? '/' : `/${lang.code}`
-                    window.history.pushState({}, '', newPath)
-                    setIsOpen(false)
-                  }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-3 transition-colors ${lang.code === i18n.language ? 'text-accent-primary' : 'text-text-secondary'}`}
-                >
-                  <span>{lang.flag}</span>
-                  <span>{lang.name}</span>
-                </button>
-              ))}
-            </motion.div>
-          </>
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute right-0 top-full mt-2 py-2 bg-white border border-gray-200 rounded-xl shadow-xl z-[70] min-w-[160px] max-h-[400px] overflow-y-auto"
+          >
+            {languages.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => {
+                  i18n.changeLanguage(lang.code)
+                  // URL 경로 업데이트
+                  const newPath = lang.code === 'en' ? '/' : `/${lang.code}`
+                  window.history.pushState({}, '', newPath)
+                  setIsOpen(false)
+                }}
+                className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-3 transition-colors ${lang.code === i18n.language ? 'text-accent-primary' : 'text-text-secondary'}`}
+              >
+                <span>{lang.flag}</span>
+                <span>{lang.name}</span>
+              </button>
+            ))}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
   )
 }
+
 
 function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { t } = useTranslation()
