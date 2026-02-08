@@ -29,10 +29,30 @@
       "msg4": "\"Ah sim...é que...\""
     }
   },
+  "beforeAfter": {
+    "beforeLabel": "Antes",
+    "afterLabel": "Com Mingle",
+    "beforeDesc": "Traduzindo frase por frase...",
+    "afterDesc": "Conversa fluida e natural!",
+    "problemLabel": "Problema",
+    "solutionLabel": "Solução",
+    "problems": [
+      "O fluxo da conversa quebra ao traduzir frase por frase",
+      "Impossível distinguir quem disse o quê em conversas com 3+ pessoas",
+      "Sem forma de manter contato depois de se separar",
+      "Precisa mudar manualmente a seleção de idioma a cada turno"
+    ],
+    "solutions": [
+      "Conversa fluida e natural em tempo real",
+      "Reconhecimento de voz separa automaticamente por falante",
+      "A conversa se torna sala de chat, sempre conectados",
+      "Detecta automaticamente qualquer idioma para tradução bidirecional"
+    ]
+  },
   "features": {
     "label": "Recursos",
     "title": "Para você focar na conversa",
-    "subtitle": "Mingle não é apenas um app de tradução. Tem tudo que você precisa para comunicação real.",
+    "subtitle": "Mingle não é apenas um tradutor. É o mensageiro mais confortável do mundo que permite você focar apenas na conversa.",
     "realtime": {
       "title": "Tradução em Tempo Real",
       "desc": "A tradução começa enquanto você fala. Conversa natural sem interrupção."
@@ -85,7 +105,8 @@
     "success": "Você está na lista!",
     "successDesc": "Notificaremos você quando o Mingle estiver pronto.",
     "error": "Algo deu errado. Por favor, tente novamente.",
-    "close": "Fechar"
+    "close": "Fechar",
+    "feedbackPlaceholder": "Se você tem alguma solicitação ou expectativa, conte-nos"
   },
   "demo": {
     "limitReached": "Limite da demo atingido (30s)",
@@ -97,5 +118,16 @@
     "speaker1": "Falante 1",
     "speaker2": "Falante 2",
     "speaker3": "Falante 3"
+  },
+  "partyScenario": {
+    "step1Title": "1. Conhecer na festa",
+    "step1Desc": "Tradução em tempo real com Mingle",
+    "step2Title": "2. Convidar para o app!",
+    "step2Desc": "Ao convidar a outra pessoa",
+    "step2Highlight": "A conversa vira sala de chat!",
+    "step3Title": "3. Manter contato!",
+    "step3Desc": "Conversar quando quiser",
+    "resultFriends": "Amigos depois da festa!",
+    "resultSaved": "Histórico traduzido salvo para sempre"
   }
 }

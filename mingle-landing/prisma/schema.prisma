@@ -10,29 +10,30 @@ datasource db {
 model Subscriber {
   id        String   @id @default(cuid())
   email     String   @unique
+  feedback  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model ButtonClick {
-  id          String   @id @default(cuid())
-  buttonType  String   // "nav", "hero", "cta"
-  ipAddress   String?
-  userAgent   String?
-  language    String?  // browser language
-  referrer    String?
-  screenWidth Int?
+  id           String   @id @default(cuid())
+  buttonType   String // "nav", "hero", "cta"
+  ipAddress    String?
+  userAgent    String?
+  language     String? // browser language
+  referrer     String?
+  screenWidth  Int?
   screenHeight Int?
-  timezone    String?
-  platform    String?
-  createdAt   DateTime @default(now())
+  timezone     String?
+  platform     String?
+  createdAt    DateTime @default(now())
 }
 
 model DemoConversation {
   id                String   @id @default(cuid())
   ipAddress         String?
   userAgent         String?
-  utterances        Json     // Array of { originalText, originalLang, translations }
+  utterances        Json // Array of { originalText, originalLang, translations }
   selectedLanguages String[]
   usageSec          Int?
   createdAt         DateTime @default(now())
@@ -42,13 +43,13 @@ model Visitor {
   id           String   @id @default(cuid())
   ipAddress    String?
   userAgent    String?
-  language     String?  // browser language
-  pageLanguage String?  // i18n detected language
+  language     String? // browser language
+  pageLanguage String? // i18n detected language
   referrer     String?
   screenWidth  Int?
   screenHeight Int?
   timezone     String?
   platform     String?
-  pathname     String?  // URL path (e.g., /ko, /ja)
+  pathname     String? // URL path (e.g., /ko, /ja)
   createdAt    DateTime @default(now())
 }

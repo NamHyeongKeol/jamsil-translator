@@ -29,10 +29,30 @@
       "msg4": "「啊好的...那個...\""
     }
   },
+  "beforeAfter": {
+    "beforeLabel": "Before",
+    "afterLabel": "With Mingle",
+    "beforeDesc": "用翻譯應用一句句翻...",
+    "afterDesc": "流暢自然的對話！",
+    "problemLabel": "問題",
+    "solutionLabel": "解決",
+    "problems": [
+      "逐句翻譯打斷對話流程",
+      "3人以上對話時無法分辨誰說了什麼",
+      "分開後沒有辦法保持聯繫",
+      "每次對話都要手動切換語言選擇"
+    ],
+    "solutions": [
+      "即時流暢自然的對話",
+      "語音辨識自動按說話者分離對話",
+      "對話變成聊天室，隨時可聯繫",
+      "自動偵測任意語言進行雙向翻譯"
+    ]
+  },
   "features": {
     "label": "功能特點",
     "title": "讓你專注於對話",
-    "subtitle": "Mingle不僅僅是一個翻譯應用。它擁有真正溝通所需的一切。",
+    "subtitle": "Mingle不僅僅是翻譯器。它是讓你專注於對話的世界上最舒適的聊天工具。",
     "realtime": {
       "title": "即時翻譯",
       "desc": "說話的同時翻譯就開始了。自然對話，不會中斷。"
@@ -85,7 +105,8 @@
     "success": "已加入名單！",
     "successDesc": "Mingle準備好後我們會通知您。",
     "error": "出現問題，請重試。",
-    "close": "關閉"
+    "close": "關閉",
+    "feedbackPlaceholder": "如果有想要的功能或期待的內容，請告訴我們"
   },
   "demo": {
     "limitReached": "演示已達上限（30秒）",
@@ -97,5 +118,16 @@
     "speaker1": "說話者1",
     "speaker2": "說話者2",
     "speaker3": "說話者3"
+  },
+  "partyScenario": {
+    "step1Title": "1. 派對相遇",
+    "step1Desc": "用Mingle即時翻譯",
+    "step2Title": "2. 邀請加入應用！",
+    "step2Desc": "邀請對方加入應用後",
+    "step2Highlight": "對話變成聊天室！",
+    "step3Title": "3. 保持聯繫！",
+    "step3Desc": "隨時繼續對話",
+    "resultFriends": "派對後仍是朋友！",
+    "resultSaved": "翻譯過的對話記錄永久保存"
   }
 }
