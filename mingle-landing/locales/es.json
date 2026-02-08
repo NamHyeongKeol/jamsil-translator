@@ -3,10 +3,8 @@
     "cta": "Descargar"
   },
   "hero": {
-    "badge": "",
     "title1": "Traducción frase por frase,",
     "title2": "basta ya.",
-    "title3": "",
     "subtitle": "No más pausas después de cada frase para traducir. Mingle traduce las conversaciones largas continuamente, mostrando en tiempo real en pantalla lo que dices. Todas las conversaciones se guardan en una sala de chat, y puedes invitar a otros a continuar hablando en línea en cualquier momento.",
     "cta": "Descargar",
     "tryDemo": "Pruébalo"
@@ -15,19 +13,7 @@
     "label": "El Problema",
     "title1": "Hacer amigos extranjeros,",
     "title2": "¿por qué es tan difícil?",
-    "description": "Conoces a alguien increíble en una fiesta, pero traducir frase por frase rompe el flujo de la conversación, dejando solo un silencio incómodo.",
-    "list": {
-      "item1": "El flujo de conversación se rompe al traducir frase por frase",
-      "item2": "En conversaciones con 3+ personas es imposible distinguir quién dijo qué",
-      "item3": "No hay forma de mantener el contacto después de separarse",
-      "item4": "Hay que cambiar manualmente la selección de idioma en cada turno"
-    },
-    "chat": {
-      "msg1": "\"¡Oye, me encantó hablar contigo esta noche!\"",
-      "msg2": "\"Ehm...espera...traductor...\"",
-      "msg3": "\"...¿podemos intercambiar contactos?\"",
-      "msg4": "\"Ah sí...es que...\""
-    }
+    "description": "Conoces a alguien increíble en una fiesta, pero traducir frase por frase rompe el flujo de la conversación, dejando solo un silencio incómodo."
   },
   "beforeAfter": {
     "beforeLabel": "Antes",
@@ -72,14 +58,11 @@
   },
   "coreValue": {
     "label": "Valor Central",
-    "highlight": "",
     "title": "Continúa tu conversación offline en una sala de chat en línea",
     "desc1": "Este es el verdadero valor de Mingle.",
     "desc2": "Invita a la persona que conociste en persona a la app. Tu conversación traducida se convierte en una sala de chat permanente. Continúa hablando al día siguiente, la próxima semana, o cuando quieras.",
     "desc3": "El momento en que un encuentro casual en una fiesta se convierte en verdadera amistad, eso es",
     "chatDate": "Conversación del 4 de febrero de 2024",
-    "chatMsg1": "\"¡Fue genial conocerte! Nos vemos cuando visite Seúl.\"",
-    "chatMsg2": "\"¡Fue increíble conocerte! Encontrémonos cuando vengas a Seúl.\"",
     "inviteBtn": "Invitar a Jamie"
   },
   "talkToWorld": {
@@ -111,13 +94,6 @@
   "demo": {
     "limitReached": "Límite de demo alcanzado (30s)",
     "limitDesc": "Regístrate para acceso anticipado"
-  },
-  "mockup": {
-    "recording": "Grabando...",
-    "translate": "Traduciendo en tiempo real",
-    "speaker1": "Hablante 1",
-    "speaker2": "Hablante 2",
-    "speaker3": "Hablante 3"
   },
   "partyScenario": {
     "step1Title": "1. Conocerse en la fiesta",

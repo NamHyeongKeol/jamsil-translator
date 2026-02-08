@@ -3,10 +3,8 @@
     "cta": "Télécharger"
   },
   "hero": {
-    "badge": "",
     "title1": "La traduction phrase par phrase,",
     "title2": "c'est fini.",
-    "title3": "",
     "subtitle": "Fini de s'arrêter après chaque phrase pour traduire. Mingle traduit les longues conversations en continu, affichant en temps réel ce que vous dites à l'écran. Toutes les conversations sont enregistrées dans un salon de chat, et vous pouvez inviter d'autres personnes à continuer en ligne à tout moment.",
     "cta": "Télécharger",
     "tryDemo": "Essayez-le"
@@ -15,19 +13,7 @@
     "label": "Le problème",
     "title1": "Se faire des amis étrangers,",
     "title2": "pourquoi est-ce si difficile ?",
-    "description": "Vous rencontrez quelqu'un de formidable à une fête, mais traduire phrase par phrase brise le flux de la conversation, ne laissant qu'un silence gênant.",
-    "list": {
-      "item1": "Le flux de conversation se brise en traduisant phrase par phrase",
-      "item2": "Impossible de distinguer qui a dit quoi dans les conversations à 3+ personnes",
-      "item3": "Aucun moyen de rester en contact après s'être séparés",
-      "item4": "Changer manuellement la sélection de langue à chaque tour de parole"
-    },
-    "chat": {
-      "msg1": "\"Hey, j'ai vraiment aimé parler avec toi ce soir !\"",
-      "msg2": "\"Euh... attendez... traducteur...\"",
-      "msg3": "\"...on pourrait échanger nos contacts ?\"",
-      "msg4": "\"Ah oui... eh bien...\""
-    }
+    "description": "Vous rencontrez quelqu'un de formidable à une fête, mais traduire phrase par phrase brise le flux de la conversation, ne laissant qu'un silence gênant."
   },
   "beforeAfter": {
     "beforeLabel": "Avant",
@@ -72,14 +58,11 @@
   },
   "coreValue": {
     "label": "Valeur fondamentale",
-    "highlight": "",
     "title": "Continuez votre conversation hors-ligne dans un salon de chat en ligne",
     "desc1": "C'est la vraie valeur de Mingle.",
     "desc2": "Invitez la personne que vous avez rencontrée en vrai dans l'application. Votre conversation traduite devient un salon de chat permanent. Continuez à parler le lendemain, la semaine prochaine, ou quand vous voulez.",
     "desc3": "Le moment où une rencontre fortuite à une fête devient une vraie amitié, c'est",
     "chatDate": "Conversation du 4 février 2024",
-    "chatMsg1": "\"C'était super de te rencontrer ! On se revoit quand je visite Séoul.\"",
-    "chatMsg2": "\"C'était génial de te rencontrer ! On se voit quand tu viens à Séoul.\"",
     "inviteBtn": "Inviter Jamie"
   },
   "talkToWorld": {
@@ -111,13 +94,6 @@
   "demo": {
     "limitReached": "Limite de démo atteinte (30s)",
     "limitDesc": "Inscrivez-vous pour un accès anticipé"
-  },
-  "mockup": {
-    "recording": "Enregistrement...",
-    "translate": "Traduction en temps réel",
-    "speaker1": "Locuteur 1",
-    "speaker2": "Locuteur 2",
-    "speaker3": "Locuteur 3"
   },
   "partyScenario": {
     "step1Title": "1. Rencontre à la fête",

@@ -3,10 +3,8 @@
     "cta": "Herunterladen"
   },
   "hero": {
-    "badge": "",
     "title1": "Übersetzung Satz für Satz,",
     "title2": "Schluss damit.",
-    "title3": "",
     "subtitle": "Kein Stoppen mehr nach jedem Satz zum Übersetzen. Mingle übersetzt lange Gespräche kontinuierlich und zeigt in Echtzeit auf dem Bildschirm an, was Sie sagen. Alle Gespräche werden in einem Chatroom gespeichert, und Sie können andere einladen, jederzeit online weiterzusprechen.",
     "cta": "Herunterladen",
     "tryDemo": "Jetzt testen"
@@ -15,19 +13,7 @@
     "label": "Das Problem",
     "title1": "Ausländische Freunde finden,",
     "title2": "warum ist das so schwer?",
-    "description": "Sie treffen jemand Tolles auf einer Party, aber Satz für Satz zu übersetzen unterbricht den Gesprächsfluss und hinterlässt nur peinliches Schweigen.",
-    "list": {
-      "item1": "Gesprächsfluss wird unterbrochen beim Übersetzen Satz für Satz",
-      "item2": "Bei Gesprächen mit 3+ Personen kann nicht unterschieden werden, wer was gesagt hat",
-      "item3": "Keine Möglichkeit, nach dem Abschied in Kontakt zu bleiben",
-      "item4": "Sprachauswahl muss bei jedem Sprecherwechsel manuell geändert werden"
-    },
-    "chat": {
-      "msg1": "\"Hey, es hat mir wirklich Spaß gemacht, heute Abend mit dir zu reden!\"",
-      "msg2": "\"Ähm...warte kurz...Übersetzer...\"",
-      "msg3": "\"...können wir Kontaktdaten austauschen?\"",
-      "msg4": "\"Ah ja...also...\""
-    }
+    "description": "Sie treffen jemand Tolles auf einer Party, aber Satz für Satz zu übersetzen unterbricht den Gesprächsfluss und hinterlässt nur peinliches Schweigen."
   },
   "beforeAfter": {
     "beforeLabel": "Vorher",
@@ -72,14 +58,11 @@
   },
   "coreValue": {
     "label": "Kernwert",
-    "highlight": "",
     "title": "Setzen Sie Ihr Offline-Gespräch in einem Online-Chatroom fort",
     "desc1": "Das ist der wahre Wert von Mingle.",
     "desc2": "Laden Sie die Person, die Sie persönlich getroffen haben, in die App ein. Ihr übersetztes Gespräch wird zu einem permanenten Chatroom. Setzen Sie das Gespräch am nächsten Tag, nächste Woche oder wann immer Sie möchten fort.",
     "desc3": "Der Moment, wenn eine zufällige Begegnung auf einer Party zu echter Freundschaft wird, das ist",
     "chatDate": "Gespräch vom 4. Februar 2024",
-    "chatMsg1": "\"Es war so schön, dich kennenzulernen! Lass uns unbedingt wieder treffen, wenn ich Seoul besuche.\"",
-    "chatMsg2": "\"Es war toll, dich kennenzulernen! Lass uns treffen, wenn du nach Seoul kommst.\"",
     "inviteBtn": "Jamie einladen"
   },
   "talkToWorld": {
@@ -111,13 +94,6 @@
   "demo": {
     "limitReached": "Demo-Limit erreicht (30s)",
     "limitDesc": "Registrieren Sie sich für den Early Access"
-  },
-  "mockup": {
-    "recording": "Aufnahme...",
-    "translate": "Echtzeit-Übersetzung",
-    "speaker1": "Sprecher 1",
-    "speaker2": "Sprecher 2",
-    "speaker3": "Sprecher 3"
   },
   "partyScenario": {
     "step1Title": "1. Auf der Party treffen",
