@@ -5,7 +5,7 @@ interface PhoneFrameProps {
 
 export default function PhoneFrame({ children, className = '' }: PhoneFrameProps) {
   return (
-    <div className={`relative mx-auto w-[90vw] max-w-[320px] md:w-[300px] md:max-w-none lg:w-[360px] ${className}`}>
+    <div className={`relative mt-10 mx-auto w-[90vw] max-w-[360px] md:w-[360px] md:max-w-none lg:w-[320px] ${className}`}>
       {/* Outer bezel */}
       <div className="bg-gray-900 rounded-[2.5rem] md:rounded-[3rem] p-[6px] shadow-2xl">
         {/* Screen */}

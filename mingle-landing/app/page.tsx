@@ -423,14 +423,14 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="min-h-screen flex items-center justify-center pt-24 lg:pt-10 pb-20 px-6 relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-100">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(245,158,11,0.08)_0%,transparent_70%)] pointer-events-none" />
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 items-center">
           <motion.div
             className="relative z-10"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="font-extrabold leading-tight mb-4 text-text-primary">
+            <h1 className="font-extrabold leading-tight my-4 text-text-primary">
               <span className="block text-3xl md:text-4xl lg:text-5xl mb-4">{t('hero.title1')}</span>
               <span className="block text-4xl md:text-5xl lg:text-6xl bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">
                 {t('hero.title2')}
