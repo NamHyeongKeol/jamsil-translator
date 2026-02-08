@@ -2,10 +2,10 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pnpm install --frozen-lockfile --ignore-scripts"
+    "buildCommand": "pnpm install --ignore-scripts && npx tsc stt-server.ts --outDir dist --esModuleInterop --module commonjs --target ES2017 --skipLibCheck --resolveJsonModule"
   },
   "deploy": {
-    "startCommand": "npx ts-node stt-server.ts",
+    "startCommand": "node dist/stt-server.js",
     "restartPolicyType": "ON_FAILURE"
   }
 }

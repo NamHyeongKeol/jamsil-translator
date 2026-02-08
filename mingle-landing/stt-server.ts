@@ -6,8 +6,8 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+const anthropic = process.env.CLAUDE_API_KEY ? new Anthropic({ apiKey: process.env.CLAUDE_API_KEY }) : null;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -709,6 +709,7 @@ wss.on('connection', (clientWs) => {
             let content: string | undefined;
 
             if (translateModel === 'claude-haiku-4-5') {
+                if (!anthropic) { console.error('CLAUDE_API_KEY not set'); return; }
                 const resp = await anthropic.messages.create({
                     model: 'claude-haiku-4-5-20251001',
                     max_tokens: 1024,
@@ -725,6 +726,7 @@ wss.on('connection', (clientWs) => {
                 const result = await model.generateContent(userPrompt);
                 content = result.response.text()?.trim();
             } else {
+                if (!openai) { console.error('OPENAI_API_KEY not set'); return; }
                 const resp = await openai.chat.completions.create({
                     model: 'gpt-5-nano',
                     messages: [
