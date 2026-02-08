@@ -29,10 +29,30 @@
       "msg4": "\"Ah sí...es que...\""
     }
   },
+  "beforeAfter": {
+    "beforeLabel": "Antes",
+    "afterLabel": "Con Mingle",
+    "beforeDesc": "Traduciendo frase por frase...",
+    "afterDesc": "¡Conversación fluida y natural!",
+    "problemLabel": "Problema",
+    "solutionLabel": "Solución",
+    "problems": [
+      "El flujo de conversación se rompe al traducir frase por frase",
+      "En conversaciones con 3+ personas es imposible distinguir quién dijo qué",
+      "No hay forma de mantener el contacto después de separarse",
+      "Hay que cambiar manualmente la selección de idioma en cada turno"
+    ],
+    "solutions": [
+      "Conversación fluida y natural en tiempo real",
+      "Reconocimiento de voz separa automáticamente por hablante",
+      "La conversación se convierte en sala de chat, siempre conectados",
+      "Detecta automáticamente cualquier idioma para traducción bidireccional"
+    ]
+  },
   "features": {
     "label": "Características",
     "title": "Para que puedas concentrarte en la conversación",
-    "subtitle": "Mingle no es solo una app de traducción. Tiene todo lo que necesitas para una comunicación real.",
+    "subtitle": "Mingle no es solo un traductor. Es el mensajero más cómodo del mundo que te permite concentrarte solo en la conversación.",
     "realtime": {
       "title": "Traducción en Tiempo Real",
       "desc": "La traducción comienza mientras hablas. Conversación natural sin interrupciones."
@@ -85,7 +105,8 @@
     "success": "¡Estás en la lista!",
     "successDesc": "Te notificaremos cuando Mingle esté listo.",
     "error": "Algo salió mal. Por favor, intenta de nuevo.",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "feedbackPlaceholder": "Si tienes alguna solicitud o expectativa, cuéntanos"
   },
   "demo": {
     "limitReached": "Límite de demo alcanzado (30s)",
@@ -97,5 +118,16 @@
     "speaker1": "Hablante 1",
     "speaker2": "Hablante 2",
     "speaker3": "Hablante 3"
+  },
+  "partyScenario": {
+    "step1Title": "1. Conocerse en la fiesta",
+    "step1Desc": "Traducción en tiempo real con Mingle",
+    "step2Title": "2. ¡Invitar a la app!",
+    "step2Desc": "Al invitar a la otra persona",
+    "step2Highlight": "¡La conversación se convierte en chat!",
+    "step3Title": "3. ¡Seguir en contacto!",
+    "step3Desc": "Chatear cuando quieras",
+    "resultFriends": "¡Amigos después de la fiesta!",
+    "resultSaved": "Historial traducido guardado para siempre"
   }
 }

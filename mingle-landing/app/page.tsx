@@ -122,6 +122,7 @@ function LanguageSelector() {
 function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
+  const [feedback, setFeedback] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,11 +134,12 @@ function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, feedback: feedback.trim() || null }),
       })
       if (res.ok) {
         setStatus('success')
         setEmail('')
+        setFeedback('')
       } else {
         setStatus('error')
       }
@@ -193,8 +195,15 @@ function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('modal.placeholder')}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl mb-4 focus:outline-none focus:border-accent-primary transition-colors text-text-primary"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl mb-3 focus:outline-none focus:border-accent-primary transition-colors text-text-primary"
                 required
+              />
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                placeholder={t('modal.feedbackPlaceholder')}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl mb-4 focus:outline-none focus:border-accent-primary transition-colors text-text-primary resize-none"
+                rows={3}
               />
               {status === 'error' && (
                 <p className="text-accent-pink text-sm mb-4">{t('modal.error')}</p>
@@ -217,35 +226,33 @@ function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
 
 // Before/After Comparison with 3 problems and 3 solutions
 function BeforeAfter() {
-  const { i18n } = useTranslation()
-  const isKorean = i18n.language === 'ko'
+  const { t } = useTranslation()
 
-  const problems = [
-    { icon: '⏳', text: isKorean ? '한 문장씩 번역하느라 대화 흐름이 끊김' : 'Conversation flow breaks while translating sentence by sentence' },
-    { icon: '❓', text: isKorean ? '3명 이상 대화에서 누가 뭐라 했는지 구분 불가' : "Can't tell who said what in group conversations of 3+ people" },
-    { icon: '👋', text: isKorean ? '헤어지고 나면 연락할 방법이 없음' : 'No way to stay in touch after parting' },
-    { icon: '🔄', text: isKorean ? '대화 순서마다 언어 선택을 수동으로 바꿔줘야 함' : 'Have to manually switch language selection for each turn' }
-  ]
+  const problemIcons = ['⏳', '❓', '👋', '🔄']
+  const solutionIcons = ['⚡', '🎯', '💬', '🌐']
+  
+  const problems = (t('beforeAfter.problems', { returnObjects: true }) as string[]).map((text, i) => ({
+    icon: problemIcons[i],
+    text
+  }))
 
-  const solutions = [
-    { icon: '⚡', text: isKorean ? '실시간으로 끊김 없이 자연스러운 대화' : 'Real-time seamless natural conversation' },
-    { icon: '🎯', text: isKorean ? '음성 인식으로 발화자별 대화 자동 분리' : 'Voice recognition auto-separates by speaker' },
-    { icon: '💬', text: isKorean ? '대화록이 채팅방으로 변환, 언제든 연락 가능' : 'Conversation becomes chat room, stay connected' },
-    { icon: '🌐', text: isKorean ? '몇 개의 언어든 자동으로 감지해서 양방향 번역' : 'Auto-detects any number of languages for two-way translation' }
-  ]
+  const solutions = (t('beforeAfter.solutions', { returnObjects: true }) as string[]).map((text, i) => ({
+    icon: solutionIcons[i],
+    text
+  }))
 
   return (
     <div className="grid md:grid-cols-2 gap-8">
       {/* Before */}
       <div className="relative">
         <div className="absolute -top-3 left-4 px-3 py-1 bg-accent-pink/20 text-accent-pink text-sm font-semibold rounded-full">
-          Before
+          {t('beforeAfter.beforeLabel')}
         </div>
         <div className="bg-white rounded-2xl p-6 border border-accent-pink/30 h-full shadow-lg">
           <div className="text-center mb-6">
             <div className="text-4xl mb-2">😰</div>
             <p className="text-text-muted text-sm">
-              {isKorean ? '번역 앱으로 한 문장씩...' : 'Translating one sentence at a time...'}
+              {t('beforeAfter.beforeDesc')}
             </p>
           </div>
           <div className="space-y-4">
@@ -255,7 +262,7 @@ function BeforeAfter() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <X size={14} className="text-accent-pink" />
-                    <span className="text-accent-pink text-xs font-medium">Problem {i + 1}</span>
+                    <span className="text-accent-pink text-xs font-medium">{t('beforeAfter.problemLabel')} {i + 1}</span>
                   </div>
                   <p className="text-sm text-text-secondary">{problem.text}</p>
                 </div>
@@ -268,13 +275,13 @@ function BeforeAfter() {
       {/* After */}
       <div className="relative">
         <div className="absolute -top-3 left-4 px-3 py-1 bg-accent-green/20 text-accent-green text-sm font-semibold rounded-full">
-          With Mingle
+          {t('beforeAfter.afterLabel')}
         </div>
         <div className="bg-white rounded-2xl p-6 border border-accent-green/30 h-full shadow-lg">
           <div className="text-center mb-6">
             <div className="text-4xl mb-2">😊</div>
             <p className="text-text-muted text-sm">
-              {isKorean ? '끊김 없는 자연스러운 대화!' : 'Seamless natural conversation!'}
+              {t('beforeAfter.afterDesc')}
             </p>
           </div>
           <div className="space-y-4">
@@ -284,7 +291,7 @@ function BeforeAfter() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <Check size={14} className="text-accent-green" />
-                    <span className="text-accent-green text-xs font-medium">Solution {i + 1}</span>
+                    <span className="text-accent-green text-xs font-medium">{t('beforeAfter.solutionLabel')} {i + 1}</span>
                   </div>
                   <p className="text-sm text-text-primary">{solution.text}</p>
                 </div>
@@ -299,8 +306,7 @@ function BeforeAfter() {
 
 // Party Scenario Illustration with emphasized invite step
 function PartyScenario() {
-  const { i18n } = useTranslation()
-  const isKorean = i18n.language === 'ko'
+  const { t } = useTranslation()
 
   return (
     <div className="relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-8 border border-amber-200 overflow-hidden">
@@ -314,9 +320,9 @@ function PartyScenario() {
           <div className="w-16 h-16 rounded-full bg-white border-2 border-amber-300 flex items-center justify-center mx-auto mb-3 text-2xl shadow-md">
             🎉
           </div>
-          <h4 className="font-semibold mb-1 text-sm text-text-primary">{isKorean ? '1. 파티에서 만남' : '1. Meet at Party'}</h4>
+          <h4 className="font-semibold mb-1 text-sm text-text-primary">{t('partyScenario.step1Title')}</h4>
           <p className="text-xs text-text-muted">
-            {isKorean ? 'Mingle로 실시간 번역' : 'Real-time translation'}
+            {t('partyScenario.step1Desc')}
           </p>
         </div>
 
@@ -333,12 +339,12 @@ function PartyScenario() {
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center mx-auto mb-3 text-3xl animate-pulse">
               <UserPlus size={36} className="text-white" />
             </div>
-            <h4 className="font-bold mb-1 text-accent-primary-dark">{isKorean ? '2. 앱에 초대!' : '2. Invite to App!'}</h4>
+            <h4 className="font-bold mb-1 text-accent-primary-dark">{t('partyScenario.step2Title')}</h4>
             <p className="text-xs text-text-secondary">
-              {isKorean ? '상대를 앱에 초대하면' : 'Invite your new friend'}
+              {t('partyScenario.step2Desc')}
             </p>
             <p className="text-xs text-accent-primary font-medium mt-1">
-              {isKorean ? '대화록이 채팅방으로!' : 'Chat room created!'}
+              {t('partyScenario.step2Highlight')}
             </p>
           </div>
         </div>
@@ -353,9 +359,9 @@ function PartyScenario() {
           <div className="w-16 h-16 rounded-full bg-white border-2 border-accent-green/50 flex items-center justify-center mx-auto mb-3 text-2xl shadow-md">
             💬
           </div>
-          <h4 className="font-semibold mb-1 text-sm text-text-primary">{isKorean ? '3. 계속 연락!' : '3. Stay Connected!'}</h4>
+          <h4 className="font-semibold mb-1 text-sm text-text-primary">{t('partyScenario.step3Title')}</h4>
           <p className="text-xs text-text-muted">
-            {isKorean ? '언제든 다시 대화' : 'Chat anytime'}
+            {t('partyScenario.step3Desc')}
           </p>
         </div>
       </div>
@@ -365,11 +371,11 @@ function PartyScenario() {
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-amber-200 shadow-sm">
             <span className="text-lg">🎊</span>
-            <span className="text-sm text-text-primary">{isKorean ? '파티 후에도 친구로!' : 'Friends after the party!'}</span>
+            <span className="text-sm text-text-primary">{t('partyScenario.resultFriends')}</span>
           </div>
           <div className="flex items-center gap-2 bg-accent-primary/10 px-4 py-2 rounded-full border border-accent-primary/30">
             <Send size={16} className="text-accent-primary" />
-            <span className="text-sm text-accent-primary font-medium">{isKorean ? '번역된 대화 기록 영구 저장' : 'Translated history saved forever'}</span>
+            <span className="text-sm text-accent-primary font-medium">{t('partyScenario.resultSaved')}</span>
           </div>
         </div>
       </div>

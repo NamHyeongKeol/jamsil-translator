@@ -29,10 +29,30 @@
       "msg4": "\"아 네... 그게...\""
     }
   },
+  "beforeAfter": {
+    "beforeLabel": "Before",
+    "afterLabel": "With Mingle",
+    "beforeDesc": "번역 앱으로 한 문장씩...",
+    "afterDesc": "끊김 없는 자연스러운 대화!",
+    "problemLabel": "Problem",
+    "solutionLabel": "Solution",
+    "problems": [
+      "한 문장씩 번역하느라 대화 흐름이 끊김",
+      "3명 이상 대화에서 누가 뭐라 했는지 구분 불가",
+      "헤어지고 나면 연락할 방법이 없음",
+      "대화 순서마다 언어 선택을 수동으로 바꿔줘야 함"
+    ],
+    "solutions": [
+      "실시간으로 끊김 없이 자연스러운 대화",
+      "음성 인식으로 발화자별 대화 자동 분리",
+      "대화록이 채팅방으로 변환, 언제든 연락 가능",
+      "몇 개의 언어든 자동으로 감지해서 양방향 번역"
+    ]
+  },
   "features": {
     "label": "기능",
     "title": "대화에만 집중할 수 있도록",
-    "subtitle": "Mingle은 단순한 번역 앱이 아닙니다. 진짜 소통을 위한 모든 기능을 담았습니다.",
+    "subtitle": "Mingle은 단순한 번역기가 아닙니다. 대화에만 집중할 수 있게 해주는 세상에서 가장 편한 메신저입니다.",
     "realtime": {
       "title": "실시간 번역",
       "desc": "말하는 동시에 번역이 시작됩니다. 끊김 없이 자연스러운 대화가 가능해요."
@@ -85,7 +105,8 @@
     "success": "등록 완료!",
     "successDesc": "Mingle이 준비되면 알려드릴게요.",
     "error": "문제가 발생했습니다. 다시 시도해주세요.",
-    "close": "닫기"
+    "close": "닫기",
+    "feedbackPlaceholder": "요청하고 싶거나 기대되는 내용이 있다면 적어주세요"
   },
   "demo": {
     "limitReached": "데모 제한 도달 (30초)",
@@ -97,5 +118,16 @@
     "speaker1": "화자 1",
     "speaker2": "화자 2",
     "speaker3": "화자 3"
+  },
+  "partyScenario": {
+    "step1Title": "1. 파티에서 만남",
+    "step1Desc": "Mingle로 실시간 번역",
+    "step2Title": "2. 앱에 초대!",
+    "step2Desc": "상대를 앱에 초대하면",
+    "step2Highlight": "대화록이 채팅방으로!",
+    "step3Title": "3. 계속 연락!",
+    "step3Desc": "언제든 다시 대화",
+    "resultFriends": "파티 후에도 친구로!",
+    "resultSaved": "번역된 대화 기록 영구 저장"
   }
 }

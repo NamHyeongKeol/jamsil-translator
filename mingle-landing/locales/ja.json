@@ -29,10 +29,30 @@
       "msg4": "「あ、はい...えっと...\""
     }
   },
+  "beforeAfter": {
+    "beforeLabel": "Before",
+    "afterLabel": "With Mingle",
+    "beforeDesc": "翻訳アプリで一文ずつ...",
+    "afterDesc": "途切れない自然な会話！",
+    "problemLabel": "問題",
+    "solutionLabel": "解決",
+    "problems": [
+      "一文ずつ翻訳していると会話の流れが途切れる",
+      "3人以上の会話で誰が何を言ったか区別できない",
+      "別れた後に連絡する方法がない",
+      "会話のたびに言語選択を手動で切り替える必要がある"
+    ],
+    "solutions": [
+      "リアルタイムで途切れない自然な会話",
+      "音声認識で話者ごとに会話を自動分離",
+      "会話がチャットルームに変換、いつでも連絡可能",
+      "何言語でも自動検出して双方向翻訳"
+    ]
+  },
   "features": {
     "label": "機能",
     "title": "会話に集中できるように",
-    "subtitle": "Mingleは単なる翻訳アプリではありません。本当のコミュニケーションに必要なすべてが揃っています。",
+    "subtitle": "Mingleは単なる翻訳機ではありません。会話に集中できる世界で最も快適なメッセンジャーです。",
     "realtime": {
       "title": "リアルタイム翻訳",
       "desc": "話すと同時に翻訳が始まります。途切れのない自然な会話が可能です。"
@@ -85,7 +105,8 @@
     "success": "登録完了！",
     "successDesc": "Mingleの準備ができたらお知らせします。",
     "error": "問題が発生しました。もう一度お試しください。",
-    "close": "閉じる"
+    "close": "閉じる",
+    "feedbackPlaceholder": "リクエストや期待する機能があればお聞かせください"
   },
   "demo": {
     "limitReached": "デモ制限に達しました（30秒）",
@@ -97,5 +118,16 @@
     "speaker1": "話者1",
     "speaker2": "話者2",
     "speaker3": "話者3"
+  },
+  "partyScenario": {
+    "step1Title": "1. パーティーで出会う",
+    "step1Desc": "Mingleでリアルタイム翻訳",
+    "step2Title": "2. アプリに招待！",
+    "step2Desc": "相手をアプリに招待すると",
+    "step2Highlight": "会話がチャットルームに！",
+    "step3Title": "3. 連絡を続ける！",
+    "step3Desc": "いつでも会話を再開",
+    "resultFriends": "パーティー後も友達に！",
+    "resultSaved": "翻訳された会話履歴を永久保存"
   }
 }

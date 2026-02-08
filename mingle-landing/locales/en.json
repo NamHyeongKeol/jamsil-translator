@@ -29,10 +29,30 @@
       "msg4": "\"Ah yes... well...\""
     }
   },
+  "beforeAfter": {
+    "beforeLabel": "Before",
+    "afterLabel": "With Mingle",
+    "beforeDesc": "Translating one sentence at a time...",
+    "afterDesc": "Seamless natural conversation!",
+    "problemLabel": "Problem",
+    "solutionLabel": "Solution",
+    "problems": [
+      "Conversation flow breaks while translating sentence by sentence",
+      "Can't tell who said what in group conversations of 3+ people",
+      "No way to stay in touch after parting",
+      "Have to manually switch language selection for each turn"
+    ],
+    "solutions": [
+      "Real-time seamless natural conversation",
+      "Voice recognition auto-separates by speaker",
+      "Conversation becomes chat room, stay connected",
+      "Auto-detects any number of languages for two-way translation"
+    ]
+  },
   "features": {
     "label": "Features",
     "title": "So you can focus on the conversation",
-    "subtitle": "Mingle is not just a translation app. It has everything you need for real communication.",
+    "subtitle": "Mingle is not just a translator. It's the world's most comfortable messenger that lets you focus only on the conversation.",
     "realtime": {
       "title": "Real-time Translation",
       "desc": "Translation starts as you speak. Natural conversation without interruption."
@@ -85,7 +105,8 @@
     "success": "You're on the list!",
     "successDesc": "We'll notify you when Mingle is ready.",
     "error": "Something went wrong. Please try again.",
-    "close": "Close"
+    "close": "Close",
+    "feedbackPlaceholder": "Share any features you'd like to see or what you're excited about"
   },
   "demo": {
     "limitReached": "Demo limit reached (30s)",
@@ -97,5 +118,16 @@
     "speaker1": "Speaker 1",
     "speaker2": "Speaker 2",
     "speaker3": "Speaker 3"
+  },
+  "partyScenario": {
+    "step1Title": "1. Meet at Party",
+    "step1Desc": "Real-time translation",
+    "step2Title": "2. Invite to App!",
+    "step2Desc": "Invite your new friend",
+    "step2Highlight": "Chat room created!",
+    "step3Title": "3. Stay Connected!",
+    "step3Desc": "Chat anytime",
+    "resultFriends": "Friends after the party!",
+    "resultSaved": "Translated history saved forever"
   }
 }

@@ -29,10 +29,30 @@
       "msg4": "\"Ah ja...also...\""
     }
   },
+  "beforeAfter": {
+    "beforeLabel": "Vorher",
+    "afterLabel": "Mit Mingle",
+    "beforeDesc": "Satz für Satz übersetzen...",
+    "afterDesc": "Flüssiges, natürliches Gespräch!",
+    "problemLabel": "Problem",
+    "solutionLabel": "Lösung",
+    "problems": [
+      "Gesprächsfluss wird unterbrochen beim Übersetzen Satz für Satz",
+      "Bei Gesprächen mit 3+ Personen kann nicht unterschieden werden, wer was gesagt hat",
+      "Keine Möglichkeit, nach dem Abschied in Kontakt zu bleiben",
+      "Sprachauswahl muss bei jedem Sprecherwechsel manuell geändert werden"
+    ],
+    "solutions": [
+      "Flüssiges, natürliches Gespräch in Echtzeit",
+      "Stimmerkennung trennt automatisch nach Sprecher",
+      "Gespräch wird zum Chatroom, immer verbunden",
+      "Erkennt automatisch jede Sprache für bidirektionale Übersetzung"
+    ]
+  },
   "features": {
     "label": "Funktionen",
     "title": "Damit Sie sich auf das Gespräch konzentrieren können",
-    "subtitle": "Mingle ist nicht nur eine Übersetzungs-App. Sie hat alles, was Sie für echte Kommunikation brauchen.",
+    "subtitle": "Mingle ist nicht nur ein Übersetzer. Es ist der komfortabelste Messenger der Welt, der Sie sich nur auf das Gespräch konzentrieren lässt.",
     "realtime": {
       "title": "Echtzeit-Übersetzung",
       "desc": "Die Übersetzung beginnt, während Sie sprechen. Natürliches Gespräch ohne Unterbrechung."
@@ -85,7 +105,8 @@
     "success": "Sie sind auf der Liste!",
     "successDesc": "Wir benachrichtigen Sie, wenn Mingle bereit ist.",
     "error": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
-    "close": "Schließen"
+    "close": "Schließen",
+    "feedbackPlaceholder": "Wenn Sie Wünsche oder Erwartungen haben, teilen Sie uns diese mit"
   },
   "demo": {
     "limitReached": "Demo-Limit erreicht (30s)",
@@ -97,5 +118,16 @@
     "speaker1": "Sprecher 1",
     "speaker2": "Sprecher 2",
     "speaker3": "Sprecher 3"
+  },
+  "partyScenario": {
+    "step1Title": "1. Auf der Party treffen",
+    "step1Desc": "Echtzeit-Übersetzung mit Mingle",
+    "step2Title": "2. In die App einladen!",
+    "step2Desc": "Die andere Person einladen",
+    "step2Highlight": "Gespräch wird zum Chat!",
+    "step3Title": "3. In Kontakt bleiben!",
+    "step3Desc": "Jederzeit chatten",
+    "resultFriends": "Freunde nach der Party!",
+    "resultSaved": "Übersetzte Geschichte für immer gespeichert"
   }
 }

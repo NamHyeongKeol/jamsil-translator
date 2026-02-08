@@ -29,10 +29,30 @@
       "msg4": "\"À vâng...cái đó...\""
     }
   },
+  "beforeAfter": {
+    "beforeLabel": "Trước",
+    "afterLabel": "Với Mingle",
+    "beforeDesc": "Dịch từng câu một...",
+    "afterDesc": "Cuộc trò chuyện trôi chảy tự nhiên!",
+    "problemLabel": "Vấn đề",
+    "solutionLabel": "Giải pháp",
+    "problems": [
+      "Dòng chảy cuộc trò chuyện bị gián đoạn khi dịch từng câu",
+      "Trong cuộc trò chuyện 3+ người không thể phân biệt ai nói gì",
+      "Không có cách giữ liên lạc sau khi chia tay",
+      "Phải chuyển đổi ngôn ngữ thủ công mỗi lượt nói"
+    ],
+    "solutions": [
+      "Cuộc trò chuyện trôi chảy tự nhiên theo thời gian thực",
+      "Nhận dạng giọng nói tự động tách theo người nói",
+      "Cuộc trò chuyện trở thành phòng chat, luôn kết nối",
+      "Tự động phát hiện bất kỳ ngôn ngữ nào cho dịch hai chiều"
+    ]
+  },
   "features": {
     "label": "Tính Năng",
     "title": "Để bạn tập trung vào cuộc trò chuyện",
-    "subtitle": "Mingle không chỉ là ứng dụng dịch thuật. Nó có mọi thứ bạn cần cho giao tiếp thực sự.",
+    "subtitle": "Mingle không chỉ là ứng dụng dịch thuật. Nó là ứng dụng nhắn tin thoải mái nhất thế giới giúp bạn tập trung chỉ vào cuộc trò chuyện.",
     "realtime": {
       "title": "Dịch Thời Gian Thực",
       "desc": "Bản dịch bắt đầu khi bạn nói. Trò chuyện tự nhiên không gián đoạn."
@@ -85,7 +105,8 @@
     "success": "Bạn đã trong danh sách!",
     "successDesc": "Chúng tôi sẽ thông báo khi Mingle sẵn sàng.",
     "error": "Đã xảy ra lỗi. Vui lòng thử lại.",
-    "close": "Đóng"
+    "close": "Đóng",
+    "feedbackPlaceholder": "Nếu bạn có yêu cầu hoặc mong đợi, hãy cho chúng tôi biết"
   },
   "demo": {
     "limitReached": "Đã hết giới hạn demo (30 giây)",
@@ -97,5 +118,16 @@
     "speaker1": "Người nói 1",
     "speaker2": "Người nói 2",
     "speaker3": "Người nói 3"
+  },
+  "partyScenario": {
+    "step1Title": "1. Gặp nhau tại bữa tiệc",
+    "step1Desc": "Dịch theo thời gian thực với Mingle",
+    "step2Title": "2. Mời vào ứng dụng!",
+    "step2Desc": "Khi mời người khác",
+    "step2Highlight": "Cuộc trò chuyện trở thành chat!",
+    "step3Title": "3. Giữ liên lạc!",
+    "step3Desc": "Chat bất cứ lúc nào",
+    "resultFriends": "Bạn bè sau bữa tiệc!",
+    "resultSaved": "Lịch sử dịch được lưu mãi mãi"
   }
 }
