@@ -149,11 +149,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   return (
     <PhoneFrame>
-      <div className="flex flex-col h-[520px] md:h-[540px] lg:h-[640px]">
+      <div className="flex flex-col h-[660px] md:h-[660px] lg:h-[600px]">
         {/* Status Bar - overlaps with notch area */}
-        <div className="relative z-30 flex items-center justify-between px-8 pt-2 pb-1 text-xs md:text-sm text-gray-500 select-none h-9">
+        <div className="relative z-30 flex items-center justify-between px-8 pt-2 pb-1 text-xs text-gray-500 select-none h-9">
           {isReady ? (
-            <span className="flex items-center gap-1 bg-red-500 text-white font-semibold px-1.5 py-0.5 rounded-full text-[10px] md:text-xs">
+            <span className="flex items-center gap-1 bg-red-500 text-white font-semibold px-1.5 py-0.5 rounded-full">
               <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
               {timeStr}
             </span>
@@ -161,17 +161,17 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             <span className="font-semibold">{timeStr}</span>
           )}
           <div className="flex items-center gap-1">
-            <Signal className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            <Wifi className="w-3 h-3 md:w-3.5 md:h-3.5" />
-            <Battery className="w-3 h-3 md:w-3.5 md:h-3.5" />
+            <Signal className="w-3 h-3" />
+            <Wifi className="w-3 h-3" />
+            <Battery className="w-3 h-3" />
           </div>
         </div>
 
         {/* Spacer for notch */}
-        <div className="h-2 md:h-3" />
+        <div className="h-2 md:h-1" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 md:px-6 py-2 border-b border-gray-100">
+        <div className="flex items-center justify-between px-5 md:px-6 pb-2 border-b border-gray-100">
           <span className="text-sm md:text-base font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
             Mingle
           </span>
@@ -297,26 +297,12 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         </div>
 
         {/* Bottom Bar with Mic Button */}
-        <div className="flex items-center justify-center py-3 md:py-4 border-t border-gray-100 bg-white">
-          <div className="flex flex-col items-center gap-1.5">
-            {/* Usage progress bar */}
-            {usageSec > 0 && (
-              <div className="flex items-center gap-1.5">
-                <div className="w-20 h-1 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${usageSec >= 25 ? 'bg-red-400' : 'bg-amber-400'}`}
-                    style={{ width: `${usagePercent}%` }}
-                  />
-                </div>
-                <span className={`text-[10px] tabular-nums ${isLimitReached ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
-                  {remainingSec}s
-                </span>
-              </div>
-            )}
+        <div className="flex items-center justify-center py-3 border-t border-gray-100 bg-white">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={handleMicClick}
               disabled={isConnecting || isError}
-              className="relative flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full transition-all duration-200 active:scale-95 disabled:opacity-50"
+              className="relative flex items-center justify-center w-12 h-12 mr-10 rounded-full transition-all duration-200 active:scale-95 disabled:opacity-50"
             >
               {showRipple && (
                 <span
@@ -347,6 +333,20 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 )}
               </span>
             </button>
+            {/* Usage progress bar */}
+            {usageSec > 0 && (
+              <div className="flex items-center gap-1.5">
+                <div className="w-20 h-1 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${usageSec >= 25 ? 'bg-red-400' : 'bg-amber-400'}`}
+                    style={{ width: `${usagePercent}%` }}
+                  />
+                </div>
+                <span className={`text-[10px] tabular-nums ${isLimitReached ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
+                  {remainingSec}s
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
