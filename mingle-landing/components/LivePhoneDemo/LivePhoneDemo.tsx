@@ -127,7 +127,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     if (chatRef.current && shouldAutoScroll.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight
     }
-  }, [utterances, partialTranscript])
+  }, [utterances, partialTranscript, isConnecting])
 
   const showRipple = isReady && volume > VOLUME_THRESHOLD
   const rippleScale = showRipple ? 1 + (volume - VOLUME_THRESHOLD) * 5 : 1
@@ -282,9 +282,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
           {/* Connecting state */}
           {isConnecting && (
-            <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 gap-2 pt-12">
-              <Loader2 size={28} className="text-amber-400 animate-spin" />
-              <p className="text-xs md:text-sm">Connecting...</p>
+            <div className="flex items-center justify-center gap-2 py-4">
+              <Loader2 size={16} className="text-amber-400 animate-spin" />
+              <p className="text-xs text-gray-400">Connecting...</p>
             </div>
           )}
 

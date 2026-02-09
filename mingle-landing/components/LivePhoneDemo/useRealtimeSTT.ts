@@ -15,6 +15,37 @@ const USAGE_LIMIT_SEC = 30
 const LS_KEY_UTTERANCES = 'mingle_demo_utterances'
 const LS_KEY_USAGE = 'mingle_demo_usage_sec'
 
+// Initial demo conversation data - shown when user first visits
+const INITIAL_UTTERANCES: Utterance[] = [
+  {
+    id: 'demo-1',
+    originalText: '最近週末はいつも何をしていますか。',
+    originalLang: 'ja',
+    translations: {
+      en: 'What do you usually do on weekends recently.',
+      ko: '요즘 주말에는 항상 무엇을 하고 있나요.',
+    },
+  },
+  {
+    id: 'demo-2',
+    originalText: '저는 보통 집에서 영화 보거나 게임해요.',
+    originalLang: 'ko',
+    translations: {
+      en: 'I usually watch movies or play games at home.',
+      ja: '私は普段、家で映画を見たりゲームをしたりします。',
+    },
+  },
+  {
+    id: 'demo-3',
+    originalText: 'I usually go hiking. The weather is so nice these days.',
+    originalLang: 'en',
+    translations: {
+      ko: '저는 보통 하이킹을 갑니다. 요즘 날씨가 정말 좋네요.',
+      ja: '私は普段ハイキングに行きます。最近とても天気が良いです。',
+    },
+  },
+]
+
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
 function floatTo16BitPCM(input: Float32Array): Int16Array {
@@ -43,10 +74,10 @@ interface UseRealtimeSTTOptions {
 export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   const [utterances, setUtterances] = useState<Utterance[]>(() => {
-    if (typeof window === 'undefined') return []
+    if (typeof window === 'undefined') return INITIAL_UTTERANCES
     try {
       const stored = localStorage.getItem(LS_KEY_UTTERANCES)
-      if (!stored) return []
+      if (!stored) return INITIAL_UTTERANCES
       const parsed: Utterance[] = JSON.parse(stored)
       // Deduplicate by id (fix corrupted data from previous bug)
       const seen = new Set<string>()
@@ -55,7 +86,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
         seen.add(u.id)
         return true
       })
-    } catch { return [] }
+    } catch { return INITIAL_UTTERANCES }
   })
   const [partialTranscript, setPartialTranscript] = useState('')
   const [partialTranslations, setPartialTranslations] = useState<Record<string, string>>({})
