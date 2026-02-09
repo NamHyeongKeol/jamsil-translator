@@ -7,7 +7,17 @@
     "title2": "no more.",
     "subtitle": "No more stopping after every sentence to translate. Mingle keeps long conversations flowing continuously, translating in real-time as you speak and showing it on screen. Every conversation is saved in a chat room, and you can invite others to continue talking online anytime.",
     "cta": "Download",
-    "tryDemo": "Try it out"
+    "tryDemo": "Try it out",
+    "flirting": {
+      "title1": "Flirting with foreigners,",
+      "title2": "just got easier.",
+      "subtitle": "Don't let language hold you back. Mingle translates in real-time so you can keep the vibe going naturally. Your conversation is saved as a chat room, so you can reconnect anytime."
+    },
+    "working": {
+      "title1": "Working with global teams,",
+      "title2": "without language barriers.",
+      "subtitle": "Communicate with your global team in real-time. Mingle translates seamlessly during meetings. All conversations are recorded for later review, and you can continue chatting with teammates anytime."
+    }
   },
   "valueProposition": {
     "label": "Why Mingle",

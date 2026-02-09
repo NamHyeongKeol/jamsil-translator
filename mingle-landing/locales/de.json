@@ -7,7 +7,17 @@
     "title2": "Schluss damit.",
     "subtitle": "Kein Stoppen mehr nach jedem Satz zum Übersetzen. Mingle übersetzt lange Gespräche kontinuierlich und zeigt in Echtzeit auf dem Bildschirm an, was Sie sagen. Alle Gespräche werden in einem Chatroom gespeichert, und Sie können andere einladen, jederzeit online weiterzusprechen.",
     "cta": "Herunterladen",
-    "tryDemo": "Jetzt testen"
+    "tryDemo": "Jetzt testen",
+    "flirting": {
+      "title1": "Flirten mit Ausländern,",
+      "title2": "jetzt ganz einfach.",
+      "subtitle": "Lass dich nicht von der Sprache aufhalten. Mingle übersetzt in Echtzeit, damit die Stimmung natürlich bleibt. Dein Gespräch wird als Chatroom gespeichert – bleib verbunden, wann immer du willst."
+    },
+    "working": {
+      "title1": "Mit globalen Teams arbeiten,",
+      "title2": "ohne Sprachbarrieren.",
+      "subtitle": "Kommuniziere in Echtzeit mit deinem globalen Team. Mingle übersetzt nahtlos während Meetings. Alle Gespräche werden aufgezeichnet, um sie später nachzulesen, und du kannst jederzeit mit Kollegen chatten."
+    }
   },
   "valueProposition": {
     "label": "Why Mingle",
