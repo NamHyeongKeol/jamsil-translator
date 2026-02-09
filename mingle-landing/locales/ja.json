@@ -9,6 +9,11 @@
     "cta": "ダウンロード",
     "tryDemo": "試してみる"
   },
+  "valueProposition": {
+    "label": "Why Mingle",
+    "title": "外国人との会話、自信がすべてです",
+    "description": "外国語ができなくても大丈夫。Mingleをオンにするだけ。その自信を作ってあげます。"
+  },
   "problem": {
     "label": "問題点",
     "title1": "外国人の友達を作ること、",
