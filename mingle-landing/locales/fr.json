@@ -9,6 +9,11 @@
     "cta": "Télécharger",
     "tryDemo": "Essayez-le"
   },
+  "valueProposition": {
+    "label": "Why Mingle",
+    "title": "Parler aux Étrangers ? La Confiance est Tout",
+    "description": "Vous ne parlez pas leur langue ? Pas de problème. Allumez simplement Mingle. Nous vous donnerons la confiance."
+  },
   "problem": {
     "label": "Le problème",
     "title1": "Se faire des amis étrangers,",

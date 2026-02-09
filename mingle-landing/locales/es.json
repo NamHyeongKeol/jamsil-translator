@@ -9,6 +9,11 @@
     "cta": "Descargar",
     "tryDemo": "Pruébalo"
   },
+  "valueProposition": {
+    "label": "Why Mingle",
+    "title": "¿Hablar con Extranjeros? La Confianza lo es Todo",
+    "description": "¿No hablas su idioma? No hay problema. Solo enciende Mingle. Te daremos la confianza."
+  },
   "problem": {
     "label": "El Problema",
     "title1": "Hacer amigos extranjeros,",

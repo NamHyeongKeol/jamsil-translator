@@ -9,6 +9,11 @@
     "cta": "下载",
     "tryDemo": "试一试"
   },
+  "valueProposition": {
+    "label": "Why Mingle",
+    "title": "与外国人交流，自信就是一切",
+    "description": "不会外语也没关系。只需打开Mingle。我们会给你这份自信。"
+  },
   "problem": {
     "label": "问题所在",
     "title1": "结交外国朋友，",
