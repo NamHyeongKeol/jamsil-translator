@@ -7,7 +7,17 @@
     "title2": "basta ya.",
     "subtitle": "No más pausas después de cada frase para traducir. Mingle traduce las conversaciones largas continuamente, mostrando en tiempo real en pantalla lo que dices. Todas las conversaciones se guardan en una sala de chat, y puedes invitar a otros a continuar hablando en línea en cualquier momento.",
     "cta": "Descargar",
-    "tryDemo": "Pruébalo"
+    "tryDemo": "Pruébalo",
+    "flirting": {
+      "title1": "Coquetear con extranjeros,",
+      "title2": "ahora es más fácil.",
+      "subtitle": "No dejes que el idioma te detenga. Mingle traduce en tiempo real para que mantengas la conexión natural. Tu conversación se guarda como sala de chat, así puedes reconectarte cuando quieras."
+    },
+    "working": {
+      "title1": "Trabajar con equipos globales,",
+      "title2": "sin barreras idiomáticas.",
+      "subtitle": "Comunícate con tu equipo global en tiempo real. Mingle traduce sin interrupciones durante las reuniones. Todas las conversaciones se registran para revisarlas después, y puedes seguir chateando con tus compañeros cuando quieras."
+    }
   },
   "valueProposition": {
     "label": "Why Mingle",

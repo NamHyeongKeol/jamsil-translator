@@ -7,7 +7,17 @@
     "title2": "đủ rồi.",
     "subtitle": "Không còn phải dừng lại sau mỗi câu để dịch. Mingle dịch các cuộc trò chuyện dài liên tục, hiển thị theo thời gian thực trên màn hình những gì bạn nói. Tất cả cuộc trò chuyện được lưu trong phòng chat, và bạn có thể mời người khác tiếp tục nói chuyện trực tuyến bất cứ lúc nào.",
     "cta": "Tải xuống",
-    "tryDemo": "Dùng thử"
+    "tryDemo": "Dùng thử",
+    "flirting": {
+      "title1": "Tán tỉnh người nước ngoài,",
+      "title2": "giờ đã dễ dàng hơn.",
+      "subtitle": "Đừng để ngôn ngữ cản trở bạn. Mingle dịch theo thời gian thực để duy trì không khí tự nhiên. Cuộc trò chuyện của bạn được lưu làm phòng chat, kết nối lại bất cứ khi nào bạn muốn."
+    },
+    "working": {
+      "title1": "Làm việc với đội ngũ toàn cầu,",
+      "title2": "không rào cản ngôn ngữ.",
+      "subtitle": "Giao tiếp với đội ngũ toàn cầu theo thời gian thực. Mingle dịch liền mạch trong suốt cuộc họp. Tất cả cuộc trò chuyện được ghi lại để xem lại sau, và bạn có thể tiếp tục chat với đồng nghiệp bất cứ lúc nào."
+    }
   },
   "valueProposition": {
     "label": "Why Mingle",
