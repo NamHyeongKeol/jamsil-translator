@@ -70,6 +70,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     partialLang,
     usageSec,
     isLimitReached,
+    // Demo animation states
+    isDemoAnimating,
+    demoTypingText,
+    demoTypingLang,
+    demoTypingTranslations,
   } = useRealtimeSTT({
     languages: selectedLanguages,
     onLimitReached,
@@ -127,7 +132,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     if (chatRef.current && shouldAutoScroll.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight
     }
-  }, [utterances, partialTranscript, isConnecting])
+  }, [utterances, partialTranscript, isConnecting, demoTypingText])
 
   const showRipple = isReady && volume > VOLUME_THRESHOLD
   const rippleScale = showRipple ? 1 + (volume - VOLUME_THRESHOLD) * 5 : 1
@@ -262,8 +267,46 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             </motion.div>
           )}
 
+          {/* Demo typing animation */}
+          {demoTypingLang && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col gap-1"
+            >
+              <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[10px]">{FLAG_MAP[demoTypingLang] || '🌐'}</span>
+                  <span className="text-[9px] font-semibold text-gray-500 uppercase">{demoTypingLang}</span>
+                </div>
+                <p className="text-sm text-gray-600 leading-snug">
+                  {demoTypingText}
+                  <span className="inline-block w-1 h-3.5 ml-0.5 bg-amber-400 rounded-full animate-pulse" />
+                </p>
+              </div>
+              {/* Demo translations - typed in parallel */}
+              {Object.entries(demoTypingTranslations).map(([lang, text]) => (
+                <motion.div
+                  key={lang}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="ml-3 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3 py-1.5"
+                >
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-[10px]">{FLAG_MAP[lang] || '🌐'}</span>
+                    <span className="text-[9px] font-semibold text-amber-500 uppercase">{lang}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 leading-snug">
+                    {text}
+                    <span className="inline-block w-0.5 h-3 ml-0.5 bg-amber-300 rounded-full animate-pulse" />
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+
           {/* Empty state */}
-          {utterances.length === 0 && !partialTranscript && !isActive && !isError && !isLimitReached && (
+          {utterances.length === 0 && !partialTranscript && !demoTypingText && !demoTypingLang && !isDemoAnimating && !isActive && !isError && !isLimitReached && (
             <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 gap-2 pt-12">
               <Mic size={28} className="text-gray-300" />
               <p className="text-xs md:text-sm">Tap the mic to start</p>
