@@ -751,7 +751,7 @@ export default function HomePage({ version, locale }: HomePageProps) {
       </section>
 
       {/* Core Value - Socializing with Party Scenario */}
-      <section className="py-32 px-6">
+      <section className="py-32 px-6 bg-bg-secondary">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="text-center mb-16"
@@ -783,7 +783,7 @@ export default function HomePage({ version, locale }: HomePageProps) {
       </section>
 
       {/* Talk to the World */}
-      <section className="pt-32 pb-0 px-6 overflow-hidden bg-bg-secondary">
+      <section className="pt-32 pb-0 px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="text-center"
