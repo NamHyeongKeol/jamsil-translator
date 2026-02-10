@@ -71,6 +71,14 @@
       "desc": "AI nhận dạng giọng nói của từng người. Ngay cả trong cuộc trò chuyện 3+ người cũng hiển thị rõ ai nói gì."
     }
   },
+  "realtimeSync": {
+    "label": "Đồng bộ thời gian thực",
+    "title": "Mời đối tác trò chuyện và cùng xem bản ghi cuộc hội thoại",
+    "description": "Mời đối tác trò chuyện vào phòng chat. Với tính năng đồng bộ thời gian thực, họ cũng có thể dễ dàng xem cùng bản ghi cuộc hội thoại.",
+    "myScreen": "Màn hình của tôi",
+    "theirScreen": "Màn hình của họ",
+    "syncStatus": "Đồng bộ thời gian thực"
+  },
   "coreValue": {
     "label": "Giá Trị Cốt Lõi",
     "title": "Tiếp tục cuộc trò chuyện offline trong phòng chat trực tuyến",

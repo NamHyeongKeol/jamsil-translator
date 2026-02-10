@@ -71,6 +71,14 @@
       "desc": "AI voice recognition distinguishes each person's voice and separates the conversation by speaker. Works with 3+ people."
     }
   },
+  "realtimeSync": {
+    "label": "Real-time Sync",
+    "title": "Invite your conversation partner and share the same transcript",
+    "description": "Invite your conversation partner to the chat room. With real-time sync, they can comfortably view the same conversation transcript.",
+    "myScreen": "My Screen",
+    "theirScreen": "Their Screen",
+    "syncStatus": "Real-time Sync"
+  },
   "coreValue": {
     "label": "Core Value",
     "title": "Continue your offline conversation in an online chat room",

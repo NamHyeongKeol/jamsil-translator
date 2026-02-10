@@ -71,6 +71,14 @@
       "desc": "KI identifiziert die Stimme jeder Person. Selbst bei Gesprächen mit 3+ Personen zeigt klar, wer was gesagt hat."
     }
   },
+  "realtimeSync": {
+    "label": "Echtzeit-Synchronisation",
+    "title": "Laden Sie Ihren Gesprächspartner ein und teilen Sie dasselbe Transkript",
+    "description": "Laden Sie Ihren Gesprächspartner in den Chatraum ein. Mit der Echtzeit-Synchronisation kann auch Ihr Partner bequem dasselbe Gesprächsprotokoll einsehen.",
+    "myScreen": "Mein Bildschirm",
+    "theirScreen": "Ihr Bildschirm",
+    "syncStatus": "Echtzeit-Synchronisation"
+  },
   "coreValue": {
     "label": "Kernwert",
     "title": "Setzen Sie Ihr Offline-Gespräch in einem Online-Chatroom fort",
