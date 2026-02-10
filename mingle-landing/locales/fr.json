@@ -71,6 +71,14 @@
       "desc": "L'IA identifie la voix de chaque interlocuteur. Même dans les conversations à 3+ personnes, montre clairement qui a dit quoi."
     }
   },
+  "realtimeSync": {
+    "label": "Synchronisation en temps réel",
+    "title": "Invitez votre interlocuteur et partagez la même transcription",
+    "description": "Invitez votre interlocuteur dans le salon de discussion. Grâce à la synchronisation en temps réel, il peut consulter confortablement la même transcription.",
+    "myScreen": "Mon écran",
+    "theirScreen": "Son écran",
+    "syncStatus": "Synchronisation en temps réel"
+  },
   "coreValue": {
     "label": "Valeur fondamentale",
     "title": "Continuez votre conversation hors-ligne dans un salon de chat en ligne",

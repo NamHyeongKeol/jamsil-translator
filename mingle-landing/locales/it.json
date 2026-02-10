@@ -71,6 +71,14 @@
       "desc": "L'IA identifica la voce di ogni persona. Anche nelle conversazioni con 3+ persone, mostra chiaramente chi ha detto cosa."
     }
   },
+  "realtimeSync": {
+    "label": "Sincronizzazione in tempo reale",
+    "title": "Invita il tuo interlocutore e condividete la stessa trascrizione",
+    "description": "Invita il tuo interlocutore nella chat room. Con la sincronizzazione in tempo reale, anche il tuo partner può consultare comodamente la stessa trascrizione.",
+    "myScreen": "Il mio schermo",
+    "theirScreen": "Il loro schermo",
+    "syncStatus": "Sincronizzazione in tempo reale"
+  },
   "coreValue": {
     "label": "Valore Fondamentale",
     "title": "Continua la tua conversazione offline in una chat room online",
