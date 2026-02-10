@@ -129,5 +129,17 @@
     "step3Desc": "Conversar quando quiser",
     "resultFriends": "Amigos depois da festa!",
     "resultSaved": "Histórico traduzido salvo para sempre"
+  },
+  "socialHero": {
+    "title1": "Faça amigos",
+    "title2": "pelo mundo",
+    "subtitle": "A tecnologia de IA resolve completamente a barreira linguística. Converse com confiança com falantes nativos do mundo inteiro.",
+    "ctaMain": "Baixar",
+    "ctaSub": "Converse com milhões de falantes nativos"
+  },
+  "globalStats": {
+    "activeUsers": "Usuários ativos",
+    "countries": "Países",
+    "languages": "Idiomas"
   }
 }

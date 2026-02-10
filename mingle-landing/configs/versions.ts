@@ -7,6 +7,8 @@ import RealtimeSyncSection from '@/components/sections/RealtimeSyncSection'
 import CoreValueSection from '@/components/sections/CoreValueSection'
 import TalkToWorldSection from '@/components/sections/TalkToWorldSection'
 import CTASection from '@/components/sections/CTASection'
+import SocialHeroSection from '@/components/sections/SocialHeroSection'
+import GlobalStatsSection from '@/components/sections/GlobalStatsSection'
 
 // 섹션이 받을 수 있는 공통 props
 // openModal과 version은 필요한 컴포넌트만 사용하고, 나머지는 무시됨
@@ -26,6 +28,8 @@ export const sectionRegistry: Record<string, ComponentType<SectionCommonProps>> 
   coreValue: CoreValueSection as ComponentType<SectionCommonProps>,
   talkToWorld: TalkToWorldSection as ComponentType<SectionCommonProps>,
   cta: CTASection as ComponentType<SectionCommonProps>,
+  socialHero: SocialHeroSection as ComponentType<SectionCommonProps>,
+  globalStats: GlobalStatsSection as ComponentType<SectionCommonProps>,
 }
 
 export type SectionId = keyof typeof sectionRegistry
@@ -77,6 +81,14 @@ export const versionConfigs: Record<string, VersionConfig> = {
       { id: 'realtimeSync' },
       { id: 'coreValue' },
       { id: 'talkToWorld' },
+      { id: 'cta' },
+    ]
+  },
+  // social 버전 - 외국인과 만나는 소셜 앱 랜딩
+  social: {
+    sections: [
+      { id: 'socialHero' },
+      { id: 'globalStats' },
       { id: 'cta' },
     ]
   },

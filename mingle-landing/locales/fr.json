@@ -129,5 +129,17 @@
     "step3Desc": "Discuter quand vous voulez",
     "resultFriends": "Amis après la fête !",
     "resultSaved": "Historique traduit sauvegardé pour toujours"
+  },
+  "socialHero": {
+    "title1": "Faites-vous des amis",
+    "title2": "dans le monde entier",
+    "subtitle": "La technologie IA résout complètement la barrière linguistique. Discutez en toute confiance avec des locuteurs natifs du monde entier.",
+    "ctaMain": "Télécharger",
+    "ctaSub": "Discutez avec des millions de locuteurs natifs"
+  },
+  "globalStats": {
+    "activeUsers": "Utilisateurs actifs",
+    "countries": "Pays",
+    "languages": "Langues"
   }
 }

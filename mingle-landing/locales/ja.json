@@ -129,5 +129,17 @@
     "step3Desc": "いつでも会話を再開",
     "resultFriends": "パーティー後も友達に！",
     "resultSaved": "翻訳された会話履歴を永久保存"
+  },
+  "socialHero": {
+    "title1": "世界中と",
+    "title2": "友達になろう",
+    "subtitle": "AI技術で言語の壁を完全に解消します。世界中のネイティブスピーカーと自信を持って会話しましょう。",
+    "ctaMain": "ダウンロード",
+    "ctaSub": "数百万人のネイティブスピーカーと会話"
+  },
+  "globalStats": {
+    "activeUsers": "アクティブユーザー",
+    "countries": "カ国",
+    "languages": "言語"
   }
 }

@@ -129,5 +129,17 @@
     "step3Desc": "随时继续对话",
     "resultFriends": "派对后仍是朋友！",
     "resultSaved": "翻译过的对话记录永久保存"
+  },
+  "socialHero": {
+    "title1": "与全世界",
+    "title2": "交朋友",
+    "subtitle": "AI技术完美解决语言障碍。自信地与全球母语者交流。",
+    "ctaMain": "下载",
+    "ctaSub": "与数百万母语者对话"
+  },
+  "globalStats": {
+    "activeUsers": "活跃用户",
+    "countries": "国家",
+    "languages": "语言"
   }
 }
