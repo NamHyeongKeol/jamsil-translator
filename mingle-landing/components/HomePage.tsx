@@ -822,7 +822,10 @@ export default function HomePage({ version, locale }: HomePageProps) {
             variants={fadeInUp}
           >
             <h2 className="text-3xl md:text-5xl font-bold mb-6 text-text-primary">
-              {t('cta.title1')}<br />{t('cta.title2')}
+              {t('cta.title1')}<br />{t('cta.title2')}{' '}
+              <span className="bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">
+                {t('cta.title2Highlight')}
+              </span>
             </h2>
             <p className="text-lg text-text-secondary mb-12">
               {t('cta.subtitle')}
