@@ -34,7 +34,20 @@ async function saveConversation(utterances: Utterance[], selectedLanguages: stri
     await fetch('/api/log-conversation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ utterances, selectedLanguages, usageSec }),
+      body: JSON.stringify({
+        utterances,
+        selectedLanguages,
+        usageSec,
+        screenWidth: window.screen.width,
+        screenHeight: window.screen.height,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        platform: navigator.platform,
+        language: navigator.language,
+        referrer: document.referrer || null,
+        pathname: window.location.pathname,
+        fullUrl: window.location.href,
+        queryParams: window.location.search || null,
+      }),
     })
   } catch { /* silently fail */ }
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
-  const { screenWidth, screenHeight, timezone, platform, language, pageLanguage, referrer, pathname } = await request.json()
+  const { screenWidth, screenHeight, timezone, platform, language, pageLanguage, referrer, pathname, fullUrl, queryParams } = await request.json()
 
   // Get IP from various headers (for proxies like Vercel, Cloudflare)
   const forwardedFor = request.headers.get('x-forwarded-for')
@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get('user-agent') || 'unknown'
 
   try {
+    // Write to existing Visitor table (backward compatible)
     const visitor = await prisma.visitor.create({
       data: {
         ipAddress,
@@ -26,6 +27,26 @@ export async function POST(request: NextRequest) {
         pathname,
       },
     })
+
+    // Also log to EventLog for unified tracking
+    await prisma.eventLog.create({
+      data: {
+        eventType: 'visit',
+        ipAddress,
+        userAgent,
+        language,
+        pageLanguage,
+        referrer,
+        fullUrl,
+        queryParams,
+        pathname,
+        screenWidth,
+        screenHeight,
+        timezone,
+        platform,
+      },
+    })
+
     return NextResponse.json({ success: true, id: visitor.id })
   } catch (error) {
     console.error('Log visit error:', error)
