@@ -8,11 +8,23 @@ datasource db {
 }
 
 model Subscriber {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  feedback  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  feedback     String?
+  ipAddress    String?
+  userAgent    String?
+  language     String?
+  pageLanguage String?
+  referrer     String?
+  fullUrl      String?
+  queryParams  String?
+  screenWidth  Int?
+  screenHeight Int?
+  timezone     String?
+  platform     String?
+  pathname     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model ButtonClick {
@@ -52,4 +64,27 @@ model Visitor {
   platform     String?
   pathname     String? // URL path (e.g., /ko, /ja)
   createdAt    DateTime @default(now())
+}
+
+model EventLog {
+  id           String   @id @default(cuid())
+  eventType    String // "visit", "click", "subscribe", "demo_conversation"
+  ipAddress    String?
+  userAgent    String?
+  language     String? // browser language
+  pageLanguage String? // i18n detected language
+  referrer     String?
+  fullUrl      String? // full URL including protocol and domain
+  queryParams  String? // query string (e.g., "?utm_source=instagram&utm_medium=ad")
+  pathname     String? // URL path (e.g., /ko, /ja/flirting)
+  screenWidth  Int?
+  screenHeight Int?
+  timezone     String?
+  platform     String?
+  metadata     Json? // flexible field for event-specific data (e.g., buttonType, email, utterances)
+  createdAt    DateTime @default(now())
+
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([ipAddress])
 }

@@ -26,6 +26,21 @@ const fadeInUp = {
   transition: { duration: 0.6 }
 }
 
+// Collect common user/browser info for all tracking calls
+function getUserInfo() {
+  return {
+    screenWidth: window.screen.width,
+    screenHeight: window.screen.height,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    platform: navigator.platform,
+    language: navigator.language,
+    referrer: document.referrer || null,
+    pathname: window.location.pathname,
+    fullUrl: window.location.href,
+    queryParams: window.location.search || null,
+  }
+}
+
 // Log button click with user info
 async function logButtonClick(buttonType: string) {
   try {
@@ -34,12 +49,7 @@ async function logButtonClick(buttonType: string) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         buttonType,
-        screenWidth: window.screen.width,
-        screenHeight: window.screen.height,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        platform: navigator.platform,
-        language: navigator.language,
-        referrer: document.referrer || null,
+        ...getUserInfo(),
       }),
     })
   } catch (error) {
@@ -55,14 +65,8 @@ async function logVisit(pageLanguage: string) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        screenWidth: window.screen.width,
-        screenHeight: window.screen.height,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        platform: navigator.platform,
-        language: navigator.language,
+        ...getUserInfo(),
         pageLanguage,
-        referrer: document.referrer || null,
-        pathname: window.location.pathname,
       }),
     })
   } catch (error) {
@@ -158,7 +162,7 @@ function EmailModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, feedback: feedback.trim() || null }),
+        body: JSON.stringify({ email, feedback: feedback.trim() || null, ...getUserInfo() }),
       })
       if (res.ok) {
         setStatus('success')

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
-  const { utterances, selectedLanguages, usageSec } = await request.json()
+  const { utterances, selectedLanguages, usageSec, fullUrl, queryParams, pathname, referrer, language, pageLanguage, timezone, platform, screenWidth, screenHeight } = await request.json()
 
   const forwardedFor = request.headers.get('x-forwarded-for')
   const realIp = request.headers.get('x-real-ip')
@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get('user-agent') || 'unknown'
 
   try {
+    // Write to existing DemoConversation table (backward compatible)
     const conversation = await prisma.demoConversation.create({
       data: {
         ipAddress,
@@ -19,6 +20,31 @@ export async function POST(request: NextRequest) {
         usageSec: usageSec ?? null,
       },
     })
+
+    // Also log to EventLog for unified tracking
+    await prisma.eventLog.create({
+      data: {
+        eventType: 'demo_conversation',
+        ipAddress,
+        userAgent,
+        language,
+        pageLanguage,
+        referrer,
+        fullUrl,
+        queryParams,
+        pathname,
+        screenWidth,
+        screenHeight,
+        timezone,
+        platform,
+        metadata: {
+          utterances: utterances || [],
+          selectedLanguages: selectedLanguages || [],
+          usageSec: usageSec ?? null,
+        },
+      },
+    })
+
     return NextResponse.json({ success: true, id: conversation.id })
   } catch (error) {
     console.error('Log conversation error:', error)
