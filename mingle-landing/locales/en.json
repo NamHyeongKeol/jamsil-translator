@@ -96,7 +96,8 @@
   },
   "cta": {
     "title1": "The easiest way to",
-    "title2": "befriend anyone — Mingle",
+    "title2": "befriend anyone —",
+    "title2Highlight": "Mingle",
     "subtitle": "With Mingle, you can have deep conversations with anyone, no matter what language they speak.",
     "button": "Download Now"
   },
