@@ -129,5 +129,17 @@
     "step3Desc": "Chat bất cứ lúc nào",
     "resultFriends": "Bạn bè sau bữa tiệc!",
     "resultSaved": "Lịch sử dịch được lưu mãi mãi"
+  },
+  "socialHero": {
+    "title1": "Kết bạn",
+    "title2": "toàn thế giới",
+    "subtitle": "Công nghệ AI giải quyết hoàn toàn rào cản ngôn ngữ. Tự tin trò chuyện với người bản ngữ từ khắp nơi trên thế giới.",
+    "ctaMain": "Tải xuống",
+    "ctaSub": "Trò chuyện với hàng triệu người bản ngữ"
+  },
+  "globalStats": {
+    "activeUsers": "Người dùng",
+    "countries": "Quốc gia",
+    "languages": "Ngôn ngữ"
   }
 }

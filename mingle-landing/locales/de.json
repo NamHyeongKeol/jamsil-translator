@@ -129,5 +129,17 @@
     "step3Desc": "Jederzeit chatten",
     "resultFriends": "Freunde nach der Party!",
     "resultSaved": "Übersetzte Geschichte für immer gespeichert"
+  },
+  "socialHero": {
+    "title1": "Finde Freunde",
+    "title2": "weltweit",
+    "subtitle": "KI-Technologie löst die Sprachbarriere vollständig. Chatte selbstbewusst mit Muttersprachlern aus der ganzen Welt.",
+    "ctaMain": "Herunterladen",
+    "ctaSub": "Chatte mit Millionen von Muttersprachlern"
+  },
+  "globalStats": {
+    "activeUsers": "Aktive Nutzer",
+    "countries": "Länder",
+    "languages": "Sprachen"
   }
 }

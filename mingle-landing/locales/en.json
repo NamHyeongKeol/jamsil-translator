@@ -129,5 +129,17 @@
     "step3Desc": "Chat anytime",
     "resultFriends": "Friends after the party!",
     "resultSaved": "Translated history saved forever"
+  },
+  "socialHero": {
+    "title1": "Make Friends",
+    "title2": "Worldwide",
+    "subtitle": "AI technology completely solves the language barrier. Chat confidently with native speakers from around the world.",
+    "ctaMain": "Download",
+    "ctaSub": "Chat with millions of native speakers"
+  },
+  "globalStats": {
+    "activeUsers": "Active Users",
+    "countries": "Countries",
+    "languages": "Languages"
   }
 }

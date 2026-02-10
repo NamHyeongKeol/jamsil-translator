@@ -129,5 +129,17 @@
     "step3Desc": "Chatear cuando quieras",
     "resultFriends": "¡Amigos después de la fiesta!",
     "resultSaved": "Historial traducido guardado para siempre"
+  },
+  "socialHero": {
+    "title1": "Haz amigos",
+    "title2": "en todo el mundo",
+    "subtitle": "La tecnología IA resuelve completamente la barrera del idioma. Chatea con confianza con hablantes nativos de todo el mundo.",
+    "ctaMain": "Descargar",
+    "ctaSub": "Chatea con millones de hablantes nativos"
+  },
+  "globalStats": {
+    "activeUsers": "Usuarios activos",
+    "countries": "Países",
+    "languages": "Idiomas"
   }
 }

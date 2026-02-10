@@ -129,5 +129,17 @@
     "step3Desc": "Chattare quando vuoi",
     "resultFriends": "Amici dopo la festa!",
     "resultSaved": "Storico tradotto salvato per sempre"
+  },
+  "socialHero": {
+    "title1": "Fai amicizia",
+    "title2": "in tutto il mondo",
+    "subtitle": "La tecnologia AI risolve completamente la barriera linguistica. Chatta con sicurezza con madrelingua di tutto il mondo.",
+    "ctaMain": "Scarica",
+    "ctaSub": "Chatta con milioni di madrelingua"
+  },
+  "globalStats": {
+    "activeUsers": "Utenti attivi",
+    "countries": "Paesi",
+    "languages": "Lingue"
   }
 }
