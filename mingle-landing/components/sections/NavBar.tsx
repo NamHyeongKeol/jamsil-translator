@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, Download } from 'lucide-react'
@@ -12,6 +13,7 @@ interface LanguageSelectorProps {
 
 function LanguageSelector({ version }: LanguageSelectorProps) {
   const { i18n } = useTranslation()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -59,10 +61,11 @@ function LanguageSelector({ version }: LanguageSelectorProps) {
                 key={lang.code}
                 onClick={() => {
                   i18n.changeLanguage(lang.code)
-                  // URL 경로 업데이트 - version이 있으면 포함
+                  // URL 경로 업데이트 - 항상 locale 포함 (영어도 /en 포함)
+                  // router.push를 사용해 Next.js 라우터가 params를 올바르게 업데이트하도록 함
                   const basePath = version ? `/${version}` : ''
-                  const newPath = lang.code === 'en' ? basePath || '/' : `${basePath}/${lang.code}`
-                  window.history.pushState({}, '', newPath)
+                  const newPath = `${basePath}/${lang.code}`
+                  router.push(newPath)
                   setIsOpen(false)
                 }}
                 className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-3 transition-colors ${lang.code === i18n.language ? 'text-accent-primary' : 'text-text-secondary'}`}
