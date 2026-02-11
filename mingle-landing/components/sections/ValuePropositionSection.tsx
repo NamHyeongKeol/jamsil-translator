@@ -4,8 +4,16 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { fadeInUp } from '@/components/sections/shared'
 
-export default function ValuePropositionSection() {
+export interface ValuePropositionSectionProps {
+  version?: string
+}
+
+export default function ValuePropositionSection({ version }: ValuePropositionSectionProps) {
   const { t } = useTranslation()
+
+  // version-specific i18n key fallback
+  const vt = (key: string) =>
+    t(`valueProposition.${version}.${key}`, { defaultValue: t(`valueProposition.${key}`) })
 
   return (
     <section className="py-12 md:py-20 px-6 bg-gradient-to-b from-white to-gray-50">
@@ -18,13 +26,15 @@ export default function ValuePropositionSection() {
           variants={fadeInUp}
         >
           <div className="text-sm font-semibold text-accent-primary uppercase tracking-wider mb-4">
-            {t('valueProposition.label')}
+            {vt('label')}
           </div>
           <h2 className="text-3xl md:text-4xl font-bold mb-6 text-text-primary">
-            {t('valueProposition.title')}
+            {vt('title')}
+            {' '}
+            <span className="bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">{vt('titleHighlight')}</span>
           </h2>
           <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-            {t('valueProposition.description')}
+            {vt('description')}
           </p>
         </motion.div>
 
@@ -75,3 +85,4 @@ export default function ValuePropositionSection() {
     </section>
   )
 }
+

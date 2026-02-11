@@ -22,7 +22,14 @@
   "valueProposition": {
     "label": "Why Mingle",
     "title": "Nói chuyện với Người nước ngoài? Sự tự tin là Tất cả",
-    "description": "Không nói được ngôn ngữ của họ? Không sao. Chỉ cần bật Mingle. Chúng tôi sẽ mang lại cho bạn sự tự tin."
+    "description": "Không nói được ngôn ngữ của họ? Không sao. Chỉ cần bật Mingle. Chúng tôi sẽ mang lại cho bạn sự tự tin.",
+    "social": {
+      "label": "Offline",
+      "title": "Tự tin tham gia gặp mặt offline.",
+      "description": "Biến thành trình dịch giọng nói thời gian thực. Tự động dịch nhiều ngôn ngữ theo cả hai hướng.",
+      "titleHighlight": "Cùng Mingle."
+    },
+    "titleHighlight": ""
   },
   "problem": {
     "label": "Vấn Đề",
@@ -131,15 +138,41 @@
     "resultSaved": "Lịch sử dịch được lưu mãi mãi"
   },
   "socialHero": {
-    "title1": "Kết bạn",
-    "title2": "toàn thế giới",
-    "subtitle": "Công nghệ AI giải quyết hoàn toàn rào cản ngôn ngữ. Tự tin trò chuyện với người bản ngữ từ khắp nơi trên thế giới.",
+    "title1": "Nói chuyện với thế giới",
+    "title2": "Không rào cản",
+    "subtitle": "Công nghệ AI giải quyết hoàn toàn rào cản ngôn ngữ. Tự tin trò chuyện với mọi người từ khắp nơi trên thế giới.",
     "ctaMain": "Tải xuống",
-    "ctaSub": "Trò chuyện với hàng triệu người bản ngữ"
+    "ctaSub": "Trò chuyện với hàng triệu người"
   },
   "globalStats": {
     "activeUsers": "Người dùng",
     "countries": "Quốc gia",
     "languages": "Ngôn ngữ"
+  },
+  "connect": {
+    "label": "Connect",
+    "title1": "Kết nối và trò chuyện",
+    "title2": "với bạn bè yêu thích",
+    "description": "Kết nối với hơn 10 triệu người trên toàn thế giới. Rào cản ngôn ngữ đã được công nghệ AI của Mingle vượt qua."
+  },
+  "communication": {
+    "title": "Bất kỳ hình thức giao tiếp nào, dễ dàng",
+    "description": "Gặp gỡ và trò chuyện với người bản địa qua tin nhắn, giọng nói, video call, Voicerooms và Livestreams. Dịch theo thời gian thực trong mọi trường hợp.",
+    "label": "Communication"
+  },
+  "moments": {
+    "title": "Chia sẻ khoảnh khắc với thế giới",
+    "description": "Tận hưởng du lịch và giao lưu văn hóa từ người dùng trên toàn thế giới trong Moments.",
+    "label": "Moments"
+  },
+  "voiceroom": {
+    "title": "Thể hiện bản thân trong Voiceroom",
+    "description": "Không biết ngoại ngữ? Không vấn đề. Dịch thời gian thực giúp bạn kết bạn ngay lập tức.",
+    "label": "Voiceroom"
+  },
+  "worldMap": {
+    "title": "Tìm bất kỳ ai trên thế giới",
+    "description": "Trước khi đi du lịch, kết bạn với người bản địa trên Mingle trước.",
+    "label": "Explore"
   }
 }

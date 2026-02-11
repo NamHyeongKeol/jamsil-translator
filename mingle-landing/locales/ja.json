@@ -22,7 +22,14 @@
   "valueProposition": {
     "label": "Why Mingle",
     "title": "外国人との会話、自信がすべてです",
-    "description": "外国語ができなくても大丈夫。Mingleをオンにするだけ。その自信を作ってあげます。"
+    "description": "外国語ができなくても大丈夫。Mingleをオンにするだけ。その自信を作ってあげます。",
+    "social": {
+      "label": "Offline",
+      "title": "オフラインの集まりにも自信を持って参加。",
+      "description": "リアルタイム音声翻訳機に変身。一文ずつ止まることなく、複数言語も双方向に自動翻訳してくれるので、会話だけに集中できます。",
+      "titleHighlight": "Mingleと一緒に。"
+    },
+    "titleHighlight": ""
   },
   "problem": {
     "label": "問題点",
@@ -131,15 +138,41 @@
     "resultSaved": "翻訳された会話履歴を永久保存"
   },
   "socialHero": {
-    "title1": "世界中と",
-    "title2": "友達になろう",
-    "subtitle": "AI技術で言語の壁を完全に解消します。世界中のネイティブスピーカーと自信を持って会話しましょう。",
+    "title1": "世界と話そう",
+    "title2": "言語の壁なく",
+    "subtitle": "AI技術で言語の壁を完全に解消します。世界中の人々と自信を持って会話しましょう。",
     "ctaMain": "ダウンロード",
-    "ctaSub": "数百万人のネイティブスピーカーと会話"
+    "ctaSub": "数百万人の外国人と会話"
   },
   "globalStats": {
     "activeUsers": "アクティブユーザー",
     "countries": "カ国",
     "languages": "言語"
+  },
+  "connect": {
+    "label": "Connect",
+    "title1": "気の合う友達と",
+    "title2": "つながって会話しよう",
+    "description": "世界中の1000万人以上の人々とつながって会話しましょう。言語の壁はMingleのAI技術が克服しました。"
+  },
+  "communication": {
+    "title": "どんなコミュニケーションも簡単に",
+    "description": "テキスト、音声、ビデオ通話、Voicerooms、Livestreamsで現地の人と出会いチャットしましょう。すべての場合にリアルタイム翻訳が提供されます。",
+    "label": "Communication"
+  },
+  "moments": {
+    "title": "世界の瞬間を一緒に",
+    "description": "モーメントで世界中のユーザーの旅行と文化交流を楽しみましょう。",
+    "label": "Moments"
+  },
+  "voiceroom": {
+    "title": "Voiceroomで自分を表現しよう",
+    "description": "外国語ができなくても大丈夫。リアルタイム翻訳で見知らぬ人ともすぐに仲良くなれます。",
+    "label": "Voiceroom"
+  },
+  "worldMap": {
+    "title": "世界中の誰でも探してみよう",
+    "description": "旅行前に、Mingleで現地の友達を作りましょう。",
+    "label": "Explore"
   }
 }

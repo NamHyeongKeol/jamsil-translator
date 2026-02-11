@@ -22,7 +22,14 @@
   "valueProposition": {
     "label": "Why Mingle",
     "title": "與外國人交流，自信就是一切",
-    "description": "不會外語也沒關係。只需打開Mingle。我們會給你這份自信。"
+    "description": "不會外語也沒關係。只需打開Mingle。我們會給你這份自信。",
+    "social": {
+      "label": "Offline",
+      "title": "自信地參加線下聚會。",
+      "description": "變身為即時語音翻譯器。不用逐句停頓，多種語言也能雙向自動翻譯，讓您專注於對話。",
+      "titleHighlight": "與Mingle一起。"
+    },
+    "titleHighlight": ""
   },
   "problem": {
     "label": "問題所在",
@@ -131,15 +138,41 @@
     "resultSaved": "翻譯過的對話記錄永久保存"
   },
   "socialHero": {
-    "title1": "與全世界",
-    "title2": "交朋友",
-    "subtitle": "AI技術完美解決語言障礙。自信地與全球母語者交流。",
+    "title1": "與世界對話",
+    "title2": "沒有語言障礙",
+    "subtitle": "AI技術完美解決語言障礙。自信地與全球人交流。",
     "ctaMain": "下載",
-    "ctaSub": "與數百萬母語者對話"
+    "ctaSub": "與數百萬外國人對話"
   },
   "globalStats": {
     "activeUsers": "活躍用戶",
     "countries": "國家",
     "languages": "語言"
+  },
+  "connect": {
+    "label": "Connect",
+    "title1": "與喜歡的朋友",
+    "title2": "連結聊天",
+    "description": "與全球超過一千萬人連結聊天。語言障礙已被Mingle的AI技術克服。"
+  },
+  "communication": {
+    "title": "任何溝通方式都輕鬆搞定",
+    "description": "透過文字、語音、視訊通話、Voicerooms、Livestreams與當地人見面聊天。所有情況都提供即時翻譯。",
+    "label": "Communication"
+  },
+  "moments": {
+    "title": "一起分享世界的瞬間",
+    "description": "在Moments中享受全世界用戶的旅行和文化交流。",
+    "label": "Moments"
+  },
+  "voiceroom": {
+    "title": "在Voiceroom中表達自己",
+    "description": "不會外語也沒關係，即時翻譯讓您很快與陌生人熟絡起來。",
+    "label": "Voiceroom"
+  },
+  "worldMap": {
+    "title": "尋找世界各地的朋友",
+    "description": "旅行前，先在Mingle上結交當地朋友。",
+    "label": "Explore"
   }
 }

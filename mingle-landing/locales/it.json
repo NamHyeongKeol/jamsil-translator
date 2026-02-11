@@ -22,7 +22,14 @@
   "valueProposition": {
     "label": "Why Mingle",
     "title": "Parlare con gli Stranieri? La Fiducia è Tutto",
-    "description": "Non parli la loro lingua? Nessun problema. Basta accendere Mingle. Ti daremo la sicurezza."
+    "description": "Non parli la loro lingua? Nessun problema. Basta accendere Mingle. Ti daremo la sicurezza.",
+    "social": {
+      "label": "Offline",
+      "title": "Partecipa agli incontri offline con sicurezza.",
+      "description": "Si trasforma in un traduttore vocale in tempo reale. Traduce automaticamente più lingue in entrambe le direzioni.",
+      "titleHighlight": "Con Mingle."
+    },
+    "titleHighlight": ""
   },
   "problem": {
     "label": "Il Problema",
@@ -131,15 +138,41 @@
     "resultSaved": "Storico tradotto salvato per sempre"
   },
   "socialHero": {
-    "title1": "Fai amicizia",
-    "title2": "in tutto il mondo",
-    "subtitle": "La tecnologia AI risolve completamente la barriera linguistica. Chatta con sicurezza con madrelingua di tutto il mondo.",
+    "title1": "Parla con il mondo",
+    "title2": "Senza barriere",
+    "subtitle": "La tecnologia AI risolve completamente la barriera linguistica. Chatta con sicurezza con persone di tutto il mondo.",
     "ctaMain": "Scarica",
-    "ctaSub": "Chatta con milioni di madrelingua"
+    "ctaSub": "Chatta con milioni di persone"
   },
   "globalStats": {
     "activeUsers": "Utenti attivi",
     "countries": "Paesi",
     "languages": "Lingue"
+  },
+  "connect": {
+    "label": "Connect",
+    "title1": "Connettiti e chatta",
+    "title2": "con gli amici",
+    "description": "Connettiti con oltre 10 milioni di persone. La tecnologia AI di Mingle ha superato la barriera linguistica."
+  },
+  "communication": {
+    "title": "Qualsiasi tipo di comunicazione, facilmente",
+    "description": "Incontra e chatta con la gente del posto tramite testo, voce, videochiamate, Voicerooms e Livestreams. Traduzione in tempo reale in ogni caso.",
+    "label": "Communication"
+  },
+  "moments": {
+    "title": "Condividi momenti con il mondo",
+    "description": "Goditi viaggi e scambi culturali degli utenti di tutto il mondo nei Moments.",
+    "label": "Moments"
+  },
+  "voiceroom": {
+    "title": "Esprimiti nel Voiceroom",
+    "description": "Non parli la lingua? Nessun problema. La traduzione in tempo reale ti permette di legare rapidamente.",
+    "label": "Voiceroom"
+  },
+  "worldMap": {
+    "title": "Trova chiunque nel mondo",
+    "description": "Prima di viaggiare, fai amicizia con i locali su Mingle.",
+    "label": "Explore"
   }
 }

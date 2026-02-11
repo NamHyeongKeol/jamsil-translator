@@ -22,7 +22,14 @@
   "valueProposition": {
     "label": "Why Mingle",
     "title": "Mit Ausländern Sprechen? Selbstvertrauen ist Alles",
-    "description": "Du sprichst ihre Sprache nicht? Kein Problem. Schalte einfach Mingle ein. Wir geben dir das Selbstvertrauen."
+    "description": "Du sprichst ihre Sprache nicht? Kein Problem. Schalte einfach Mingle ein. Wir geben dir das Selbstvertrauen.",
+    "social": {
+      "label": "Offline",
+      "title": "Nimm selbstbewusst an Offline-Treffen teil.",
+      "description": "Verwandelt sich in einen Echtzeit-Sprachübersetzer. Übersetzt automatisch mehrere Sprachen in beide Richtungen.",
+      "titleHighlight": "Mit Mingle."
+    },
+    "titleHighlight": ""
   },
   "problem": {
     "label": "Das Problem",
@@ -131,15 +138,41 @@
     "resultSaved": "Übersetzte Geschichte für immer gespeichert"
   },
   "socialHero": {
-    "title1": "Finde Freunde",
-    "title2": "weltweit",
-    "subtitle": "KI-Technologie löst die Sprachbarriere vollständig. Chatte selbstbewusst mit Muttersprachlern aus der ganzen Welt.",
+    "title1": "Rede mit der Welt",
+    "title2": "Ohne Barrieren",
+    "subtitle": "KI-Technologie löst die Sprachbarriere vollständig. Chatte selbstbewusst mit Menschen aus aller Welt.",
     "ctaMain": "Herunterladen",
-    "ctaSub": "Chatte mit Millionen von Muttersprachlern"
+    "ctaSub": "Chatte mit Millionen von Menschen"
   },
   "globalStats": {
     "activeUsers": "Aktive Nutzer",
     "countries": "Länder",
     "languages": "Sprachen"
+  },
+  "connect": {
+    "label": "Connect",
+    "title1": "Verbinde dich und chatte",
+    "title2": "mit Freunden",
+    "description": "Verbinde dich mit über 10 Millionen Menschen weltweit. Die KI-Technologie von Mingle hat die Sprachbarriere überwunden."
+  },
+  "communication": {
+    "title": "Jede Art der Kommunikation, ganz einfach",
+    "description": "Triff und chatte mit Einheimischen per Text, Sprache, Videoanruf, Voicerooms und Livestreams. Echtzeit-Übersetzung in allen Fällen.",
+    "label": "Communication"
+  },
+  "moments": {
+    "title": "Teile Momente mit der Welt",
+    "description": "Genieße Reisen und kulturellen Austausch von Nutzern aus aller Welt in Moments.",
+    "label": "Moments"
+  },
+  "voiceroom": {
+    "title": "Drücke dich im Voiceroom aus",
+    "description": "Du sprichst die Sprache nicht? Kein Problem. Echtzeit-Übersetzung lässt dich schnell mit Fremden in Kontakt treten.",
+    "label": "Voiceroom"
+  },
+  "worldMap": {
+    "title": "Finde jeden auf der Welt",
+    "description": "Bevor du reist, finde auf Mingle lokale Freunde.",
+    "label": "Explore"
   }
 }
