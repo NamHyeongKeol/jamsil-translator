@@ -63,7 +63,7 @@ i18n
     },
     detection: {
       order: ['path', 'localStorage', 'navigator'],
-      lookupFromPathIndex: 0,
+      lookupFromPathIndex: 1,
       caches: ['localStorage'],
     },
   })
