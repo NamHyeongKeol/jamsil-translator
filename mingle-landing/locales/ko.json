@@ -112,12 +112,12 @@
     "copyright": "© 2026 Mingle. All rights reserved."
   },
   "modal": {
-    "title": "얼리 액세스 신청",
-    "subtitle": "Mingle 출시 알림을 받을 이메일을 입력하세요.",
+    "title": "한국 출시 알림 신청",
+    "subtitle": "전 세계 150개국에서 사랑받는 Mingle이 곧 한국에 출시됩니다. 이메일을 등록하고 가장 먼저 만나보세요.",
     "placeholder": "your@email.com",
     "submit": "알림 받기",
     "success": "등록 완료!",
-    "successDesc": "Mingle이 준비되면 알려드릴게요.",
+    "successDesc": "한국 출시 시 가장 먼저 알려드릴게요!",
     "error": "문제가 발생했습니다. 다시 시도해주세요.",
     "close": "닫기",
     "feedbackPlaceholder": "요청하고 싶거나 기대되는 내용이 있다면 적어주세요"

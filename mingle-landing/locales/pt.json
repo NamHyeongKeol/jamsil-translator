@@ -112,12 +112,12 @@
     "copyright": "© 2026 Mingle. Todos os direitos reservados."
   },
   "modal": {
-    "title": "Acesso Antecipado",
-    "subtitle": "Digite seu email para ser notificado quando o Mingle for lançado.",
+    "title": "Inscreva-se para o lançamento no Brasil",
+    "subtitle": "Mingle já é amado por milhões no mundo todo. Cadastre seu email para saber quando chegaremos ao Brasil.",
     "placeholder": "seu@email.com",
     "submit": "Me notifique",
     "success": "Você está na lista!",
-    "successDesc": "Notificaremos você quando o Mingle estiver pronto.",
+    "successDesc": "Avisaremos quando o Mingle for lançado no Brasil!",
     "error": "Algo deu errado. Por favor, tente novamente.",
     "close": "Fechar",
     "feedbackPlaceholder": "Se você tem alguma solicitação ou expectativa, conte-nos"

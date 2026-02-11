@@ -112,12 +112,12 @@
     "copyright": "© 2026 Mingle. 保留所有权利。"
   },
   "modal": {
-    "title": "获取早期访问",
-    "subtitle": "输入您的邮箱，Mingle上线时我们会通知您。",
+    "title": "中国区上线通知",
+    "subtitle": "Mingle已在全球150个国家受到喜爱。注册邮箱，第一时间获取中国区上线通知。",
     "placeholder": "your@email.com",
     "submit": "通知我",
     "success": "已加入名单！",
-    "successDesc": "Mingle准备好后我们会通知您。",
+    "successDesc": "中国区上线时会第一时间通知您！",
     "error": "出现问题，请重试。",
     "close": "关闭",
     "feedbackPlaceholder": "如果有想要的功能或期待的内容，请告诉我们"

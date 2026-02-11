@@ -112,12 +112,12 @@
     "copyright": "© 2026 Mingle. Tous droits réservés."
   },
   "modal": {
-    "title": "Accès anticipé",
-    "subtitle": "Entrez votre email pour être notifié du lancement de Mingle.",
+    "title": "Inscription au lancement en France",
+    "subtitle": "Mingle est déjà utilisé par des millions de personnes dans le monde. Inscrivez-vous pour être informé du lancement en France.",
     "placeholder": "votre@email.com",
     "submit": "Me notifier",
     "success": "Vous êtes inscrit !",
-    "successDesc": "Nous vous notifierons quand Mingle sera prêt.",
+    "successDesc": "Nous vous préviendrons dès le lancement en France !",
     "error": "Une erreur s'est produite. Veuillez réessayer.",
     "close": "Fermer",
     "feedbackPlaceholder": "Si vous avez des demandes ou des attentes, dites-le nous"

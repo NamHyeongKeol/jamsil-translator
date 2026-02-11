@@ -112,12 +112,12 @@
     "copyright": "© 2026 Mingle. All rights reserved."
   },
   "modal": {
-    "title": "早期アクセス申請",
-    "subtitle": "Mingleのリリース通知を受け取るメールを入力してください。",
+    "title": "日本リリース通知を受け取る",
+    "subtitle": "世界150カ国で愛されているMingleが、まもなく日本でリリースされます。メールを登録して、いち早く体験しましょう。",
     "placeholder": "your@email.com",
     "submit": "通知を受け取る",
     "success": "登録完了！",
-    "successDesc": "Mingleの準備ができたらお知らせします。",
+    "successDesc": "日本リリース時にいち早くお知らせします！",
     "error": "問題が発生しました。もう一度お試しください。",
     "close": "閉じる",
     "feedbackPlaceholder": "リクエストや期待する機能があればお聞かせください"

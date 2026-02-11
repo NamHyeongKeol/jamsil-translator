@@ -112,12 +112,12 @@
     "copyright": "© 2026 Mingle. Todos los derechos reservados."
   },
   "modal": {
-    "title": "Acceso Anticipado",
-    "subtitle": "Ingresa tu email para ser notificado cuando Mingle se lance.",
+    "title": "Inscríbete para el lanzamiento",
+    "subtitle": "Mingle ya es usado por millones en todo el mundo. Sé el primero en saber cuando lleguemos a tu país.",
     "placeholder": "tu@email.com",
     "submit": "Notifícame",
     "success": "¡Estás en la lista!",
-    "successDesc": "Te notificaremos cuando Mingle esté listo.",
+    "successDesc": "¡Te avisaremos cuando Mingle se lance en tu zona!",
     "error": "Algo salió mal. Por favor, intenta de nuevo.",
     "close": "Cerrar",
     "feedbackPlaceholder": "Si tienes alguna solicitud o expectativa, cuéntanos"

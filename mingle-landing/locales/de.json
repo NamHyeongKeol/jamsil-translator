@@ -112,12 +112,12 @@
     "copyright": "© 2026 Mingle. Alle Rechte vorbehalten."
   },
   "modal": {
-    "title": "Frühen Zugang erhalten",
-    "subtitle": "Geben Sie Ihre E-Mail ein, um benachrichtigt zu werden, wenn Mingle startet.",
+    "title": "Benachrichtigung zum Deutschland-Start",
+    "subtitle": "Mingle wird bereits von Millionen weltweit geliebt. Registriere dich, um als Erster vom Start in Deutschland zu erfahren.",
     "placeholder": "ihre@email.com",
     "submit": "Benachrichtigen",
     "success": "Sie sind auf der Liste!",
-    "successDesc": "Wir benachrichtigen Sie, wenn Mingle bereit ist.",
+    "successDesc": "Wir benachrichtigen dich, sobald Mingle in Deutschland startet!",
     "error": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
     "close": "Schließen",
     "feedbackPlaceholder": "Wenn Sie Wünsche oder Erwartungen haben, teilen Sie uns diese mit"
