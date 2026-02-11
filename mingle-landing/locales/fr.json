@@ -22,7 +22,14 @@
   "valueProposition": {
     "label": "Why Mingle",
     "title": "Parler aux Étrangers ? La Confiance est Tout",
-    "description": "Vous ne parlez pas leur langue ? Pas de problème. Allumez simplement Mingle. Nous vous donnerons la confiance."
+    "description": "Vous ne parlez pas leur langue ? Pas de problème. Allumez simplement Mingle. Nous vous donnerons la confiance.",
+    "social": {
+      "label": "Offline",
+      "title": "Participez aux rencontres hors ligne en toute confiance.",
+      "description": "Se transforme en traducteur vocal en temps réel. Traduit automatiquement plusieurs langues dans les deux sens sans arrêt.",
+      "titleHighlight": "Avec Mingle."
+    },
+    "titleHighlight": ""
   },
   "problem": {
     "label": "Le problème",
@@ -131,15 +138,41 @@
     "resultSaved": "Historique traduit sauvegardé pour toujours"
   },
   "socialHero": {
-    "title1": "Faites-vous des amis",
-    "title2": "dans le monde entier",
-    "subtitle": "La technologie IA résout complètement la barrière linguistique. Discutez en toute confiance avec des locuteurs natifs du monde entier.",
+    "title1": "Parlez au monde",
+    "title2": "Sans barrières",
+    "subtitle": "La technologie IA résout complètement la barrière linguistique. Discutez en toute confiance avec des personnes du monde entier.",
     "ctaMain": "Télécharger",
-    "ctaSub": "Discutez avec des millions de locuteurs natifs"
+    "ctaSub": "Discutez avec des millions de personnes"
   },
   "globalStats": {
     "activeUsers": "Utilisateurs actifs",
     "countries": "Pays",
     "languages": "Langues"
+  },
+  "connect": {
+    "label": "Connect",
+    "title1": "Connectez-vous et discutez",
+    "title2": "avec des amis qui vous plaisent",
+    "description": "Connectez-vous et discutez avec plus de 10 millions de personnes. La technologie IA de Mingle a surmonté la barrière linguistique."
+  },
+  "communication": {
+    "title": "Tout type de communication, facilement",
+    "description": "Rencontrez et discutez avec des locaux par texte, voix, appels vidéo, Voicerooms et Livestreams. Traduction en temps réel dans tous les cas.",
+    "label": "Communication"
+  },
+  "moments": {
+    "title": "Partagez des moments avec le monde",
+    "description": "Profitez des voyages et échanges culturels des utilisateurs du monde entier dans Moments.",
+    "label": "Moments"
+  },
+  "voiceroom": {
+    "title": "Exprimez-vous dans Voiceroom",
+    "description": "Vous ne parlez pas la langue ? Pas de problème. La traduction en temps réel vous permet de vous lier rapidement.",
+    "label": "Voiceroom"
+  },
+  "worldMap": {
+    "title": "Trouvez n'importe qui dans le monde",
+    "description": "Avant de voyager, faites-vous des amis locaux sur Mingle.",
+    "label": "Explore"
   }
 }

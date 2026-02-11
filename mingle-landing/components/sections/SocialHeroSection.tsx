@@ -14,7 +14,7 @@ export default function SocialHeroSection({ openModal }: SocialHeroSectionProps)
   const { t } = useTranslation()
 
   return (
-    <section className="min-h-screen flex items-center pt-24 lg:pt-10 pb-20 px-6 relative overflow-hidden bg-gradient-to-br from-white via-white to-gray-50">
+    <section className="min-h-screen flex items-center pt-32 md:pt-36 lg:pt-10 pb-20 px-6 relative overflow-hidden bg-gradient-to-b lg:bg-gradient-to-r from-orange-50/60 via-white to-white">
       {/* 배경 데코레이션 */}
       <div className="absolute top-[-200px] right-[-100px] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(99,102,241,0.06)_0%,transparent_70%)] pointer-events-none" />
       <div className="absolute bottom-[-100px] left-[-100px] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(245,158,11,0.06)_0%,transparent_70%)] pointer-events-none" />
@@ -30,13 +30,13 @@ export default function SocialHeroSection({ openModal }: SocialHeroSectionProps)
           <h1 className="font-black leading-[1.1] mb-6">
             <span
               className="block text-text-primary"
-              style={{ fontSize: 'clamp(3rem, 6vw, 5rem)' }}
+              style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)' }}
             >
               {t('socialHero.title1')}
             </span>
             <span
               className="block bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent"
-              style={{ fontSize: 'clamp(3rem, 6vw, 5rem)' }}
+              style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)' }}
             >
               {t('socialHero.title2')}
             </span>
