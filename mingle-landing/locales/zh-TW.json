@@ -112,12 +112,12 @@
     "copyright": "© 2026 Mingle. 保留所有權利。"
   },
   "modal": {
-    "title": "獲取早期存取",
-    "subtitle": "輸入您的電子郵件，Mingle上線時我們會通知您。",
+    "title": "台灣上線通知",
+    "subtitle": "Mingle已在全球150個國家受到喜愛。註冊信箱，搶先獲取台灣上線通知。",
     "placeholder": "your@email.com",
     "submit": "通知我",
     "success": "已加入名單！",
-    "successDesc": "Mingle準備好後我們會通知您。",
+    "successDesc": "台灣上線時會第一時間通知您！",
     "error": "出現問題，請重試。",
     "close": "關閉",
     "feedbackPlaceholder": "如果有想要的功能或期待的內容，請告訴我們"

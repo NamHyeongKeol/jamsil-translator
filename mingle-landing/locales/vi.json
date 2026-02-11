@@ -112,12 +112,12 @@
     "copyright": "© 2026 Mingle. Bảo lưu mọi quyền."
   },
   "modal": {
-    "title": "Đăng Ký Sớm",
-    "subtitle": "Nhập email để được thông báo khi Mingle ra mắt.",
+    "title": "Đăng ký nhận thông báo ra mắt tại Việt Nam",
+    "subtitle": "Mingle đã được yêu thích bởi hàng triệu người trên toàn thế giới. Đăng ký email để là người đầu tiên biết khi ra mắt tại Việt Nam.",
     "placeholder": "your@email.com",
     "submit": "Thông báo cho tôi",
     "success": "Bạn đã trong danh sách!",
-    "successDesc": "Chúng tôi sẽ thông báo khi Mingle sẵn sàng.",
+    "successDesc": "Chúng tôi sẽ thông báo cho bạn khi Mingle ra mắt tại Việt Nam!",
     "error": "Đã xảy ra lỗi. Vui lòng thử lại.",
     "close": "Đóng",
     "feedbackPlaceholder": "Nếu bạn có yêu cầu hoặc mong đợi, hãy cho chúng tôi biết"
