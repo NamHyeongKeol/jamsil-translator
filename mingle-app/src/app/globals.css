@@ -4,27 +4,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ============================================
-   가로 폭 정비례 반응형 시스템 (vw-based scaling)
-   
-   원리: html의 font-size를 vw 기반으로 설정하면
-   모든 rem 단위가 가로 폭에 정비례하여 스케일링됨.
-   
-   디자인 기준: 390px (iPhone 14/15 기준)
-   390px에서 1rem = 16px
-   780px에서 1rem = 32px (2배)
-   195px에서 1rem = 8px (0.5배)
-   
-   최대 너비 제한: 768px 이상에서는 고정
-   (태블릿/데스크톱에서 무한히 커지는 것 방지)
-   ============================================ */
-
 html {
-  /* 기본: 가로 폭에 정비례 (390px 기준) */
   font-size: calc(100vw / 390 * 16);
 }
 
-/* 480px 이상에서는 font-size 고정 (더 이상 안 커짐) */
 @media (min-width: 480px) {
   html {
     font-size: calc(480px / 390 * 16);
@@ -75,83 +58,95 @@ html {
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --font-geist-sans: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR",
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-geist-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  --radius: 0.72rem;
+
+  /* mingle-landing key color set */
+  --primary: #f59e0b;
+  --primary-foreground: #ffffff;
+  --accent: #fbbf24;
+  --accent-foreground: #4a2d00;
+
+  --background: #fffdf7;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+
+  --secondary: #fff3d9;
+  --secondary-foreground: #7a4b00;
+  --muted: #fff7e8;
+  --muted-foreground: #6b7280;
+
+  --destructive: #ef4444;
+  --border: #f4d6a2;
+  --input: #f4d6a2;
+  --ring: #f59e0b;
+
+  --chart-1: #f59e0b;
+  --chart-2: #f97316;
+  --chart-3: #10b981;
+  --chart-4: #ef4444;
+  --chart-5: #d97706;
+
+  --sidebar: #fff6e5;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #f59e0b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fbbf24;
+  --sidebar-accent-foreground: #4a2d00;
+  --sidebar-border: #f4d6a2;
+  --sidebar-ring: #f59e0b;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #1f2937;
+  --foreground: #f9fafb;
+  --card: #111827;
+  --card-foreground: #f9fafb;
+  --popover: #111827;
+  --popover-foreground: #f9fafb;
+  --primary: #fbbf24;
+  --primary-foreground: #1f2937;
+  --secondary: #374151;
+  --secondary-foreground: #f9fafb;
+  --muted: #374151;
+  --muted-foreground: #d1d5db;
+  --accent: #374151;
+  --accent-foreground: #f9fafb;
+  --destructive: #f87171;
+  --border: #374151;
+  --input: #4b5563;
+  --ring: #fbbf24;
+  --chart-1: #fbbf24;
+  --chart-2: #f97316;
+  --chart-3: #10b981;
+  --chart-4: #ef4444;
+  --chart-5: #d97706;
+  --sidebar: #111827;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: #fbbf24;
+  --sidebar-primary-foreground: #1f2937;
+  --sidebar-accent: #374151;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #374151;
+  --sidebar-ring: #fbbf24;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
-    @apply bg-background text-foreground;
-    max-width: 480px;
-    margin-left: auto;
-    margin-right: auto;
+    @apply text-foreground antialiased;
+    margin: 0;
+    min-height: 100vh;
     overflow-x: hidden;
   }
 }

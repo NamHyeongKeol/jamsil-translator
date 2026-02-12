@@ -1,83 +1,487 @@
-export default function Home() {
+"use client";
+
+import {
+  Filter,
+  Grid3X3,
+  Heart,
+  Image as ImageIcon,
+  MessageCircle,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Send,
+  User,
+  Users,
+  Video,
+  X,
+} from "lucide-react";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
+
+type TabKey = "chats" | "connect" | "moments" | "my";
+
+type ConnectProfile = {
+  id: number;
+  name: string;
+  age: number;
+  location: string;
+  intro: string;
+  tags: string[];
+  about: string;
+  interests: string[];
+};
+
+type MomentPost = {
+  id: number;
+  author: string;
+  minutesAgo: number;
+  type: "image" | "video" | "text";
+  caption: string;
+  likes: number;
+  comments: number;
+};
+
+type ChatRoom = {
+  id: number;
+  name: string;
+  avatar: string;
+  time: string;
+  lastMessage: string;
+  unread?: number;
+};
+
+const tabs: { key: TabKey; label: string; icon: typeof MessageCircle }[] = [
+  { key: "chats", label: "chats", icon: MessageCircle },
+  { key: "connect", label: "connect", icon: Users },
+  { key: "moments", label: "moments", icon: ImageIcon },
+  { key: "my", label: "my", icon: User },
+];
+
+const chatRooms: ChatRoom[] = [
+  {
+    id: 1,
+    name: "Sofia",
+    avatar: "S",
+    time: "2분 전",
+    lastMessage: "다음 주 토요일에 한강 같이 갈래?",
+    unread: 1,
+  },
+  {
+    id: 2,
+    name: "Aiko",
+    avatar: "A",
+    time: "12분 전",
+    lastMessage: "오늘 북클럽 일정 공유할게!",
+  },
+  {
+    id: 3,
+    name: "Mina",
+    avatar: "M",
+    time: "1시간 전",
+    lastMessage: "부산 오면 카페 추천해줄게",
+  },
+];
+
+const connectProfiles: ConnectProfile[] = [
+  {
+    id: 1,
+    name: "Sofia",
+    age: 27,
+    location: "Seoul · Spain",
+    intro: "한강 러닝 + 재즈바 + 새로운 언어 배우기",
+    tags: ["Travel", "Jazz", "Language"],
+    about:
+      "서울에서 UX 디자이너로 일하고 있고 주말엔 러닝을 하거나 전시를 봐요. 진짜 대화를 즐기는 친구를 만나고 싶어요.",
+    interests: ["한강 러닝", "사진 산책", "재즈 공연", "스페인어 교환"],
+  },
+  {
+    id: 2,
+    name: "Mina",
+    age: 25,
+    location: "Busan · Korea",
+    intro: "다이빙, 필름카메라, 브런치 카페 투어",
+    tags: ["Ocean", "Photo", "Brunch"],
+    about:
+      "부산에서 콘텐츠 마케터로 일하고 있어요. 바다 근처 조용한 카페에서 이야기 나누는 시간을 좋아해요.",
+    interests: ["프리다이빙", "필름카메라", "전시 관람", "카페 탐방"],
+  },
+  {
+    id: 3,
+    name: "Aiko",
+    age: 29,
+    location: "Tokyo · Japan",
+    intro: "독립영화, 북클럽, 도심 야경 산책",
+    tags: ["Movie", "Books", "Night Walk"],
+    about:
+      "도쿄에서 프로덕트 매니저로 일해요. 서로의 문화와 일상을 진솔하게 공유할 수 있는 관계를 찾고 있어요.",
+    interests: ["독립영화", "북클럽", "도시 산책", "로컬 푸드"],
+  },
+];
+
+const moments: MomentPost[] = [
+  {
+    id: 1,
+    author: "noah.m",
+    minutesAgo: 8,
+    type: "image",
+    caption: "오늘 처음 만난 친구랑 서울숲 산책. 생각보다 대화가 깊어져서 놀랐어.",
+    likes: 82,
+    comments: 14,
+  },
+  {
+    id: 2,
+    author: "yuna.lee",
+    minutesAgo: 23,
+    type: "video",
+    caption: "한강 버스킹 30초 하이라이트. 라이브에서 만난 사람들과 즉흥 합주!",
+    likes: 121,
+    comments: 26,
+  },
+  {
+    id: 3,
+    author: "mingle.diary",
+    minutesAgo: 51,
+    type: "text",
+    caption:
+      "오늘의 기록: 어색함을 넘어서려면 질문보다 리액션이 먼저다. 상대의 말을 끝까지 듣는 10분이 관계를 바꾼다.",
+    likes: 56,
+    comments: 9,
+  },
+];
+
+function TopBar({
+  title,
+  right,
+}: {
+  title: string;
+  right?: ReactNode;
+}) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-[1.5rem]">
-      {/* 메인 컨테이너 - body에서 480px 제한이 이미 걸려있음 */}
-      <div className="w-full space-y-[2rem]">
-        {/* 헤더 */}
-        <div className="space-y-[0.5rem]">
-          <h1 className="text-[2rem] font-bold tracking-tight text-foreground">
-            Mingle
-          </h1>
-          <p className="text-[0.875rem] text-muted-foreground">
-            가로 폭 정비례 반응형 데모
-          </p>
-        </div>
+    <header className="sticky top-0 z-20 flex h-[3.45rem] items-center justify-between border-b border-black/8 bg-background px-[1rem]">
+      <h1 className="text-[1rem] font-semibold text-foreground">{title}</h1>
+      {right}
+    </header>
+  );
+}
 
-        {/* 반응형 스케일링 데모 카드 */}
-        <div className="rounded-[0.75rem] border border-border bg-card p-[1.25rem] shadow-sm">
-          <h2 className="mb-[0.75rem] text-[1.25rem] font-semibold text-card-foreground">
-            📐 Responsive Scaling
-          </h2>
-          <p className="text-[0.875rem] leading-[1.5] text-muted-foreground">
-            이 페이지의 모든 요소(글씨, 간격, 카드 크기 등)는 화면 가로 폭에
-            정비례하여 커지고 작아집니다. 브라우저 창 너비를 조절해보세요.
-          </p>
-        </div>
+function HeaderIconButton({ children }: { children: ReactNode }) {
+  return (
+    <button
+      className="flex h-[2rem] w-[2rem] items-center justify-center rounded-full text-foreground transition-colors active:bg-black/5"
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
 
-        {/* 크기 비교 박스들 */}
-        <div className="grid grid-cols-3 gap-[0.75rem]">
-          {["Small", "Medium", "Large"].map((label, i) => (
-            <div
-              key={label}
-              className="flex flex-col items-center justify-center rounded-[0.625rem] border border-border bg-card p-[1rem]"
-              style={{ minHeight: `${3 + i * 1.5}rem` }}
-            >
-              <span className="text-[1.5rem] font-bold text-foreground">
-                {(i + 1) * 16}
-              </span>
-              <span className="text-[0.625rem] text-muted-foreground">
-                {label}
-              </span>
+function TabButton({
+  active,
+  onClick,
+  label,
+  icon: Icon,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  icon: typeof MessageCircle;
+}) {
+  return (
+    <button
+      className="flex flex-1 flex-col items-center justify-center gap-[0.18rem] py-[0.45rem]"
+      onClick={onClick}
+      type="button"
+    >
+      <Icon className={`h-[1.22rem] w-[1.22rem] ${active ? "text-primary" : "text-muted-foreground"}`} />
+      <span
+        className={`text-[0.66rem] font-medium leading-none ${active ? "text-primary" : "text-muted-foreground"}`}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function ChatsTab() {
+  return (
+    <>
+      <TopBar title="대화목록" right={<HeaderIconButton><Plus className="h-[1.08rem] w-[1.08rem]" /></HeaderIconButton>} />
+
+      <div className="px-[1rem] pb-[0.35rem] pt-[0.75rem]">
+        <div className="relative mb-[0.5rem]">
+          <Search className="pointer-events-none absolute left-[0.74rem] top-[0.64rem] h-[0.92rem] w-[0.92rem] text-muted-foreground" />
+          <input
+            className="h-[2.2rem] w-full rounded-[0.75rem] bg-[#f4f5f7] pl-[2.15rem] pr-[0.75rem] text-[0.79rem] outline-none placeholder:text-muted-foreground"
+            placeholder="검색"
+          />
+        </div>
+      </div>
+
+      <div>
+        {chatRooms.map((room) => (
+          <button
+            key={room.id}
+            className="flex w-full items-center gap-[0.72rem] border-b border-black/6 px-[1rem] py-[0.72rem] text-left"
+            type="button"
+          >
+            <div className="flex h-[2.72rem] w-[2.72rem] items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-[0.82rem] font-semibold text-white">
+              {room.avatar}
             </div>
+            <div className="min-w-0 flex-1">
+              <div className="mb-[0.12rem] flex items-center justify-between">
+                <p className="truncate text-[0.82rem] font-semibold">{room.name}</p>
+                <span className="text-[0.65rem] text-muted-foreground">{room.time}</span>
+              </div>
+              <p className="truncate text-[0.74rem] text-muted-foreground">{room.lastMessage}</p>
+            </div>
+            {room.unread ? (
+              <span className="flex h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded-full bg-primary px-[0.24rem] text-[0.63rem] font-semibold text-white">
+                {room.unread}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ConnectTab() {
+  const [index, setIndex] = useState(0);
+  const [dragX, setDragX] = useState(0);
+  const [startX, setStartX] = useState<number | null>(null);
+  const profiles = useMemo(() => connectProfiles, []);
+  const profile = profiles[index % profiles.length];
+
+  const releaseCard = (x: number) => {
+    if (Math.abs(x) > 60) {
+      setIndex((prev) => prev + 1);
+    }
+    setDragX(0);
+    setStartX(null);
+  };
+
+  return (
+    <>
+      <TopBar title="친구 찾기" right={<HeaderIconButton><Filter className="h-[1rem] w-[1rem]" /></HeaderIconButton>} />
+
+      <div className="overflow-x-hidden px-[1rem] pb-[0.9rem] pt-[0.7rem]">
+        <div
+          className="h-[30rem] overflow-hidden rounded-[1rem] border border-black/10 bg-white"
+          style={{
+            transform: `translateX(${dragX}px) rotate(${dragX * 0.016}deg)`,
+            transition: startX === null ? "transform 0.2s ease" : "none",
+          }}
+        >
+          <div
+            className="h-[11.1rem] bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 px-[0.9rem] pb-[0.85rem] pt-[0.8rem] text-white"
+            onPointerDown={(event) => setStartX(event.clientX)}
+            onPointerMove={(event) => {
+              if (startX === null) {
+                return;
+              }
+              const delta = event.clientX - startX;
+              setDragX(Math.max(-90, Math.min(90, delta)));
+            }}
+            onPointerUp={() => releaseCard(dragX)}
+            onPointerCancel={() => releaseCard(dragX)}
+            style={{ touchAction: "pan-y" }}
+          >
+            <div className="inline-flex rounded-full bg-white/20 px-[0.55rem] py-[0.2rem] text-[0.67rem]">
+              {profile.location}
+            </div>
+            <h2 className="mt-[0.6rem] text-[1.34rem] font-bold">
+              {profile.name}, {profile.age}
+            </h2>
+            <p className="mt-[0.28rem] text-[0.75rem] text-white/90">{profile.intro}</p>
+            <div className="mt-[0.52rem] flex flex-wrap gap-[0.35rem]">
+              {profile.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-white/35 bg-white/20 px-[0.52rem] py-[0.18rem] text-[0.63rem]"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-[18.9rem] overflow-y-auto px-[0.9rem] pb-[0.9rem] pt-[0.75rem]">
+            <h3 className="mb-[0.3rem] text-[0.78rem] font-semibold">About</h3>
+            <p className="mb-[0.72rem] text-[0.73rem] leading-[1.45] text-muted-foreground">{profile.about}</p>
+
+            <h3 className="mb-[0.35rem] text-[0.78rem] font-semibold">Interests</h3>
+            <div className="mb-[0.75rem] flex flex-wrap gap-[0.35rem]">
+              {profile.interests.map((interest) => (
+                <span
+                  key={interest}
+                  className="rounded-full bg-[#f4f5f7] px-[0.52rem] py-[0.18rem] text-[0.64rem]"
+                >
+                  {interest}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-[0.75rem] flex items-center justify-center gap-[1rem]">
+          <button
+            className="flex h-[2.72rem] w-[2.72rem] items-center justify-center rounded-full bg-[#f4f5f7]"
+            onClick={() => setIndex((prev) => prev + 1)}
+            type="button"
+          >
+            <X className="h-[1.1rem] w-[1.1rem] text-muted-foreground" />
+          </button>
+          <button
+            className="flex h-[2.95rem] w-[2.95rem] items-center justify-center rounded-full bg-primary text-white"
+            onClick={() => setIndex((prev) => prev + 1)}
+            type="button"
+          >
+            <Heart className="h-[1.2rem] w-[1.2rem]" />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MomentsTab() {
+  return (
+    <>
+      <TopBar title="moments" right={<HeaderIconButton><Plus className="h-[1.05rem] w-[1.05rem]" /></HeaderIconButton>} />
+
+      <div>
+        {moments.map((post) => (
+          <article key={post.id} className="border-b border-black/7 pb-[0.82rem] pt-[0.7rem]">
+            <div className="mb-[0.58rem] flex items-center justify-between px-[1rem]">
+              <div className="flex items-center gap-[0.54rem]">
+                <div className="h-[1.95rem] w-[1.95rem] rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-[0.08rem]">
+                  <div className="flex h-full w-full items-center justify-center rounded-full bg-white text-[0.7rem] font-semibold">
+                    {post.author.slice(0, 1).toUpperCase()}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[0.77rem] font-semibold">{post.author}</p>
+                  <p className="text-[0.65rem] text-muted-foreground">{post.minutesAgo}분 전</p>
+                </div>
+              </div>
+              <button className="text-muted-foreground" type="button">
+                <MoreHorizontal className="h-[1rem] w-[1rem]" />
+              </button>
+            </div>
+
+            {post.type === "image" ? (
+              <div className="mb-[0.58rem] h-[12.1rem] w-full bg-gradient-to-br from-amber-200 via-orange-200 to-rose-200" />
+            ) : null}
+
+            {post.type === "video" ? (
+              <div className="mb-[0.58rem] flex h-[12.1rem] w-full items-center justify-center bg-gradient-to-br from-neutral-900 to-neutral-700 text-[0.79rem] font-semibold text-neutral-100">
+                <Video className="mr-[0.32rem] h-[1rem] w-[1rem]" /> 영상
+              </div>
+            ) : null}
+
+            <div className="px-[1rem]">
+              <div className="mb-[0.42rem] flex items-center justify-between">
+                <div className="flex items-center gap-[0.58rem] text-foreground">
+                  <Heart className="h-[0.98rem] w-[0.98rem]" />
+                  <MessageCircle className="h-[0.98rem] w-[0.98rem]" />
+                  <Send className="h-[0.97rem] w-[0.97rem]" />
+                </div>
+              </div>
+              <p className="text-[0.74rem] leading-[1.42] text-foreground">{post.caption}</p>
+              <p className="mt-[0.35rem] text-[0.66rem] text-muted-foreground">
+                좋아요 {post.likes} · 댓글 {post.comments}
+              </p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function MyTab() {
+  return (
+    <>
+      <TopBar title="my" right={<HeaderIconButton><MoreHorizontal className="h-[1rem] w-[1rem]" /></HeaderIconButton>} />
+
+      <div className="px-[1rem] pb-[0.8rem] pt-[0.8rem]">
+        <div className="mb-[0.75rem] flex items-center justify-between gap-[0.7rem]">
+          <div className="h-[4.3rem] w-[4.3rem] rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-[0.1rem]">
+            <div className="h-full w-full rounded-full bg-white" />
+          </div>
+          <div className="flex flex-1 justify-between text-center">
+            <div>
+              <p className="text-[0.82rem] font-semibold">24</p>
+              <p className="text-[0.66rem] text-muted-foreground">posts</p>
+            </div>
+            <div>
+              <p className="text-[0.82rem] font-semibold">1,240</p>
+              <p className="text-[0.66rem] text-muted-foreground">followers</p>
+            </div>
+            <div>
+              <p className="text-[0.82rem] font-semibold">318</p>
+              <p className="text-[0.66rem] text-muted-foreground">following</p>
+            </div>
+          </div>
+        </div>
+
+        <h2 className="text-[0.83rem] font-semibold">mingle_user</h2>
+        <p className="mb-[0.68rem] mt-[0.12rem] text-[0.72rem] text-muted-foreground">커피와 대화를 좋아하는 사람</p>
+
+        <div className="mb-[0.72rem] grid grid-cols-2 gap-[0.45rem]">
+          <button
+            className="rounded-[0.55rem] border border-black/10 bg-white py-[0.52rem] text-[0.71rem] font-semibold"
+            type="button"
+          >
+            프로필 변경
+          </button>
+          <button
+            className="rounded-[0.55rem] border border-black/10 bg-white py-[0.52rem] text-[0.71rem] font-semibold"
+            type="button"
+          >
+            프로필 공유
+          </button>
+        </div>
+
+        <div className="mb-[0.65rem] flex items-center justify-center border-y border-black/7 py-[0.47rem] text-muted-foreground">
+          <Grid3X3 className="h-[1rem] w-[1rem]" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-[0.08rem] bg-black/8">
+          {Array.from({ length: 12 }, (_, i) => (
+            <div key={i} className="aspect-square bg-gradient-to-br from-amber-100 via-orange-100 to-rose-100" />
           ))}
         </div>
+      </div>
+    </>
+  );
+}
 
-        {/* 버튼들 */}
-        <div className="flex flex-col gap-[0.75rem]">
-          <button className="w-full rounded-[0.625rem] bg-primary px-[1.25rem] py-[0.75rem] text-[0.875rem] font-medium text-primary-foreground transition-opacity hover:opacity-90">
-            Primary Button
-          </button>
-          <button className="w-full rounded-[0.625rem] border border-border bg-secondary px-[1.25rem] py-[0.75rem] text-[0.875rem] font-medium text-secondary-foreground transition-opacity hover:opacity-90">
-            Secondary Button
-          </button>
-        </div>
+export default function Home() {
+  const [activeTab, setActiveTab] = useState<TabKey>("chats");
 
-        {/* 타이포그래피 스케일 */}
-        <div className="space-y-[0.5rem] rounded-[0.75rem] border border-border bg-card p-[1.25rem]">
-          <h3 className="mb-[0.5rem] text-[1rem] font-semibold text-card-foreground">
-            Typography Scale
-          </h3>
-          <p className="text-[2rem] font-bold leading-tight text-foreground">
-            2rem Heading
-          </p>
-          <p className="text-[1.5rem] font-semibold text-foreground">
-            1.5rem Subtitle
-          </p>
-          <p className="text-[1rem] text-foreground">1rem Body Text</p>
-          <p className="text-[0.875rem] text-muted-foreground">
-            0.875rem Secondary
-          </p>
-          <p className="text-[0.75rem] text-muted-foreground">
-            0.75rem Caption
-          </p>
-        </div>
+  return (
+    <div className="min-h-screen bg-[#eceff3]">
+      <div className="mx-auto flex h-screen max-w-[30rem] flex-col overflow-hidden bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          {activeTab === "chats" ? <ChatsTab /> : null}
+          {activeTab === "connect" ? <ConnectTab /> : null}
+          {activeTab === "moments" ? <MomentsTab /> : null}
+          {activeTab === "my" ? <MyTab /> : null}
+        </main>
 
-        {/* 현재 화면 정보 */}
-        <div className="rounded-[0.75rem] border border-dashed border-border bg-muted/50 p-[1rem] text-center">
-          <p className="text-[0.75rem] text-muted-foreground">
-            기준 디자인 너비: 390px · 768px 이상에서 고정
-          </p>
-        </div>
+        <nav className="sticky bottom-0 z-20 flex h-[3.65rem] border-t border-black/8 bg-background">
+          {tabs.map((tab) => (
+            <TabButton
+              key={tab.key}
+              active={activeTab === tab.key}
+              icon={tab.icon}
+              label={tab.label}
+              onClick={() => setActiveTab(tab.key)}
+            />
+          ))}
+        </nav>
       </div>
     </div>
   );
