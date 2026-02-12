@@ -16,7 +16,16 @@ import {
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  createInviteToken,
+  loadInviteRecords,
+  loadSavedConversations,
+  saveConversations,
+  saveInviteRecords,
+  type InviteRecord,
+  type SavedConversation,
+} from "@/lib/chat-invite-store";
 
 type TabKey = "chats" | "connect" | "moments" | "my";
 
@@ -50,6 +59,13 @@ type ChatRoom = {
   unread?: number;
 };
 
+type JoinedInvite = {
+  token: string;
+  roomName: string;
+  inviterName: string;
+  joinedAt: string;
+};
+
 const tabs: { key: TabKey; label: string; icon: typeof MessageCircle }[] = [
   { key: "chats", label: "chats", icon: MessageCircle },
   { key: "connect", label: "connect", icon: Users },
@@ -81,6 +97,24 @@ const chatRooms: ChatRoom[] = [
     lastMessage: "부산 오면 카페 추천해줄게",
   },
 ];
+
+const conversationSeeds: Record<number, string[]> = {
+  1: [
+    "다음 주 토요일에 한강 같이 갈래?",
+    "좋아요. 저녁에 재즈바도 가요.",
+    "완전 좋아! 그날 영어/스페인어 섞어서 얘기해봐요.",
+  ],
+  2: [
+    "오늘 북클럽 일정 공유할게!",
+    "감사해요. 이번 책은 일본어 원서도 같이 볼까요?",
+    "좋아요. 발음 어려운 부분 같이 연습해요.",
+  ],
+  3: [
+    "부산 오면 카페 추천해줄게",
+    "진짜요? 바다 보이는 곳이면 더 좋아요.",
+    "그럼 광안리 근처부터 리스트 짜볼게요.",
+  ],
+};
 
 const connectProfiles: ConnectProfile[] = [
   {
@@ -202,7 +236,34 @@ function TabButton({
   );
 }
 
-function ChatsTab() {
+function ChatsTab({
+  inviteRecords,
+  joinedInvites,
+  savedConversations,
+  onGenerateInvite,
+  onJoinInvite,
+  onSaveConversation,
+}: {
+  inviteRecords: InviteRecord[];
+  joinedInvites: JoinedInvite[];
+  savedConversations: SavedConversation[];
+  onGenerateInvite: (roomId: number) => void;
+  onJoinInvite: (token: string) => { ok: boolean; message: string };
+  onSaveConversation: (roomId: number) => void;
+}) {
+  const [inviteTokenDraft, setInviteTokenDraft] = useState<string>("");
+  const [feedback, setFeedback] = useState<string>("");
+
+  const latestInviteByRoom = useMemo(() => {
+    const map = new Map<number, InviteRecord>();
+    for (const invite of inviteRecords) {
+      if (!map.has(Number(invite.conversationId.split("_")[1]))) {
+        map.set(Number(invite.conversationId.split("_")[1]), invite);
+      }
+    }
+    return map;
+  }, [inviteRecords]);
+
   return (
     <>
       <TopBar title="대화목록" right={<HeaderIconButton><Plus className="h-[1.08rem] w-[1.08rem]" /></HeaderIconButton>} />
@@ -218,30 +279,119 @@ function ChatsTab() {
       </div>
 
       <div>
-        {chatRooms.map((room) => (
-          <button
-            key={room.id}
-            className="flex w-full items-center gap-[0.72rem] border-b border-black/6 px-[1rem] py-[0.72rem] text-left"
-            type="button"
-          >
-            <div className="flex h-[2.72rem] w-[2.72rem] items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-[0.82rem] font-semibold text-white">
-              {room.avatar}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="mb-[0.12rem] flex items-center justify-between">
-                <p className="truncate text-[0.82rem] font-semibold">{room.name}</p>
-                <span className="text-[0.65rem] text-muted-foreground">{room.time}</span>
+        {chatRooms.map((room) => {
+          const latestInvite = latestInviteByRoom.get(room.id);
+
+          return (
+            <article key={room.id} className="border-b border-black/6 px-[1rem] py-[0.7rem]">
+              <button
+                className="mb-[0.52rem] flex w-full items-center gap-[0.72rem] text-left"
+                type="button"
+              >
+                <div className="flex h-[2.72rem] w-[2.72rem] items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-[0.82rem] font-semibold text-white">
+                  {room.avatar}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-[0.12rem] flex items-center justify-between">
+                    <p className="truncate text-[0.82rem] font-semibold">{room.name}</p>
+                    <span className="text-[0.65rem] text-muted-foreground">{room.time}</span>
+                  </div>
+                  <p className="truncate text-[0.74rem] text-muted-foreground">{room.lastMessage}</p>
+                </div>
+                {room.unread ? (
+                  <span className="flex h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded-full bg-primary px-[0.24rem] text-[0.63rem] font-semibold text-white">
+                    {room.unread}
+                  </span>
+                ) : null}
+              </button>
+
+              <div className="flex gap-[0.4rem]">
+                <button
+                  className="rounded-[0.52rem] border border-black/10 bg-white px-[0.58rem] py-[0.32rem] text-[0.67rem] font-medium"
+                  onClick={() => onSaveConversation(room.id)}
+                  type="button"
+                >
+                  대화 저장
+                </button>
+                <button
+                  className="rounded-[0.52rem] bg-primary px-[0.58rem] py-[0.32rem] text-[0.67rem] font-medium text-white"
+                  onClick={() => onGenerateInvite(room.id)}
+                  type="button"
+                >
+                  초대 링크 생성
+                </button>
               </div>
-              <p className="truncate text-[0.74rem] text-muted-foreground">{room.lastMessage}</p>
-            </div>
-            {room.unread ? (
-              <span className="flex h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded-full bg-primary px-[0.24rem] text-[0.63rem] font-semibold text-white">
-                {room.unread}
-              </span>
-            ) : null}
-          </button>
-        ))}
+
+              {latestInvite ? (
+                <div className="mt-[0.45rem] rounded-[0.58rem] bg-muted px-[0.52rem] py-[0.46rem]">
+                  <p className="mb-[0.24rem] text-[0.62rem] text-muted-foreground">최근 초대 링크</p>
+                  <p className="truncate text-[0.66rem]">{latestInvite.inviteUrl}</p>
+                </div>
+              ) : null}
+            </article>
+          );
+        })}
       </div>
+
+      <section className="mx-[1rem] mt-[0.75rem] rounded-[0.75rem] border border-black/8 bg-white p-[0.72rem]">
+        <h2 className="mb-[0.38rem] text-[0.76rem] font-semibold">초대 참여</h2>
+        <form
+          className="flex gap-[0.35rem]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const token = inviteTokenDraft.trim();
+            if (!token) {
+              return;
+            }
+
+            const result = onJoinInvite(token);
+            setFeedback(result.message);
+            if (result.ok) {
+              setInviteTokenDraft("");
+            }
+          }}
+        >
+          <input
+            className="h-[2rem] flex-1 rounded-[0.55rem] border border-black/10 px-[0.58rem] text-[0.7rem] outline-none"
+            onChange={(event) => setInviteTokenDraft(event.target.value)}
+            placeholder="초대 토큰 입력"
+            value={inviteTokenDraft}
+          />
+          <button
+            className="rounded-[0.55rem] bg-primary px-[0.65rem] text-[0.67rem] font-semibold text-white"
+            type="submit"
+          >
+            참여
+          </button>
+        </form>
+        {feedback ? <p className="mt-[0.34rem] text-[0.64rem] text-muted-foreground">{feedback}</p> : null}
+      </section>
+
+      <section className="mx-[1rem] mt-[0.55rem] mb-[0.75rem] rounded-[0.75rem] border border-black/8 bg-white p-[0.72rem]">
+        <h2 className="mb-[0.38rem] text-[0.76rem] font-semibold">저장된 대화 / 참여 기록</h2>
+        {savedConversations.length === 0 ? (
+          <p className="text-[0.68rem] text-muted-foreground">저장된 대화가 없습니다.</p>
+        ) : (
+          <div className="space-y-[0.34rem]">
+            {savedConversations.slice(0, 3).map((conversation) => (
+              <article key={conversation.id} className="rounded-[0.55rem] bg-muted px-[0.52rem] py-[0.42rem]">
+                <p className="text-[0.69rem] font-semibold">{conversation.roomName}</p>
+                <p className="truncate text-[0.65rem] text-muted-foreground">{conversation.summary}</p>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {joinedInvites.length > 0 ? (
+          <div className="mt-[0.56rem] space-y-[0.3rem]">
+            {joinedInvites.slice(0, 3).map((joined) => (
+              <p key={joined.token} className="text-[0.65rem] text-muted-foreground">
+                {joined.roomName} 초대 참여 완료 ({joined.inviterName})
+              </p>
+            ))}
+          </div>
+        ) : null}
+      </section>
     </>
   );
 }
@@ -458,14 +608,136 @@ function MyTab() {
   );
 }
 
+function buildSavedConversation(room: ChatRoom): SavedConversation {
+  const script = conversationSeeds[room.id] ?? [room.lastMessage];
+  const now = new Date();
+  const messages = script.map((text, index) => {
+    const role: "partner" | "me" = index % 2 === 0 ? "partner" : "me";
+    return {
+      id: `${room.id}-${index + 1}`,
+      role,
+      text,
+      createdAt: new Date(now.getTime() - (script.length - index) * 60000).toISOString(),
+    };
+  });
+
+  return {
+    id: `conversation_${room.id}`,
+    roomId: room.id,
+    roomName: room.name,
+    roomAvatar: room.avatar,
+    summary: script[script.length - 1] ?? room.lastMessage,
+    messages,
+    savedAt: now.toISOString(),
+  };
+}
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>("chats");
+  const [savedConversations, setSavedConversations] = useState<SavedConversation[]>(() =>
+    typeof window === "undefined" ? [] : loadSavedConversations(),
+  );
+  const [inviteRecords, setInviteRecords] = useState<InviteRecord[]>(() =>
+    typeof window === "undefined" ? [] : loadInviteRecords(),
+  );
+  const [joinedInvites, setJoinedInvites] = useState<JoinedInvite[]>([]);
+
+  useEffect(() => {
+    saveConversations(savedConversations);
+  }, [savedConversations]);
+
+  useEffect(() => {
+    saveInviteRecords(inviteRecords);
+  }, [inviteRecords]);
+
+  const inviteLookup = useMemo(() => {
+    const map = new Map<string, InviteRecord>();
+    for (const invite of inviteRecords) {
+      map.set(invite.token, invite);
+    }
+    return map;
+  }, [inviteRecords]);
+
+  const upsertSavedConversation = (roomId: number): SavedConversation | null => {
+    const room = chatRooms.find((item) => item.id === roomId);
+    if (!room) {
+      return null;
+    }
+
+    const conversation = buildSavedConversation(room);
+    setSavedConversations((previous) => [
+      conversation,
+      ...previous.filter((item) => item.id !== conversation.id),
+    ]);
+    return conversation;
+  };
+
+  const handleGenerateInvite = (roomId: number): void => {
+    const conversation = upsertSavedConversation(roomId);
+    if (!conversation) {
+      return;
+    }
+
+    const token = createInviteToken();
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://app.mingle.local";
+    const invite: InviteRecord = {
+      token,
+      conversationId: conversation.id,
+      inviterName: "mingle_user",
+      inviteUrl: `${origin}/invite/${token}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    setInviteRecords((previous) => [invite, ...previous].slice(0, 60));
+  };
+
+  const handleJoinInvite = (token: string): { ok: boolean; message: string } => {
+    const invite = inviteLookup.get(token);
+    if (!invite) {
+      return { ok: false, message: "초대 토큰을 찾지 못했습니다." };
+    }
+
+    const conversation = savedConversations.find(
+      (item) => item.id === invite.conversationId,
+    );
+    const roomName = conversation?.roomName ?? "알 수 없는 대화";
+
+    setJoinedInvites((previous) => {
+      const existing = previous.some((item) => item.token === token);
+      if (existing) {
+        return previous;
+      }
+      return [
+        {
+          token,
+          roomName,
+          inviterName: invite.inviterName,
+          joinedAt: new Date().toISOString(),
+        },
+        ...previous,
+      ];
+    });
+
+    return { ok: true, message: `${roomName} 대화방 초대에 참여했습니다.` };
+  };
 
   return (
     <div className="min-h-screen bg-[#eceff3]">
       <div className="mx-auto flex h-screen max-w-[30rem] flex-col overflow-hidden bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          {activeTab === "chats" ? <ChatsTab /> : null}
+          {activeTab === "chats" ? (
+            <ChatsTab
+              inviteRecords={inviteRecords}
+              joinedInvites={joinedInvites}
+              onGenerateInvite={handleGenerateInvite}
+              onJoinInvite={handleJoinInvite}
+              onSaveConversation={(roomId) => {
+                upsertSavedConversation(roomId);
+              }}
+              savedConversations={savedConversations}
+            />
+          ) : null}
           {activeTab === "connect" ? <ConnectTab /> : null}
           {activeTab === "moments" ? <MomentsTab /> : null}
           {activeTab === "my" ? <MyTab /> : null}
