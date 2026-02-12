@@ -175,19 +175,19 @@ export default function GlobalStatsSection() {
         <div className="grid grid-cols-3 gap-6 md:gap-12 mb-16 md:mb-20">
           <SlotCounter
             target={10000000}
-            suffix="+"
+            suffix=""
             label={t('globalStats.activeUsers')}
             delay={0}
           />
           <SlotCounter
             target={100}
-            suffix="+"
+            suffix=""
             label={t('globalStats.countries')}
             delay={200}
           />
           <SlotCounter
             target={120}
-            suffix="+"
+            suffix=""
             label={t('globalStats.languages')}
             delay={400}
           />
