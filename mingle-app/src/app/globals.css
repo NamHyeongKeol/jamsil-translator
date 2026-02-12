@@ -150,3 +150,8 @@ html {
     overflow-x: hidden;
   }
 }
+
+.mobile-safe-shell {
+  padding-top: max(env(safe-area-inset-top), 0px);
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}

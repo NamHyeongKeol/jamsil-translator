@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   Send,
+  Smartphone,
   User,
   Users,
   Video,
@@ -26,6 +27,7 @@ import {
   type InviteRecord,
   type SavedConversation,
 } from "@/lib/chat-invite-store";
+import { detectMobileRuntime } from "@/lib/mobile-runtime";
 
 type TabKey = "chats" | "connect" | "moments" | "my";
 
@@ -551,6 +553,8 @@ function MomentsTab() {
 }
 
 function MyTab() {
+  const runtime = useMemo(() => detectMobileRuntime(), []);
+
   return (
     <>
       <TopBar title="my" right={<HeaderIconButton><MoreHorizontal className="h-[1rem] w-[1rem]" /></HeaderIconButton>} />
@@ -597,6 +601,27 @@ function MyTab() {
         <div className="mb-[0.65rem] flex items-center justify-center border-y border-black/7 py-[0.47rem] text-muted-foreground">
           <Grid3X3 className="h-[1rem] w-[1rem]" />
         </div>
+
+        <section className="mb-[0.72rem] rounded-[0.7rem] border border-black/8 bg-white px-[0.62rem] py-[0.58rem]">
+          <div className="mb-[0.34rem] flex items-center justify-between">
+            <div className="flex items-center gap-[0.28rem] text-[0.68rem] font-semibold">
+              <Smartphone className="h-[0.84rem] w-[0.84rem]" />
+              Mobile Runtime
+            </div>
+            <span className="rounded-full bg-muted px-[0.4rem] py-[0.12rem] text-[0.6rem] font-medium">
+              {runtime.platform.toUpperCase()}
+            </span>
+          </div>
+          <p className="text-[0.64rem] text-muted-foreground">
+            네이티브 브리지: {runtime.nativeBridge ? "연결됨" : "웹 모드"}
+          </p>
+          <p className="text-[0.64rem] text-muted-foreground">
+            Safe area: {runtime.safeAreaEnabled ? "활성" : "비활성"}
+          </p>
+          <p className="text-[0.64rem] text-muted-foreground">
+            Background audio / Push: {runtime.backgroundAudioReady && runtime.pushReady ? "준비됨" : "웹 제한"}
+          </p>
+        </section>
 
         <div className="grid grid-cols-3 gap-[0.08rem] bg-black/8">
           {Array.from({ length: 12 }, (_, i) => (
@@ -724,7 +749,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#eceff3]">
-      <div className="mx-auto flex h-screen max-w-[30rem] flex-col overflow-hidden bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
+      <div className="mobile-safe-shell mx-auto flex h-screen max-w-[30rem] flex-col overflow-hidden bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           {activeTab === "chats" ? (
             <ChatsTab
