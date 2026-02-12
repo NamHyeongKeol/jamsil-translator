@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Jamsil Translator",
+  title: "Mingle",
   description: "Mobile-responsive translator app",
 };
 
@@ -28,9 +28,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <TRPCProvider>
-          {children}
-        </TRPCProvider>
+        <TRPCProvider>{children}</TRPCProvider>
       </body>
     </html>
   );
