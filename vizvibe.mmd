@@ -103,6 +103,9 @@ flowchart TD
     %% @railway_stt_deploy [ai-task, closed]
     railway_stt_deploy("Railway STT 서버 배포<br/><sub>stt-server.ts Railway 배포 설정<br/>railway.json, PORT 환경변수 대응<br/>Vercel+Railway 분리 아키텍처 구성</sub>")
 
+    %% @global_stats_fix [ai-task, closed]
+    global_stats_fix("Global Stats Mobile Fix<br/><sub>Social 버전 숫자 통계에서 + 기호 제거<br/>모바일 뷰에서 짤리는 문제 해결<br/>10M/100/120으로 표시 수정</sub>")
+
     %% @chat_invite_feature [ai-task, opened]
     chat_invite_feature("대화록 초대 기능<br/><sub>번역된 대화를 채팅방으로 저장하고<br/>상대방을 초대하여 헤어진 후에도<br/>연락을 이어갈 수 있는 핵심 기능</sub>")
 
@@ -147,13 +150,14 @@ flowchart TD
     prisma_local_simplify --> stt_server_landing_merge
     stt_server_landing_merge --> railway_stt_deploy
     railway_stt_deploy --> chat_invite_feature
+    railway_stt_deploy --> global_stats_fix
     translation_engine_research --> chat_invite_feature
     chat_invite_feature --> mobile_app_development
     mobile_app_development -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        railway_stt_deploy
+        global_stats_fix
     end
 
     %% === STYLES ===
@@ -238,8 +242,11 @@ flowchart TD
     %% Previous recent node (now closed)
     style stt_server_landing_merge fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
 
+    %% Previous recent node (now closed)
+    style railway_stt_deploy fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
     %% Recent node (highlighted purple)
-    style railway_stt_deploy fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style global_stats_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Closed tasks (soft purple)
     style translation_engine_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
