@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: finalize_tts_double_playback_rootcause
+    %% @lastActive: finalize_tts_dedupe_alignment_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -220,8 +220,8 @@ flowchart TD
     %% @finalize_tts_double_playback_rootcause [ai-task, closed]
     finalize_tts_double_playback_rootcause("파이널라이즈 TTS 2회 재생 원인 확인<br/><sub>인라인 TTS 수신 시 spoken 시그니처를<br/>language::__server_tts__로 저장하지만<br/>후속 effect는 language::translatedText와 비교해<br/>/api/tts/inworld 재요청이 다시 큐잉됨</sub>")
 
-    %% @finalize_tts_dedupe_alignment_fix [ai-task, opened]
-    finalize_tts_dedupe_alignment_fix("인라인/후속 TTS 중복 방지 정렬 필요<br/><sub>서버 인라인 TTS가 재생된 발화는 동일 시그니처로<br/>마킹하거나 effect 큐 단계에서 sentinel을 인지해<br/>스킵하도록 중복 판정 규칙을 단일화하고<br/>final/stop/error 경로 회귀를 함께 점검</sub>")
+    %% @finalize_tts_dedupe_alignment_fix [ai-task, closed]
+    finalize_tts_dedupe_alignment_fix("클라 Inworld 후속 TTS 호출 제거 완료<br/><sub>LivePhoneDemo의 effect 기반 후속 TTS 큐를 삭제하고<br/>/api/tts/inworld 클라이언트 재요청 경로를 완전히 제거<br/>파이널라이즈는 서버 인라인 ttsAudio만 즉시 재생하도록<br/>TTS 실행 경로를 단일화해 중복 재생을 차단</sub>")
 
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
@@ -328,7 +328,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        finalize_tts_double_playback_rootcause
+        finalize_tts_dedupe_alignment_fix
     end
 
     %% === STYLES ===
@@ -457,7 +457,7 @@ flowchart TD
     style stop_translation_json_and_single_fallback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style gaming_socialhero_multilingual_copy_refresh fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_inline_tts_bundle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -466,7 +466,8 @@ flowchart TD
 
     %% Last active node (highlighted purple)
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style finalize_tts_double_playback_rootcause fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style finalize_tts_dedupe_alignment_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style
