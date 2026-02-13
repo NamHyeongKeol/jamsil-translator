@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, Wifi, Battery, Signal, Loader2 } from 'lucide-react'
+import { Mic, Wifi, Battery, Signal, Loader2, Volume2, VolumeX } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
@@ -86,6 +86,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [isAutoTtsArmed, setIsAutoTtsArmed] = useState(false)
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true)
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const spokenTranslationSignatureRef = useRef(new Map<string, string>())
   const ttsQueueRef = useRef<TtsQueueItem[]>([])
@@ -242,7 +243,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [enableAutoTTS, isAutoTtsArmed, playSingleTts])
 
   useEffect(() => {
-    if (!enableAutoTTS || !isAutoTtsArmed) return
+    if (!enableAutoTTS || !isAutoTtsArmed || !isSoundEnabled) return
 
     for (const utterance of utterances) {
       const firstTranslation = getFirstTranslationToSpeak(utterance, selectedLanguages)
@@ -261,7 +262,15 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
 
     void processTtsQueue()
-  }, [enableAutoTTS, isAutoTtsArmed, processTtsQueue, selectedLanguages, utterances])
+  }, [enableAutoTTS, isAutoTtsArmed, isSoundEnabled, processTtsQueue, selectedLanguages, utterances])
+
+  // Stop current playback and clear queue when sound is disabled.
+  useEffect(() => {
+    if (isSoundEnabled) return
+    ttsQueueRef.current = []
+    cleanupCurrentAudio()
+    setSpeakingItem(null)
+  }, [isSoundEnabled, cleanupCurrentAudio])
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -617,6 +626,19 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 <span className={`text-[10px] tabular-nums ${isLimitReached ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
                   {remainingSec}s
                 </span>
+                {enableAutoTTS && (
+                  <button
+                    onClick={() => setIsSoundEnabled(prev => !prev)}
+                    className="ml-1 p-1 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
+                    aria-label={isSoundEnabled ? 'Mute TTS' : 'Unmute TTS'}
+                  >
+                    {isSoundEnabled ? (
+                      <Volume2 size={14} className="text-amber-500" />
+                    ) : (
+                      <VolumeX size={14} className="text-gray-400" />
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </div>

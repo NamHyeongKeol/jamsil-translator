@@ -37,10 +37,13 @@ function SpeakingIndicator() {
 
 export default function ChatBubble({ utterance, selectedLanguages, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
   const flag = FLAG_MAP[utterance.originalLang] || '🌐'
-  const translationEntries = Object.entries(utterance.translations)
-    .filter(([lang]) => selectedLanguages.includes(lang) && lang !== utterance.originalLang)
-  const pendingLangs = selectedLanguages
-    .filter(lang => lang !== utterance.originalLang && !utterance.translations[lang])
+  // Use selectedLanguages order (= language list order) for consistent display ordering.
+  const targetLangs = selectedLanguages.filter(lang => lang !== utterance.originalLang)
+  const translationEntries = targetLangs
+    .filter(lang => utterance.translations[lang])
+    .map(lang => [lang, utterance.translations[lang]] as const)
+  const pendingLangs = targetLangs
+    .filter(lang => !utterance.translations[lang])
 
   return (
     <motion.div
