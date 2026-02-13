@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: demo_limit_server_db_migration
+    %% @lastActive: tts_mobile_lock_recovery
 
     %% === START ===
     %% @project_start [start, closed]
@@ -151,6 +151,9 @@ flowchart TD
     %% @gaming_tts_queue_ui_polish [ai-task, closed]
     gaming_tts_queue_ui_polish("Gaming TTS 큐 안정화 & 재생 UI 표시<br/><sub>자동 데모 재생 구간에서는 TTS 비활성화<br/>유저 테스트 시작 후에만 TTS arm 처리<br/>final 번역 기준 큐 + 재생중 말풍선 음파 인디케이터 추가</sub>")
 
+    %% @tts_mobile_lock_recovery [ai-task, closed]
+    tts_mobile_lock_recovery("모바일 잠금/복귀 TTS 복구<br/><sub>iOS 잠금 해제 후 TTS 무음 상태 대응<br/>visibilitychange 재시도 + blocked 항목 큐 복원<br/>Enable Sound 버튼으로 수동 언락 후 재생 재개</sub>")
+
     %% @demo_limit_server_db_migration [ai-task, opened]
     demo_limit_server_db_migration("데모 제한 서버 DB 기반 전환 (추후)<br/><sub>브라우저 localStorage 기준 30초 제한을<br/>서버 DB 세션/지문 기반 제한으로 마이그레이션<br/>우회 방지/멀티디바이스 일관성 정책 설계 필요</sub>")
 
@@ -212,7 +215,8 @@ flowchart TD
     inworld_non_realtime_strategy --> gaming_tts_test_section_spec
     gaming_tts_test_section_spec --> gaming_tts_test_section_apply
     gaming_tts_test_section_apply --> gaming_tts_queue_ui_polish
-    gaming_tts_queue_ui_polish --> demo_limit_server_db_migration
+    gaming_tts_queue_ui_polish --> tts_mobile_lock_recovery
+    tts_mobile_lock_recovery --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
@@ -220,7 +224,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        demo_limit_server_db_migration
+        tts_mobile_lock_recovery
     end
 
     %% === STYLES ===
@@ -328,7 +332,8 @@ flowchart TD
     style gaming_tts_test_section_apply fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style gaming_tts_test_section_spec fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style gaming_tts_queue_ui_polish fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style demo_limit_server_db_migration fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style tts_mobile_lock_recovery fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Blocked subgraph style (red dashed)
