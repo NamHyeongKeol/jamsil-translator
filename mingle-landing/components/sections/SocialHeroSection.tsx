@@ -43,7 +43,7 @@ export default function SocialHeroSection({ version, openModal }: SocialHeroSect
   }
 
   return (
-    <section className="min-h-screen flex items-center pt-32 md:pt-36 lg:pt-10 pb-20 px-6 relative overflow-hidden bg-gradient-to-b lg:bg-gradient-to-r from-orange-50/60 via-white to-white">
+    <section className="min-h-screen flex items-center pt-32 lg:pt-10 pb-20 px-6 relative overflow-hidden bg-gradient-to-b lg:bg-gradient-to-r from-orange-50/60 via-white to-white">
       {/* 배경 데코레이션 */}
       <div className="absolute top-[-200px] right-[-100px] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(99,102,241,0.06)_0%,transparent_70%)] pointer-events-none" />
       <div className="absolute bottom-[-100px] left-[-100px] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(245,158,11,0.06)_0%,transparent_70%)] pointer-events-none" />
@@ -70,7 +70,7 @@ export default function SocialHeroSection({ version, openModal }: SocialHeroSect
               {tKey('title2')}
             </span>
           </h1>
-          <p className="text-lg md:text-xl text-text-secondary max-w-lg mb-12 leading-relaxed">
+          <p className="text-lg lg:text-xl text-text-secondary max-w-lg mb-12 leading-relaxed">
             {tKey('subtitle')}
           </p>
 

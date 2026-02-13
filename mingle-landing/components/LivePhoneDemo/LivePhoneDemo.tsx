@@ -167,7 +167,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   return (
     <PhoneFrame>
-      <div className="flex flex-col h-[520px] md:h-[660px] lg:h-[600px]">
+      <div className="flex flex-col h-[600px]">
         {/* Status Bar - overlaps with notch area */}
         <div className="relative z-30 flex items-center justify-between px-8 pt-2 pb-1 text-xs text-gray-500 select-none h-9">
           {isReady ? (
@@ -186,11 +186,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         </div>
 
         {/* Spacer for notch */}
-        <div className="h-2 md:h-1" />
+        <div className="h-1" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 md:px-6 pb-2 border-b border-gray-100">
-          <span className="text-sm md:text-base font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+        <div className="flex items-center justify-between px-6 pb-2 border-b border-gray-100">
+          <span className="text-base font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
             Mingle
           </span>
           <div className="relative flex items-center gap-1">
@@ -202,7 +202,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               {selectedLanguages.map((lang) => (
                 <span
                   key={lang}
-                  className="text-sm md:text-base"
+                  className="text-base"
                   title={lang.toUpperCase()}
                 >
                   {FLAG_MAP[lang] || '🌐'}
@@ -322,7 +322,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           {utterances.length === 0 && !partialTranscript && !demoTypingText && !demoTypingLang && !isDemoAnimating && !isActive && !isError && !isLimitReached && (
             <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 gap-2 pt-12">
               <Mic size={28} className="text-gray-300" />
-              <p className="text-xs md:text-sm">Tap the mic to start</p>
+              <p className="text-sm">Tap the mic to start</p>
             </div>
           )}
 
@@ -347,7 +347,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           {/* Error state */}
           {isError && (
             <div className="flex flex-col items-center justify-center h-full text-center text-red-400 gap-2 pt-12">
-              <p className="text-xs md:text-sm">Connection failed. Retrying...</p>
+              <p className="text-sm">Connection failed. Retrying...</p>
             </div>
           )}
         </div>

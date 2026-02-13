@@ -7,7 +7,9 @@ const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '3001'
 const getWsUrl = () => {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL
   const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
-  return `ws://${host}:${WS_PORT}`
+  const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  const protocol = isSecure ? 'wss' : 'ws'
+  return `${protocol}://${host}:${WS_PORT}`
 }
 const VOLUME_THRESHOLD = 0.05
 const USAGE_LIMIT_SEC = 30
