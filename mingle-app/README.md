@@ -68,3 +68,12 @@ pnpm seed:populate
 
 - Source file: `data/seed/mingle-seed.json`
 - Export target: `capacitor-web/seed/mingle-seed.json`
+
+## Crawling Pipeline
+
+```bash
+pnpm crawl:instagram
+```
+
+- Input sample: `data/crawl/instagram-input.sample.json`
+- Normalized output: `data/crawl/instagram-normalized.json`

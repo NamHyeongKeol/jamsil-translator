@@ -1,0 +1,26 @@
+[
+  {
+    "username": "sofia.runner",
+    "postUrl": "https://instagram.com/p/sample001",
+    "caption": "Seoul sunset run + language exchange coffee after it.",
+    "likes": 182,
+    "comments": 23,
+    "createdAt": "2026-02-10T12:00:00.000Z"
+  },
+  {
+    "username": "aiko.bookclub",
+    "postUrl": "https://instagram.com/p/sample002",
+    "caption": "오늘 북클럽 끝나고 일본어/한국어 스터디!",
+    "likes": 96,
+    "comments": 14,
+    "createdAt": "2026-02-11T03:20:00.000Z"
+  },
+  {
+    "username": "mina.cafe",
+    "postUrl": "https://instagram.com/p/sample003",
+    "caption": "Busan ocean view cafe list for weekend travelers.",
+    "likes": 211,
+    "comments": 37,
+    "createdAt": "2026-02-12T08:35:00.000Z"
+  }
+]
