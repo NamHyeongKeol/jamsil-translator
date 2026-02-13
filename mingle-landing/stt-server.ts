@@ -630,6 +630,7 @@ wss.on('connection', (clientWs) => {
                     }
 
                     finalizedText += newFinalText;
+                    const hasEndpointToken = /<\/?end>/i.test(newFinalText) || /<\/?end>/i.test(nonFinalText);
 
                     if (nonFinalText) {
                         hadNonFinal = true;
@@ -657,8 +658,12 @@ wss.on('connection', (clientWs) => {
                                 partialTranslateInFlight = false;
                             });
                         }
-                    } else if (newFinalText && hadNonFinal) {
-                        // 모델이 엔드포인트를 감지하여 토큰을 확정함 → 발화 완료
+                    }
+
+                    // 발화 완료 판단:
+                    // 1) Soniox <end> 토큰이 포함된 경우 즉시 완료 처리
+                    // 2) 기존 휴리스틱(부분 토큰이 있었고 이번에 final 토큰이 들어온 경우)
+                    if (hasEndpointToken || (newFinalText && hadNonFinal && !nonFinalText)) {
                         latestNonFinalText = '';
                         void emitFinalTurn(finalizedText, detectedLang);
                     }
