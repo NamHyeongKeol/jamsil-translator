@@ -765,10 +765,59 @@ wss.on('connection', (clientWs) => {
         }
     };
 
+    const sendForcedFinalTurn = async (rawText: string, rawLanguage: string): Promise<boolean> => {
+        const text = (rawText || '').replace(/<\/?end>/gi, '').trim();
+        const language = (rawLanguage || '').trim() || 'unknown';
+        if (!text) return false;
+
+        if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(JSON.stringify({
+                type: 'transcript',
+                data: {
+                    is_final: true,
+                    utterance: {
+                        text,
+                        language,
+                    },
+                },
+            }));
+        }
+
+        if (selectedLanguages.length > 0) {
+            await translateText(text, language, selectedLanguages, clientWs);
+        }
+        return true;
+    };
+
     // ===== 클라이언트 메시지 핸들러 =====
     clientWs.onmessage = (event) => {
         const message = event.data.toString();
-        const data = JSON.parse(message);
+        let data: any;
+        try {
+            data = JSON.parse(message);
+        } catch {
+            return;
+        }
+
+        if (data?.type === 'stop_recording') {
+            void (async () => {
+                const pendingText = data?.data?.pending_text || '';
+                const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
+                const finalized = await sendForcedFinalTurn(pendingText, pendingLang);
+
+                if (sttWs && (sttWs.readyState === WebSocket.OPEN || sttWs.readyState === WebSocket.CONNECTING)) {
+                    sttWs.close();
+                }
+
+                if (clientWs.readyState === WebSocket.OPEN) {
+                    clientWs.send(JSON.stringify({
+                        type: 'stop_recording_ack',
+                        data: { finalized },
+                    }));
+                }
+            })();
+            return;
+        }
 
         if (data.sample_rate && data.languages) {
             currentModel = data.stt_model || 'gladia';

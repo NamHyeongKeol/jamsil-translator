@@ -87,9 +87,10 @@ function toBase64(data: Int16Array): string {
 interface UseRealtimeSTTOptions {
   languages: string[]
   onLimitReached?: () => void
+  suppressInput?: boolean
 }
 
-export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtimeSTTOptions) {
+export default function useRealtimeSTT({ languages, onLimitReached, suppressInput = false }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   
   // Demo animation states
@@ -144,6 +145,12 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
   // (avoids nesting setUtterances inside setPartialTranslations updater,
   //  which causes duplicates in React Strict Mode)
   const partialTranslationsRef = useRef<Record<string, string>>({})
+  const partialTranscriptRef = useRef('')
+  const partialLangRef = useRef<string | null>(null)
+  const stopAckResolverRef = useRef<(() => void) | null>(null)
+  const isStoppingRef = useRef(false)
+  const lastFinalSignatureRef = useRef<{ sig: string, at: number }>({ sig: '', at: 0 })
+  const suppressInputRef = useRef(suppressInput)
 
   // Persist utterances to localStorage
   useEffect(() => {
@@ -158,6 +165,18 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       localStorage.setItem(LS_KEY_USAGE, String(usageSec))
     } catch { /* ignore */ }
   }, [usageSec])
+
+  useEffect(() => {
+    partialTranscriptRef.current = partialTranscript
+  }, [partialTranscript])
+
+  useEffect(() => {
+    partialLangRef.current = partialLang
+  }, [partialLang])
+
+  useEffect(() => {
+    suppressInputRef.current = suppressInput
+  }, [suppressInput])
 
   // Demo animation effect - typewriter effect for initial utterances
   useEffect(() => {
@@ -253,7 +272,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
 
   const isLimitReached = usageSec >= USAGE_LIMIT_SEC
 
-  const cleanup = useCallback(() => {
+  const stopAudioPipeline = useCallback(() => {
     if (usageIntervalRef.current) {
       clearInterval(usageIntervalRef.current)
       usageIntervalRef.current = null
@@ -265,10 +284,6 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     if (processorRef.current) {
       processorRef.current.disconnect()
       processorRef.current = null
-    }
-    if (socketRef.current) {
-      socketRef.current.close()
-      socketRef.current = null
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
@@ -282,10 +297,68 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     setVolume(0)
   }, [])
 
+  const cleanup = useCallback(() => {
+    stopAudioPipeline()
+    if (socketRef.current) {
+      socketRef.current.close()
+      socketRef.current = null
+    }
+  }, [stopAudioPipeline])
+
   const resetToIdle = useCallback(() => {
+    isStoppingRef.current = false
+    stopAckResolverRef.current = null
     cleanup()
     setConnectionStatus('idle')
   }, [cleanup])
+
+  const stopRecordingGracefully = useCallback(async (notifyLimitReached = false) => {
+    if (isStoppingRef.current) return
+    isStoppingRef.current = true
+
+    // Stop capturing mic/audio immediately, but keep WS alive briefly for finalization ack.
+    stopAudioPipeline()
+
+    const socket = socketRef.current
+    const pendingText = partialTranscriptRef.current.trim()
+    const pendingLang = partialLangRef.current || 'unknown'
+
+    try {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        await new Promise<void>((resolve) => {
+          let settled = false
+          const settle = () => {
+            if (settled) return
+            settled = true
+            stopAckResolverRef.current = null
+            resolve()
+          }
+
+          stopAckResolverRef.current = settle
+          socket.send(JSON.stringify({
+            type: 'stop_recording',
+            data: {
+              pending_text: pendingText,
+              pending_language: pendingLang,
+            },
+          }))
+          setTimeout(settle, 1800)
+        })
+      }
+    } catch {
+      // fall through and close anyway
+    } finally {
+      if (socketRef.current) {
+        socketRef.current.close()
+        socketRef.current = null
+      }
+      setConnectionStatus('idle')
+      isStoppingRef.current = false
+      if (notifyLimitReached) {
+        onLimitReachedRef.current?.()
+      }
+    }
+  }, [stopAudioPipeline])
 
   const visualize = useCallback(() => {
     if (analyserRef.current) {
@@ -322,6 +395,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     source.connect(processor)
     processor.connect(context.destination)
     processor.onaudioprocess = (e) => {
+      if (suppressInputRef.current) return
       if (socket.readyState === WebSocket.OPEN) {
         const inputData = e.inputBuffer.getChannelData(0)
         const pcmData = floatTo16BitPCM(inputData)
@@ -357,7 +431,14 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       partialTranslationsRef.current = {}
       setPartialLang(null)
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      })
       streamRef.current = stream
 
       const context = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
@@ -391,20 +472,27 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
               if (next >= USAGE_LIMIT_SEC) {
                 // Hit limit - defer cleanup to avoid setState-during-render
                 setTimeout(() => {
-                  cleanup()
-                  setConnectionStatus('idle')
-                  onLimitReachedRef.current?.()
+                  void stopRecordingGracefully(true)
                 }, 0)
               }
               return next
             })
           }, 1000)
+        } else if (message.type === 'stop_recording_ack') {
+          stopAckResolverRef.current?.()
         } else if (message.type === 'transcript' && message.data?.utterance) {
           const rawText = message.data.utterance.text || ''
           const text = rawText.replace(/<\/?end>/gi, '').trim()
           const lang = message.data.utterance.language || 'unknown'
 
           if (message.data.is_final) {
+            const sig = `${lang}::${text}`
+            const now = Date.now()
+            if (sig && lastFinalSignatureRef.current.sig === sig && now - lastFinalSignatureRef.current.at < 2000) {
+              return
+            }
+            lastFinalSignatureRef.current = { sig, at: now }
+
             utteranceIdRef.current += 1
             // Read partial translations from ref (not via state updater)
             // This avoids React Strict Mode double-invoke creating duplicate utterances
@@ -424,10 +512,14 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             setPartialTranslations({})
             partialTranslationsRef.current = {}
             setPartialTranscript('')
+            partialTranscriptRef.current = ''
             setPartialLang(null)
+            partialLangRef.current = null
           } else {
             setPartialTranscript(text)
+            partialTranscriptRef.current = text
             setPartialLang(lang)
+            partialLangRef.current = lang
           }
         } else if (message.type === 'translation' && message.data) {
           const targetLang = message.data.target_language
@@ -458,12 +550,14 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       }
 
       socket.onerror = () => {
+        stopAckResolverRef.current?.()
         cleanup()
         setConnectionStatus('error')
         setTimeout(() => setConnectionStatus('idle'), 3000)
       }
 
       socket.onclose = () => {
+        stopAckResolverRef.current?.()
         resetToIdle()
       }
     } catch {
@@ -471,16 +565,16 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [cleanup, resetToIdle, startAudioProcessing, languages, usageSec, isDemoAnimating])
+  }, [cleanup, resetToIdle, startAudioProcessing, languages, usageSec, isDemoAnimating, stopRecordingGracefully])
 
   const toggleRecording = useCallback(() => {
     if (connectionStatus === 'error') return
     if (connectionStatus !== 'idle') {
-      resetToIdle()
+      void stopRecordingGracefully()
     } else {
       startRecording()
     }
-  }, [connectionStatus, resetToIdle, startRecording])
+  }, [connectionStatus, startRecording, stopRecordingGracefully])
 
   useEffect(() => {
     return () => {
