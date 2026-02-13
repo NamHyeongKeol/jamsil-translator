@@ -124,7 +124,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   } = useRealtimeSTT({
     languages: selectedLanguages,
     onLimitReached,
-    suppressInput: Boolean(speakingItem),
   })
 
   // Save conversation to DB when recording stops

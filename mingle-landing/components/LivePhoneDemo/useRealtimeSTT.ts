@@ -87,10 +87,9 @@ function toBase64(data: Int16Array): string {
 interface UseRealtimeSTTOptions {
   languages: string[]
   onLimitReached?: () => void
-  suppressInput?: boolean
 }
 
-export default function useRealtimeSTT({ languages, onLimitReached, suppressInput = false }: UseRealtimeSTTOptions) {
+export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   
   // Demo animation states
@@ -150,7 +149,6 @@ export default function useRealtimeSTT({ languages, onLimitReached, suppressInpu
   const stopAckResolverRef = useRef<(() => void) | null>(null)
   const isStoppingRef = useRef(false)
   const lastFinalSignatureRef = useRef<{ sig: string, at: number }>({ sig: '', at: 0 })
-  const suppressInputRef = useRef(suppressInput)
 
   // Persist utterances to localStorage
   useEffect(() => {
@@ -173,10 +171,6 @@ export default function useRealtimeSTT({ languages, onLimitReached, suppressInpu
   useEffect(() => {
     partialLangRef.current = partialLang
   }, [partialLang])
-
-  useEffect(() => {
-    suppressInputRef.current = suppressInput
-  }, [suppressInput])
 
   // Demo animation effect - typewriter effect for initial utterances
   useEffect(() => {
@@ -396,7 +390,6 @@ export default function useRealtimeSTT({ languages, onLimitReached, suppressInpu
     source.connect(processor)
     processor.connect(context.destination)
     processor.onaudioprocess = (e) => {
-      if (suppressInputRef.current) return
       if (socket.readyState === WebSocket.OPEN) {
         const inputData = e.inputBuffer.getChannelData(0)
         const pcmData = floatTo16BitPCM(inputData)
