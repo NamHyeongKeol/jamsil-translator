@@ -156,6 +156,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
   const isStoppingRef = useRef(false)
   const stopFinalizeDedupRef = useRef<{ sig: string, expiresAt: number }>({ sig: '', expiresAt: 0 })
   const translationRequestInFlightRef = useRef(new Set<string>())
+  const pendingLocalFinalizeRef = useRef<{ utteranceId: string, text: string, lang: string, expiresAt: number } | null>(null)
 
   // Persist utterances to localStorage
   useEffect(() => {
@@ -318,6 +319,20 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     translationRequestInFlightRef.current.add(payload.utteranceId)
     let success = false
 
+    const markExistingAsFinalized = () => {
+      setUtterances(prev => prev.map((utterance) => {
+        if (utterance.id !== payload.utteranceId) return utterance
+        const mergedFinalized = { ...(utterance.translationFinalized || {}) }
+        for (const [lang, text] of Object.entries(utterance.translations)) {
+          if (text?.trim()) mergedFinalized[lang] = true
+        }
+        return {
+          ...utterance,
+          translationFinalized: mergedFinalized,
+        }
+      }))
+    }
+
     try {
       const response = await fetch('/api/translate/finalize', {
         method: 'POST',
@@ -328,12 +343,18 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
           targetLanguages: languages.filter((lang) => lang !== payload.lang),
         }),
       })
-      if (!response.ok) return
+      if (!response.ok) {
+        markExistingAsFinalized()
+        return
+      }
 
       const data = await response.json() as { translations?: Record<string, string> }
       const translations = data.translations || {}
       const entries = Object.entries(translations).filter(([, value]) => Boolean(value?.trim()))
-      if (entries.length === 0) return
+      if (entries.length === 0) {
+        markExistingAsFinalized()
+        return
+      }
 
       setUtterances(prev => prev.map((utterance) => {
         if (utterance.id !== payload.utteranceId) return utterance
@@ -353,7 +374,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
         }
       }))
     } catch {
-      // keep existing partial translations if fallback translation fails
+      markExistingAsFinalized()
     } finally {
       if (!success) {
         translationRequestInFlightRef.current.delete(payload.utteranceId)
@@ -404,6 +425,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     partialTranscriptRef.current = ''
     setPartialLang(null)
     partialLangRef.current = null
+    pendingLocalFinalizeRef.current = { utteranceId, text, lang, expiresAt: now + 15000 }
     return { utteranceId, text, lang }
   }, [])
 
@@ -549,6 +571,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     try {
       setConnectionStatus('connecting')
       stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
+      pendingLocalFinalizeRef.current = null
       setPartialTranscript('')
       setPartialTranslations({})
       partialTranslationsRef.current = {}
@@ -621,6 +644,34 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             }
             stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
 
+            const pendingLocal = pendingLocalFinalizeRef.current
+            if (
+              pendingLocal
+              && now < pendingLocal.expiresAt
+              && pendingLocal.lang === lang
+              && (
+                text.startsWith(pendingLocal.text)
+                || pendingLocal.text.startsWith(text)
+              )
+            ) {
+              const mergedText = text.length >= pendingLocal.text.length ? text : pendingLocal.text
+              setUtterances(prev => prev.map((utterance) => {
+                if (utterance.id !== pendingLocal.utteranceId) return utterance
+                return {
+                  ...utterance,
+                  originalText: mergedText,
+                }
+              }))
+              pendingLocalFinalizeRef.current = null
+              setPartialTranslations({})
+              partialTranslationsRef.current = {}
+              setPartialTranscript('')
+              partialTranscriptRef.current = ''
+              setPartialLang(null)
+              partialLangRef.current = null
+              return
+            }
+
             utteranceIdRef.current += 1
             // Read partial translations from ref (not via state updater)
             // This avoids React Strict Mode double-invoke creating duplicate utterances
@@ -643,6 +694,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             partialTranscriptRef.current = ''
             setPartialLang(null)
             partialLangRef.current = null
+            pendingLocalFinalizeRef.current = null
           } else {
             setPartialTranscript(text)
             partialTranscriptRef.current = text
