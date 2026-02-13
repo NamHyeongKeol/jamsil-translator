@@ -332,7 +332,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     const seedTranslations = { ...partialTranslationsRef.current }
     const seedFinalized: Record<string, boolean> = {}
     for (const key of Object.keys(seedTranslations)) {
-      seedFinalized[key] = Boolean(seedTranslations[key]?.trim())
+      seedFinalized[key] = false
     }
 
     setUtterances(prev => [...prev, {
@@ -362,8 +362,14 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     const socket = socketRef.current
     const pendingText = partialTranscriptRef.current.trim()
     const pendingLang = partialLangRef.current || 'unknown'
-    const ackWaitMs = pendingText ? 10000 : 1500
+    const ackWaitMs = pendingText ? 8000 : 1500
     let receivedAck = false
+    let locallyFinalized = false
+
+    // User stop should finalize immediately in UI.
+    if (pendingText) {
+      locallyFinalized = finalizePendingLocally(pendingText, pendingLang)
+    }
 
     try {
       if (socket && socket.readyState === WebSocket.OPEN) {
@@ -394,11 +400,12 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       // fall through and close anyway
     } finally {
       if (!receivedAck && socketRef.current?.readyState === WebSocket.OPEN) {
-        await new Promise(resolve => setTimeout(resolve, 1200))
+        // Allow late final translation packets to arrive when ack timed out.
+        await new Promise(resolve => setTimeout(resolve, pendingText ? 2500 : 1200))
       }
 
       const remainingPartial = partialTranscriptRef.current.trim()
-      if (remainingPartial) {
+      if (!locallyFinalized && remainingPartial) {
         finalizePendingLocally(remainingPartial, partialLangRef.current || pendingLang)
       }
 

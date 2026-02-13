@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: stop_state_and_partial_translation_promote
+    %% @lastActive: stop_immediate_finalize_and_translation_drain
 
     %% === START ===
     %% @project_start [start, closed]
@@ -181,6 +181,9 @@ flowchart TD
     %% @stop_state_and_partial_translation_promote [ai-task, closed]
     stop_state_and_partial_translation_promote("중단 상태 UI 분리 + partial 번역 승격<br/><sub>stop 클릭 즉시 stopping 상태로 전환해 red 녹음 표시 해제<br/>로컬 강제 확정 시 partial 번역을 finalized로 승격<br/>ack 지연 시에도 final→TTS 체인이 끊기지 않도록 보강</sub>")
 
+    %% @stop_immediate_finalize_and_translation_drain [ai-task, closed]
+    stop_immediate_finalize_and_translation_drain("중단 즉시 final 확정 + 번역 드레인 대기<br/><sub>stop 시 partial을 즉시 final 승격해 지연 체감 제거<br/>ack timeout 구간에는 짧은 translation drain 대기 추가<br/>final 텍스트 기준 번역 업데이트 후 TTS 체인 복구</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -255,7 +258,8 @@ flowchart TD
     soniox_endpoint_finalize_immediate_tts --> stop_interrupt_local_finalize_fallback
     stop_interrupt_local_finalize_fallback --> stop_dedupe_scope_fix_for_tts_chain
     stop_dedupe_scope_fix_for_tts_chain --> stop_state_and_partial_translation_promote
-    stop_state_and_partial_translation_promote --> tts_echo_reference_filter_research
+    stop_state_and_partial_translation_promote --> stop_immediate_finalize_and_translation_drain
+    stop_immediate_finalize_and_translation_drain --> tts_echo_reference_filter_research
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -264,7 +268,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        stop_state_and_partial_translation_promote
+        stop_immediate_finalize_and_translation_drain
     end
 
     %% === STYLES ===
@@ -381,7 +385,8 @@ flowchart TD
     style soniox_endpoint_finalize_immediate_tts fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stop_interrupt_local_finalize_fallback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stop_dedupe_scope_fix_for_tts_chain fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style stop_state_and_partial_translation_promote fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style stop_state_and_partial_translation_promote fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_immediate_finalize_and_translation_drain fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
