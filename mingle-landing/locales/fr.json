@@ -123,7 +123,7 @@
     "feedbackPlaceholder": "Si vous avez des demandes ou des attentes, dites-le nous"
   },
   "demo": {
-    "limitReached": "Limite de démo atteinte (30s)",
+    "limitReached": "Limite de démo atteinte (60s)",
     "limitDesc": "Inscrivez-vous pour un accès anticipé"
   },
   "partyScenario": {

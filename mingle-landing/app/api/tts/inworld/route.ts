@@ -5,6 +5,7 @@ export const runtime = 'nodejs'
 const INWORLD_API_BASE = 'https://api.inworld.ai'
 const DEFAULT_MODEL_ID = process.env.INWORLD_TTS_MODEL_ID || 'inworld-tts-1.5-mini'
 const DEFAULT_VOICE_ID = process.env.INWORLD_TTS_DEFAULT_VOICE_ID || 'Ashley'
+const DEFAULT_SPEAKING_RATE = Number(process.env.INWORLD_TTS_SPEAKING_RATE || '1.2')
 const VOICE_CACHE_TTL_MS = 1000 * 60 * 30
 
 interface InworldVoiceItem {
@@ -158,6 +159,11 @@ export async function POST(request: NextRequest) {
         text,
         voiceId,
         modelId: DEFAULT_MODEL_ID,
+        audioConfig: {
+          speakingRate: Number.isFinite(DEFAULT_SPEAKING_RATE) && DEFAULT_SPEAKING_RATE > 0
+            ? DEFAULT_SPEAKING_RATE
+            : 1.2,
+        },
       }),
       cache: 'no-store',
     })

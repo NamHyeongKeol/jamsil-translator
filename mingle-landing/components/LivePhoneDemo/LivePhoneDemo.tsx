@@ -11,7 +11,7 @@ import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
 
 const VOLUME_THRESHOLD = 0.05
-const USAGE_LIMIT_SEC = 30
+const USAGE_LIMIT_SEC = 60
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
 const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='
 
