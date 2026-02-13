@@ -553,6 +553,11 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
   }, [visualize])
 
   const startRecording = useCallback(async () => {
+    if (isStoppingRef.current) return
+    if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
+      return
+    }
+
     // Check limit before starting
     if (usageSec >= USAGE_LIMIT_SEC) {
       onLimitReachedRef.current?.()
@@ -605,6 +610,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       }
 
       socket.onmessage = (event) => {
+        if (socket !== socketRef.current) return
         const message = JSON.parse(event.data)
 
         if (message.status === 'ready') {
@@ -655,6 +661,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
               )
             ) {
               const mergedText = text.length >= pendingLocal.text.length ? text : pendingLocal.text
+              const needRetranslate = mergedText !== pendingLocal.text
               setUtterances(prev => prev.map((utterance) => {
                 if (utterance.id !== pendingLocal.utteranceId) return utterance
                 return {
@@ -662,6 +669,14 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
                   originalText: mergedText,
                 }
               }))
+              if (needRetranslate) {
+                translationRequestInFlightRef.current.delete(pendingLocal.utteranceId)
+                void requestFinalizeTranslations({
+                  utteranceId: pendingLocal.utteranceId,
+                  text: mergedText,
+                  lang,
+                })
+              }
               pendingLocalFinalizeRef.current = null
               setPartialTranslations({})
               partialTranslationsRef.current = {}
@@ -730,6 +745,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       }
 
       socket.onerror = () => {
+        if (socket !== socketRef.current) return
         stopAckResolverRef.current?.()
         const remainingPartial = partialTranscriptRef.current.trim()
         if (remainingPartial) {
@@ -744,6 +760,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       }
 
       socket.onclose = () => {
+        if (socket !== socketRef.current) return
         stopAckResolverRef.current?.()
         if (!isStoppingRef.current) {
           const remainingPartial = partialTranscriptRef.current.trim()
