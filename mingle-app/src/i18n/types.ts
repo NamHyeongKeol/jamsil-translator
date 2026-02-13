@@ -49,6 +49,7 @@ export type AppDictionary = {
     loginGoogle: string;
     loginDemo: string;
     logout: string;
+    googleNotConfigured: string;
     mobileRuntime: string;
     nativeBridge: string;
     connected: string;

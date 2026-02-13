@@ -1,6 +1,7 @@
 import MingleHome from "@/components/mingle-home";
 import { getDictionary, isSupportedLocale } from "@/i18n";
 import { notFound } from "next/navigation";
+import { isGoogleOAuthConfigured } from "@/lib/auth-options";
 
 type LocalePageProps = {
   params: Promise<{
@@ -15,5 +16,11 @@ export default async function LocalePage({ params }: LocalePageProps) {
     notFound();
   }
 
-  return <MingleHome dictionary={getDictionary(locale)} locale={locale} />;
+  return (
+    <MingleHome
+      dictionary={getDictionary(locale)}
+      googleOAuthEnabled={isGoogleOAuthConfigured()}
+      locale={locale}
+    />
+  );
 }
