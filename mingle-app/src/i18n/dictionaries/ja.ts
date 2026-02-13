@@ -53,6 +53,7 @@ export const jaDictionary: AppDictionary = {
     logout: "ログアウト",
     googleNotConfigured: "Google OAuth の環境変数が未設定のため、デモログインのみ利用できます。",
     translatorPage: "翻訳機を開く",
+    populateSeedData: "シードデータを投入",
     mobileRuntime: "モバイルランタイム",
     nativeBridge: "ネイティブブリッジ",
     connected: "接続済み",

@@ -58,3 +58,13 @@ pnpm cap:verify
 
 - `cap:sync` builds the web app and prepares a fallback `capacitor-web` bundle.
 - If `CAPACITOR_SERVER_URL` is set, native builds will load that URL at runtime.
+
+## Seed Data
+
+```bash
+pnpm seed:check
+pnpm seed:populate
+```
+
+- Source file: `data/seed/mingle-seed.json`
+- Export target: `capacitor-web/seed/mingle-seed.json`

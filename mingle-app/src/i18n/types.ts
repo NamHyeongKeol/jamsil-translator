@@ -51,6 +51,7 @@ export type AppDictionary = {
     logout: string;
     googleNotConfigured: string;
     translatorPage: string;
+    populateSeedData: string;
     mobileRuntime: string;
     nativeBridge: string;
     connected: string;

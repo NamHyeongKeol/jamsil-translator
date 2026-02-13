@@ -30,6 +30,7 @@ import {
   type SavedConversation,
 } from "@/lib/chat-invite-store";
 import { detectMobileRuntime } from "@/lib/mobile-runtime";
+import { getSeedDataset } from "@/lib/seed-data";
 import type { AppDictionary } from "@/i18n/types";
 
 type TabKey = "chats" | "connect" | "moments" | "my";
@@ -613,11 +614,13 @@ function MyTab({
   dictionary,
   googleOAuthEnabled,
   locale,
+  onPopulateSeedData,
   profileHandle,
 }: {
   dictionary: AppDictionary;
   googleOAuthEnabled: boolean;
   locale: string;
+  onPopulateSeedData: () => void;
   profileHandle: string;
 }) {
   const runtime = useMemo(() => detectMobileRuntime(), []);
@@ -743,6 +746,14 @@ function MyTab({
         >
           {dictionary.profile.translatorPage}
         </Link>
+
+        <button
+          className="mb-[0.72rem] inline-flex rounded-[0.55rem] border border-black/10 bg-white px-[0.62rem] py-[0.36rem] text-[0.66rem] font-semibold"
+          onClick={onPopulateSeedData}
+          type="button"
+        >
+          {dictionary.profile.populateSeedData}
+        </button>
 
         <section className="mb-[0.72rem] rounded-[0.7rem] border border-black/8 bg-white px-[0.62rem] py-[0.58rem]">
           <div className="mb-[0.34rem] flex items-center justify-between">
@@ -906,6 +917,20 @@ export default function MingleHome({
     return { ok: true, message: `${roomName} ${dictionary.chat.joinSuccessSuffix}` };
   };
 
+  const handlePopulateSeedData = (): void => {
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://app.mingle.local";
+    const seeded = getSeedDataset({
+      locale,
+      inviterHandle: impersonatedUser.handle,
+      baseOrigin: origin,
+    });
+
+    setSavedConversations(seeded.conversations);
+    setInviteRecords(seeded.invites);
+    setJoinedInvites([]);
+  };
+
   return (
     <div className="min-h-screen bg-[#eceff3]">
       <div className="mobile-safe-shell mx-auto flex h-screen max-w-[30rem] flex-col overflow-hidden bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
@@ -930,6 +955,7 @@ export default function MingleHome({
               dictionary={dictionary}
               googleOAuthEnabled={googleOAuthEnabled}
               locale={locale}
+              onPopulateSeedData={handlePopulateSeedData}
               profileHandle={impersonatedUser.handle}
             />
           ) : null}
