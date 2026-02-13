@@ -617,6 +617,10 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
 
       socket.onerror = () => {
         stopAckResolverRef.current?.()
+        const remainingPartial = partialTranscriptRef.current.trim()
+        if (remainingPartial) {
+          finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+        }
         cleanup()
         setConnectionStatus('error')
         setTimeout(() => setConnectionStatus('idle'), 3000)
@@ -624,6 +628,12 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
 
       socket.onclose = () => {
         stopAckResolverRef.current?.()
+        if (!isStoppingRef.current) {
+          const remainingPartial = partialTranscriptRef.current.trim()
+          if (remainingPartial) {
+            finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+          }
+        }
         resetToIdle()
       }
     } catch {
@@ -631,7 +641,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [cleanup, resetToIdle, startAudioProcessing, languages, usageSec, isDemoAnimating, stopRecordingGracefully])
+  }, [cleanup, finalizePendingLocally, resetToIdle, startAudioProcessing, languages, usageSec, isDemoAnimating, stopRecordingGracefully])
 
   const toggleRecording = useCallback(() => {
     if (connectionStatus === 'error') return
@@ -647,6 +657,35 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       cleanup()
     }
   }, [cleanup])
+
+  useEffect(() => {
+    const shouldStop = () => connectionStatus === 'ready' || connectionStatus === 'connecting'
+
+    const handlePageHide = () => {
+      if (!shouldStop()) return
+      void stopRecordingGracefully()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden || !shouldStop()) return
+      void stopRecordingGracefully()
+    }
+
+    const handleOffline = () => {
+      if (!shouldStop()) return
+      void stopRecordingGracefully()
+    }
+
+    window.addEventListener('pagehide', handlePageHide)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [connectionStatus, stopRecordingGracefully])
 
   return {
     connectionStatus,
