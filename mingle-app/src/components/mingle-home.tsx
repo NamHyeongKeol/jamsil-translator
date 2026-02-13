@@ -737,6 +737,13 @@ function MyTab({
           ) : null}
         </section>
 
+        <Link
+          className="mb-[0.72rem] inline-flex rounded-[0.55rem] border border-black/10 bg-white px-[0.62rem] py-[0.36rem] text-[0.66rem] font-semibold"
+          href={`/${locale}/translator`}
+        >
+          {dictionary.profile.translatorPage}
+        </Link>
+
         <section className="mb-[0.72rem] rounded-[0.7rem] border border-black/8 bg-white px-[0.62rem] py-[0.58rem]">
           <div className="mb-[0.34rem] flex items-center justify-between">
             <div className="flex items-center gap-[0.28rem] text-[0.68rem] font-semibold">

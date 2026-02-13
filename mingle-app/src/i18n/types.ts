@@ -50,6 +50,7 @@ export type AppDictionary = {
     loginDemo: string;
     logout: string;
     googleNotConfigured: string;
+    translatorPage: string;
     mobileRuntime: string;
     nativeBridge: string;
     connected: string;
