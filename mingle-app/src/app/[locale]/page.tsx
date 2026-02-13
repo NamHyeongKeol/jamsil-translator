@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
 import MingleHome from "@/components/mingle-home";
 import { getDictionary, isSupportedLocale } from "@/i18n";
+import { notFound } from "next/navigation";
 
 type LocalePageProps = {
   params: Promise<{
@@ -15,7 +15,5 @@ export default async function LocalePage({ params }: LocalePageProps) {
     notFound();
   }
 
-  const dictionary = getDictionary(locale);
-
-  return <MingleHome dictionary={dictionary} locale={locale} />;
+  return <MingleHome dictionary={getDictionary(locale)} locale={locale} />;
 }
