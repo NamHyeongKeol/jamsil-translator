@@ -14,6 +14,7 @@ import CommunicationSection from '@/components/sections/CommunicationSection'
 import MomentsSection from '@/components/sections/MomentsSection'
 import VoiceroomSection from '@/components/sections/VoiceroomSection'
 import WorldMapSection from '@/components/sections/WorldMapSection'
+import DemoSection from '@/components/sections/DemoSection'
 
 // 섹션이 받을 수 있는 공통 props
 // openModal과 version은 필요한 컴포넌트만 사용하고, 나머지는 무시됨
@@ -40,6 +41,7 @@ export const sectionRegistry: Record<string, ComponentType<SectionCommonProps>> 
   moments: MomentsSection as ComponentType<SectionCommonProps>,
   voiceroom: VoiceroomSection as ComponentType<SectionCommonProps>,
   worldMap: WorldMapSection as ComponentType<SectionCommonProps>,
+  demo: DemoSection as ComponentType<SectionCommonProps>,
 }
 
 export type SectionId = keyof typeof sectionRegistry
@@ -105,6 +107,14 @@ export const versionConfigs: Record<string, VersionConfig> = {
       { id: 'moments' },
       { id: 'voiceroom' },
       { id: 'worldMap' },
+      { id: 'cta' },
+    ]
+  },
+  // gaming 버전 - 게이머 대상 Group Voice Chat
+  gaming: {
+    sections: [
+      { id: 'socialHero' },
+      { id: 'demo' },
       { id: 'cta' },
     ]
   },

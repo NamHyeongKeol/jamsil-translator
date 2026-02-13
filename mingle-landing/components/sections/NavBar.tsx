@@ -99,10 +99,10 @@ export default function NavBar({ version, openModal }: NavBarProps) {
           <LanguageSelector version={version} />
           <button
             onClick={() => openModal('nav')}
-            className="px-6 py-2.5 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-lg font-semibold text-white hover:-translate-y-0.5 hover:shadow-lg hover:shadow-accent-primary/30 transition-all text-sm flex items-center gap-2"
+            className="px-3 sm:px-6 py-2.5 bg-gradient-to-r from-accent-primary to-accent-secondary rounded-lg font-semibold text-white hover:-translate-y-0.5 hover:shadow-lg hover:shadow-accent-primary/30 transition-all text-sm flex items-center gap-2"
           >
             <Download size={16} />
-            {t('nav.cta')}
+            <span className="hidden sm:inline">{t('nav.cta')}</span>
           </button>
         </div>
       </div>
