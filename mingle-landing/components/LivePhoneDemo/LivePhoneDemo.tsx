@@ -87,7 +87,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [isAutoTtsArmed, setIsAutoTtsArmed] = useState(false)
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
-  const spokenUtteranceIdsRef = useRef(new Set<string>())
+  const spokenTranslationSignatureRef = useRef(new Map<string, string>())
   const ttsQueueRef = useRef<TtsQueueItem[]>([])
   const isTtsProcessingRef = useRef(false)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -245,12 +245,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     if (!enableAutoTTS || !isAutoTtsArmed) return
 
     for (const utterance of utterances) {
-      if (spokenUtteranceIdsRef.current.has(utterance.id)) continue
-
       const firstTranslation = getFirstTranslationToSpeak(utterance, selectedLanguages)
       if (!firstTranslation) continue
 
-      spokenUtteranceIdsRef.current.add(utterance.id)
+      const signature = `${firstTranslation.language}::${firstTranslation.text}`
+      const previousSignature = spokenTranslationSignatureRef.current.get(utterance.id)
+      if (previousSignature === signature) continue
+
+      spokenTranslationSignatureRef.current.set(utterance.id, signature)
       ttsQueueRef.current.push({
         id: utterance.id,
         language: firstTranslation.language,
@@ -319,7 +321,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       return
     }
     if (enableAutoTTS && !isActive && !isAutoTtsArmed) {
-      spokenUtteranceIdsRef.current = new Set(utterances.map((u) => u.id))
+      const seeded = new Map<string, string>()
+      for (const utterance of utterances) {
+        const firstTranslation = getFirstTranslationToSpeak(utterance, selectedLanguages)
+        if (!firstTranslation) continue
+        seeded.set(utterance.id, `${firstTranslation.language}::${firstTranslation.text}`)
+      }
+      spokenTranslationSignatureRef.current = seeded
       setIsAutoTtsArmed(true)
     }
     if (enableAutoTTS) {
@@ -332,7 +340,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       })
     }
     toggleRecording()
-  }, [enableAutoTTS, isActive, isAutoTtsArmed, isLimitReached, onLimitReached, primeAudioPlayback, processTtsQueue, toggleRecording, utterances])
+  }, [enableAutoTTS, isActive, isAutoTtsArmed, isLimitReached, onLimitReached, primeAudioPlayback, processTtsQueue, selectedLanguages, toggleRecording, utterances])
 
   useImperativeHandle(ref, () => ({
     startRecording: handleMicClick,
