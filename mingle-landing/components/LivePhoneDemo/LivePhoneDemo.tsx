@@ -346,7 +346,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         <div
           ref={chatRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-gray-50/50"
+          className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 space-y-3 bg-gray-50/50"
         >
           <AnimatePresence mode="popLayout">
             {utterances.map((u) => (
