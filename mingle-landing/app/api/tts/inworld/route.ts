@@ -25,7 +25,9 @@ function getAuthHeaderValue(): string | null {
   }
 
   const basicCredential = (
-    process.env.INWORLD_RUNTIME_BASE64_CREDENTIAL
+    process.env.INWORLD_BASIC
+    || process.env.INWORLD_BASIC_KEY
+    || process.env.INWORLD_RUNTIME_BASE64_CREDENTIAL
     || process.env.INWORLD_BASIC_CREDENTIAL
     || ''
   ).trim()
@@ -128,7 +130,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          'INWORLD_RUNTIME_BASE64_CREDENTIAL or INWORLD_BASIC_CREDENTIAL (or INWORLD_API_KEY as Base64) is required',
+          'INWORLD_BASIC (or INWORLD_RUNTIME_BASE64_CREDENTIAL / INWORLD_BASIC_CREDENTIAL) is required',
       },
       { status: 500 },
     )
