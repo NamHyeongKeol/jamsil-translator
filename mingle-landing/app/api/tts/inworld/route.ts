@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export const runtime = 'nodejs'
 
 const INWORLD_API_BASE = 'https://api.inworld.ai'
-const DEFAULT_MODEL_ID = process.env.INWORLD_TTS_MODEL_ID || 'inworld-tts-1'
+const DEFAULT_MODEL_ID = process.env.INWORLD_TTS_MODEL_ID || 'inworld-tts-1.5-mini'
 const DEFAULT_VOICE_ID = process.env.INWORLD_TTS_DEFAULT_VOICE_ID || 'Ashley'
 const VOICE_CACHE_TTL_MS = 1000 * 60 * 30
 
@@ -16,20 +16,41 @@ interface InworldVoiceItem {
 const voiceCache = new Map<string, { voiceId: string, expiresAt: number }>()
 
 function getAuthHeaderValue(): string | null {
-  const runtimeCredential = process.env.INWORLD_RUNTIME_BASE64_CREDENTIAL?.trim()
-  if (runtimeCredential) {
-    if (runtimeCredential.startsWith('Basic ')) {
-      return runtimeCredential
+  const jwtToken = process.env.INWORLD_JWT?.trim()
+  if (jwtToken) {
+    if (jwtToken.startsWith('Bearer ')) {
+      return jwtToken
     }
-    return `Basic ${runtimeCredential}`
+    return `Bearer ${jwtToken}`
   }
 
+  const basicCredential = (
+    process.env.INWORLD_RUNTIME_BASE64_CREDENTIAL
+    || process.env.INWORLD_BASIC_CREDENTIAL
+    || ''
+  ).trim()
+  if (basicCredential) {
+    if (basicCredential.startsWith('Basic ')) {
+      return basicCredential
+    }
+    return `Basic ${basicCredential}`
+  }
+
+  // Some environments store the Base64 Basic credential in INWORLD_API_KEY.
   const apiKey = process.env.INWORLD_API_KEY?.trim()
   const apiSecret = process.env.INWORLD_API_SECRET?.trim()
-  if (!apiKey || !apiSecret) return null
+  if (apiKey && !apiSecret) {
+    if (apiKey.startsWith('Basic ')) return apiKey
+    return `Basic ${apiKey}`
+  }
 
-  const credential = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
-  return `Basic ${credential}`
+  // Fallback for setups where key/secret pair is provided.
+  if (apiKey && apiSecret) {
+    const credential = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
+    return `Basic ${credential}`
+  }
+
+  return null
 }
 
 function normalizeLanguage(input?: string): string | null {
@@ -56,7 +77,7 @@ async function resolveVoiceId(authHeader: string, language: string | null): Prom
   }
 
   try {
-    const url = `${INWORLD_API_BASE}/tts/v1/voice:voices?filter=${encodeURIComponent(`language=${language}`)}`
+    const url = `${INWORLD_API_BASE}/tts/v1/voices?filter=${encodeURIComponent(`language=${language}`)}`
     const response = await fetch(url, {
       headers: { Authorization: authHeader },
       cache: 'no-store',
@@ -105,7 +126,10 @@ export async function POST(request: NextRequest) {
   const authHeader = getAuthHeaderValue()
   if (!authHeader) {
     return NextResponse.json(
-      { error: 'INWORLD_API_KEY/INWORLD_API_SECRET or INWORLD_RUNTIME_BASE64_CREDENTIAL is required' },
+      {
+        error:
+          'INWORLD_RUNTIME_BASE64_CREDENTIAL or INWORLD_BASIC_CREDENTIAL (or INWORLD_API_KEY as Base64) is required',
+      },
       { status: 500 },
     )
   }
@@ -122,7 +146,7 @@ export async function POST(request: NextRequest) {
   const voiceId = requestedVoiceId || await resolveVoiceId(authHeader, language)
 
   try {
-    const response = await fetch(`${INWORLD_API_BASE}/tts/v1/voice:tts`, {
+    const response = await fetch(`${INWORLD_API_BASE}/tts/v1/voice`, {
       method: 'POST',
       headers: {
         Authorization: authHeader,
