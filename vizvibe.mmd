@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: macos_loopback_capture_validation
+    %% @lastActive: translation_decouple_http
 
     %% === START ===
     %% @project_start [start, closed]
@@ -211,6 +211,9 @@ flowchart TD
     %% @gaming_socialhero_multilingual_copy_refresh [ai-task, closed]
     gaming_socialhero_multilingual_copy_refresh("Gaming 헤드라인 다국어 개편<br/><sub>gaming Hero 제목 문구를 한국어 기준으로<br/>동시 통역 강조 순서로 재배치하고<br/>중국어/대만어/일본어/베트남어/태국어를<br/>각 로케일에 맞춰 자연스럽게 동기화</sub>")
 
+    %% @translation_decouple_http [ai-task, closed]
+    translation_decouple_http("번역 탈WebSocket → HTTP API 전환<br/><sub>STT 서버에서 번역 로직 전체 제거(~200줄)<br/>클라이언트가 /api/translate/finalize 직접 호출<br/>시퀀스 번호 기반 race 방지, 5글자 단위 partial 번역<br/>stop 즉시 소켓 닫기+HTTP 번역 fire-and-forget</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -301,9 +304,10 @@ flowchart TD
     stop_finalize_retry_and_multi_provider_translate --> stop_ack_server_final_turn_payload
     stop_ack_server_final_turn_payload --> stop_translation_json_and_single_fallback
     landing_copy_update --> gaming_socialhero_multilingual_copy_refresh
-    stop_translation_json_and_single_fallback --> tts_echo_reference_filter_research
-    stop_translation_json_and_single_fallback --> windows_loopback_capture_validation
-    stop_translation_json_and_single_fallback --> macos_loopback_capture_validation
+    stop_translation_json_and_single_fallback --> translation_decouple_http
+    translation_decouple_http --> tts_echo_reference_filter_research
+    translation_decouple_http --> windows_loopback_capture_validation
+    translation_decouple_http --> macos_loopback_capture_validation
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -312,7 +316,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        macos_loopback_capture_validation
+        translation_decouple_http
     end
 
     %% === STYLES ===
@@ -443,8 +447,11 @@ flowchart TD
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
-    style macos_loopback_capture_validation fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style macos_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+
+    %% Last active node (highlighted purple)
+    style translation_decouple_http fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style
