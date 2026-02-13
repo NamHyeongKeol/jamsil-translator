@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: tts_stt_concurrent_input_enable
+    %% @lastActive: soniox_endpoint_finalize_immediate_tts
 
     %% === START ===
     %% @project_start [start, closed]
@@ -169,6 +169,9 @@ flowchart TD
     %% @tts_stt_concurrent_input_enable [ai-task, closed]
     tts_stt_concurrent_input_enable("TTS 재생 중 STT 동시 입력 허용<br/><sub>TTS 재생 상태와 연동된 STT 업링크 suppress 로직 제거<br/>TTS 출력 중에도 마이크 입력을 Soniox로 지속 전송<br/>브라우저 echo/noise suppression 기본 제약은 유지</sub>")
 
+    %% @soniox_endpoint_finalize_immediate_tts [ai-task, closed]
+    soniox_endpoint_finalize_immediate_tts("Soniox 엔드포인트 즉시 확정 처리<br/><sub><end> 토큰 감지 시 발화를 즉시 final로 확정<br/>번역 완료 직후 TTS 큐가 즉시 실행되도록 연결<br/>테스트 종료 시점까지 지연되던 발화 케이스 완화</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -239,7 +242,8 @@ flowchart TD
     stt_graceful_stop_finalize_flush --> soniox_provider_finalization_on_stop
     soniox_provider_finalization_on_stop --> demo_limit_60s_inworld_tts_rate
     demo_limit_60s_inworld_tts_rate --> tts_stt_concurrent_input_enable
-    tts_stt_concurrent_input_enable --> tts_echo_reference_filter_research
+    tts_stt_concurrent_input_enable --> soniox_endpoint_finalize_immediate_tts
+    soniox_endpoint_finalize_immediate_tts --> tts_echo_reference_filter_research
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -248,7 +252,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        tts_stt_concurrent_input_enable
+        soniox_endpoint_finalize_immediate_tts
     end
 
     %% === STYLES ===
@@ -361,7 +365,8 @@ flowchart TD
     style stt_graceful_stop_finalize_flush fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style soniox_provider_finalization_on_stop fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style demo_limit_60s_inworld_tts_rate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style tts_stt_concurrent_input_enable fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style tts_stt_concurrent_input_enable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style soniox_endpoint_finalize_immediate_tts fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
