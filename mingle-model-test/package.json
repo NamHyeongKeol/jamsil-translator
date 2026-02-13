@@ -1,6 +1,7 @@
 {
   "name": "mingle-model-test",
   "version": "0.1.0",
+  "license": "GPL-3.0-only",
   "private": true,
   "scripts": {
     "dev": "concurrently \"next dev --port 3000\" \"ts-node stt-server.ts\"",
