@@ -104,6 +104,42 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { /* ignore */ }
   }, [selectedLanguages])
 
+  // Handle TTS audio received inline with translation response.
+  const handleTtsAudio = useCallback((utteranceId: string, audioDataUrl: string, language: string) => {
+    if (!enableAutoTTS || !isSoundEnabled) return
+    // Mark as spoken so the effect-based TTS queue doesn't duplicate.
+    spokenTranslationSignatureRef.current.set(utteranceId, `${language}::__server_tts__`)
+    setSpeakingItem({ utteranceId, language })
+
+    // Inline cleanup of any currently playing audio.
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.src = ''
+      currentAudioRef.current.onended = null
+      currentAudioRef.current.onerror = null
+      currentAudioRef.current = null
+    }
+    if (currentAudioUrlRef.current) {
+      URL.revokeObjectURL(currentAudioUrlRef.current)
+      currentAudioUrlRef.current = null
+    }
+
+    const audio = new Audio(audioDataUrl)
+    currentAudioRef.current = audio
+    audio.onended = () => {
+      setSpeakingItem(prev => (prev?.utteranceId === utteranceId ? null : prev))
+      currentAudioRef.current = null
+    }
+    audio.onerror = () => {
+      setSpeakingItem(prev => (prev?.utteranceId === utteranceId ? null : prev))
+      currentAudioRef.current = null
+    }
+    audio.play().catch(() => {
+      ttsNeedsUnlockRef.current = true
+      setSpeakingItem(prev => (prev?.utteranceId === utteranceId ? null : prev))
+    })
+  }, [enableAutoTTS, isSoundEnabled])
+
   const {
     utterances,
     partialTranscript,
@@ -125,6 +161,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   } = useRealtimeSTT({
     languages: selectedLanguages,
     onLimitReached,
+    onTtsAudio: handleTtsAudio,
+    enableTts: enableAutoTTS && isSoundEnabled,
   })
 
   // Save conversation to DB when recording stops
