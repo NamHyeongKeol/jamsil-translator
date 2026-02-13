@@ -10,8 +10,6 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || ''
 const DEFAULT_MODEL = process.env.DEMO_TRANSLATE_MODEL || 'gemini-2.5-flash-lite'
 
-let translateRequestCount = 0
-
 const LANG_NAMES: Record<string, string> = {
   en: 'English', ko: 'Korean', zh: 'Chinese', ja: 'Japanese',
   es: 'Spanish', fr: 'French', de: 'German', ru: 'Russian',
@@ -81,11 +79,6 @@ async function translateWithGemini(ctx: TranslateContext): Promise<Record<string
   })
   const result = await model.generateContent(userPrompt)
   const content = result.response.text()?.trim() || ''
-  const usage = result.response.usageMetadata
-  console.log(`[Gemini] model=${DEFAULT_MODEL} | response=${content}`)
-  if (usage) {
-    console.log(`[Gemini] tokens: input=${usage.promptTokenCount}, output=${usage.candidatesTokenCount}, total=${usage.totalTokenCount}`)
-  }
   if (!content) return {}
   return parseTranslations(content)
 }
@@ -151,8 +144,6 @@ export async function POST(request: NextRequest) {
   }
 
   const ctx: TranslateContext = { text, targetLanguages }
-  translateRequestCount++
-  console.log(`[Translate #${translateRequestCount}] text="${text.slice(0, 80)}" src=${sourceLanguage} targets=${targetLanguages.join(',')}`)
 
   try {
     let allTranslations: Record<string, string> = {}
