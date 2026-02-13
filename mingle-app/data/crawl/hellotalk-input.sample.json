@@ -1,0 +1,26 @@
+[
+  {
+    "userId": "ht_sofia_01",
+    "nickname": "Sofia",
+    "nativeLanguage": "es",
+    "learningLanguage": "ko",
+    "text": "서울에서 스페인어-한국어 언어교환 친구 찾고 있어요!",
+    "createdAt": "2026-02-10T15:40:00.000Z"
+  },
+  {
+    "userId": "ht_aiko_02",
+    "nickname": "Aiko",
+    "nativeLanguage": "ja",
+    "learningLanguage": "en",
+    "text": "I want to practice business English before a product launch.",
+    "createdAt": "2026-02-11T09:12:00.000Z"
+  },
+  {
+    "userId": "ht_mina_03",
+    "nickname": "Mina",
+    "nativeLanguage": "ko",
+    "learningLanguage": "ja",
+    "text": "週末にカフェで韓国語と日本語を交換したいです。",
+    "createdAt": "2026-02-12T04:25:00.000Z"
+  }
+]
