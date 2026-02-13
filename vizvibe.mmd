@@ -212,7 +212,7 @@ flowchart TD
     gaming_socialhero_multilingual_copy_refresh("Gaming 헤드라인 다국어 개편<br/><sub>gaming Hero 제목 문구를 한국어 기준으로<br/>동시 통역 강조 순서로 재배치하고<br/>중국어/대만어/일본어/베트남어/태국어를<br/>각 로케일에 맞춰 자연스럽게 동기화</sub>")
 
     %% @translation_decouple_http [ai-task, closed]
-    translation_decouple_http("번역 탈WebSocket → HTTP API 전환<br/><sub>STT 서버에서 번역 로직 전체 제거(~200줄)<br/>클라이언트가 /api/translate/finalize 직접 호출<br/>시퀀스 번호 race 방지, 5글자 단위 partial 번역<br/>utteranceId 바인딩으로 cross-utterance 오염 차단</sub>")
+    translation_decouple_http("번역 탈WebSocket → HTTP API 전환<br/><sub>STT 서버에서 번역 로직 전체 제거(~200줄)<br/>클라이언트가 /api/translate/finalize 직접 호출<br/>5글자 partial 번역, utteranceId 바인딩 오염 차단<br/>소리 토글 버튼 추가, 번역 표시 순서 고정</sub>")
 
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
