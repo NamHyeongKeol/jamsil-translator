@@ -64,7 +64,7 @@ function markDemoCompleted(): void {
   } catch { /* ignore */ }
 }
 
-type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
+type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'stopping' | 'error'
 
 function floatTo16BitPCM(input: Float32Array): Int16Array {
   const output = new Int16Array(input.length)
@@ -332,7 +332,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     const seedTranslations = { ...partialTranslationsRef.current }
     const seedFinalized: Record<string, boolean> = {}
     for (const key of Object.keys(seedTranslations)) {
-      seedFinalized[key] = false
+      seedFinalized[key] = Boolean(seedTranslations[key]?.trim())
     }
 
     setUtterances(prev => [...prev, {
@@ -357,11 +357,12 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
 
     // Stop capturing mic/audio immediately, but keep WS alive briefly for finalization ack.
     stopAudioPipeline()
+    setConnectionStatus('stopping')
 
     const socket = socketRef.current
     const pendingText = partialTranscriptRef.current.trim()
     const pendingLang = partialLangRef.current || 'unknown'
-    const ackWaitMs = pendingText ? 25000 : 1500
+    const ackWaitMs = pendingText ? 10000 : 1500
     let receivedAck = false
 
     try {
