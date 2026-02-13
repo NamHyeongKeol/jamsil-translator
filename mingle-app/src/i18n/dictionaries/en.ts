@@ -53,6 +53,7 @@ export const enDictionary: AppDictionary = {
     logout: "Sign out",
     googleNotConfigured: "Google OAuth env vars are missing, so only demo sign-in is available.",
     translatorPage: "Open translator",
+    populateSeedData: "Populate seed data",
     mobileRuntime: "Mobile Runtime",
     nativeBridge: "Native bridge",
     connected: "connected",

@@ -53,6 +53,7 @@ export const koDictionary: AppDictionary = {
     logout: "로그아웃",
     googleNotConfigured: "Google OAuth 환경변수가 없어 Demo 로그인만 사용할 수 있습니다.",
     translatorPage: "번역기 열기",
+    populateSeedData: "시드 데이터 채우기",
     mobileRuntime: "모바일 런타임",
     nativeBridge: "네이티브 브리지",
     connected: "연결됨",

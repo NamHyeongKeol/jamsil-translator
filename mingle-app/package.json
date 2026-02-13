@@ -13,7 +13,9 @@
     "cap:sync": "pnpm run build:mobile && pnpm exec cap sync",
     "cap:open:ios": "pnpm exec cap open ios",
     "cap:open:android": "pnpm exec cap open android",
-    "cap:verify": "node scripts/verify-capacitor.mjs"
+    "cap:verify": "node scripts/verify-capacitor.mjs",
+    "seed:check": "node scripts/seed-data.mjs --check",
+    "seed:populate": "node scripts/seed-data.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.1.0",

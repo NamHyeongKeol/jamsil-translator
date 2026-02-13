@@ -1,0 +1,57 @@
+{
+  "users": [
+    {
+      "id": "seed_user_sofia",
+      "name": "Sofia",
+      "handle": "sofia"
+    },
+    {
+      "id": "seed_user_aiko",
+      "name": "Aiko",
+      "handle": "aiko"
+    },
+    {
+      "id": "seed_user_mina",
+      "name": "Mina",
+      "handle": "mina"
+    }
+  ],
+  "conversations": [
+    {
+      "id": "seed_conv_hangang",
+      "roomId": 1,
+      "roomName": "Sofia",
+      "roomAvatar": "S",
+      "summary": "토요일 한강 일정 확정 + 재즈바 2차",
+      "messages": [
+        "다음 주 토요일에 한강 같이 갈래?",
+        "좋아요. 저녁에 재즈바도 가요.",
+        "완전 좋아! 그날 영어/스페인어 섞어서 얘기해봐요."
+      ]
+    },
+    {
+      "id": "seed_conv_bookclub",
+      "roomId": 2,
+      "roomName": "Aiko",
+      "roomAvatar": "A",
+      "summary": "북클럽 일정 + 일본어 원서 페어 리딩",
+      "messages": [
+        "오늘 북클럽 일정 공유할게!",
+        "감사해요. 이번 책은 일본어 원서도 같이 볼까요?",
+        "좋아요. 발음 어려운 부분 같이 연습해요."
+      ]
+    },
+    {
+      "id": "seed_conv_busan",
+      "roomId": 3,
+      "roomName": "Mina",
+      "roomAvatar": "M",
+      "summary": "광안리/해운대 카페 투어 후보 정리",
+      "messages": [
+        "부산 오면 카페 추천해줄게",
+        "진짜요? 바다 보이는 곳이면 더 좋아요.",
+        "그럼 광안리 근처부터 리스트 짜볼게요."
+      ]
+    }
+  ]
+}
