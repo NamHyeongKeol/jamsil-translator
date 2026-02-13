@@ -531,6 +531,14 @@ wss.on('connection', (clientWs) => {
                 const cleanedLang = (language || '').trim() || 'unknown';
                 if (!cleanedText) return false;
 
+                // Clear turn accumulators immediately so next utterance state does not
+                // get blocked by translation latency from the current finalized turn.
+                finalizedText = '';
+                latestNonFinalText = '';
+                hadNonFinal = false;
+                lastPartialTranslateTime = 0;
+                partialTranslateInFlight = false;
+
                 if (clientWs.readyState === WebSocket.OPEN) {
                     clientWs.send(JSON.stringify({
                         type: 'transcript',
@@ -547,12 +555,6 @@ wss.on('connection', (clientWs) => {
                 if (selectedLanguages.length > 0) {
                     await translateText(cleanedText, cleanedLang, selectedLanguages, clientWs);
                 }
-
-                finalizedText = '';
-                latestNonFinalText = '';
-                hadNonFinal = false;
-                lastPartialTranslateTime = 0;
-                partialTranslateInFlight = false;
                 return true;
             };
 
@@ -812,16 +814,19 @@ wss.on('connection', (clientWs) => {
 
         if (data?.type === 'stop_recording') {
             void (async () => {
-                const pendingText = data?.data?.pending_text || '';
+                const pendingText = (data?.data?.pending_text || '').toString();
                 const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
+                const cleanedPendingText = pendingText.replace(/<\/?end>/gi, '').trim();
                 sonioxStopRequested = currentModel === 'soniox';
 
                 let finalized = false;
-                if (finalizePendingTurnFromProvider) {
-                    finalized = await finalizePendingTurnFromProvider();
-                }
-                if (!finalized) {
+
+                // User-initiated stop must finalize what the user currently sees on client.
+                // Prefer client pending text to avoid provider-side race/staleness.
+                if (cleanedPendingText) {
                     finalized = await sendForcedFinalTurn(pendingText, pendingLang);
+                } else if (finalizePendingTurnFromProvider) {
+                    finalized = await finalizePendingTurnFromProvider();
                 }
 
                 if (sttWs && (sttWs.readyState === WebSocket.OPEN || sttWs.readyState === WebSocket.CONNECTING)) {
