@@ -46,3 +46,15 @@ http://localhost:3000/api/auth/callback/google
 ```
 
 If Google OAuth env vars are missing, the app automatically falls back to demo credential login.
+
+## Capacitor Build Flow
+
+```bash
+pnpm cap:add:ios
+pnpm cap:add:android
+pnpm cap:sync
+pnpm cap:verify
+```
+
+- `cap:sync` builds the web app and prepares a fallback `capacitor-web` bundle.
+- If `CAPACITOR_SERVER_URL` is set, native builds will load that URL at runtime.

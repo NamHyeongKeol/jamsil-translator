@@ -5,10 +5,18 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:mobile": "pnpm run build && node scripts/prepare-capacitor-web.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cap:add:ios": "pnpm exec cap add ios",
+    "cap:add:android": "pnpm exec cap add android",
+    "cap:sync": "pnpm run build:mobile && pnpm exec cap sync",
+    "cap:open:ios": "pnpm exec cap open ios",
+    "cap:open:android": "pnpm exec cap open android",
+    "cap:verify": "node scripts/verify-capacitor.mjs"
   },
   "dependencies": {
+    "@capacitor/core": "^8.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
@@ -20,6 +28,9 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/ios": "^8.1.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
