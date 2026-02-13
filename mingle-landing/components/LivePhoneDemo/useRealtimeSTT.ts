@@ -334,23 +334,30 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     }
 
     try {
-      const response = await fetch('/api/translate/finalize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: payload.text,
-          sourceLanguage: payload.lang,
-          targetLanguages: languages.filter((lang) => lang !== payload.lang),
-        }),
-      })
-      if (!response.ok) {
-        markExistingAsFinalized()
-        return
+      let entries: Array<[string, string]> = []
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const response = await fetch('/api/translate/finalize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: payload.text,
+            sourceLanguage: payload.lang,
+            targetLanguages: languages.filter((lang) => lang !== payload.lang),
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json() as { translations?: Record<string, string> }
+          const translations = data.translations || {}
+          entries = Object.entries(translations).filter(([, value]) => Boolean(value?.trim()))
+          if (entries.length > 0) break
+        }
+
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)))
+        }
       }
 
-      const data = await response.json() as { translations?: Record<string, string> }
-      const translations = data.translations || {}
-      const entries = Object.entries(translations).filter(([, value]) => Boolean(value?.trim()))
       if (entries.length === 0) {
         markExistingAsFinalized()
         return

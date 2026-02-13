@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
 
 export const runtime = 'nodejs'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || ''
 const DEFAULT_MODEL = process.env.DEMO_TRANSLATE_MODEL || 'gemini-2.5-flash-lite'
 
 const LANG_NAMES: Record<string, string> = {
@@ -49,9 +53,73 @@ function parseTranslations(raw: string): Record<string, string> {
   return output
 }
 
+type TranslateContext = {
+  text: string
+  targetLanguages: string[]
+}
+
+function buildPrompt(ctx: TranslateContext): { systemPrompt: string, userPrompt: string } {
+  const langList = ctx.targetLanguages.map((lang) => `${lang} (${LANG_NAMES[lang] || lang})`).join(', ')
+  return {
+    systemPrompt: 'You are a translator. Respond ONLY with JSON mapping language codes to translations. No extra text.',
+    userPrompt: `Translate to ${langList}:\n"${ctx.text}"`,
+  }
+}
+
+async function translateWithGemini(ctx: TranslateContext): Promise<Record<string, string>> {
+  if (!GEMINI_API_KEY) return {}
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
+  const { systemPrompt, userPrompt } = buildPrompt(ctx)
+  const model = genAI.getGenerativeModel({
+    model: DEFAULT_MODEL,
+    systemInstruction: systemPrompt,
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  })
+  const result = await model.generateContent(userPrompt)
+  const content = result.response.text()?.trim() || ''
+  if (!content) return {}
+  return parseTranslations(content)
+}
+
+async function translateWithOpenAI(ctx: TranslateContext): Promise<Record<string, string>> {
+  if (!OPENAI_API_KEY) return {}
+  const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
+  const { systemPrompt, userPrompt } = buildPrompt(ctx)
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5-nano',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.1,
+  })
+  const content = response.choices[0]?.message?.content?.trim() || ''
+  if (!content) return {}
+  return parseTranslations(content)
+}
+
+async function translateWithClaude(ctx: TranslateContext): Promise<Record<string, string>> {
+  if (!CLAUDE_API_KEY) return {}
+  const anthropic = new Anthropic({ apiKey: CLAUDE_API_KEY })
+  const { systemPrompt, userPrompt } = buildPrompt(ctx)
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+  })
+  const block = response.content[0]
+  if (!block || block.type !== 'text') return {}
+  const content = block.text.trim()
+  if (!content) return {}
+  return parseTranslations(content)
+}
+
 export async function POST(request: NextRequest) {
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ error: 'GEMINI_API_KEY is required' }, { status: 500 })
+  if (!GEMINI_API_KEY && !OPENAI_API_KEY && !CLAUDE_API_KEY) {
+    return NextResponse.json({ error: 'No translation API key configured' }, { status: 500 })
   }
 
   const body = await request.json().catch((): Record<string, unknown> => ({}))
@@ -75,29 +143,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ translations: {} })
   }
 
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const langList = targetLanguages.map((lang) => `${lang} (${LANG_NAMES[lang] || lang})`).join(', ')
-  const systemPrompt = 'You are a translator. Respond ONLY with JSON mapping language codes to translations. No extra text.'
-  const userPrompt = `Translate to ${langList}:\n"${text}"`
+  const ctx: TranslateContext = { text, targetLanguages }
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: DEFAULT_MODEL,
-      systemInstruction: systemPrompt,
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    })
-    const result = await model.generateContent(userPrompt)
-    const content = result.response.text()?.trim() || ''
-    if (!content) {
-      return NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
+    let allTranslations: Record<string, string> = {}
+    const translators = [translateWithGemini, translateWithOpenAI, translateWithClaude]
+    for (const translator of translators) {
+      try {
+        allTranslations = await translator(ctx)
+      } catch {
+        allTranslations = {}
+      }
+      if (Object.keys(allTranslations).length > 0) break
     }
 
-    const allTranslations = parseTranslations(content)
     const translations: Record<string, string> = {}
     for (const lang of targetLanguages) {
       if (allTranslations[lang]) translations[lang] = allTranslations[lang]
+    }
+
+    if (Object.keys(translations).length === 0) {
+      return NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
     }
 
     return NextResponse.json({ translations })
