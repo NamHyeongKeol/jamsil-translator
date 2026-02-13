@@ -55,6 +55,7 @@ export default function DemoSection({ openModal }: DemoSectionProps) {
           <LivePhoneDemo
             ref={demoRef}
             onLimitReached={() => openModal('demo-limit')}
+            enableAutoTTS
           />
         </motion.div>
       </div>
