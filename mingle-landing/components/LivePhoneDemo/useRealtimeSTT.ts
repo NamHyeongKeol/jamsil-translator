@@ -64,7 +64,7 @@ function markDemoCompleted(): void {
   } catch { /* ignore */ }
 }
 
-type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'stopping' | 'error'
+type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
 function floatTo16BitPCM(input: Float32Array): Int16Array {
   const output = new Int16Array(input.length)
@@ -93,12 +93,6 @@ interface LocalFinalizeResult {
   utteranceId: string
   text: string
   lang: string
-}
-
-interface ServerFinalTurn {
-  text?: string
-  language?: string
-  translations?: Record<string, string>
 }
 
 export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtimeSTTOptions) {
@@ -158,10 +152,18 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
   const partialTranslationsRef = useRef<Record<string, string>>({})
   const partialTranscriptRef = useRef('')
   const partialLangRef = useRef<string | null>(null)
-  const stopAckResolverRef = useRef<(() => void) | null>(null)
   const isStoppingRef = useRef(false)
   const stopFinalizeDedupRef = useRef<{ sig: string, expiresAt: number }>({ sig: '', expiresAt: 0 })
   const pendingLocalFinalizeRef = useRef<{ utteranceId: string, text: string, lang: string, expiresAt: number } | null>(null)
+  // Monotonically increasing sequence number for translation requests.
+  // Responses with a seq lower than the latest applied seq are discarded,
+  // preventing old (slow) translations from overwriting newer ones.
+  const translateSeqRef = useRef(0)
+  const lastAppliedSeqRef = useRef<Map<string, number>>(new Map()) // utteranceId -> last applied seq
+  // Track the partial transcript length at which we last fired a partial translation.
+  // We fire a new partial translation every time the length crosses the next 5-char threshold.
+  const lastPartialTranslateLenRef = useRef(0)
+  const partialTranslateControllerRef = useRef<AbortController | null>(null)
 
   // Persist utterances to localStorage
   useEffect(() => {
@@ -314,7 +316,6 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
 
   const resetToIdle = useCallback(() => {
     isStoppingRef.current = false
-    stopAckResolverRef.current = null
     cleanup()
     setConnectionStatus('idle')
   }, [cleanup])
@@ -326,79 +327,67 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     partialTranscriptRef.current = ''
     setPartialLang(null)
     partialLangRef.current = null
+    lastPartialTranslateLenRef.current = 0
+    if (partialTranslateControllerRef.current) {
+      partialTranslateControllerRef.current.abort()
+      partialTranslateControllerRef.current = null
+    }
   }, [])
 
-  const applyServerFinalTurn = useCallback((rawTurn: ServerFinalTurn | null | undefined) => {
-    if (!rawTurn) return
-    const text = (rawTurn.text || '').replace(/<\/?end>/gi, '').trim()
-    const lang = (rawTurn.language || 'unknown').trim() || 'unknown'
-    if (!text) return
-
-    const cleanedTranslations: Record<string, string> = {}
-    const translationFinalized: Record<string, boolean> = {}
-    for (const [code, rawText] of Object.entries(rawTurn.translations || {})) {
-      if (!languages.includes(code) || code === lang) continue
-      const cleaned = rawText.replace(/<\/?end>/gi, '').trim()
-      if (!cleaned) continue
-      cleanedTranslations[code] = cleaned
-      translationFinalized[code] = true
+  // ===== HTTP Translation via /api/translate/finalize =====
+  const translateViaApi = useCallback(async (
+    text: string,
+    sourceLanguage: string,
+    targetLanguages: string[],
+    signal?: AbortSignal,
+  ): Promise<Record<string, string>> => {
+    const langs = targetLanguages.filter(l => l !== sourceLanguage)
+    if (!text.trim() || langs.length === 0) return {}
+    try {
+      const res = await fetch('/api/translate/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, sourceLanguage, targetLanguages: langs }),
+        signal,
+      })
+      if (!res.ok) return {}
+      const data = await res.json()
+      return (data.translations || {}) as Record<string, string>
+    } catch {
+      return {}
     }
+  }, [])
 
-    const pendingLocal = pendingLocalFinalizeRef.current
+  const applyTranslationToUtterance = useCallback((
+    utteranceId: string,
+    translations: Record<string, string>,
+    seq: number,
+    markFinalized: boolean,
+  ) => {
+    // Discard if a newer translation has already been applied.
+    const lastApplied = lastAppliedSeqRef.current.get(utteranceId) ?? -1
+    if (seq <= lastApplied) return
+    lastAppliedSeqRef.current.set(utteranceId, seq)
+
     setUtterances(prev => {
-      let targetIndex = -1
-
-      if (
-        pendingLocal
-        && pendingLocal.lang === lang
-        && (text.startsWith(pendingLocal.text) || pendingLocal.text.startsWith(text))
-      ) {
-        targetIndex = prev.findIndex((utterance) => utterance.id === pendingLocal.utteranceId)
-      }
-
-      if (targetIndex < 0) {
-        for (let i = prev.length - 1; i >= 0; i -= 1) {
-          const utterance = prev[i]
-          if (utterance.originalLang !== lang) continue
-          if (text.startsWith(utterance.originalText) || utterance.originalText.startsWith(text)) {
-            targetIndex = i
-            break
-          }
+      const idx = prev.findIndex(u => u.id === utteranceId)
+      if (idx < 0) return prev
+      const target = prev[idx]
+      const newTranslations = { ...target.translations }
+      const newFinalized = { ...(target.translationFinalized || {}) }
+      for (const [lang, text] of Object.entries(translations)) {
+        if (text.trim()) {
+          newTranslations[lang] = text.trim()
+          if (markFinalized) newFinalized[lang] = true
         }
       }
-
-      if (targetIndex >= 0) {
-        const target = prev[targetIndex]
-        const updated: Utterance = {
-          ...target,
-          originalText: text,
-          originalLang: lang,
-          translations: { ...target.translations, ...cleanedTranslations },
-          translationFinalized: { ...(target.translationFinalized || {}), ...translationFinalized },
-        }
-        return [
-          ...prev.slice(0, targetIndex),
-          updated,
-          ...prev.slice(targetIndex + 1),
-        ]
-      }
-
-      utteranceIdRef.current += 1
       return [
-        ...prev,
-        {
-          id: `u-${Date.now()}-${utteranceIdRef.current}`,
-          originalText: text,
-          originalLang: lang,
-          translations: cleanedTranslations,
-          translationFinalized,
-        },
+        ...prev.slice(0, idx),
+        { ...target, translations: newTranslations, translationFinalized: newFinalized },
+        ...prev.slice(idx + 1),
       ]
     })
-
-    pendingLocalFinalizeRef.current = null
-    clearPartialBuffers()
-  }, [clearPartialBuffers, languages])
+  }, [])
 
   const finalizePendingLocally = useCallback((rawText: string, rawLang: string): LocalFinalizeResult | null => {
     const text = rawText.replace(/<\/?end>/gi, '').trim()
@@ -451,71 +440,54 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     if (isStoppingRef.current) return
     isStoppingRef.current = true
 
-    // Stop capturing mic/audio immediately, but keep WS alive briefly for finalization ack.
     stopAudioPipeline()
-    setConnectionStatus('stopping')
 
     const socket = socketRef.current
     const pendingText = partialTranscriptRef.current.trim()
     const pendingLang = partialLangRef.current || 'unknown'
-    const ackWaitMs = pendingText ? 1500 : 1000
-    let receivedAck = false
     let localFinalizeResult: LocalFinalizeResult | null = null
 
-    // User stop should finalize immediately in UI.
+    // Finalize immediately in UI.
     if (pendingText) {
       localFinalizeResult = finalizePendingLocally(pendingText, pendingLang)
     }
 
+    // Fire-and-forget stop_recording to server (so it can clean up STT provider)
     try {
       if (socket && socket.readyState === WebSocket.OPEN) {
-        await new Promise<void>((resolve) => {
-          let settled = false
-          const settle = () => {
-            if (settled) return
-            settled = true
-            stopAckResolverRef.current = null
-            resolve()
-          }
+        socket.send(JSON.stringify({
+          type: 'stop_recording',
+          data: {
+            pending_text: pendingText,
+            pending_language: pendingLang,
+          },
+        }))
+      }
+    } catch { /* ignore */ }
 
-          stopAckResolverRef.current = () => {
-            receivedAck = true
-            settle()
-          }
-          socket.send(JSON.stringify({
-            type: 'stop_recording',
-            data: {
-              pending_text: pendingText,
-              pending_language: pendingLang,
-            },
-          }))
-          setTimeout(settle, ackWaitMs)
-        })
-      }
-    } catch {
-      // fall through and close anyway
-    } finally {
-      if (!receivedAck && socketRef.current?.readyState === WebSocket.OPEN) {
-        // Minimal drain window for any late packets without blocking restart UX.
-        await new Promise(resolve => setTimeout(resolve, 300))
-      }
-
-      const remainingPartial = partialTranscriptRef.current.trim()
-      if (!localFinalizeResult && remainingPartial) {
-        localFinalizeResult = finalizePendingLocally(remainingPartial, partialLangRef.current || pendingLang)
-      }
-
-      if (socketRef.current) {
-        socketRef.current.close()
-        socketRef.current = null
-      }
-      setConnectionStatus('idle')
-      isStoppingRef.current = false
-      if (notifyLimitReached) {
-        onLimitReachedRef.current?.()
-      }
+    // Close socket immediately — no need to wait for ACK since translation is HTTP.
+    if (socketRef.current) {
+      socketRef.current.close()
+      socketRef.current = null
     }
-  }, [finalizePendingLocally, stopAudioPipeline])
+    setConnectionStatus('idle')
+    isStoppingRef.current = false
+
+    if (notifyLimitReached) {
+      onLimitReachedRef.current?.()
+    }
+
+    // Translate the finalized text via HTTP (fire-and-forget, results update utterance).
+    if (localFinalizeResult && languages.length > 0) {
+      const { utteranceId, text, lang } = localFinalizeResult
+      const seq = ++translateSeqRef.current
+      translateViaApi(text, lang, languages).then(translations => {
+        if (Object.keys(translations).length > 0) {
+          applyTranslationToUtterance(utteranceId, translations, seq, true)
+        }
+      })
+    }
+  }, [applyTranslationToUtterance, finalizePendingLocally, languages, stopAudioPipeline, translateViaApi])
 
   const visualize = useCallback(() => {
     if (analyserRef.current) {
@@ -615,7 +587,6 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
           sample_rate: context.sampleRate,
           languages,
           stt_model: 'soniox',
-          translate_model: 'gemini-2.5-flash-lite',
           lang_hints_strict: true,
         }
         socket.send(JSON.stringify(config))
@@ -643,8 +614,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             })
           }, 1000)
         } else if (message.type === 'stop_recording_ack') {
-          applyServerFinalTurn(message.data?.final_turn as ServerFinalTurn | undefined)
-          stopAckResolverRef.current?.()
+          // Server cleaned up STT provider — no translation data expected.
         } else if (message.type === 'transcript' && message.data?.utterance) {
           const rawText = message.data.utterance.text || ''
           const text = rawText.replace(/<\/?end>/gi, '').trim()
@@ -693,15 +663,14 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             }
 
             utteranceIdRef.current += 1
-            // Read partial translations from ref (not via state updater)
-            // This avoids React Strict Mode double-invoke creating duplicate utterances
             const seedTranslations = { ...partialTranslationsRef.current }
             const seedFinalized: Record<string, boolean> = {}
             for (const key of Object.keys(seedTranslations)) {
               seedFinalized[key] = false
             }
+            const newUtteranceId = `u-${Date.now()}-${utteranceIdRef.current}`
             const newUtterance: Utterance = {
-              id: `u-${Date.now()}-${utteranceIdRef.current}`,
+              id: newUtteranceId,
               originalText: text,
               originalLang: lang,
               translations: seedTranslations,
@@ -710,80 +679,39 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             setUtterances(u => [...u, newUtterance])
             clearPartialBuffers()
             pendingLocalFinalizeRef.current = null
+
+            // Translate via HTTP (fire-and-forget).
+            if (languages.length > 0) {
+              const seq = ++translateSeqRef.current
+              translateViaApi(text, lang, languages).then(translations => {
+                if (Object.keys(translations).length > 0) {
+                  applyTranslationToUtterance(newUtteranceId, translations, seq, true)
+                }
+              })
+            }
           } else {
             setPartialTranscript(text)
             partialTranscriptRef.current = text
             setPartialLang(lang)
             partialLangRef.current = lang
           }
-        } else if (message.type === 'translation' && message.data) {
-          if (isStoppingRef.current && message.data.is_partial) {
-            return
-          }
-          const targetLang = message.data.target_language
-          const rawTranslated = message.data.translated_utterance?.text
-          const translatedText = rawTranslated ? rawTranslated.replace(/<\/?end>/gi, '').trim() : ''
-
-          if (targetLang && translatedText) {
-            if (message.data.is_partial) {
-              partialTranslationsRef.current = { ...partialTranslationsRef.current, [targetLang]: translatedText }
-              setPartialTranslations(prev => ({ ...prev, [targetLang]: translatedText }))
-            } else {
-              const sourceLang = typeof message.data.source_language === 'string'
-                ? message.data.source_language
-                : null
-              const sourceTextRaw = typeof message.data.source_text === 'string'
-                ? message.data.source_text
-                : null
-              const sourceText = sourceTextRaw ? sourceTextRaw.replace(/<\/?end>/gi, '').trim() : null
-
-              setUtterances(prev => {
-                if (prev.length === 0) return prev
-                let targetIndex = prev.length - 1
-
-                const pendingLocal = pendingLocalFinalizeRef.current
-                if (
-                  pendingLocal
-                  && (!sourceLang || pendingLocal.lang === sourceLang)
-                  && (!sourceText || sourceText.startsWith(pendingLocal.text) || pendingLocal.text.startsWith(sourceText))
-                ) {
-                  const pendingIndex = prev.findIndex((utterance) => utterance.id === pendingLocal.utteranceId)
-                  if (pendingIndex >= 0) {
-                    targetIndex = pendingIndex
-                  }
-                } else if (sourceLang) {
-                  for (let i = prev.length - 1; i >= 0; i -= 1) {
-                    const utterance = prev[i]
-                    if (utterance.originalLang !== sourceLang) continue
-                    if (!sourceText || sourceText.startsWith(utterance.originalText) || utterance.originalText.startsWith(sourceText)) {
-                      targetIndex = i
-                      break
-                    }
-                  }
-                }
-
-                const targetUtterance = prev[targetIndex]
-                return [
-                  ...prev.slice(0, targetIndex),
-                  {
-                    ...targetUtterance,
-                    translations: { ...targetUtterance.translations, [targetLang]: translatedText },
-                    translationFinalized: { ...targetUtterance.translationFinalized, [targetLang]: true },
-                  },
-                  ...prev.slice(targetIndex + 1),
-                ]
-              })
-            }
-          }
         }
       }
 
       socket.onerror = () => {
         if (socket !== socketRef.current) return
-        stopAckResolverRef.current?.()
         const remainingPartial = partialTranscriptRef.current.trim()
         if (remainingPartial) {
-          finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+          const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+          // Translate the finalized text from error path
+          if (result && languages.length > 0) {
+            const seq = ++translateSeqRef.current
+            translateViaApi(result.text, result.lang, languages).then(translations => {
+              if (Object.keys(translations).length > 0) {
+                applyTranslationToUtterance(result.utteranceId, translations, seq, true)
+              }
+            })
+          }
         }
         cleanup()
         setConnectionStatus('error')
@@ -792,11 +720,19 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
 
       socket.onclose = () => {
         if (socket !== socketRef.current) return
-        stopAckResolverRef.current?.()
         if (!isStoppingRef.current) {
           const remainingPartial = partialTranscriptRef.current.trim()
           if (remainingPartial) {
-            finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+            const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+            // Translate the finalized text from close path
+            if (result && languages.length > 0) {
+              const seq = ++translateSeqRef.current
+              translateViaApi(result.text, result.lang, languages).then(translations => {
+                if (Object.keys(translations).length > 0) {
+                  applyTranslationToUtterance(result.utteranceId, translations, seq, true)
+                }
+              })
+            }
           }
         }
         resetToIdle()
@@ -806,7 +742,35 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [applyServerFinalTurn, cleanup, clearPartialBuffers, finalizePendingLocally, resetToIdle, startAudioProcessing, languages, usageSec, isDemoAnimating, stopRecordingGracefully])
+  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, languages, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
+
+  // ===== Partial translation: fire every 5-char threshold =====
+  const PARTIAL_TRANSLATE_STEP = 5
+  useEffect(() => {
+    const len = partialTranscript.trim().length
+    if (len === 0 || languages.length === 0 || connectionStatus !== 'ready') return
+    // Determine the next threshold the length must reach to fire a translation.
+    const nextThreshold = lastPartialTranslateLenRef.current + PARTIAL_TRANSLATE_STEP
+    if (len < nextThreshold) return
+
+    // We crossed a threshold — fire partial translation.
+    lastPartialTranslateLenRef.current = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
+
+    // Capture the text at the moment of request for staleness check.
+    const requestText = partialTranscript.trim()
+    const currentLang = partialLangRef.current || 'unknown'
+    translateViaApi(requestText, currentLang, languages)
+      .then(translations => {
+        // Only apply if the user hasn't started a completely new utterance
+        // (current partial should still contain or extend the text we translated).
+        const currentPartial = partialTranscriptRef.current.trim()
+        if (currentPartial && !currentPartial.startsWith(requestText.slice(0, 3))) return
+        for (const [lang, text] of Object.entries(translations)) {
+          partialTranslationsRef.current = { ...partialTranslationsRef.current, [lang]: text }
+          setPartialTranslations(prev => ({ ...prev, [lang]: text }))
+        }
+      })
+  }, [partialTranscript, languages, connectionStatus, translateViaApi])
 
   const toggleRecording = useCallback(() => {
     if (connectionStatus === 'error') return
