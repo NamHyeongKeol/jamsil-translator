@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: stop_interrupt_local_finalize_fallback
+    %% @lastActive: stop_dedupe_scope_fix_for_tts_chain
 
     %% === START ===
     %% @project_start [start, closed]
@@ -175,6 +175,9 @@ flowchart TD
     %% @stop_interrupt_local_finalize_fallback [ai-task, closed]
     stop_interrupt_local_finalize_fallback("중단 시 partial 로컬 강제 확정 폴백<br/><sub>stop_recording ack 지연/유실 시 남은 partial을 클라이언트에서 final 승격<br/>중단 후 partial 말풍선 잔류를 제거하고 번역 연계를 안정화<br/>ack 대기시간/지연 close 보강으로 stop 레이스 완화</sub>")
 
+    %% @stop_dedupe_scope_fix_for_tts_chain [ai-task, closed]
+    stop_dedupe_scope_fix_for_tts_chain("중단 중복제거 범위 축소 (TTS 체인 복원)<br/><sub>global final dedupe를 stop 전용 dedupe로 축소<br/>세션 재시작 직후 발화가 dedupe로 누락되던 케이스 완화<br/>final→번역→TTS 연쇄가 재시작 후에도 이어지도록 보정</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -247,7 +250,8 @@ flowchart TD
     demo_limit_60s_inworld_tts_rate --> tts_stt_concurrent_input_enable
     tts_stt_concurrent_input_enable --> soniox_endpoint_finalize_immediate_tts
     soniox_endpoint_finalize_immediate_tts --> stop_interrupt_local_finalize_fallback
-    stop_interrupt_local_finalize_fallback --> tts_echo_reference_filter_research
+    stop_interrupt_local_finalize_fallback --> stop_dedupe_scope_fix_for_tts_chain
+    stop_dedupe_scope_fix_for_tts_chain --> tts_echo_reference_filter_research
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -256,7 +260,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        stop_interrupt_local_finalize_fallback
+        stop_dedupe_scope_fix_for_tts_chain
     end
 
     %% === STYLES ===
@@ -371,7 +375,8 @@ flowchart TD
     style demo_limit_60s_inworld_tts_rate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_stt_concurrent_input_enable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style soniox_endpoint_finalize_immediate_tts fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style stop_interrupt_local_finalize_fallback fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style stop_interrupt_local_finalize_fallback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_dedupe_scope_fix_for_tts_chain fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px

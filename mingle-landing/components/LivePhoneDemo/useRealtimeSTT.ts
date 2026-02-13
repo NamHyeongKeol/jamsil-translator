@@ -148,7 +148,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
   const partialLangRef = useRef<string | null>(null)
   const stopAckResolverRef = useRef<(() => void) | null>(null)
   const isStoppingRef = useRef(false)
-  const lastFinalSignatureRef = useRef<{ sig: string, at: number }>({ sig: '', at: 0 })
+  const stopFinalizeDedupRef = useRef<{ sig: string, expiresAt: number }>({ sig: '', expiresAt: 0 })
 
   // Persist utterances to localStorage
   useEffect(() => {
@@ -313,7 +313,11 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
 
     const sig = `${lang}::${text}`
     const now = Date.now()
-    if (sig && lastFinalSignatureRef.current.sig === sig && now - lastFinalSignatureRef.current.at < 2000) {
+    if (
+      sig
+      && stopFinalizeDedupRef.current.sig === sig
+      && now < stopFinalizeDedupRef.current.expiresAt
+    ) {
       setPartialTranslations({})
       partialTranslationsRef.current = {}
       setPartialTranscript('')
@@ -322,7 +326,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
       partialLangRef.current = null
       return false
     }
-    lastFinalSignatureRef.current = { sig, at: now }
+    stopFinalizeDedupRef.current = { sig, expiresAt: now + 5000 }
 
     utteranceIdRef.current += 1
     const seedTranslations = { ...partialTranslationsRef.current }
@@ -474,6 +478,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
 
     try {
       setConnectionStatus('connecting')
+      stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
       setPartialTranscript('')
       setPartialTranslations({})
       partialTranslationsRef.current = {}
@@ -536,10 +541,15 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
           if (message.data.is_final) {
             const sig = `${lang}::${text}`
             const now = Date.now()
-            if (sig && lastFinalSignatureRef.current.sig === sig && now - lastFinalSignatureRef.current.at < 2000) {
+            if (
+              sig
+              && stopFinalizeDedupRef.current.sig === sig
+              && now < stopFinalizeDedupRef.current.expiresAt
+            ) {
+              stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
               return
             }
-            lastFinalSignatureRef.current = { sig, at: now }
+            stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
 
             utteranceIdRef.current += 1
             // Read partial translations from ref (not via state updater)
