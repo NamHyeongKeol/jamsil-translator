@@ -167,7 +167,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   return (
     <PhoneFrame>
-      <div className="flex flex-col h-[660px] md:h-[660px] lg:h-[600px]">
+      <div className="flex flex-col h-[520px] md:h-[660px] lg:h-[600px]">
         {/* Status Bar - overlaps with notch area */}
         <div className="relative z-30 flex items-center justify-between px-8 pt-2 pb-1 text-xs text-gray-500 select-none h-9">
           {isReady ? (

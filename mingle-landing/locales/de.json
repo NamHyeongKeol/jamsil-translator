@@ -142,7 +142,15 @@
     "title2": "Ohne Barrieren",
     "subtitle": "KI-Technologie löst die Sprachbarriere vollständig. Chatte selbstbewusst mit Menschen aus aller Welt.",
     "ctaMain": "Herunterladen",
-    "ctaSub": "Chatte mit Millionen von Menschen"
+    "ctaSub": "Chatte mit Millionen von Menschen",
+    "gaming": {
+      "title1": "Gaming Voice Chat",
+      "title2": "mit Echtzeit-Übersetzung",
+      "subtitle": "Spiele global. Sprich frei. Keine Sprachbarrieren.",
+      "ctaMain": "Herunterladen",
+      "ctaSub": "Schließe dich Gamern weltweit an",
+      "tryDemo": "Ausprobieren"
+    }
   },
   "globalStats": {
     "activeUsers": "Aktive Nutzer",

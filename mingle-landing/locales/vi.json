@@ -142,7 +142,15 @@
     "title2": "Không rào cản",
     "subtitle": "Công nghệ AI giải quyết hoàn toàn rào cản ngôn ngữ. Tự tin trò chuyện với mọi người từ khắp nơi trên thế giới.",
     "ctaMain": "Tải xuống",
-    "ctaSub": "Trò chuyện với hàng triệu người"
+    "ctaSub": "Trò chuyện với hàng triệu người",
+    "gaming": {
+      "title1": "Voice Chat Gaming",
+      "title2": "Phiên dịch thời gian thực",
+      "subtitle": "Thoải mái trò chuyện khi chơi cùng người nước ngoài. Không rào cản ngôn ngữ.",
+      "ctaMain": "Tải xuống",
+      "ctaSub": "Tham gia cùng game thủ toàn cầu",
+      "tryDemo": "Thử ngay"
+    }
   },
   "globalStats": {
     "activeUsers": "Người dùng",

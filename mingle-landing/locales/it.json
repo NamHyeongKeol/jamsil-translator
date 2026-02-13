@@ -142,7 +142,15 @@
     "title2": "Senza barriere",
     "subtitle": "La tecnologia AI risolve completamente la barriera linguistica. Chatta con sicurezza con persone di tutto il mondo.",
     "ctaMain": "Scarica",
-    "ctaSub": "Chatta con milioni di persone"
+    "ctaSub": "Chatta con milioni di persone",
+    "gaming": {
+      "title1": "Chat Vocale Gaming",
+      "title2": "con Traduzione in Tempo Reale",
+      "subtitle": "Gioca globalmente. Parla liberamente. Zero barriere linguistiche.",
+      "ctaMain": "Scarica",
+      "ctaSub": "Unisciti ai gamer di tutto il mondo",
+      "tryDemo": "Provalo"
+    }
   },
   "globalStats": {
     "activeUsers": "Utenti attivi",

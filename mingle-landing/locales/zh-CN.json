@@ -142,7 +142,15 @@
     "title2": "没有语言障碍",
     "subtitle": "AI技术完美解决语言障碍。自信地与全球人交流。",
     "ctaMain": "下载",
-    "ctaSub": "与数百万外国人对话"
+    "ctaSub": "与数百万外国人对话",
+    "gaming": {
+      "title1": "游戏语音聊天",
+      "title2": "实时同声传译",
+      "subtitle": "和外国人组队时也能自由交流。没有语言障碍。",
+      "ctaMain": "下载",
+      "ctaSub": "与全球玩家一起",
+      "tryDemo": "试试看"
+    }
   },
   "globalStats": {
     "activeUsers": "活跃用户",
