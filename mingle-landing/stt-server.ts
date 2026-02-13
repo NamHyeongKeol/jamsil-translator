@@ -2,13 +2,6 @@ import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import fetch from 'node-fetch';
 import 'dotenv/config';
-import OpenAI from 'openai';
-import Anthropic from '@anthropic-ai/sdk';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
-const anthropic = process.env.CLAUDE_API_KEY ? new Anthropic({ apiKey: process.env.CLAUDE_API_KEY }) : null;
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const GLADIA_API_URL = 'https://api.gladia.io/v2/live';
@@ -19,22 +12,16 @@ const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
 const server = createServer();
 const wss = new WebSocketServer({ server });
 
-
-
-type TranslateModel = 'gpt-5-nano' | 'claude-haiku-4-5' | 'gemini-2.5-flash-lite' | 'gemini-3-flash-preview';
-
 interface ClientConfig {
     sample_rate: number;
     languages: string[];
     stt_model: 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox';
-    translate_model?: TranslateModel;
     lang_hints_strict?: boolean;
 }
 
 interface FinalTurnPayload {
     text: string;
     language: string;
-    translations: Record<string, string>;
 }
 
 wss.on('connection', (clientWs) => {
@@ -43,7 +30,6 @@ wss.on('connection', (clientWs) => {
     let abortController: AbortController | null = null;
     let currentModel: 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox' = 'gladia';
     let selectedLanguages: string[] = [];
-    let translateModel: TranslateModel = 'claude-haiku-4-5';
     let finalizePendingTurnFromProvider: (() => Promise<FinalTurnPayload | null>) | null = null;
     let sonioxStopRequested = false;
 
@@ -152,16 +138,6 @@ wss.on('connection', (clientWs) => {
                 if (isClientConnected) {
                     const raw = event.data.toString();
                     clientWs.send(raw);
-
-                    // Gladia-STT (번역 미사용) 모드에서 GPT 번역 적용
-                    if (!enableTranslation && selectedLanguages.length > 0) {
-                        try {
-                            const msg = JSON.parse(raw);
-                            if (msg.type === 'transcript' && msg.data?.is_final && msg.data?.utterance?.text) {
-                                translateText(msg.data.utterance.text, msg.data.utterance.language || 'en', selectedLanguages, clientWs);
-                            }
-                        } catch { /* ignore parse errors for non-JSON messages */ }
-                    }
                 }
             };
 
@@ -280,10 +256,6 @@ wss.on('connection', (clientWs) => {
                                         },
                                     };
                                     clientWs.send(JSON.stringify(gladiaStyleMsg));
-
-                                    if (isFinal && selectedLanguages.length > 0) {
-                                        translateText(transcript, detectedLang, selectedLanguages, clientWs);
-                                    }
                                 }
                             }
                         }
@@ -386,10 +358,6 @@ wss.on('connection', (clientWs) => {
                                         },
                                     };
                                     clientWs.send(JSON.stringify(gladiaStyleMsg));
-
-                                    if (isFinal && selectedLanguages.length > 0) {
-                                        translateText(transcript, detectedLang, selectedLanguages, clientWs);
-                                    }
                                 }
                             }
                         }
@@ -480,10 +448,6 @@ wss.on('connection', (clientWs) => {
                                 },
                             };
                             clientWs.send(JSON.stringify(gladiaStyleMsg));
-
-                            if (isFinal && selectedLanguages.length > 0) {
-                                translateText(text, language, selectedLanguages, clientWs);
-                            }
                         }
                     } catch (e) {
                         console.error('Error parsing Fireworks msg:', e);
@@ -528,22 +492,17 @@ wss.on('connection', (clientWs) => {
             let latestNonFinalText = '';
             let detectedLang = config.languages[0] || 'en';
             let hadNonFinal = false;
-            let lastPartialTranslateTime = 0;
-            let partialTranslateInFlight = false;
             sonioxStopRequested = false;
 
-            const emitFinalTurn = async (text: string, language: string): Promise<FinalTurnPayload | null> => {
+            const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
                 const cleanedText = text.replace(/<\/?end>/gi, '').trim();
                 const cleanedLang = (language || '').trim() || 'unknown';
                 if (!cleanedText) return null;
 
-                // Clear turn accumulators immediately so next utterance state does not
-                // get blocked by translation latency from the current finalized turn.
+                // Clear turn accumulators immediately.
                 finalizedText = '';
                 latestNonFinalText = '';
                 hadNonFinal = false;
-                lastPartialTranslateTime = 0;
-                partialTranslateInFlight = false;
 
                 if (clientWs.readyState === WebSocket.OPEN) {
                     clientWs.send(JSON.stringify({
@@ -558,19 +517,15 @@ wss.on('connection', (clientWs) => {
                     }));
                 }
 
-                const translations = selectedLanguages.length > 0
-                    ? await translateText(cleanedText, cleanedLang, selectedLanguages, clientWs)
-                    : {};
                 return {
                     text: cleanedText,
                     language: cleanedLang,
-                    translations,
                 };
             };
 
             finalizePendingTurnFromProvider = async () => {
                 const merged = `${finalizedText}${latestNonFinalText}`.trim();
-                return emitFinalTurn(merged, detectedLang);
+                return emitFinalTurn(merged, detectedLang) ?? null;
             };
 
             sttWs.onopen = () => {
@@ -660,16 +615,6 @@ wss.on('connection', (clientWs) => {
                             },
                         };
                         clientWs.send(JSON.stringify(partialMsg));
-
-                        // 부분 번역: ~1.5초마다 중간 번역 실행
-                        const now = Date.now();
-                        if (selectedLanguages.length > 0 && !partialTranslateInFlight && now - lastPartialTranslateTime > 1500 && fullText.trim().length > 3) {
-                            partialTranslateInFlight = true;
-                            lastPartialTranslateTime = now;
-                            translateText(fullText.trim(), detectedLang, selectedLanguages, clientWs, true).finally(() => {
-                                partialTranslateInFlight = false;
-                            });
-                        }
                     }
 
                     // 발화 완료 판단:
@@ -677,7 +622,7 @@ wss.on('connection', (clientWs) => {
                     // 2) 기존 휴리스틱(부분 토큰이 있었고 이번에 final 토큰이 들어온 경우)
                     if (hasEndpointToken || (newFinalText && hadNonFinal && !nonFinalText)) {
                         latestNonFinalText = '';
-                        void emitFinalTurn(finalizedText, detectedLang);
+                        emitFinalTurn(finalizedText, detectedLang);
                     }
                 } catch (parseError) {
                     console.error('Error parsing Soniox message:', parseError);
@@ -711,154 +656,7 @@ wss.on('connection', (clientWs) => {
         }
     };
 
-    // ===== GPT 번역 =====
-    const LANG_NAMES: Record<string, string> = {
-        en: 'English', ko: 'Korean', zh: 'Chinese', ja: 'Japanese',
-        es: 'Spanish', fr: 'French', de: 'German', ru: 'Russian',
-        pt: 'Portuguese', ar: 'Arabic', hi: 'Hindi', vi: 'Vietnamese',
-        it: 'Italian', id: 'Indonesian', tr: 'Turkish', pl: 'Polish',
-        nl: 'Dutch', sv: 'Swedish', th: 'Thai', ms: 'Malay',
-    };
-
-    const parseTranslationsJson = (raw: string): Record<string, string> => {
-        const base = raw.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '');
-        let parsed: Record<string, unknown> | null = null;
-        try {
-            parsed = JSON.parse(base) as Record<string, unknown>;
-        } catch {
-            const start = base.indexOf('{');
-            const end = base.lastIndexOf('}');
-            if (start >= 0 && end > start) {
-                try {
-                    parsed = JSON.parse(base.slice(start, end + 1)) as Record<string, unknown>;
-                } catch {
-                    parsed = null;
-                }
-            }
-        }
-        if (!parsed) return {};
-        const out: Record<string, string> = {};
-        for (const [key, value] of Object.entries(parsed)) {
-            if (typeof value !== 'string') continue;
-            const cleaned = value.replace(/<\/?end>/gi, '').trim();
-            if (!cleaned) continue;
-            out[key] = cleaned;
-        }
-        return out;
-    };
-
-    const generateTextWithModel = async (
-        modelName: TranslateModel,
-        systemPrompt: string,
-        userPrompt: string,
-        jsonMode = false,
-    ): Promise<string> => {
-        if (modelName === 'claude-haiku-4-5') {
-            if (!anthropic) return '';
-            const resp = await anthropic.messages.create({
-                model: 'claude-haiku-4-5-20251001',
-                max_tokens: 1024,
-                system: systemPrompt,
-                messages: [{ role: 'user', content: userPrompt }],
-            });
-            const block = resp.content[0];
-            return block.type === 'text' ? block.text.trim() : '';
-        }
-
-        if (modelName === 'gemini-2.5-flash-lite' || modelName === 'gemini-3-flash-preview') {
-            const model = genAI.getGenerativeModel({
-                model: modelName,
-                systemInstruction: systemPrompt,
-                ...(jsonMode ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
-            });
-            const result = await model.generateContent(userPrompt);
-            return result.response.text()?.trim() || '';
-        }
-
-        if (!openai) return '';
-        const resp = await openai.chat.completions.create({
-            model: 'gpt-5-nano',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-            ],
-            temperature: 0.1,
-        });
-        return resp.choices[0]?.message?.content?.trim() || '';
-    };
-
-    const translateSingleText = async (
-        text: string,
-        sourceLang: string,
-        targetLang: string,
-    ): Promise<string> => {
-        const targetName = LANG_NAMES[targetLang] || targetLang;
-        const systemPrompt = 'You are a translator. Return ONLY the translated text, with no explanations or quotes.';
-        const userPrompt = `Source language: ${sourceLang}\nTarget language: ${targetLang} (${targetName})\nText: "${text}"`;
-        try {
-            const content = await generateTextWithModel(translateModel, systemPrompt, userPrompt, false);
-            return content.replace(/^["'`]|["'`]$/g, '').replace(/<\/?end>/gi, '').trim();
-        } catch {
-            return '';
-        }
-    };
-
-    const translateText = async (text: string, sourceLang: string, targetLangs: string[], ws: WebSocket, isPartial = false): Promise<Record<string, string>> => {
-        const langs = targetLangs.filter(l => l !== sourceLang);
-        if (langs.length === 0 || !text.trim()) return {};
-
-        const langList = langs.map(l => `${l} (${LANG_NAMES[l] || l})`).join(', ');
-        const systemPrompt = `You are a translator. Translate the given text into the requested languages. Respond ONLY with valid JSON object mapping language codes to translations. Include all requested language keys. No extra text.`;
-        const userPrompt = `Translate to ${langList}:\n"${text}"`;
-
-        try {
-            let emittedTranslations: Record<string, string> = {};
-
-            for (let attempt = 0; attempt < 2; attempt += 1) {
-                const content = await generateTextWithModel(translateModel, systemPrompt, userPrompt, true);
-                if (!content) continue;
-                const parsed = parseTranslationsJson(content);
-                for (const lang of langs) {
-                    const translated = (parsed[lang] || '').replace(/<\/?end>/gi, '').trim();
-                    if (translated) emittedTranslations[lang] = translated;
-                }
-                if (Object.keys(emittedTranslations).length > 0) break;
-            }
-
-            // Final turn: if JSON path still misses some languages, do per-language plain-text fallback.
-            if (!isPartial) {
-                for (const lang of langs) {
-                    if (emittedTranslations[lang]) continue;
-                    const translated = await translateSingleText(text, sourceLang, lang);
-                    if (translated) emittedTranslations[lang] = translated;
-                }
-            }
-
-            for (const lang of langs) {
-                const translated = emittedTranslations[lang];
-                if (translated) {
-                    if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        type: 'translation',
-                        data: {
-                            source_language: sourceLang,
-                            source_text: text,
-                            target_language: lang,
-                            translated_utterance: { text: translated },
-                            is_partial: isPartial,
-                        },
-                    }));
-                    }
-                }
-            }
-            return emittedTranslations;
-        } catch (err) {
-            console.error('Translation error:', err);
-            return {};
-        }
-    };
-
-    const sendForcedFinalTurn = async (rawText: string, rawLanguage: string): Promise<FinalTurnPayload | null> => {
+    const sendForcedFinalTurn = (rawText: string, rawLanguage: string): FinalTurnPayload | null => {
         const text = (rawText || '').replace(/<\/?end>/gi, '').trim();
         const language = (rawLanguage || '').trim() || 'unknown';
         if (!text) return null;
@@ -876,14 +674,7 @@ wss.on('connection', (clientWs) => {
             }));
         }
 
-        const translations = selectedLanguages.length > 0
-            ? await translateText(text, language, selectedLanguages, clientWs)
-            : {};
-        return {
-            text,
-            language,
-            translations,
-        };
+        return { text, language };
     };
 
     // ===== 클라이언트 메시지 핸들러 =====
@@ -897,50 +688,47 @@ wss.on('connection', (clientWs) => {
         }
 
         if (data?.type === 'stop_recording') {
-            void (async () => {
-                const pendingText = (data?.data?.pending_text || '').toString();
-                const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
-                const cleanedPendingText = pendingText.replace(/<\/?end>/gi, '').trim();
-                sonioxStopRequested = currentModel === 'soniox';
+            const pendingText = (data?.data?.pending_text || '').toString();
+            const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
+            const cleanedPendingText = pendingText.replace(/<\/?end>/gi, '').trim();
+            sonioxStopRequested = currentModel === 'soniox';
 
-                let finalizedTurn: FinalTurnPayload | null = null;
+            let finalizedTurn: FinalTurnPayload | null = null;
 
-                // User-initiated stop must finalize what the user currently sees on client.
-                // Prefer client pending text to avoid provider-side race/staleness.
-                if (cleanedPendingText) {
-                    finalizedTurn = await sendForcedFinalTurn(pendingText, pendingLang);
-                } else if (finalizePendingTurnFromProvider) {
-                    finalizedTurn = await finalizePendingTurnFromProvider();
-                }
+            // User-initiated stop: finalize what the user currently sees.
+            if (cleanedPendingText) {
+                finalizedTurn = sendForcedFinalTurn(pendingText, pendingLang);
+            } else if (finalizePendingTurnFromProvider) {
+                // Synchronous path: just emit transcript, no async translation.
+                void finalizePendingTurnFromProvider();
+            }
 
-                if (sttWs && (sttWs.readyState === WebSocket.OPEN || sttWs.readyState === WebSocket.CONNECTING)) {
-                    sttWs.close();
-                }
+            if (sttWs && (sttWs.readyState === WebSocket.OPEN || sttWs.readyState === WebSocket.CONNECTING)) {
+                sttWs.close();
+            }
 
-                if (clientWs.readyState === WebSocket.OPEN) {
-                    clientWs.send(JSON.stringify({
-                        type: 'stop_recording_ack',
-                        data: {
-                            finalized: Boolean(finalizedTurn),
-                            final_turn: finalizedTurn,
-                        },
-                    }));
-                    // Close client socket after ack so the client can reset state cleanly.
-                    setTimeout(() => {
-                        if (clientWs.readyState === WebSocket.OPEN) {
-                            clientWs.close();
-                        }
-                    }, 50);
-                }
-                sonioxStopRequested = false;
-            })();
+            if (clientWs.readyState === WebSocket.OPEN) {
+                clientWs.send(JSON.stringify({
+                    type: 'stop_recording_ack',
+                    data: {
+                        finalized: Boolean(finalizedTurn),
+                        final_turn: finalizedTurn,
+                    },
+                }));
+                // Close client socket after ack.
+                setTimeout(() => {
+                    if (clientWs.readyState === WebSocket.OPEN) {
+                        clientWs.close();
+                    }
+                }, 50);
+            }
+            sonioxStopRequested = false;
             return;
         }
 
         if (data.sample_rate && data.languages) {
             currentModel = data.stt_model || 'gladia';
             selectedLanguages = data.languages;
-            translateModel = data.translate_model || 'claude-haiku-4-5';
             finalizePendingTurnFromProvider = null;
             sonioxStopRequested = false;
             
