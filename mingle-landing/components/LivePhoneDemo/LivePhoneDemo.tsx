@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, Wifi, Battery, Signal, Loader2 } from 'lucide-react'
+import { Mic, Wifi, Battery, Signal, Loader2, Volume2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
@@ -29,6 +29,14 @@ interface LivePhoneDemoProps {
   onLimitReached?: () => void
   enableAutoTTS?: boolean
 }
+
+type TtsQueueItem = {
+  id: string
+  language: string
+  text: string
+}
+
+type TtsPlaybackResult = 'completed' | 'blocked' | 'failed'
 
 async function saveConversation(utterances: Utterance[], selectedLanguages: string[], usageSec: number) {
   try {
@@ -77,12 +85,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [isAutoTtsArmed, setIsAutoTtsArmed] = useState(false)
+  const [isTtsPlaybackBlocked, setIsTtsPlaybackBlocked] = useState(false)
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const spokenUtteranceIdsRef = useRef(new Set<string>())
-  const ttsQueueRef = useRef<Array<{ id: string, language: string, text: string }>>([])
+  const ttsQueueRef = useRef<TtsQueueItem[]>([])
   const isTtsProcessingRef = useRef(false)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const currentAudioUrlRef = useRef<string | null>(null)
+  const currentPlaybackSettleRef = useRef<((result: TtsPlaybackResult) => void) | null>(null)
 
   // Persist selected languages
   useEffect(() => {
@@ -133,6 +143,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [isActive, utterances, selectedLanguages, usageSec])
 
   const cleanupCurrentAudio = useCallback(() => {
+    currentPlaybackSettleRef.current = null
     if (currentAudioRef.current) {
       currentAudioRef.current.pause()
       currentAudioRef.current.src = ''
@@ -146,7 +157,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
   }, [])
 
-  const playSingleTts = useCallback(async (item: { id: string, language: string, text: string }) => {
+  const playSingleTts = useCallback(async (item: TtsQueueItem): Promise<TtsPlaybackResult> => {
+    setIsTtsPlaybackBlocked(false)
     setSpeakingItem({ utteranceId: item.id, language: item.language })
     const response = await fetch('/api/tts/inworld', {
       method: 'POST',
@@ -155,36 +167,40 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     })
     if (!response.ok) {
       setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
-      return
+      return 'failed'
     }
 
     const audioBlob = await response.blob()
     if (!audioBlob.size) {
       setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
-      return
+      return 'failed'
     }
 
     cleanupCurrentAudio()
     const url = URL.createObjectURL(audioBlob)
     const audio = new Audio(url)
+    audio.preload = 'auto'
     currentAudioRef.current = audio
     currentAudioUrlRef.current = url
 
-    await new Promise<void>((resolve) => {
-      audio.onended = () => {
+    return await new Promise<TtsPlaybackResult>((resolve) => {
+      let settled = false
+      const settle = (result: TtsPlaybackResult) => {
+        if (settled) return
+        settled = true
+        currentPlaybackSettleRef.current = null
         cleanupCurrentAudio()
         setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
-        resolve()
+        resolve(result)
       }
-      audio.onerror = () => {
-        cleanupCurrentAudio()
-        setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
-        resolve()
-      }
+
+      currentPlaybackSettleRef.current = settle
+
+      audio.onended = () => settle('completed')
+      audio.onerror = () => settle('failed')
       audio.play().catch(() => {
-        cleanupCurrentAudio()
-        setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
-        resolve()
+        setIsTtsPlaybackBlocked(true)
+        settle('blocked')
       })
     })
   }, [cleanupCurrentAudio])
@@ -196,7 +212,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       while (ttsQueueRef.current.length > 0) {
         const next = ttsQueueRef.current.shift()
         if (!next) break
-        await playSingleTts(next)
+        const result = await playSingleTts(next)
+        if (result === 'blocked') {
+          ttsQueueRef.current.unshift(next)
+          break
+        }
       }
     } finally {
       isTtsProcessingRef.current = false
@@ -222,6 +242,24 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
     void processTtsQueue()
   }, [enableAutoTTS, isAutoTtsArmed, processTtsQueue, selectedLanguages, utterances])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) return
+      const audio = currentAudioRef.current
+      if (!audio || audio.ended || !audio.paused) return
+
+      audio.play().catch(() => {
+        setIsTtsPlaybackBlocked(true)
+        currentPlaybackSettleRef.current?.('blocked')
+      })
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -250,6 +288,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
     toggleRecording()
   }, [enableAutoTTS, isActive, isAutoTtsArmed, isLimitReached, onLimitReached, toggleRecording, utterances])
+
+  const handleEnableTtsAudio = useCallback(() => {
+    setIsTtsPlaybackBlocked(false)
+    void processTtsQueue()
+  }, [processTtsQueue])
 
   useImperativeHandle(ref, () => ({
     startRecording: handleMicClick,
@@ -480,6 +523,15 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         {/* Bottom Bar with Mic Button */}
         <div className="flex items-center justify-center py-3 border-t border-gray-100 bg-white">
           <div className="flex items-center gap-1.5">
+            {isTtsPlaybackBlocked && (
+              <button
+                onClick={handleEnableTtsAudio}
+                className="mr-2 px-2 py-1 rounded-md bg-amber-100 text-amber-700 border border-amber-200 text-[10px] font-semibold flex items-center gap-1"
+              >
+                <Volume2 size={12} />
+                Enable Sound
+              </button>
+            )}
             <button
               onClick={handleMicClick}
               disabled={isConnecting || isError}
