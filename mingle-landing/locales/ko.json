@@ -123,7 +123,7 @@
     "feedbackPlaceholder": "요청하고 싶거나 기대되는 내용이 있다면 적어주세요"
   },
   "demo": {
-    "limitReached": "데모 제한 도달 (30초)",
+    "limitReached": "데모 제한 도달 (60초)",
     "limitDesc": "계속 사용하려면 얼리 액세스에 등록하세요"
   },
   "partyScenario": {

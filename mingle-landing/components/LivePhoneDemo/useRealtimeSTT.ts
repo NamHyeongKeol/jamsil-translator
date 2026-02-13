@@ -12,7 +12,7 @@ const getWsUrl = () => {
   return `${protocol}://${host}:${WS_PORT}`
 }
 const VOLUME_THRESHOLD = 0.05
-const USAGE_LIMIT_SEC = 30
+const USAGE_LIMIT_SEC = 60
 
 const LS_KEY_UTTERANCES = 'mingle_demo_utterances'
 const LS_KEY_USAGE = 'mingle_demo_usage_sec'

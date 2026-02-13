@@ -123,7 +123,7 @@
     "feedbackPlaceholder": "リクエストや期待する機能があればお聞かせください"
   },
   "demo": {
-    "limitReached": "デモ制限に達しました（30秒）",
+    "limitReached": "デモ制限に達しました（60秒）",
     "limitDesc": "続けるにはアーリーアクセスにご登録ください"
   },
   "partyScenario": {

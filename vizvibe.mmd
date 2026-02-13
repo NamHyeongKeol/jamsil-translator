@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: soniox_provider_finalization_on_stop
+    %% @lastActive: demo_limit_60s_inworld_tts_rate
 
     %% === START ===
     %% @project_start [start, closed]
@@ -163,8 +163,11 @@ flowchart TD
     %% @soniox_provider_finalization_on_stop [ai-task, closed]
     soniox_provider_finalization_on_stop("Soniox 상태기반 종료 확정 처리<br/><sub>stop_recording 시 클라이언트 pending 텍스트 대신<br/>Soniox 서버 상태(finalized+non-final) 기준으로 final 확정<br/>ack 이후 클라이언트/서버 WS 순차 종료로 정합성 강화</sub>")
 
+    %% @demo_limit_60s_inworld_tts_rate [ai-task, closed]
+    demo_limit_60s_inworld_tts_rate("데모 제한 60초 + Inworld 말하기 속도 조정<br/><sub>테스트 섹션 사용 제한을 30초→60초로 확장<br/>i18n 제한 문구를 전 언어에서 60초로 동기화<br/>Inworld TTS audioConfig.speakingRate 기본값 1.2 적용</sub>")
+
     %% @demo_limit_server_db_migration [ai-task, opened]
-    demo_limit_server_db_migration("데모 제한 서버 DB 기반 전환 (추후)<br/><sub>브라우저 localStorage 기준 30초 제한을<br/>서버 DB 세션/지문 기반 제한으로 마이그레이션<br/>우회 방지/멀티디바이스 일관성 정책 설계 필요</sub>")
+    demo_limit_server_db_migration("데모 제한 서버 DB 기반 전환 (추후)<br/><sub>브라우저 localStorage 기준 60초 제한을<br/>서버 DB 세션/지문 기반 제한으로 마이그레이션<br/>우회 방지/멀티디바이스 일관성 정책 설계 필요</sub>")
 
     %% @ultimate_goal [end, opened]
     ultimate_goal("Mingle Launch<br/><sub>소셜링 중심의 실시간 번역 앱으로<br/>외국인과 깊이 있는 대화를 나누고<br/>지속적인 관계를 만들어가는 서비스</sub>")
@@ -228,7 +231,8 @@ flowchart TD
     tts_mobile_lock_recovery --> mobile_tts_autounlock_and_feedback_guard
     mobile_tts_autounlock_and_feedback_guard --> stt_graceful_stop_finalize_flush
     stt_graceful_stop_finalize_flush --> soniox_provider_finalization_on_stop
-    soniox_provider_finalization_on_stop --> demo_limit_server_db_migration
+    soniox_provider_finalization_on_stop --> demo_limit_60s_inworld_tts_rate
+    demo_limit_60s_inworld_tts_rate --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
@@ -236,7 +240,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        soniox_provider_finalization_on_stop
+        demo_limit_60s_inworld_tts_rate
     end
 
     %% === STYLES ===
@@ -347,7 +351,8 @@ flowchart TD
     style tts_mobile_lock_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mobile_tts_autounlock_and_feedback_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_graceful_stop_finalize_flush fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style soniox_provider_finalization_on_stop fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style soniox_provider_finalization_on_stop fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style demo_limit_60s_inworld_tts_rate fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 

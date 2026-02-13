@@ -123,7 +123,7 @@
     "feedbackPlaceholder": "Share any features you'd like to see or what you're excited about"
   },
   "demo": {
-    "limitReached": "Demo limit reached (30s)",
+    "limitReached": "Demo limit reached (60s)",
     "limitDesc": "Sign up for early access to continue"
   },
   "partyScenario": {

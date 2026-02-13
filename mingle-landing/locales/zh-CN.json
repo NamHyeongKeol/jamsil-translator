@@ -123,7 +123,7 @@
     "feedbackPlaceholder": "如果有想要的功能或期待的内容，请告诉我们"
   },
   "demo": {
-    "limitReached": "演示已达上限（30秒）",
+    "limitReached": "演示已达上限（60秒）",
     "limitDesc": "注册抢先体验以继续使用"
   },
   "partyScenario": {
