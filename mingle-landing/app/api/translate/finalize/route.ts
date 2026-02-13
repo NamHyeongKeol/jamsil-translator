@@ -19,8 +19,25 @@ function normalizeLang(input: string): string {
 }
 
 function parseTranslations(raw: string): Record<string, string> {
-  const text = raw.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '')
-  const parsed = JSON.parse(text) as Record<string, unknown>
+  const base = raw.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '')
+  let parsed: Record<string, unknown> | null = null
+
+  try {
+    parsed = JSON.parse(base) as Record<string, unknown>
+  } catch {
+    const start = base.indexOf('{')
+    const end = base.lastIndexOf('}')
+    if (start >= 0 && end > start) {
+      const sliced = base.slice(start, end + 1)
+      try {
+        parsed = JSON.parse(sliced) as Record<string, unknown>
+      } catch {
+        parsed = null
+      }
+    }
+  }
+
+  if (!parsed) return {}
   const output: Record<string, string> = {}
 
   for (const [key, value] of Object.entries(parsed)) {
@@ -67,6 +84,9 @@ export async function POST(request: NextRequest) {
     const model = genAI.getGenerativeModel({
       model: DEFAULT_MODEL,
       systemInstruction: systemPrompt,
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
     })
     const result = await model.generateContent(userPrompt)
     const content = result.response.text()?.trim() || ''
