@@ -268,6 +268,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   useEffect(() => {
     if (isSoundEnabled) return
     ttsQueueRef.current = []
+    spokenTranslationSignatureRef.current.clear()
     cleanupCurrentAudio()
     setSpeakingItem(null)
   }, [isSoundEnabled, cleanupCurrentAudio])
