@@ -322,6 +322,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, suppressInpu
     const socket = socketRef.current
     const pendingText = partialTranscriptRef.current.trim()
     const pendingLang = partialLangRef.current || 'unknown'
+    const ackWaitMs = pendingText ? 12000 : 1200
 
     try {
       if (socket && socket.readyState === WebSocket.OPEN) {
@@ -342,7 +343,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, suppressInpu
               pending_language: pendingLang,
             },
           }))
-          setTimeout(settle, 1800)
+          setTimeout(settle, ackWaitMs)
         })
       }
     } catch {
