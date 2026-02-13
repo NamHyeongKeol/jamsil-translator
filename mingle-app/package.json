@@ -16,7 +16,8 @@
     "cap:verify": "node scripts/verify-capacitor.mjs",
     "seed:check": "node scripts/seed-data.mjs --check",
     "seed:populate": "node scripts/seed-data.mjs",
-    "crawl:instagram": "node scripts/crawl-instagram.mjs"
+    "crawl:instagram": "node scripts/crawl-instagram.mjs",
+    "crawl:hellotalk": "node scripts/crawl-hellotalk.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.1.0",
