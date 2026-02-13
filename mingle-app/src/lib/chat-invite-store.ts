@@ -26,6 +26,14 @@ export type InviteRecord = {
 const CONVERSATION_STORAGE_KEY = "mingle_saved_conversations_v1";
 const INVITE_STORAGE_KEY = "mingle_invite_records_v1";
 
+function namespacedKey(baseKey: string, namespace?: string): string {
+  const normalized = namespace?.trim();
+  if (!normalized) {
+    return baseKey;
+  }
+  return `${baseKey}__${normalized}`;
+}
+
 function safeParse<T>(raw: string | null, fallback: T): T {
   if (!raw) {
     return fallback;
@@ -38,41 +46,41 @@ function safeParse<T>(raw: string | null, fallback: T): T {
   }
 }
 
-export function loadSavedConversations(): SavedConversation[] {
+export function loadSavedConversations(namespace?: string): SavedConversation[] {
   if (typeof window === "undefined") {
     return [];
   }
   return safeParse<SavedConversation[]>(
-    window.localStorage.getItem(CONVERSATION_STORAGE_KEY),
+    window.localStorage.getItem(namespacedKey(CONVERSATION_STORAGE_KEY, namespace)),
     [],
   );
 }
 
-export function saveConversations(conversations: SavedConversation[]): void {
+export function saveConversations(conversations: SavedConversation[], namespace?: string): void {
   if (typeof window === "undefined") {
     return;
   }
   window.localStorage.setItem(
-    CONVERSATION_STORAGE_KEY,
+    namespacedKey(CONVERSATION_STORAGE_KEY, namespace),
     JSON.stringify(conversations),
   );
 }
 
-export function loadInviteRecords(): InviteRecord[] {
+export function loadInviteRecords(namespace?: string): InviteRecord[] {
   if (typeof window === "undefined") {
     return [];
   }
   return safeParse<InviteRecord[]>(
-    window.localStorage.getItem(INVITE_STORAGE_KEY),
+    window.localStorage.getItem(namespacedKey(INVITE_STORAGE_KEY, namespace)),
     [],
   );
 }
 
-export function saveInviteRecords(invites: InviteRecord[]): void {
+export function saveInviteRecords(invites: InviteRecord[], namespace?: string): void {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.setItem(INVITE_STORAGE_KEY, JSON.stringify(invites));
+  window.localStorage.setItem(namespacedKey(INVITE_STORAGE_KEY, namespace), JSON.stringify(invites));
 }
 
 export function createInviteToken(): string {

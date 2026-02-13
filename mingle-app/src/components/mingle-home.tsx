@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Filter,
   Grid3X3,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import {
   createInviteToken,
   loadInviteRecords,
@@ -67,6 +69,12 @@ type JoinedInvite = {
   roomName: string;
   inviterName: string;
   joinedAt: string;
+};
+
+type AdminImpersonatedUser = {
+  id: string;
+  name: string;
+  handle: string;
 };
 
 const tabIconMap: { key: TabKey; icon: typeof MessageCircle }[] = [
@@ -185,6 +193,35 @@ const moments: MomentPost[] = [
     comments: 9,
   },
 ];
+
+const DEFAULT_IMPERSONATED_USER: AdminImpersonatedUser = {
+  id: "mingle_user",
+  name: "mingle_user",
+  handle: "mingle_user",
+};
+
+function readImpersonatedUser(): AdminImpersonatedUser {
+  if (typeof window === "undefined") {
+    return DEFAULT_IMPERSONATED_USER;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = {
+    id: params.get("admin_user_id")?.trim() ?? "",
+    name: params.get("admin_user_name")?.trim() ?? "",
+    handle: params.get("admin_user_handle")?.trim() ?? "",
+  };
+
+  const normalizedId = fromQuery.id || DEFAULT_IMPERSONATED_USER.id;
+  const normalizedName = fromQuery.name || fromQuery.handle || DEFAULT_IMPERSONATED_USER.name;
+  const normalizedHandle = fromQuery.handle || fromQuery.name || DEFAULT_IMPERSONATED_USER.handle;
+
+  return {
+    id: normalizedId,
+    name: normalizedName,
+    handle: normalizedHandle.toLowerCase().replace(/[^a-z0-9._]/g, "") || DEFAULT_IMPERSONATED_USER.handle,
+  };
+}
 
 function TopBar({
   title,
@@ -572,8 +609,17 @@ function MomentsTab({ dictionary }: { dictionary: AppDictionary }) {
   );
 }
 
-function MyTab({ dictionary }: { dictionary: AppDictionary }) {
+function MyTab({
+  dictionary,
+  locale,
+  profileHandle,
+}: {
+  dictionary: AppDictionary;
+  locale: string;
+  profileHandle: string;
+}) {
   const runtime = useMemo(() => detectMobileRuntime(), []);
+  const { data: session, status } = useSession();
 
   return (
     <>
@@ -603,7 +649,7 @@ function MyTab({ dictionary }: { dictionary: AppDictionary }) {
           </div>
         </div>
 
-        <h2 className="text-[0.83rem] font-semibold">mingle_user</h2>
+        <h2 className="text-[0.83rem] font-semibold">@{profileHandle}</h2>
         <p className="mb-[0.68rem] mt-[0.12rem] text-[0.72rem] text-muted-foreground">{dictionary.profile.bio}</p>
 
         <div className="mb-[0.72rem] grid grid-cols-2 gap-[0.45rem]">
@@ -624,6 +670,56 @@ function MyTab({ dictionary }: { dictionary: AppDictionary }) {
         <div className="mb-[0.65rem] flex items-center justify-center border-y border-black/7 py-[0.47rem] text-muted-foreground">
           <Grid3X3 className="h-[1rem] w-[1rem]" />
         </div>
+
+        <section className="mb-[0.72rem] rounded-[0.7rem] border border-black/8 bg-white px-[0.62rem] py-[0.58rem]">
+          <p className="mb-[0.36rem] text-[0.68rem] font-semibold">{dictionary.profile.authTitle}</p>
+
+          {status === "authenticated" ? (
+            <>
+              <p className="text-[0.64rem] text-muted-foreground">
+                {dictionary.profile.signedInAs}: {session.user?.name ?? "User"}
+              </p>
+              <div className="mt-[0.4rem] flex gap-[0.4rem]">
+                <Link
+                  className="rounded-[0.55rem] border border-black/10 bg-white px-[0.62rem] py-[0.36rem] text-[0.66rem] font-semibold"
+                  href={`/${locale}/account`}
+                >
+                  {dictionary.profile.accountPage}
+                </Link>
+                <button
+                  className="rounded-[0.55rem] bg-primary px-[0.62rem] py-[0.36rem] text-[0.66rem] font-semibold text-white"
+                  onClick={() => signOut({ callbackUrl: `/${locale}` })}
+                  type="button"
+                >
+                  {dictionary.profile.logout}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex gap-[0.4rem]">
+              <button
+                className="rounded-[0.55rem] border border-black/10 bg-white px-[0.62rem] py-[0.36rem] text-[0.66rem] font-semibold"
+                onClick={() => signIn("google", { callbackUrl: `/${locale}` })}
+                type="button"
+              >
+                {dictionary.profile.loginGoogle}
+              </button>
+              <button
+                className="rounded-[0.55rem] bg-primary px-[0.62rem] py-[0.36rem] text-[0.66rem] font-semibold text-white"
+                onClick={() =>
+                  signIn("credentials", {
+                    callbackUrl: `/${locale}`,
+                    email: "demo@mingle.dev",
+                    name: "Mingle Demo",
+                  })
+                }
+                type="button"
+              >
+                {dictionary.profile.loginDemo}
+              </button>
+            </div>
+          )}
+        </section>
 
         <section className="mb-[0.72rem] rounded-[0.7rem] border border-black/8 bg-white px-[0.62rem] py-[0.58rem]">
           <div className="mb-[0.34rem] flex items-center justify-between">
@@ -692,21 +788,23 @@ type MingleHomeProps = {
 
 export default function MingleHome({ locale, dictionary }: MingleHomeProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("chats");
+  const [impersonatedUser] = useState<AdminImpersonatedUser>(() => readImpersonatedUser());
+  const storageNamespace = impersonatedUser.id;
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>(() =>
-    typeof window === "undefined" ? [] : loadSavedConversations(),
+    typeof window === "undefined" ? [] : loadSavedConversations(storageNamespace),
   );
   const [inviteRecords, setInviteRecords] = useState<InviteRecord[]>(() =>
-    typeof window === "undefined" ? [] : loadInviteRecords(),
+    typeof window === "undefined" ? [] : loadInviteRecords(storageNamespace),
   );
   const [joinedInvites, setJoinedInvites] = useState<JoinedInvite[]>([]);
 
   useEffect(() => {
-    saveConversations(savedConversations);
-  }, [savedConversations]);
+    saveConversations(savedConversations, storageNamespace);
+  }, [savedConversations, storageNamespace]);
 
   useEffect(() => {
-    saveInviteRecords(inviteRecords);
-  }, [inviteRecords]);
+    saveInviteRecords(inviteRecords, storageNamespace);
+  }, [inviteRecords, storageNamespace]);
 
   const inviteLookup = useMemo(() => {
     const map = new Map<string, InviteRecord>();
@@ -742,7 +840,7 @@ export default function MingleHome({ locale, dictionary }: MingleHomeProps) {
     const invite: InviteRecord = {
       token,
       conversationId: conversation.id,
-      inviterName: "mingle_user",
+      inviterName: impersonatedUser.handle,
       inviteUrl: `${origin}/${locale}/invite/${token}`,
       createdAt: new Date().toISOString(),
     };
@@ -799,7 +897,9 @@ export default function MingleHome({ locale, dictionary }: MingleHomeProps) {
           ) : null}
           {activeTab === "connect" ? <ConnectTab dictionary={dictionary} /> : null}
           {activeTab === "moments" ? <MomentsTab dictionary={dictionary} /> : null}
-          {activeTab === "my" ? <MyTab dictionary={dictionary} /> : null}
+          {activeTab === "my" ? (
+            <MyTab dictionary={dictionary} locale={locale} profileHandle={impersonatedUser.handle} />
+          ) : null}
         </main>
 
         <nav className="sticky bottom-0 z-20 flex h-[3.65rem] border-t border-black/8 bg-background">

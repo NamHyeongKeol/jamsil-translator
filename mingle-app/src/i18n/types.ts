@@ -43,6 +43,12 @@ export type AppDictionary = {
     bio: string;
     editProfile: string;
     shareProfile: string;
+    authTitle: string;
+    signedInAs: string;
+    accountPage: string;
+    loginGoogle: string;
+    loginDemo: string;
+    logout: string;
     mobileRuntime: string;
     nativeBridge: string;
     connected: string;
