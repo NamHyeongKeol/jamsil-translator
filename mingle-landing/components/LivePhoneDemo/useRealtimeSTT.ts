@@ -306,6 +306,47 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     setConnectionStatus('idle')
   }, [cleanup])
 
+  const finalizePendingLocally = useCallback((rawText: string, rawLang: string) => {
+    const text = rawText.replace(/<\/?end>/gi, '').trim()
+    const lang = (rawLang || 'unknown').trim() || 'unknown'
+    if (!text) return false
+
+    const sig = `${lang}::${text}`
+    const now = Date.now()
+    if (sig && lastFinalSignatureRef.current.sig === sig && now - lastFinalSignatureRef.current.at < 2000) {
+      setPartialTranslations({})
+      partialTranslationsRef.current = {}
+      setPartialTranscript('')
+      partialTranscriptRef.current = ''
+      setPartialLang(null)
+      partialLangRef.current = null
+      return false
+    }
+    lastFinalSignatureRef.current = { sig, at: now }
+
+    utteranceIdRef.current += 1
+    const seedTranslations = { ...partialTranslationsRef.current }
+    const seedFinalized: Record<string, boolean> = {}
+    for (const key of Object.keys(seedTranslations)) {
+      seedFinalized[key] = false
+    }
+
+    setUtterances(prev => [...prev, {
+      id: `u-${Date.now()}-${utteranceIdRef.current}`,
+      originalText: text,
+      originalLang: lang,
+      translations: seedTranslations,
+      translationFinalized: seedFinalized,
+    }])
+    setPartialTranslations({})
+    partialTranslationsRef.current = {}
+    setPartialTranscript('')
+    partialTranscriptRef.current = ''
+    setPartialLang(null)
+    partialLangRef.current = null
+    return true
+  }, [])
+
   const stopRecordingGracefully = useCallback(async (notifyLimitReached = false) => {
     if (isStoppingRef.current) return
     isStoppingRef.current = true
@@ -316,7 +357,8 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     const socket = socketRef.current
     const pendingText = partialTranscriptRef.current.trim()
     const pendingLang = partialLangRef.current || 'unknown'
-    const ackWaitMs = pendingText ? 12000 : 1200
+    const ackWaitMs = pendingText ? 25000 : 1500
+    let receivedAck = false
 
     try {
       if (socket && socket.readyState === WebSocket.OPEN) {
@@ -329,7 +371,10 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             resolve()
           }
 
-          stopAckResolverRef.current = settle
+          stopAckResolverRef.current = () => {
+            receivedAck = true
+            settle()
+          }
           socket.send(JSON.stringify({
             type: 'stop_recording',
             data: {
@@ -343,6 +388,15 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     } catch {
       // fall through and close anyway
     } finally {
+      if (!receivedAck && socketRef.current?.readyState === WebSocket.OPEN) {
+        await new Promise(resolve => setTimeout(resolve, 1200))
+      }
+
+      const remainingPartial = partialTranscriptRef.current.trim()
+      if (remainingPartial) {
+        finalizePendingLocally(remainingPartial, partialLangRef.current || pendingLang)
+      }
+
       if (socketRef.current) {
         socketRef.current.close()
         socketRef.current = null
@@ -353,7 +407,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
         onLimitReachedRef.current?.()
       }
     }
-  }, [stopAudioPipeline])
+  }, [finalizePendingLocally, stopAudioPipeline])
 
   const visualize = useCallback(() => {
     if (analyserRef.current) {
