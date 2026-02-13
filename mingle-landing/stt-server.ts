@@ -31,6 +31,12 @@ interface ClientConfig {
     lang_hints_strict?: boolean;
 }
 
+interface FinalTurnPayload {
+    text: string;
+    language: string;
+    translations: Record<string, string>;
+}
+
 wss.on('connection', (clientWs) => {
     let sttWs: WebSocket | null = null;
     let isClientConnected = true;
@@ -38,7 +44,7 @@ wss.on('connection', (clientWs) => {
     let currentModel: 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox' = 'gladia';
     let selectedLanguages: string[] = [];
     let translateModel: TranslateModel = 'claude-haiku-4-5';
-    let finalizePendingTurnFromProvider: (() => Promise<boolean>) | null = null;
+    let finalizePendingTurnFromProvider: (() => Promise<FinalTurnPayload | null>) | null = null;
     let sonioxStopRequested = false;
 
     const gladiaApiKey = process.env.GLADIA_API_KEY;
@@ -526,10 +532,10 @@ wss.on('connection', (clientWs) => {
             let partialTranslateInFlight = false;
             sonioxStopRequested = false;
 
-            const emitFinalTurn = async (text: string, language: string): Promise<boolean> => {
+            const emitFinalTurn = async (text: string, language: string): Promise<FinalTurnPayload | null> => {
                 const cleanedText = text.replace(/<\/?end>/gi, '').trim();
                 const cleanedLang = (language || '').trim() || 'unknown';
-                if (!cleanedText) return false;
+                if (!cleanedText) return null;
 
                 // Clear turn accumulators immediately so next utterance state does not
                 // get blocked by translation latency from the current finalized turn.
@@ -552,10 +558,14 @@ wss.on('connection', (clientWs) => {
                     }));
                 }
 
-                if (selectedLanguages.length > 0) {
-                    await translateText(cleanedText, cleanedLang, selectedLanguages, clientWs);
-                }
-                return true;
+                const translations = selectedLanguages.length > 0
+                    ? await translateText(cleanedText, cleanedLang, selectedLanguages, clientWs)
+                    : {};
+                return {
+                    text: cleanedText,
+                    language: cleanedLang,
+                    translations,
+                };
             };
 
             finalizePendingTurnFromProvider = async () => {
@@ -710,9 +720,9 @@ wss.on('connection', (clientWs) => {
         nl: 'Dutch', sv: 'Swedish', th: 'Thai', ms: 'Malay',
     };
 
-    const translateText = async (text: string, sourceLang: string, targetLangs: string[], ws: WebSocket, isPartial = false) => {
+    const translateText = async (text: string, sourceLang: string, targetLangs: string[], ws: WebSocket, isPartial = false): Promise<Record<string, string>> => {
         const langs = targetLangs.filter(l => l !== sourceLang);
-        if (langs.length === 0 || !text.trim()) return;
+        if (langs.length === 0 || !text.trim()) return {};
 
         const langList = langs.map(l => `${l} (${LANG_NAMES[l] || l})`).join(', ');
         const systemPrompt = `You are a translator. Translate the given text into the requested languages. Respond ONLY with a JSON object mapping language codes to translations. No extra text.`;
@@ -722,7 +732,7 @@ wss.on('connection', (clientWs) => {
             let content: string | undefined;
 
             if (translateModel === 'claude-haiku-4-5') {
-                if (!anthropic) { console.error('CLAUDE_API_KEY not set'); return; }
+                if (!anthropic) { console.error('CLAUDE_API_KEY not set'); return {}; }
                 const resp = await anthropic.messages.create({
                     model: 'claude-haiku-4-5-20251001',
                     max_tokens: 1024,
@@ -739,7 +749,7 @@ wss.on('connection', (clientWs) => {
                 const result = await model.generateContent(userPrompt);
                 content = result.response.text()?.trim();
             } else {
-                if (!openai) { console.error('OPENAI_API_KEY not set'); return; }
+                if (!openai) { console.error('OPENAI_API_KEY not set'); return {}; }
                 const resp = await openai.chat.completions.create({
                     model: 'gpt-5-nano',
                     messages: [
@@ -751,21 +761,26 @@ wss.on('connection', (clientWs) => {
                 content = resp.choices[0]?.message?.content?.trim();
             }
 
-            if (!content) return;
+            if (!content) return {};
 
             // parse JSON (handle possible markdown code fences)
             const jsonStr = content.replace(/^```json?\n?/, '').replace(/\n?```$/, '');
             const translations: Record<string, string> = JSON.parse(jsonStr);
 
+            const emittedTranslations: Record<string, string> = {};
             for (const lang of langs) {
                 let translated = translations[lang];
-                if (translated && ws.readyState === WebSocket.OPEN) {
-                    // Clean <end> tokens from translation output
+                if (translated) {
                     translated = translated.replace(/<\/?end>/gi, '').trim();
                     if (!translated) continue;
+                    emittedTranslations[lang] = translated;
+                }
+                if (translated && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: 'translation',
                         data: {
+                            source_language: sourceLang,
+                            source_text: text,
                             target_language: lang,
                             translated_utterance: { text: translated },
                             is_partial: isPartial,
@@ -773,15 +788,17 @@ wss.on('connection', (clientWs) => {
                     }));
                 }
             }
+            return emittedTranslations;
         } catch (err) {
             console.error('Translation error:', err);
+            return {};
         }
     };
 
-    const sendForcedFinalTurn = async (rawText: string, rawLanguage: string): Promise<boolean> => {
+    const sendForcedFinalTurn = async (rawText: string, rawLanguage: string): Promise<FinalTurnPayload | null> => {
         const text = (rawText || '').replace(/<\/?end>/gi, '').trim();
         const language = (rawLanguage || '').trim() || 'unknown';
-        if (!text) return false;
+        if (!text) return null;
 
         if (clientWs.readyState === WebSocket.OPEN) {
             clientWs.send(JSON.stringify({
@@ -796,10 +813,14 @@ wss.on('connection', (clientWs) => {
             }));
         }
 
-        if (selectedLanguages.length > 0) {
-            await translateText(text, language, selectedLanguages, clientWs);
-        }
-        return true;
+        const translations = selectedLanguages.length > 0
+            ? await translateText(text, language, selectedLanguages, clientWs)
+            : {};
+        return {
+            text,
+            language,
+            translations,
+        };
     };
 
     // ===== 클라이언트 메시지 핸들러 =====
@@ -819,14 +840,14 @@ wss.on('connection', (clientWs) => {
                 const cleanedPendingText = pendingText.replace(/<\/?end>/gi, '').trim();
                 sonioxStopRequested = currentModel === 'soniox';
 
-                let finalized = false;
+                let finalizedTurn: FinalTurnPayload | null = null;
 
                 // User-initiated stop must finalize what the user currently sees on client.
                 // Prefer client pending text to avoid provider-side race/staleness.
                 if (cleanedPendingText) {
-                    finalized = await sendForcedFinalTurn(pendingText, pendingLang);
+                    finalizedTurn = await sendForcedFinalTurn(pendingText, pendingLang);
                 } else if (finalizePendingTurnFromProvider) {
-                    finalized = await finalizePendingTurnFromProvider();
+                    finalizedTurn = await finalizePendingTurnFromProvider();
                 }
 
                 if (sttWs && (sttWs.readyState === WebSocket.OPEN || sttWs.readyState === WebSocket.CONNECTING)) {
@@ -836,7 +857,10 @@ wss.on('connection', (clientWs) => {
                 if (clientWs.readyState === WebSocket.OPEN) {
                     clientWs.send(JSON.stringify({
                         type: 'stop_recording_ack',
-                        data: { finalized },
+                        data: {
+                            finalized: Boolean(finalizedTurn),
+                            final_turn: finalizedTurn,
+                        },
                     }));
                     // Close client socket after ack so the client can reset state cleanly.
                     setTimeout(() => {
