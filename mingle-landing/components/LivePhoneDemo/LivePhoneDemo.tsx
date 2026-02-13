@@ -55,7 +55,12 @@ async function saveConversation(utterances: Utterance[], selectedLanguages: stri
 
 function getFirstTranslationToSpeak(utterance: Utterance, selectedLanguages: string[]) {
   const entries = Object.entries(utterance.translations)
-    .filter(([lang, text]) => selectedLanguages.includes(lang) && lang !== utterance.originalLang && Boolean(text?.trim()))
+    .filter(([lang, text]) => (
+      selectedLanguages.includes(lang)
+      && lang !== utterance.originalLang
+      && Boolean(text?.trim())
+      && utterance.translationFinalized?.[lang] === true
+    ))
   if (entries.length === 0) return null
   const [language, text] = entries[0]
   return { language, text }
@@ -71,6 +76,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { return ['en', 'ko', 'ja'] }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
+  const [isAutoTtsArmed, setIsAutoTtsArmed] = useState(false)
+  const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const spokenUtteranceIdsRef = useRef(new Set<string>())
   const ttsQueueRef = useRef<Array<{ id: string, language: string, text: string }>>([])
   const isTtsProcessingRef = useRef(false)
@@ -139,16 +146,23 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
   }, [])
 
-  const playSingleTts = useCallback(async (text: string, language: string) => {
+  const playSingleTts = useCallback(async (item: { id: string, language: string, text: string }) => {
+    setSpeakingItem({ utteranceId: item.id, language: item.language })
     const response = await fetch('/api/tts/inworld', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, language }),
+      body: JSON.stringify({ text: item.text, language: item.language }),
     })
-    if (!response.ok) return
+    if (!response.ok) {
+      setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
+      return
+    }
 
     const audioBlob = await response.blob()
-    if (!audioBlob.size) return
+    if (!audioBlob.size) {
+      setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
+      return
+    }
 
     cleanupCurrentAudio()
     const url = URL.createObjectURL(audioBlob)
@@ -159,35 +173,38 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     await new Promise<void>((resolve) => {
       audio.onended = () => {
         cleanupCurrentAudio()
+        setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
         resolve()
       }
       audio.onerror = () => {
         cleanupCurrentAudio()
+        setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
         resolve()
       }
       audio.play().catch(() => {
         cleanupCurrentAudio()
+        setSpeakingItem(prev => (prev?.utteranceId === item.id ? null : prev))
         resolve()
       })
     })
   }, [cleanupCurrentAudio])
 
   const processTtsQueue = useCallback(async () => {
-    if (!enableAutoTTS || isTtsProcessingRef.current) return
+    if (!enableAutoTTS || !isAutoTtsArmed || isTtsProcessingRef.current) return
     isTtsProcessingRef.current = true
     try {
       while (ttsQueueRef.current.length > 0) {
         const next = ttsQueueRef.current.shift()
         if (!next) break
-        await playSingleTts(next.text, next.language)
+        await playSingleTts(next)
       }
     } finally {
       isTtsProcessingRef.current = false
     }
-  }, [enableAutoTTS, playSingleTts])
+  }, [enableAutoTTS, isAutoTtsArmed, playSingleTts])
 
   useEffect(() => {
-    if (!enableAutoTTS) return
+    if (!enableAutoTTS || !isAutoTtsArmed) return
 
     for (const utterance of utterances) {
       if (spokenUtteranceIdsRef.current.has(utterance.id)) continue
@@ -204,7 +221,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
 
     void processTtsQueue()
-  }, [enableAutoTTS, processTtsQueue, selectedLanguages, utterances])
+  }, [enableAutoTTS, isAutoTtsArmed, processTtsQueue, selectedLanguages, utterances])
 
   useEffect(() => {
     return () => {
@@ -227,8 +244,12 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       onLimitReached?.()
       return
     }
+    if (enableAutoTTS && !isActive && !isAutoTtsArmed) {
+      spokenUtteranceIdsRef.current = new Set(utterances.map((u) => u.id))
+      setIsAutoTtsArmed(true)
+    }
     toggleRecording()
-  }, [isLimitReached, onLimitReached, toggleRecording])
+  }, [enableAutoTTS, isActive, isAutoTtsArmed, isLimitReached, onLimitReached, toggleRecording, utterances])
 
   useImperativeHandle(ref, () => ({
     startRecording: handleMicClick,
@@ -333,6 +354,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 key={u.id}
                 utterance={u}
                 selectedLanguages={selectedLanguages}
+                isSpeaking={speakingItem?.utteranceId === u.id}
+                speakingLanguage={speakingItem?.language ?? null}
               />
             ))}
           </AnimatePresence>
