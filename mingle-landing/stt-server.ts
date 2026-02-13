@@ -38,6 +38,8 @@ wss.on('connection', (clientWs) => {
     let currentModel: 'gladia' | 'gladia-stt' | 'deepgram' | 'deepgram-multi' | 'fireworks' | 'soniox' = 'gladia';
     let selectedLanguages: string[] = [];
     let translateModel: TranslateModel = 'claude-haiku-4-5';
+    let finalizePendingTurnFromProvider: (() => Promise<boolean>) | null = null;
+    let sonioxStopRequested = false;
 
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
@@ -517,10 +519,47 @@ wss.on('connection', (clientWs) => {
 
             // 토큰 누적 상태 (Soniox는 토큰 단위로 반환)
             let finalizedText = '';
+            let latestNonFinalText = '';
             let detectedLang = config.languages[0] || 'en';
             let hadNonFinal = false;
             let lastPartialTranslateTime = 0;
             let partialTranslateInFlight = false;
+            sonioxStopRequested = false;
+
+            const emitFinalTurn = async (text: string, language: string): Promise<boolean> => {
+                const cleanedText = text.replace(/<\/?end>/gi, '').trim();
+                const cleanedLang = (language || '').trim() || 'unknown';
+                if (!cleanedText) return false;
+
+                if (clientWs.readyState === WebSocket.OPEN) {
+                    clientWs.send(JSON.stringify({
+                        type: 'transcript',
+                        data: {
+                            is_final: true,
+                            utterance: {
+                                text: cleanedText,
+                                language: cleanedLang,
+                            },
+                        },
+                    }));
+                }
+
+                if (selectedLanguages.length > 0) {
+                    await translateText(cleanedText, cleanedLang, selectedLanguages, clientWs);
+                }
+
+                finalizedText = '';
+                latestNonFinalText = '';
+                hadNonFinal = false;
+                lastPartialTranslateTime = 0;
+                partialTranslateInFlight = false;
+                return true;
+            };
+
+            finalizePendingTurnFromProvider = async () => {
+                const merged = `${finalizedText}${latestNonFinalText}`.trim();
+                return emitFinalTurn(merged, detectedLang);
+            };
 
             sttWs.onopen = () => {
                 const sonioxConfig = {
@@ -594,6 +633,7 @@ wss.on('connection', (clientWs) => {
 
                     if (nonFinalText) {
                         hadNonFinal = true;
+                        latestNonFinalText = nonFinalText;
                         // 부분 결과: 확정된 텍스트 + 미확정 텍스트
                         const fullText = finalizedText + nonFinalText;
                         const partialMsg = {
@@ -619,27 +659,8 @@ wss.on('connection', (clientWs) => {
                         }
                     } else if (newFinalText && hadNonFinal) {
                         // 모델이 엔드포인트를 감지하여 토큰을 확정함 → 발화 완료
-                        const finalText = finalizedText.trim();
-                        const finalMsg = {
-                            type: 'transcript',
-                            data: {
-                                is_final: true,
-                                utterance: {
-                                    text: finalText,
-                                    language: detectedLang,
-                                },
-                            },
-                        };
-                        clientWs.send(JSON.stringify(finalMsg));
-
-                        if (selectedLanguages.length > 0) {
-                            translateText(finalText, detectedLang, selectedLanguages, clientWs);
-                        }
-
-                        finalizedText = '';
-                        hadNonFinal = false;
-                        lastPartialTranslateTime = 0;
-                        partialTranslateInFlight = false;
+                        latestNonFinalText = '';
+                        void emitFinalTurn(finalizedText, detectedLang);
                     }
                 } catch (parseError) {
                     console.error('Error parsing Soniox message:', parseError);
@@ -654,29 +675,14 @@ wss.on('connection', (clientWs) => {
             };
 
             sttWs.onclose = () => {
-                // 남은 텍스트가 있으면 마지막 발화로 전송
-                if (isClientConnected && finalizedText) {
-                    const remainingText = finalizedText.trim();
-                    const finalMsg = {
-                        type: 'transcript',
-                        data: {
-                            is_final: true,
-                            utterance: {
-                                text: remainingText,
-                                language: detectedLang,
-                            },
-                        },
-                    };
-                    clientWs.send(JSON.stringify(finalMsg));
-
-                    if (selectedLanguages.length > 0) {
-                        translateText(remainingText, detectedLang, selectedLanguages, clientWs);
-                    }
-
-                    finalizedText = '';
-                }
-                if (isClientConnected) {
-                    clientWs.close();
+                // stop_recording 경로가 아니면 남은 텍스트를 마지막 발화로 플러시
+                if (isClientConnected && !sonioxStopRequested) {
+                    void (async () => {
+                        await finalizePendingTurnFromProvider?.();
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                            clientWs.close();
+                        }
+                    })();
                 }
             };
 
@@ -803,7 +809,15 @@ wss.on('connection', (clientWs) => {
             void (async () => {
                 const pendingText = data?.data?.pending_text || '';
                 const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
-                const finalized = await sendForcedFinalTurn(pendingText, pendingLang);
+                sonioxStopRequested = currentModel === 'soniox';
+
+                let finalized = false;
+                if (finalizePendingTurnFromProvider) {
+                    finalized = await finalizePendingTurnFromProvider();
+                }
+                if (!finalized) {
+                    finalized = await sendForcedFinalTurn(pendingText, pendingLang);
+                }
 
                 if (sttWs && (sttWs.readyState === WebSocket.OPEN || sttWs.readyState === WebSocket.CONNECTING)) {
                     sttWs.close();
@@ -821,6 +835,7 @@ wss.on('connection', (clientWs) => {
                         }
                     }, 50);
                 }
+                sonioxStopRequested = false;
             })();
             return;
         }
@@ -829,6 +844,8 @@ wss.on('connection', (clientWs) => {
             currentModel = data.stt_model || 'gladia';
             selectedLanguages = data.languages;
             translateModel = data.translate_model || 'claude-haiku-4-5';
+            finalizePendingTurnFromProvider = null;
+            sonioxStopRequested = false;
             
             if (currentModel === 'deepgram') {
                 startDeepgramConnection(data as ClientConfig);
