@@ -933,7 +933,7 @@ export default function MingleHome({
 
   return (
     <div className="min-h-screen bg-[#eceff3]">
-      <div className="mobile-safe-shell mx-auto flex h-screen max-w-[30rem] flex-col overflow-hidden bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
+      <div className="mobile-safe-shell mx-auto flex h-screen w-full max-w-[24.375rem] flex-col overflow-hidden bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04)]">
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           {activeTab === "chats" ? (
             <ChatsTab
