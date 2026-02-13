@@ -27,6 +27,7 @@ export interface LivePhoneDemoRef {
 
 interface LivePhoneDemoProps {
   onLimitReached?: () => void
+  enableAutoTTS?: boolean
 }
 
 async function saveConversation(utterances: Utterance[], selectedLanguages: string[], usageSec: number) {
@@ -52,7 +53,15 @@ async function saveConversation(utterances: Utterance[], selectedLanguages: stri
   } catch { /* silently fail */ }
 }
 
-const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function LivePhoneDemo({ onLimitReached }, ref) {
+function getFirstTranslationToSpeak(utterance: Utterance, selectedLanguages: string[]) {
+  const entries = Object.entries(utterance.translations)
+    .filter(([lang, text]) => selectedLanguages.includes(lang) && lang !== utterance.originalLang && Boolean(text?.trim()))
+  if (entries.length === 0) return null
+  const [language, text] = entries[0]
+  return { language, text }
+}
+
+const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function LivePhoneDemo({ onLimitReached, enableAutoTTS = false }, ref) {
   const { t } = useTranslation()
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
     if (typeof window === 'undefined') return ['en', 'ko', 'ja']
@@ -62,6 +71,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { return ['en', 'ko', 'ja'] }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
+  const spokenUtteranceIdsRef = useRef(new Set<string>())
+  const ttsQueueRef = useRef<Array<{ id: string, language: string, text: string }>>([])
+  const isTtsProcessingRef = useRef(false)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+  const currentAudioUrlRef = useRef<string | null>(null)
 
   // Persist selected languages
   useEffect(() => {
@@ -110,6 +124,94 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
     prevIsActiveRef.current = isActive
   }, [isActive, utterances, selectedLanguages, usageSec])
+
+  const cleanupCurrentAudio = useCallback(() => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.src = ''
+      currentAudioRef.current.onended = null
+      currentAudioRef.current.onerror = null
+      currentAudioRef.current = null
+    }
+    if (currentAudioUrlRef.current) {
+      URL.revokeObjectURL(currentAudioUrlRef.current)
+      currentAudioUrlRef.current = null
+    }
+  }, [])
+
+  const playSingleTts = useCallback(async (text: string, language: string) => {
+    const response = await fetch('/api/tts/inworld', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, language }),
+    })
+    if (!response.ok) return
+
+    const audioBlob = await response.blob()
+    if (!audioBlob.size) return
+
+    cleanupCurrentAudio()
+    const url = URL.createObjectURL(audioBlob)
+    const audio = new Audio(url)
+    currentAudioRef.current = audio
+    currentAudioUrlRef.current = url
+
+    await new Promise<void>((resolve) => {
+      audio.onended = () => {
+        cleanupCurrentAudio()
+        resolve()
+      }
+      audio.onerror = () => {
+        cleanupCurrentAudio()
+        resolve()
+      }
+      audio.play().catch(() => {
+        cleanupCurrentAudio()
+        resolve()
+      })
+    })
+  }, [cleanupCurrentAudio])
+
+  const processTtsQueue = useCallback(async () => {
+    if (!enableAutoTTS || isTtsProcessingRef.current) return
+    isTtsProcessingRef.current = true
+    try {
+      while (ttsQueueRef.current.length > 0) {
+        const next = ttsQueueRef.current.shift()
+        if (!next) break
+        await playSingleTts(next.text, next.language)
+      }
+    } finally {
+      isTtsProcessingRef.current = false
+    }
+  }, [enableAutoTTS, playSingleTts])
+
+  useEffect(() => {
+    if (!enableAutoTTS) return
+
+    for (const utterance of utterances) {
+      if (spokenUtteranceIdsRef.current.has(utterance.id)) continue
+
+      const firstTranslation = getFirstTranslationToSpeak(utterance, selectedLanguages)
+      if (!firstTranslation) continue
+
+      spokenUtteranceIdsRef.current.add(utterance.id)
+      ttsQueueRef.current.push({
+        id: utterance.id,
+        language: firstTranslation.language,
+        text: firstTranslation.text,
+      })
+    }
+
+    void processTtsQueue()
+  }, [enableAutoTTS, processTtsQueue, selectedLanguages, utterances])
+
+  useEffect(() => {
+    return () => {
+      ttsQueueRef.current = []
+      cleanupCurrentAudio()
+    }
+  }, [cleanupCurrentAudio])
 
   const handleToggleLanguage = useCallback((code: string) => {
     setSelectedLanguages(prev => {
