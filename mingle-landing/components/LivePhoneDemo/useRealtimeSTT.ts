@@ -409,11 +409,16 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             // Read partial translations from ref (not via state updater)
             // This avoids React Strict Mode double-invoke creating duplicate utterances
             const seedTranslations = { ...partialTranslationsRef.current }
+            const seedFinalized: Record<string, boolean> = {}
+            for (const key of Object.keys(seedTranslations)) {
+              seedFinalized[key] = false
+            }
             const newUtterance: Utterance = {
               id: `u-${Date.now()}-${utteranceIdRef.current}`,
               originalText: text,
               originalLang: lang,
               translations: seedTranslations,
+              translationFinalized: seedFinalized,
             }
             setUtterances(u => [...u, newUtterance])
             setPartialTranslations({})
@@ -443,6 +448,7 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
                   {
                     ...lastUtterance,
                     translations: { ...lastUtterance.translations, [targetLang]: translatedText },
+                    translationFinalized: { ...lastUtterance.translationFinalized, [targetLang]: true },
                   },
                 ]
               })

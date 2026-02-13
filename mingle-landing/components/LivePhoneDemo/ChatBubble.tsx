@@ -14,14 +14,28 @@ export interface Utterance {
   originalText: string
   originalLang: string
   translations: Record<string, string>
+  translationFinalized?: Record<string, boolean>
 }
 
 interface ChatBubbleProps {
   utterance: Utterance
   selectedLanguages: string[]
+  isSpeaking?: boolean
+  speakingLanguage?: string | null
 }
 
-export default function ChatBubble({ utterance, selectedLanguages }: ChatBubbleProps) {
+function SpeakingIndicator() {
+  return (
+    <div className="flex items-end gap-0.5" aria-label="tts-speaking">
+      <span className="w-0.5 h-2 bg-amber-400/90 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+      <span className="w-0.5 h-3 bg-amber-500 rounded-full animate-pulse" style={{ animationDelay: '120ms' }} />
+      <span className="w-0.5 h-2.5 bg-amber-400/90 rounded-full animate-pulse" style={{ animationDelay: '240ms' }} />
+      <span className="w-0.5 h-1.5 bg-amber-300/90 rounded-full animate-pulse" style={{ animationDelay: '360ms' }} />
+    </div>
+  )
+}
+
+export default function ChatBubble({ utterance, selectedLanguages, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
   const flag = FLAG_MAP[utterance.originalLang] || '🌐'
   const translationEntries = Object.entries(utterance.translations)
     .filter(([lang]) => selectedLanguages.includes(lang) && lang !== utterance.originalLang)
@@ -52,9 +66,12 @@ export default function ChatBubble({ utterance, selectedLanguages }: ChatBubbleP
           key={lang}
           className="ml-3 max-w-[80%] bg-amber-50 border border-amber-100 rounded-2xl rounded-tl-sm px-3 py-1.5"
         >
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-[10px]">{FLAG_MAP[lang] || '🌐'}</span>
-            <span className="text-[9px] font-semibold text-amber-500 uppercase">{lang}</span>
+          <div className="flex items-center justify-between mb-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px]">{FLAG_MAP[lang] || '🌐'}</span>
+              <span className="text-[9px] font-semibold text-amber-500 uppercase">{lang}</span>
+            </div>
+            {isSpeaking && speakingLanguage === lang && <SpeakingIndicator />}
           </div>
           <p className="text-xs text-gray-700 leading-snug">{text}</p>
         </div>
