@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: stop_stale_socket_guard_and_final_retranslate
+    %% @lastActive: stop_partial_gate_and_finalize_parser_harden
 
     %% === START ===
     %% @project_start [start, closed]
@@ -196,6 +196,9 @@ flowchart TD
     %% @stop_stale_socket_guard_and_final_retranslate [ai-task, closed]
     stop_stale_socket_guard_and_final_retranslate("중단 후 재연결 플리커 방지 + 최종 재번역 강화<br/><sub>stale websocket 이벤트를 무시해 red→orange→red 플리커 차단<br/>병합된 서버 final 텍스트 기준 재번역을 재시도하도록 보강<br/>번역 업데이트 시 같은 발화도 TTS 재큐잉 가능하게 정합성 개선</sub>")
 
+    %% @stop_partial_gate_and_finalize_parser_harden [ai-task, closed]
+    stop_partial_gate_and_finalize_parser_harden("중단 구간 partial 차단 + finalize 파서 강화<br/><sub>stopping 상태에서는 partial transcript/translation 이벤트를 무시<br/>중단 직후 partial 재등장으로 인한 중복/미완료 발화 경로 차단<br/>finalize 번역 API JSON 파싱과 응답 형식 안정성 보강</sub>")
+
     %% @gaming_socialhero_multilingual_copy_refresh [ai-task, closed]
     gaming_socialhero_multilingual_copy_refresh("Gaming 헤드라인 다국어 개편<br/><sub>gaming Hero 제목 문구를 한국어 기준으로<br/>동시 통역 강조 순서로 재배치하고<br/>중국어/대만어/일본어/베트남어/태국어를<br/>각 로케일에 맞춰 자연스럽게 동기화</sub>")
 
@@ -278,8 +281,9 @@ flowchart TD
     forced_termination_finalize_hooks --> stop_fallback_translate_api_and_fast_restart
     stop_fallback_translate_api_and_fast_restart --> stop_local_server_final_merge_and_tts_guard
     stop_local_server_final_merge_and_tts_guard --> stop_stale_socket_guard_and_final_retranslate
+    stop_stale_socket_guard_and_final_retranslate --> stop_partial_gate_and_finalize_parser_harden
     landing_copy_update --> gaming_socialhero_multilingual_copy_refresh
-    stop_stale_socket_guard_and_final_retranslate --> tts_echo_reference_filter_research
+    stop_partial_gate_and_finalize_parser_harden --> tts_echo_reference_filter_research
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -288,7 +292,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        stop_stale_socket_guard_and_final_retranslate
+        stop_partial_gate_and_finalize_parser_harden
     end
 
     %% === STYLES ===
@@ -410,7 +414,8 @@ flowchart TD
     style forced_termination_finalize_hooks fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stop_fallback_translate_api_and_fast_restart fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stop_local_server_final_merge_and_tts_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style stop_stale_socket_guard_and_final_retranslate fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style stop_stale_socket_guard_and_final_retranslate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_partial_gate_and_finalize_parser_harden fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style gaming_socialhero_multilingual_copy_refresh fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px

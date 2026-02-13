@@ -637,6 +637,10 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
           const text = rawText.replace(/<\/?end>/gi, '').trim()
           const lang = message.data.utterance.language || 'unknown'
 
+          if (isStoppingRef.current && !message.data.is_final) {
+            return
+          }
+
           if (message.data.is_final) {
             const sig = `${lang}::${text}`
             const now = Date.now()
@@ -717,6 +721,9 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             partialLangRef.current = lang
           }
         } else if (message.type === 'translation' && message.data) {
+          if (isStoppingRef.current && message.data.is_partial) {
+            return
+          }
           const targetLang = message.data.target_language
           const rawTranslated = message.data.translated_utterance?.text
           const translatedText = rawTranslated ? rawTranslated.replace(/<\/?end>/gi, '').trim() : ''
