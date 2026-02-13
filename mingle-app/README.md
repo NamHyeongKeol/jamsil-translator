@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Authentication Setup
+
+1. Copy `.env.example` to `.env.local`.
+2. Fill in `AUTH_SECRET`, `AUTH_GOOGLE_ID`, and `AUTH_GOOGLE_SECRET`.
+3. In Google Cloud Console, add this callback URL:
+
+```text
+http://localhost:3000/api/auth/callback/google
+```
+
+If Google OAuth env vars are missing, the app automatically falls back to demo credential login.

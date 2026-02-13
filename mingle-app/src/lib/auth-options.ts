@@ -38,6 +38,10 @@ if (googleClientId && googleClientSecret) {
   );
 }
 
+export function isGoogleOAuthConfigured(): boolean {
+  return Boolean(googleClientId && googleClientSecret);
+}
+
 export const authOptions: NextAuthOptions = {
   providers,
   session: {

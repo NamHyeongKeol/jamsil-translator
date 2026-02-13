@@ -611,10 +611,12 @@ function MomentsTab({ dictionary }: { dictionary: AppDictionary }) {
 
 function MyTab({
   dictionary,
+  googleOAuthEnabled,
   locale,
   profileHandle,
 }: {
   dictionary: AppDictionary;
+  googleOAuthEnabled: boolean;
   locale: string;
   profileHandle: string;
 }) {
@@ -698,8 +700,16 @@ function MyTab({
           ) : (
             <div className="flex gap-[0.4rem]">
               <button
-                className="rounded-[0.55rem] border border-black/10 bg-white px-[0.62rem] py-[0.36rem] text-[0.66rem] font-semibold"
-                onClick={() => signIn("google", { callbackUrl: `/${locale}` })}
+                className={`rounded-[0.55rem] border border-black/10 px-[0.62rem] py-[0.36rem] text-[0.66rem] font-semibold ${
+                  googleOAuthEnabled ? "bg-white" : "bg-muted text-muted-foreground"
+                }`}
+                disabled={!googleOAuthEnabled}
+                onClick={() => {
+                  if (!googleOAuthEnabled) {
+                    return;
+                  }
+                  signIn("google", { callbackUrl: `/${locale}` });
+                }}
                 type="button"
               >
                 {dictionary.profile.loginGoogle}
@@ -719,6 +729,12 @@ function MyTab({
               </button>
             </div>
           )}
+
+          {!googleOAuthEnabled ? (
+            <p className="mt-[0.3rem] text-[0.62rem] text-muted-foreground">
+              {dictionary.profile.googleNotConfigured}
+            </p>
+          ) : null}
         </section>
 
         <section className="mb-[0.72rem] rounded-[0.7rem] border border-black/8 bg-white px-[0.62rem] py-[0.58rem]">
@@ -784,9 +800,14 @@ function buildSavedConversation(room: ChatRoom): SavedConversation {
 type MingleHomeProps = {
   locale: string;
   dictionary: AppDictionary;
+  googleOAuthEnabled: boolean;
 };
 
-export default function MingleHome({ locale, dictionary }: MingleHomeProps) {
+export default function MingleHome({
+  locale,
+  dictionary,
+  googleOAuthEnabled,
+}: MingleHomeProps) {
   const [activeTab, setActiveTab] = useState<TabKey>("chats");
   const [impersonatedUser] = useState<AdminImpersonatedUser>(() => readImpersonatedUser());
   const storageNamespace = impersonatedUser.id;
@@ -898,7 +919,12 @@ export default function MingleHome({ locale, dictionary }: MingleHomeProps) {
           {activeTab === "connect" ? <ConnectTab dictionary={dictionary} /> : null}
           {activeTab === "moments" ? <MomentsTab dictionary={dictionary} /> : null}
           {activeTab === "my" ? (
-            <MyTab dictionary={dictionary} locale={locale} profileHandle={impersonatedUser.handle} />
+            <MyTab
+              dictionary={dictionary}
+              googleOAuthEnabled={googleOAuthEnabled}
+              locale={locale}
+              profileHandle={impersonatedUser.handle}
+            />
           ) : null}
         </main>
 
