@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mobile_tts_autounlock_and_feedback_guard
+    %% @lastActive: stt_graceful_stop_finalize_flush
 
     %% === START ===
     %% @project_start [start, closed]
@@ -157,6 +157,9 @@ flowchart TD
     %% @mobile_tts_autounlock_and_feedback_guard [ai-task, closed]
     mobile_tts_autounlock_and_feedback_guard("모바일 TTS 자동 언락 + 피드백 루프 완화<br/><sub>Enable Sound UI 제거, 사용자 제스처로 자동 언락 재시도<br/>TTS 재생 중 STT 오디오 업링크 잠시 suppress 처리<br/>getUserMedia echo/noise suppression 제약 강화</sub>")
 
+    %% @stt_graceful_stop_finalize_flush [ai-task, closed]
+    stt_graceful_stop_finalize_flush("STT 중단 시 강제 확정 + 번역/TTS 플러시<br/><sub>녹음 중지는 mic 업링크만 즉시 중단<br/>pending partial을 final 턴으로 확정 후 번역 완료까지 대기<br/>ack 후 소켓 종료로 중도 유실 완화(30초 제한 포함)</sub>")
+
     %% @demo_limit_server_db_migration [ai-task, opened]
     demo_limit_server_db_migration("데모 제한 서버 DB 기반 전환 (추후)<br/><sub>브라우저 localStorage 기준 30초 제한을<br/>서버 DB 세션/지문 기반 제한으로 마이그레이션<br/>우회 방지/멀티디바이스 일관성 정책 설계 필요</sub>")
 
@@ -220,7 +223,8 @@ flowchart TD
     gaming_tts_test_section_apply --> gaming_tts_queue_ui_polish
     gaming_tts_queue_ui_polish --> tts_mobile_lock_recovery
     tts_mobile_lock_recovery --> mobile_tts_autounlock_and_feedback_guard
-    mobile_tts_autounlock_and_feedback_guard --> demo_limit_server_db_migration
+    mobile_tts_autounlock_and_feedback_guard --> stt_graceful_stop_finalize_flush
+    stt_graceful_stop_finalize_flush --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
@@ -228,7 +232,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mobile_tts_autounlock_and_feedback_guard
+        stt_graceful_stop_finalize_flush
     end
 
     %% === STYLES ===
@@ -337,7 +341,8 @@ flowchart TD
     style gaming_tts_test_section_spec fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style gaming_tts_queue_ui_polish fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_mobile_lock_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mobile_tts_autounlock_and_feedback_guard fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mobile_tts_autounlock_and_feedback_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_graceful_stop_finalize_flush fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 

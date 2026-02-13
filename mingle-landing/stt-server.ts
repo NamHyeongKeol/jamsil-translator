@@ -814,6 +814,12 @@ wss.on('connection', (clientWs) => {
                         type: 'stop_recording_ack',
                         data: { finalized },
                     }));
+                    // Close client socket after ack so the client can reset state cleanly.
+                    setTimeout(() => {
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                            clientWs.close();
+                        }
+                    }, 50);
                 }
             })();
             return;
