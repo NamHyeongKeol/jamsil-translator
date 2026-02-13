@@ -720,62 +720,124 @@ wss.on('connection', (clientWs) => {
         nl: 'Dutch', sv: 'Swedish', th: 'Thai', ms: 'Malay',
     };
 
+    const parseTranslationsJson = (raw: string): Record<string, string> => {
+        const base = raw.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '');
+        let parsed: Record<string, unknown> | null = null;
+        try {
+            parsed = JSON.parse(base) as Record<string, unknown>;
+        } catch {
+            const start = base.indexOf('{');
+            const end = base.lastIndexOf('}');
+            if (start >= 0 && end > start) {
+                try {
+                    parsed = JSON.parse(base.slice(start, end + 1)) as Record<string, unknown>;
+                } catch {
+                    parsed = null;
+                }
+            }
+        }
+        if (!parsed) return {};
+        const out: Record<string, string> = {};
+        for (const [key, value] of Object.entries(parsed)) {
+            if (typeof value !== 'string') continue;
+            const cleaned = value.replace(/<\/?end>/gi, '').trim();
+            if (!cleaned) continue;
+            out[key] = cleaned;
+        }
+        return out;
+    };
+
+    const generateTextWithModel = async (
+        modelName: TranslateModel,
+        systemPrompt: string,
+        userPrompt: string,
+        jsonMode = false,
+    ): Promise<string> => {
+        if (modelName === 'claude-haiku-4-5') {
+            if (!anthropic) return '';
+            const resp = await anthropic.messages.create({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 1024,
+                system: systemPrompt,
+                messages: [{ role: 'user', content: userPrompt }],
+            });
+            const block = resp.content[0];
+            return block.type === 'text' ? block.text.trim() : '';
+        }
+
+        if (modelName === 'gemini-2.5-flash-lite' || modelName === 'gemini-3-flash-preview') {
+            const model = genAI.getGenerativeModel({
+                model: modelName,
+                systemInstruction: systemPrompt,
+                ...(jsonMode ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
+            });
+            const result = await model.generateContent(userPrompt);
+            return result.response.text()?.trim() || '';
+        }
+
+        if (!openai) return '';
+        const resp = await openai.chat.completions.create({
+            model: 'gpt-5-nano',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.1,
+        });
+        return resp.choices[0]?.message?.content?.trim() || '';
+    };
+
+    const translateSingleText = async (
+        text: string,
+        sourceLang: string,
+        targetLang: string,
+    ): Promise<string> => {
+        const targetName = LANG_NAMES[targetLang] || targetLang;
+        const systemPrompt = 'You are a translator. Return ONLY the translated text, with no explanations or quotes.';
+        const userPrompt = `Source language: ${sourceLang}\nTarget language: ${targetLang} (${targetName})\nText: "${text}"`;
+        try {
+            const content = await generateTextWithModel(translateModel, systemPrompt, userPrompt, false);
+            return content.replace(/^["'`]|["'`]$/g, '').replace(/<\/?end>/gi, '').trim();
+        } catch {
+            return '';
+        }
+    };
+
     const translateText = async (text: string, sourceLang: string, targetLangs: string[], ws: WebSocket, isPartial = false): Promise<Record<string, string>> => {
         const langs = targetLangs.filter(l => l !== sourceLang);
         if (langs.length === 0 || !text.trim()) return {};
 
         const langList = langs.map(l => `${l} (${LANG_NAMES[l] || l})`).join(', ');
-        const systemPrompt = `You are a translator. Translate the given text into the requested languages. Respond ONLY with a JSON object mapping language codes to translations. No extra text.`;
+        const systemPrompt = `You are a translator. Translate the given text into the requested languages. Respond ONLY with valid JSON object mapping language codes to translations. Include all requested language keys. No extra text.`;
         const userPrompt = `Translate to ${langList}:\n"${text}"`;
 
         try {
-            let content: string | undefined;
+            let emittedTranslations: Record<string, string> = {};
 
-            if (translateModel === 'claude-haiku-4-5') {
-                if (!anthropic) { console.error('CLAUDE_API_KEY not set'); return {}; }
-                const resp = await anthropic.messages.create({
-                    model: 'claude-haiku-4-5-20251001',
-                    max_tokens: 1024,
-                    system: systemPrompt,
-                    messages: [{ role: 'user', content: userPrompt }],
-                });
-                const block = resp.content[0];
-                if (block.type === 'text') content = block.text.trim();
-            } else if (translateModel === 'gemini-2.5-flash-lite' || translateModel === 'gemini-3-flash-preview') {
-                const model = genAI.getGenerativeModel({
-                    model: translateModel,
-                    systemInstruction: systemPrompt,
-                });
-                const result = await model.generateContent(userPrompt);
-                content = result.response.text()?.trim();
-            } else {
-                if (!openai) { console.error('OPENAI_API_KEY not set'); return {}; }
-                const resp = await openai.chat.completions.create({
-                    model: 'gpt-5-nano',
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt },
-                    ],
-                    temperature: 0.1,
-                });
-                content = resp.choices[0]?.message?.content?.trim();
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+                const content = await generateTextWithModel(translateModel, systemPrompt, userPrompt, true);
+                if (!content) continue;
+                const parsed = parseTranslationsJson(content);
+                for (const lang of langs) {
+                    const translated = (parsed[lang] || '').replace(/<\/?end>/gi, '').trim();
+                    if (translated) emittedTranslations[lang] = translated;
+                }
+                if (Object.keys(emittedTranslations).length > 0) break;
             }
 
-            if (!content) return {};
-
-            // parse JSON (handle possible markdown code fences)
-            const jsonStr = content.replace(/^```json?\n?/, '').replace(/\n?```$/, '');
-            const translations: Record<string, string> = JSON.parse(jsonStr);
-
-            const emittedTranslations: Record<string, string> = {};
-            for (const lang of langs) {
-                let translated = translations[lang];
-                if (translated) {
-                    translated = translated.replace(/<\/?end>/gi, '').trim();
-                    if (!translated) continue;
-                    emittedTranslations[lang] = translated;
+            // Final turn: if JSON path still misses some languages, do per-language plain-text fallback.
+            if (!isPartial) {
+                for (const lang of langs) {
+                    if (emittedTranslations[lang]) continue;
+                    const translated = await translateSingleText(text, sourceLang, lang);
+                    if (translated) emittedTranslations[lang] = translated;
                 }
-                if (translated && ws.readyState === WebSocket.OPEN) {
+            }
+
+            for (const lang of langs) {
+                const translated = emittedTranslations[lang];
+                if (translated) {
+                    if (ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: 'translation',
                         data: {
@@ -786,6 +848,7 @@ wss.on('connection', (clientWs) => {
                             is_partial: isPartial,
                         },
                     }));
+                    }
                 }
             }
             return emittedTranslations;
