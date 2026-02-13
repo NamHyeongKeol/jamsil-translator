@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: gaming_tts_test_section_apply
+    %% @lastActive: gaming_tts_queue_ui_polish
 
     %% === START ===
     %% @project_start [start, closed]
@@ -142,11 +142,14 @@ flowchart TD
     %% @inworld_non_realtime_strategy [ai-task, closed]
     inworld_non_realtime_strategy("Inworld 비실시간 전략 확정<br/><sub>번역 확정 후 TTS 합성으로 1차 구현<br/>레이턴시 이슈 시 실시간 스트리밍으로 전환<br/>voiceId/언어코드 매핑 조사 완료</sub>")
 
-    %% @gaming_tts_test_section_spec [ai-task, opened]
+    %% @gaming_tts_test_section_spec [ai-task, closed]
     gaming_tts_test_section_spec("Gaming 테스트 섹션 TTS 스펙 확정<br/><sub>입력: 번역 확정 텍스트 + 대상 언어<br/>출력: Inworld 합성 음성 재생/중단/오류 처리<br/>기본 voiceId 매핑 정책 정의</sub>")
 
-    %% @gaming_tts_test_section_apply [ai-task, opened]
-    gaming_tts_test_section_apply("Gaming 테스트 섹션 적용 (mingle-landing)<br/><sub>API Route 추가, 클라이언트 버튼/오디오 플레이어 연결<br/>언어별 voice fallback/로그/사용량 표기 적용<br/>QA 시나리오(ko/en/ja) 검증</sub>")
+    %% @gaming_tts_test_section_apply [ai-task, closed]
+    gaming_tts_test_section_apply("Gaming 테스트 섹션 TTS 적용 (mingle-landing)<br/><sub>Inworld API Route + 첫 번역문 자동 재생 연결<br/>언어별 voice fallback 및 mini 모델 기본값 반영<br/>로컬 .env 인증키(fallback alias) 지원</sub>")
+
+    %% @gaming_tts_queue_ui_polish [ai-task, closed]
+    gaming_tts_queue_ui_polish("Gaming TTS 큐 안정화 & 재생 UI 표시<br/><sub>자동 데모 재생 구간에서는 TTS 비활성화<br/>유저 테스트 시작 후에만 TTS arm 처리<br/>final 번역 기준 큐 + 재생중 말풍선 음파 인디케이터 추가</sub>")
 
     %% @ultimate_goal [end, opened]
     ultimate_goal("Mingle Launch<br/><sub>소셜링 중심의 실시간 번역 앱으로<br/>외국인과 깊이 있는 대화를 나누고<br/>지속적인 관계를 만들어가는 서비스</sub>")
@@ -205,14 +208,15 @@ flowchart TD
     tts_provider_research --> inworld_non_realtime_strategy
     inworld_non_realtime_strategy --> gaming_tts_test_section_spec
     gaming_tts_test_section_spec --> gaming_tts_test_section_apply
-    gaming_tts_test_section_apply --> chat_invite_feature
+    gaming_tts_test_section_apply --> gaming_tts_queue_ui_polish
+    gaming_tts_queue_ui_polish --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
     mobile_app_development -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        gaming_tts_test_section_apply
+        gaming_tts_queue_ui_polish
     end
 
     %% === STYLES ===
@@ -317,8 +321,9 @@ flowchart TD
     style seed_data_population fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style instagram_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     %% Recent node (highlighted purple)
-    style gaming_tts_test_section_apply fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
-    style gaming_tts_test_section_spec fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style gaming_tts_test_section_apply fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gaming_tts_test_section_spec fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gaming_tts_queue_ui_polish fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Blocked subgraph style (red dashed)
