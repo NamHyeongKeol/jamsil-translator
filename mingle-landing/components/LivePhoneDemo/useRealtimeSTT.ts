@@ -756,15 +756,14 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     // We crossed a threshold — fire partial translation.
     lastPartialTranslateLenRef.current = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
 
-    // Capture the text at the moment of request for staleness check.
-    const requestText = partialTranscript.trim()
+    // Capture the utterance counter at request time so we can discard stale responses
+    // that arrive after a new utterance has started (prevents cross-utterance contamination).
+    const requestUtteranceId = utteranceIdRef.current
     const currentLang = partialLangRef.current || 'unknown'
-    translateViaApi(requestText, currentLang, languages)
+    translateViaApi(partialTranscript.trim(), currentLang, languages)
       .then(translations => {
-        // Only apply if the user hasn't started a completely new utterance
-        // (current partial should still contain or extend the text we translated).
-        const currentPartial = partialTranscriptRef.current.trim()
-        if (currentPartial && !currentPartial.startsWith(requestText.slice(0, 3))) return
+        // Discard if a new utterance has started since this request was fired.
+        if (utteranceIdRef.current !== requestUtteranceId) return
         for (const [lang, text] of Object.entries(translations)) {
           partialTranslationsRef.current = { ...partialTranslationsRef.current, [lang]: text }
           setPartialTranslations(prev => ({ ...prev, [lang]: text }))
