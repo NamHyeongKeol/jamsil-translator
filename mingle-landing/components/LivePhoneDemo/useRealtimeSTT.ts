@@ -87,6 +87,8 @@ function toBase64(data: Int16Array): string {
 interface UseRealtimeSTTOptions {
   languages: string[]
   onLimitReached?: () => void
+  onTtsAudio?: (utteranceId: string, audioDataUrl: string, language: string) => void
+  enableTts?: boolean
 }
 
 interface LocalFinalizeResult {
@@ -95,7 +97,7 @@ interface LocalFinalizeResult {
   lang: string
 }
 
-export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtimeSTTOptions) {
+export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, enableTts }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   
   // Demo animation states
@@ -153,6 +155,10 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
   const partialTranscriptRef = useRef('')
   const partialLangRef = useRef<string | null>(null)
   const isStoppingRef = useRef(false)
+  const onTtsAudioRef = useRef(onTtsAudio)
+  onTtsAudioRef.current = onTtsAudio
+  const enableTtsRef = useRef(enableTts)
+  enableTtsRef.current = enableTts
   const stopFinalizeDedupRef = useRef<{ sig: string, expiresAt: number }>({ sig: '', expiresAt: 0 })
   const pendingLocalFinalizeRef = useRef<{ utteranceId: string, text: string, lang: string, expiresAt: number } | null>(null)
   // Monotonically increasing sequence number for translation requests.
@@ -339,22 +345,28 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     text: string,
     sourceLanguage: string,
     targetLanguages: string[],
-    signal?: AbortSignal,
-  ): Promise<Record<string, string>> => {
+    options?: { signal?: AbortSignal, tts?: { language: string } },
+  ): Promise<{ translations: Record<string, string>, ttsAudio?: string, ttsLanguage?: string }> => {
     const langs = targetLanguages.filter(l => l !== sourceLanguage)
-    if (!text.trim() || langs.length === 0) return {}
+    if (!text.trim() || langs.length === 0) return { translations: {} }
     try {
+      const body: Record<string, unknown> = { text, sourceLanguage, targetLanguages: langs }
+      if (options?.tts) body.tts = options.tts
       const res = await fetch('/api/translate/finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, sourceLanguage, targetLanguages: langs }),
-        signal,
+        body: JSON.stringify(body),
+        signal: options?.signal,
       })
-      if (!res.ok) return {}
+      if (!res.ok) return { translations: {} }
       const data = await res.json()
-      return (data.translations || {}) as Record<string, string>
+      return {
+        translations: (data.translations || {}) as Record<string, string>,
+        ttsAudio: data.ttsAudio as string | undefined,
+        ttsLanguage: data.ttsLanguage as string | undefined,
+      }
     } catch {
-      return {}
+      return { translations: {} }
     }
   }, [])
 
@@ -481,9 +493,14 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     if (localFinalizeResult && languages.length > 0) {
       const { utteranceId, text, lang } = localFinalizeResult
       const seq = ++translateSeqRef.current
-      translateViaApi(text, lang, languages).then(translations => {
-        if (Object.keys(translations).length > 0) {
-          applyTranslationToUtterance(utteranceId, translations, seq, true)
+      const ttsTargetLang = enableTtsRef.current ? languages.filter(l => l !== lang)[0] : undefined
+      const ttsOpt = ttsTargetLang ? { language: ttsTargetLang } : undefined
+      translateViaApi(text, lang, languages, { tts: ttsOpt }).then(result => {
+        if (Object.keys(result.translations).length > 0) {
+          applyTranslationToUtterance(utteranceId, result.translations, seq, true)
+        }
+        if (result.ttsAudio && result.ttsLanguage) {
+          onTtsAudioRef.current?.(utteranceId, result.ttsAudio, result.ttsLanguage)
         }
       })
     }
@@ -683,9 +700,14 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             // Translate via HTTP (fire-and-forget).
             if (languages.length > 0) {
               const seq = ++translateSeqRef.current
-              translateViaApi(text, lang, languages).then(translations => {
-                if (Object.keys(translations).length > 0) {
-                  applyTranslationToUtterance(newUtteranceId, translations, seq, true)
+              const ttsTargetLang = enableTtsRef.current ? languages.filter(l => l !== lang)[0] : undefined
+              const ttsOpt = ttsTargetLang ? { language: ttsTargetLang } : undefined
+              translateViaApi(text, lang, languages, { tts: ttsOpt }).then(result => {
+                if (Object.keys(result.translations).length > 0) {
+                  applyTranslationToUtterance(newUtteranceId, result.translations, seq, true)
+                }
+                if (result.ttsAudio && result.ttsLanguage) {
+                  onTtsAudioRef.current?.(newUtteranceId, result.ttsAudio, result.ttsLanguage)
                 }
               })
             }
@@ -706,9 +728,9 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
           // Translate the finalized text from error path
           if (result && languages.length > 0) {
             const seq = ++translateSeqRef.current
-            translateViaApi(result.text, result.lang, languages).then(translations => {
-              if (Object.keys(translations).length > 0) {
-                applyTranslationToUtterance(result.utteranceId, translations, seq, true)
+            translateViaApi(result.text, result.lang, languages).then(res => {
+              if (Object.keys(res.translations).length > 0) {
+                applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
               }
             })
           }
@@ -727,9 +749,9 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
             // Translate the finalized text from close path
             if (result && languages.length > 0) {
               const seq = ++translateSeqRef.current
-              translateViaApi(result.text, result.lang, languages).then(translations => {
-                if (Object.keys(translations).length > 0) {
-                  applyTranslationToUtterance(result.utteranceId, translations, seq, true)
+              translateViaApi(result.text, result.lang, languages).then(res => {
+                if (Object.keys(res.translations).length > 0) {
+                  applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
                 }
               })
             }
@@ -761,10 +783,10 @@ export default function useRealtimeSTT({ languages, onLimitReached }: UseRealtim
     const requestUtteranceId = utteranceIdRef.current
     const currentLang = partialLangRef.current || 'unknown'
     translateViaApi(partialTranscript.trim(), currentLang, languages)
-      .then(translations => {
+      .then(result => {
         // Discard if a new utterance has started since this request was fired.
         if (utteranceIdRef.current !== requestUtteranceId) return
-        for (const [lang, text] of Object.entries(translations)) {
+        for (const [lang, text] of Object.entries(result.translations)) {
           partialTranslationsRef.current = { ...partialTranslationsRef.current, [lang]: text }
           setPartialTranslations(prev => ({ ...prev, [lang]: text }))
         }
