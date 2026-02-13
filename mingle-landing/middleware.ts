@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 const locales = ['en', 'ko', 'ja', 'zh-CN', 'zh-TW', 'fr', 'de', 'es', 'pt', 'it', 'ru', 'ar', 'hi', 'th', 'vi']
-const versions = ['normal', 'flirting', 'working', 'social'] // 지원하는 버전 목록
+const versions = ['normal', 'flirting', 'working', 'social', 'gaming'] // 지원하는 버전 목록
 const defaultVersion = 'normal'
 
 export function middleware(request: NextRequest) {

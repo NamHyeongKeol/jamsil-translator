@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import i18n from '@/lib/i18n'
 
 const locales = ['en', 'ko', 'ja', 'zh-CN', 'zh-TW', 'fr', 'de', 'es', 'pt', 'it', 'ru', 'ar', 'hi', 'th', 'vi']
-const versions = ['normal', 'flirting', 'working']
+const versions = ['normal', 'flirting', 'working', 'social', 'gaming']
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
