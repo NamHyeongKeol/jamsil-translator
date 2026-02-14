@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_secret_boundary_diagnosis
+    %% @lastActive: vercel_monorepo_autodeploy_split_and_alias_check
 
     %% === START ===
     %% @project_start [start, closed]
@@ -370,6 +370,9 @@ flowchart TD
     %% @mingle_app_secret_boundary_diagnosis [ai-task, closed, 2026-02-15, ai]
     mingle_app_secret_boundary_diagnosis("mingle-app 시크릿 경계/경로 진단<br/><sub>클라이언트는 NEXT_PUBLIC_WS_URL로 중계 STT 서버에 연결되고<br/>Soniox API 키는 서버(mingle-landing stt-server)에서만 사용됨을 확인<br/>번역은 /api/translate/finalize 서버 라우트가 GEMINI/OPENAI/CLAUDE 키를 필요로 해<br/>Vercel 키 미설정 시 STT만 동작하고 번역은 실패하는 원인을 정리</sub>")
 
+    %% @vercel_monorepo_autodeploy_split_and_alias_check [ai-task, closed, 2026-02-15, ai]
+    vercel_monorepo_autodeploy_split_and_alias_check("Vercel 자동배포 분리 + 도메인 점검<br/><sub>mingle-app과 mingle-landing 프로젝트의 rootDirectory가<br/>각각 서브폴더로 설정된 상태를 확인했고<br/>두 앱 모두 vercel.json ignoreCommand를 추가해<br/>상대 앱 무관 커밋은 빌드를 자동 스킵하도록 분리</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -492,7 +495,7 @@ flowchart TD
     capacitor_server_url_env_loading_fix --> ios_device_signing_and_run_validation
     ios_device_signing_and_run_validation --> ios_safe_area_and_icon_sizing_fix
     ios_safe_area_and_icon_sizing_fix --> ios_device_rebuild_and_run
-    ios_device_rebuild_and_run --> ios_cli_build_install_run --> mingle_app_git_push --> mingle_app_gitignore_cleanup_for_deploy --> mingle_app_ios_rebuild_and_sync_retry --> mingle_app_ios_run_blocked_coredevice_service --> mingle_app_vercel_git_autodeploy_link_fix --> mingle_app_ui_scale_and_safearea_tune --> mingle_app_ios_build_sync_and_run_retry --> mingle_app_ios_launch_via_xctrace_workaround --> mingle_app_secret_boundary_diagnosis
+    ios_device_rebuild_and_run --> ios_cli_build_install_run --> mingle_app_git_push --> mingle_app_gitignore_cleanup_for_deploy --> mingle_app_ios_rebuild_and_sync_retry --> mingle_app_ios_run_blocked_coredevice_service --> mingle_app_vercel_git_autodeploy_link_fix --> mingle_app_ui_scale_and_safearea_tune --> mingle_app_ios_build_sync_and_run_retry --> mingle_app_ios_launch_via_xctrace_workaround --> mingle_app_secret_boundary_diagnosis --> vercel_monorepo_autodeploy_split_and_alias_check
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
     mingle_app_remove_60s_usage_limit --> macos_loopback_capture_validation
@@ -507,7 +510,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_secret_boundary_diagnosis
+        vercel_monorepo_autodeploy_split_and_alias_check
     end
 
     %% === STYLES ===
@@ -685,7 +688,8 @@ flowchart TD
     style mingle_app_ui_scale_and_safearea_tune fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_build_sync_and_run_retry fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
     style mingle_app_ios_launch_via_xctrace_workaround fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_secret_boundary_diagnosis fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_secret_boundary_diagnosis fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_monorepo_autodeploy_split_and_alias_check fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
