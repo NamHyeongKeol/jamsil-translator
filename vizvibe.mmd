@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: tts_prime_failure_volume_recovery_fix
+    %% @lastActive: stt_lock_resume_reconnect_removal
 
     %% === START ===
     %% @project_start [start, closed]
@@ -253,6 +253,9 @@ flowchart TD
     %% @stt_background_auto_recovery [ai-task, closed]
     stt_background_auto_recovery("잠금 복귀 후 STT 자동 복구 추가<br/><sub>visibility/pageshow/focus 복귀 이벤트에서<br/>AudioContext/track/chunk 흐름을 점검하고<br/>중단 상태가 감지되면 세션을 자동 stop→start해<br/>빨간 녹취 상태 잔류와 무음 입력 정체를 복구</sub>")
 
+    %% @stt_lock_resume_reconnect_removal [ai-task, closed]
+    stt_lock_resume_reconnect_removal("잠금 복귀 강제 재연결 로직 제거<br/><sub>잠금/백그라운드 복귀 시 실행되던<br/>STT 자동 stop→start 복구 경로를 제거해<br/>화면 잠금 자체가 세션 재연결 트리거가 되지 않도록<br/>오직 사용자 중지/offline/데모 제한에서만 종료 유지</sub>")
+
     %% @stt_mic_button_tts_decouple [ai-task, closed]
     stt_mic_button_tts_decouple("마이크 버튼의 STT 전용 제어 보장<br/><sub>마이크 클릭 시 오디오 프라임을 항상 실행하던 경로를<br/>STT 시작(idle→recording) 상황에서만 수행하도록 변경해<br/>녹취 종료 클릭이 진행 중 TTS 플레이어 src를 덮어써<br/>재생을 끊던 사이드이펙트를 제거</sub>")
 
@@ -356,7 +359,7 @@ flowchart TD
     translation_decouple_http --> finalize_inline_tts_bundle
     finalize_inline_tts_bundle --> finalize_tts_double_playback_rootcause
     finalize_tts_double_playback_rootcause --> finalize_tts_dedupe_alignment_fix
-    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable --> tts_queue_race_retrigger_fix --> stt_background_stop_policy_update --> stt_background_auto_recovery --> stt_mic_button_tts_decouple --> tts_queue_watchdog_and_start_prime_guard --> tts_prime_failure_volume_recovery_fix
+    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable --> tts_queue_race_retrigger_fix --> stt_background_stop_policy_update --> stt_background_auto_recovery --> stt_lock_resume_reconnect_removal --> stt_mic_button_tts_decouple --> tts_queue_watchdog_and_start_prime_guard --> tts_prime_failure_volume_recovery_fix
     tts_prime_failure_volume_recovery_fix --> tts_echo_reference_filter_research
     tts_prime_failure_volume_recovery_fix --> windows_loopback_capture_validation
     tts_prime_failure_volume_recovery_fix --> macos_loopback_capture_validation
@@ -368,7 +371,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        tts_prime_failure_volume_recovery_fix
+        stt_lock_resume_reconnect_removal
     end
 
     %% === STYLES ===
@@ -508,6 +511,7 @@ flowchart TD
     style tts_queue_race_retrigger_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_background_stop_policy_update fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_background_auto_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_lock_resume_reconnect_removal fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_mic_button_tts_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_queue_watchdog_and_start_prime_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_prime_failure_volume_recovery_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -531,9 +535,10 @@ flowchart TD
     style tts_queue_race_retrigger_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_background_stop_policy_update fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_background_auto_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_lock_resume_reconnect_removal fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style stt_mic_button_tts_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_queue_watchdog_and_start_prime_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style tts_prime_failure_volume_recovery_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style tts_prime_failure_volume_recovery_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style

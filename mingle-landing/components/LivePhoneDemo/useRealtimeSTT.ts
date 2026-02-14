@@ -166,9 +166,6 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
   const processorRef = useRef<ScriptProcessorNode | null>(null)
   const utteranceIdRef = useRef(0)
   const usageIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const lastAudioChunkAtRef = useRef(0)
-  const isBackgroundRecoveringRef = useRef(false)
-  const wasBackgroundedRef = useRef(false)
   const onLimitReachedRef = useRef(onLimitReached)
   onLimitReachedRef.current = onLimitReached
 
@@ -591,7 +588,6 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     processor.connect(context.destination)
     processor.onaudioprocess = (e) => {
       if (socket.readyState === WebSocket.OPEN) {
-        lastAudioChunkAtRef.current = Date.now()
         const inputData = e.inputBuffer.getChannelData(0)
         const pcmData = floatTo16BitPCM(inputData)
         const base64Data = toBase64(pcmData)
@@ -665,7 +661,6 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
 
         if (message.status === 'ready') {
           setConnectionStatus('ready')
-          lastAudioChunkAtRef.current = Date.now()
           startAudioProcessing()
 
           // Start usage timer
@@ -814,36 +809,6 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     }
   }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, handleInlineTtsFromTranslate, languages, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
 
-  const recoverFromBackgroundIfNeeded = useCallback(async () => {
-    if (connectionStatus !== 'ready') return
-    if (isBackgroundRecoveringRef.current) return
-    isBackgroundRecoveringRef.current = true
-
-    try {
-      const context = audioContextRef.current
-      if (context?.state === 'suspended') {
-        try {
-          await context.resume()
-        } catch { /* no-op */ }
-      }
-
-      const track = streamRef.current?.getAudioTracks()?.[0] ?? null
-      const trackDead = !track || track.readyState !== 'live'
-      const contextNotRunning = !audioContextRef.current || audioContextRef.current.state !== 'running'
-      const noChunksTooLong = (Date.now() - lastAudioChunkAtRef.current) > 3000
-
-      if (trackDead || contextNotRunning || noChunksTooLong) {
-        await stopRecordingGracefully()
-        await new Promise<void>((resolve) => {
-          window.setTimeout(() => resolve(), 120)
-        })
-        await startRecording()
-      }
-    } finally {
-      isBackgroundRecoveringRef.current = false
-    }
-  }, [connectionStatus, startRecording, stopRecordingGracefully])
-
   // ===== Partial translation: fire every 5-char threshold =====
   const PARTIAL_TRANSLATE_STEP = 5
   useEffect(() => {
@@ -900,39 +865,6 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       window.removeEventListener('offline', handleOffline)
     }
   }, [connectionStatus, stopRecordingGracefully])
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        wasBackgroundedRef.current = true
-        return
-      }
-      if (!wasBackgroundedRef.current) return
-      wasBackgroundedRef.current = false
-      void recoverFromBackgroundIfNeeded()
-    }
-
-    const handlePageShow = () => {
-      if (document.hidden) return
-      wasBackgroundedRef.current = false
-      void recoverFromBackgroundIfNeeded()
-    }
-
-    const handleFocus = () => {
-      if (document.hidden) return
-      void recoverFromBackgroundIfNeeded()
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('pageshow', handlePageShow)
-    window.addEventListener('focus', handleFocus)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('pageshow', handlePageShow)
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [recoverFromBackgroundIfNeeded])
 
   return {
     connectionStatus,
