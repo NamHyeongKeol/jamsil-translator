@@ -14,11 +14,18 @@ type MingleHomeProps = {
 };
 
 export default function MingleHome(props: MingleHomeProps) {
-  void props;
-
   return (
     <main className="h-full min-h-0 w-full overflow-hidden bg-white text-slate-900">
-      <LivePhoneDemo enableAutoTTS />
+      <LivePhoneDemo
+        enableAutoTTS
+        tapPlayToStartLabel={props.dictionary.demo.tapPlayToStart}
+        usageLimitReachedLabel={props.dictionary.demo.usageLimitReached}
+        usageLimitRetryHintLabel={props.dictionary.demo.usageLimitRetryHint}
+        connectingLabel={props.dictionary.demo.connecting}
+        connectionFailedLabel={props.dictionary.demo.connectionFailed}
+        muteTtsLabel={props.dictionary.demo.muteTts}
+        unmuteTtsLabel={props.dictionary.demo.unmuteTts}
+      />
     </main>
   );
 }

@@ -184,17 +184,12 @@
 }
 
 .mobile-canvas-frame {
-  width: 480px;
+  width: 390px;
   height: 100svh;
   min-height: 100svh;
   transform-origin: top left;
   will-change: transform;
   overflow: hidden;
-}
-
-.mobile-safe-shell {
-  padding-top: max(env(safe-area-inset-top), 0px);
-  padding-bottom: max(env(safe-area-inset-bottom), 0px);
 }
 
 @layer utilities {

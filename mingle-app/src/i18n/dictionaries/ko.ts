@@ -1,6 +1,15 @@
 import type { AppDictionary } from "@/i18n/types";
 
 export const koDictionary: AppDictionary = {
+  demo: {
+    tapPlayToStart: "재생 버튼을 눌러 시작하세요",
+    usageLimitReached: "사용 한도에 도달했습니다",
+    usageLimitRetryHint: "새 세션에서 다시 시도해주세요.",
+    connecting: "연결 중...",
+    connectionFailed: "연결 실패. 재시도 중...",
+    muteTts: "음성 끄기",
+    unmuteTts: "음성 켜기",
+  },
   tabs: {
     chats: "채팅",
     connect: "친구 찾기",
