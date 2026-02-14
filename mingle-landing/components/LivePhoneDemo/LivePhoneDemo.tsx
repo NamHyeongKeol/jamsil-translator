@@ -98,6 +98,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const isAudioPrimedRef = useRef(false)
   const ttsNeedsUnlockRef = useRef(false)
   const processTtsQueueRef = useRef<() => void>(() => {})
+  const initialUtteranceIdsRef = useRef<string[] | null>(null)
 
   // Persist selected languages
   useEffect(() => {
@@ -105,6 +106,15 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       localStorage.setItem(LS_KEY_LANGUAGES, JSON.stringify(selectedLanguages))
     } catch { /* ignore */ }
   }, [selectedLanguages])
+
+  // Ignore preloaded/history utterances for TTS queue ordering.
+  // Only utterances created after this component mount should be considered for playback.
+  useEffect(() => {
+    const initialIds = initialUtteranceIdsRef.current ?? []
+    for (const id of initialIds) {
+      ttsPlayedUtteranceRef.current.add(id)
+    }
+  }, [])
 
   const ensureAudioPlayer = useCallback(() => {
     if (playerAudioRef.current) return playerAudioRef.current
@@ -264,6 +274,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     enableTts: enableAutoTTS && isSoundEnabled,
   })
   utterancesRef.current = utterances
+  if (initialUtteranceIdsRef.current === null) {
+    initialUtteranceIdsRef.current = utterances.map(utterance => utterance.id)
+  }
 
   // Re-evaluate queue after utterance state commit.
   // This closes the race where inline TTS arrives before translationFinalized state is rendered.
@@ -292,10 +305,17 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     prevIsActiveRef.current = isActive
   }, [isActive, utterances, selectedLanguages, usageSec])
 
-  const primeAudioPlayback = useCallback(async (): Promise<boolean> => {
-    if (isAudioPrimedRef.current) return true
+  const primeAudioPlayback = useCallback(async (force = false): Promise<boolean> => {
+    if (!force && isAudioPrimedRef.current) return true
     try {
       const player = ensureAudioPlayer()
+      // Don't interrupt active TTS playback.
+      if (!player.paused && !player.ended) {
+        isAudioPrimedRef.current = true
+        ttsNeedsUnlockRef.current = false
+        setIsTtsBlocked(false)
+        return true
+      }
       player.src = SILENT_WAV_DATA_URI
       player.volume = 0
       await player.play()
@@ -328,7 +348,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
 
     if (withPriming && ttsNeedsUnlockRef.current) {
-      void primeAudioPlayback().then((ok) => {
+      void primeAudioPlayback(true).then((ok) => {
         if (!ok) {
           ttsNeedsUnlockRef.current = true
           setIsTtsBlocked(true)
@@ -398,6 +418,19 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
   }, [enableAutoTTS, resumeTtsPlayback])
 
+  // Keep TTS moving even if a trigger was missed (e.g. race between state commit and inline audio arrival).
+  useEffect(() => {
+    if (!enableAutoTTS || !isSoundEnabled) return
+    const intervalId = window.setInterval(() => {
+      if (isTtsProcessingRef.current) return
+      if (ttsPendingByUtteranceRef.current.size === 0) return
+      processTtsQueue()
+    }, 350)
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [enableAutoTTS, isSoundEnabled, processTtsQueue])
+
   useEffect(() => {
     return () => {
       clearTtsOrderWaitTimer()
@@ -420,6 +453,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     })
   }, [])
 
+  const handleMicPointerDown = useCallback(() => {
+    if (!enableAutoTTS || isActive) return
+    void primeAudioPlayback()
+  }, [enableAutoTTS, isActive, primeAudioPlayback])
+
   const handleMicClick = useCallback(() => {
     if (isLimitReached) {
       onLimitReached?.()
@@ -432,13 +470,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         if (!ok) {
           ttsNeedsUnlockRef.current = true
           setIsTtsBlocked(true)
-          return
         }
-        processTtsQueue()
       })
     }
     toggleRecording()
-  }, [enableAutoTTS, isActive, isLimitReached, onLimitReached, primeAudioPlayback, processTtsQueue, toggleRecording])
+  }, [enableAutoTTS, isActive, isLimitReached, onLimitReached, primeAudioPlayback, toggleRecording])
 
   useImperativeHandle(ref, () => ({
     startRecording: handleMicClick,
@@ -670,6 +706,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         <div className="flex items-center justify-center py-3 border-t border-gray-100 bg-white">
           <div className="flex items-center gap-1.5">
             <button
+              onPointerDown={handleMicPointerDown}
               onClick={handleMicClick}
               disabled={isConnecting || isError}
               className="relative flex items-center justify-center w-12 h-12 mr-10 rounded-full transition-all duration-200 active:scale-95 disabled:opacity-50"
