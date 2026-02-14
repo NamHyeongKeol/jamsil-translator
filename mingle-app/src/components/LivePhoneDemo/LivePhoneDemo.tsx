@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, Loader2, Volume2, VolumeX } from 'lucide-react'
+import { Play, Loader2, Volume2, VolumeX } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
@@ -691,8 +691,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           {/* Empty state */}
           {utterances.length === 0 && !partialTranscript && !demoTypingText && !demoTypingLang && !isDemoAnimating && !isActive && !isError && !isLimitReached && (
             <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 gap-2 pt-12">
-              <Mic size={28} className="text-gray-300" />
-              <p className="text-sm">Tap the mic to start</p>
+              <Play size={28} className="text-gray-300" />
+              <p className="text-sm">Tap play to start</p>
             </div>
           )}
 
@@ -756,7 +756,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 {isConnecting ? (
                   <Loader2 size={22} className="text-white animate-spin" />
                 ) : (
-                  <Mic size={22} className="text-white" />
+                  <Play size={22} className="text-white" />
                 )}
               </span>
             </button>
