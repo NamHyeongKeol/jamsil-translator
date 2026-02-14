@@ -149,7 +149,8 @@
       "subtitle": "和外国人组队时也能自由交流。没有语言障碍。",
       "ctaMain": "下载",
       "ctaSub": "与全球玩家一起",
-      "tryDemo": "试试看"
+      "tryDemo": "试试看",
+      "demoDisclaimer": "* 这只是用于性能测试的演示，实际应用界面会有所不同。"
     }
   },
   "globalStats": {
