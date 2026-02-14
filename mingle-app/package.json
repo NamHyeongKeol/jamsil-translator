@@ -21,7 +21,6 @@
     "crawl:hellotalk": "node scripts/crawl-hellotalk.mjs"
   },
   "dependencies": {
-    "@mingle/live-demo-core": "file:../packages/live-demo-core",
     "@anthropic-ai/sdk": "^0.74.0",
     "@capacitor/core": "^8.1.0",
     "@google/generative-ai": "^0.24.1",

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import type { Utterance } from './chat-bubble'
+import type { Utterance } from './ChatBubble'
 
 const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '3001'
 const getWsUrl = () => {
