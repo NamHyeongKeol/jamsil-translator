@@ -96,6 +96,27 @@ interface LocalFinalizeResult {
   lang: string
 }
 
+interface TranslateApiResult {
+  translations: Record<string, string>
+  ttsLanguage?: string
+  ttsAudioBase64?: string
+  ttsAudioMime?: string
+}
+
+function decodeBase64AudioToBlob(base64: string, mime = 'audio/mpeg'): Blob | null {
+  try {
+    const binary = atob(base64)
+    const len = binary.length
+    const bytes = new Uint8Array(len)
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return new Blob([bytes], { type: mime })
+  } catch {
+    return null
+  }
+}
+
 export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, enableTts }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   
@@ -144,6 +165,9 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
   const processorRef = useRef<ScriptProcessorNode | null>(null)
   const utteranceIdRef = useRef(0)
   const usageIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastAudioChunkAtRef = useRef(0)
+  const isBackgroundRecoveringRef = useRef(false)
+  const wasBackgroundedRef = useRef(false)
   const onLimitReachedRef = useRef(onLimitReached)
   onLimitReachedRef.current = onLimitReached
 
@@ -345,12 +369,19 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     text: string,
     sourceLanguage: string,
     targetLanguages: string[],
-    options?: { signal?: AbortSignal },
-  ): Promise<{ translations: Record<string, string> }> => {
+    options?: {
+      signal?: AbortSignal
+      ttsLanguage?: string
+    },
+  ): Promise<TranslateApiResult> => {
     const langs = targetLanguages.filter(l => l !== sourceLanguage)
     if (!text.trim() || langs.length === 0) return { translations: {} }
     try {
       const body: Record<string, unknown> = { text, sourceLanguage, targetLanguages: langs }
+      const normalizedTtsLang = (options?.ttsLanguage || '').trim()
+      if (normalizedTtsLang) {
+        body.tts = { language: normalizedTtsLang }
+      }
       const res = await fetch('/api/translate/finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -361,52 +392,34 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       const data = await res.json()
       return {
         translations: (data.translations || {}) as Record<string, string>,
+        ttsLanguage: typeof data.ttsLanguage === 'string' ? data.ttsLanguage : undefined,
+        ttsAudioBase64: typeof data.ttsAudioBase64 === 'string' ? data.ttsAudioBase64 : undefined,
+        ttsAudioMime: typeof data.ttsAudioMime === 'string' ? data.ttsAudioMime : undefined,
       }
     } catch {
       return { translations: {} }
     }
   }, [])
 
-  const requestTtsViaApi = useCallback(async (text: string, language: string): Promise<Blob | null> => {
-    if (!text.trim() || !language.trim()) return null
-    try {
-      const res = await fetch('/api/tts/inworld', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, language }),
-      })
-      if (!res.ok) return null
-      const audioBlob = await res.blob()
-      if (!audioBlob.size) return null
-      return audioBlob
-    } catch {
-      return null
-    }
-  }, [])
-
-  const requestFinalTtsForUtterance = useCallback((
+  const handleInlineTtsFromTranslate = useCallback((
     utteranceId: string,
     sourceLanguage: string,
-    translations: Record<string, string>,
+    result: TranslateApiResult,
   ) => {
     if (!enableTtsRef.current) return
-    const ttsTargetLang = languages.filter(l => l !== sourceLanguage)[0]
+    if (!result.ttsAudioBase64) return
+    const ttsTargetLang = (result.ttsLanguage || languages.filter(l => l !== sourceLanguage)[0] || '').trim()
     if (!ttsTargetLang) return
-    const ttsText = (translations[ttsTargetLang] || '').trim()
+    const ttsText = (result.translations[ttsTargetLang] || '').trim()
     if (!ttsText) return
 
     const signature = `${ttsTargetLang}::${ttsText}`
     if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return
+    const audioBlob = decodeBase64AudioToBlob(result.ttsAudioBase64, result.ttsAudioMime || 'audio/mpeg')
+    if (!audioBlob || audioBlob.size === 0) return
     finalizedTtsSignatureRef.current.set(utteranceId, signature)
-
-    void requestTtsViaApi(ttsText, ttsTargetLang).then(audioBlob => {
-      if (!audioBlob) {
-        finalizedTtsSignatureRef.current.delete(utteranceId)
-        return
-      }
-      onTtsAudioRef.current?.(utteranceId, audioBlob, ttsTargetLang)
-    })
-  }, [languages, requestTtsViaApi])
+    onTtsAudioRef.current?.(utteranceId, audioBlob, ttsTargetLang)
+  }, [languages])
 
   const applyTranslationToUtterance = useCallback((
     utteranceId: string,
@@ -530,17 +543,18 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     // Translate the finalized text via HTTP (fire-and-forget, results update utterance).
     if (localFinalizeResult && languages.length > 0) {
       const { utteranceId, text, lang } = localFinalizeResult
+      const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== lang)[0] || '') : ''
       const seq = ++translateSeqRef.current
-      translateViaApi(text, lang, languages).then(result => {
+      translateViaApi(text, lang, languages, { ttsLanguage: ttsTargetLang }).then(result => {
         if (Object.keys(result.translations).length > 0) {
           applyTranslationToUtterance(utteranceId, result.translations, seq, true)
-          requestFinalTtsForUtterance(utteranceId, lang, result.translations)
+          handleInlineTtsFromTranslate(utteranceId, lang, result)
         }
       })
     }
-  }, [applyTranslationToUtterance, finalizePendingLocally, languages, requestFinalTtsForUtterance, stopAudioPipeline, translateViaApi])
+  }, [applyTranslationToUtterance, finalizePendingLocally, handleInlineTtsFromTranslate, languages, stopAudioPipeline, translateViaApi])
 
-  const visualize = useCallback(function drawVolume() {
+  const visualize = useCallback(() => {
     if (analyserRef.current) {
       const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount)
       analyserRef.current.getByteTimeDomainData(dataArray)
@@ -550,7 +564,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       }
       const rms = Math.sqrt(sum / dataArray.length)
       setVolume(rms)
-      animationFrameRef.current = requestAnimationFrame(drawVolume)
+      animationFrameRef.current = requestAnimationFrame(visualize)
     } else {
       setVolume(0)
     }
@@ -576,6 +590,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     processor.connect(context.destination)
     processor.onaudioprocess = (e) => {
       if (socket.readyState === WebSocket.OPEN) {
+        lastAudioChunkAtRef.current = Date.now()
         const inputData = e.inputBuffer.getChannelData(0)
         const pcmData = floatTo16BitPCM(inputData)
         const base64Data = toBase64(pcmData)
@@ -649,6 +664,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
 
         if (message.status === 'ready') {
           setConnectionStatus('ready')
+          lastAudioChunkAtRef.current = Date.now()
           startAudioProcessing()
 
           // Start usage timer
@@ -734,10 +750,11 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
             // Translate via HTTP (fire-and-forget).
             if (languages.length > 0) {
               const seq = ++translateSeqRef.current
-              translateViaApi(text, lang, languages).then(result => {
+              const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== lang)[0] || '') : ''
+              translateViaApi(text, lang, languages, { ttsLanguage: ttsTargetLang }).then(result => {
                 if (Object.keys(result.translations).length > 0) {
                   applyTranslationToUtterance(newUtteranceId, result.translations, seq, true)
-                  requestFinalTtsForUtterance(newUtteranceId, lang, result.translations)
+                  handleInlineTtsFromTranslate(newUtteranceId, lang, result)
                 }
               })
             }
@@ -794,7 +811,37 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, languages, requestFinalTtsForUtterance, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
+  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, handleInlineTtsFromTranslate, languages, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
+
+  const recoverFromBackgroundIfNeeded = useCallback(async () => {
+    if (connectionStatus !== 'ready') return
+    if (isBackgroundRecoveringRef.current) return
+    isBackgroundRecoveringRef.current = true
+
+    try {
+      const context = audioContextRef.current
+      if (context?.state === 'suspended') {
+        try {
+          await context.resume()
+        } catch { /* no-op */ }
+      }
+
+      const track = streamRef.current?.getAudioTracks()?.[0] ?? null
+      const trackDead = !track || track.readyState !== 'live'
+      const contextNotRunning = !audioContextRef.current || audioContextRef.current.state !== 'running'
+      const noChunksTooLong = (Date.now() - lastAudioChunkAtRef.current) > 3000
+
+      if (trackDead || contextNotRunning || noChunksTooLong) {
+        await stopRecordingGracefully()
+        await new Promise<void>((resolve) => {
+          window.setTimeout(() => resolve(), 120)
+        })
+        await startRecording()
+      }
+    } finally {
+      isBackgroundRecoveringRef.current = false
+    }
+  }, [connectionStatus, startRecording, stopRecordingGracefully])
 
   // ===== Partial translation: fire every 5-char threshold =====
   const PARTIAL_TRANSLATE_STEP = 5
@@ -841,31 +888,50 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
   useEffect(() => {
     const shouldStop = () => connectionStatus === 'ready' || connectionStatus === 'connecting'
 
-    const handlePageHide = () => {
-      if (!shouldStop()) return
-      void stopRecordingGracefully()
-    }
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden || !shouldStop()) return
-      void stopRecordingGracefully()
-    }
-
     const handleOffline = () => {
       if (!shouldStop()) return
       void stopRecordingGracefully()
     }
 
-    window.addEventListener('pagehide', handlePageHide)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('offline', handleOffline)
 
     return () => {
-      window.removeEventListener('pagehide', handlePageHide)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('offline', handleOffline)
     }
   }, [connectionStatus, stopRecordingGracefully])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        wasBackgroundedRef.current = true
+        return
+      }
+      if (!wasBackgroundedRef.current) return
+      wasBackgroundedRef.current = false
+      void recoverFromBackgroundIfNeeded()
+    }
+
+    const handlePageShow = () => {
+      if (document.hidden) return
+      wasBackgroundedRef.current = false
+      void recoverFromBackgroundIfNeeded()
+    }
+
+    const handleFocus = () => {
+      if (document.hidden) return
+      void recoverFromBackgroundIfNeeded()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pageshow', handlePageShow)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pageshow', handlePageShow)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [recoverFromBackgroundIfNeeded])
 
   return {
     connectionStatus,

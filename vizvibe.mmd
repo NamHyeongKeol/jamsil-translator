@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: stt_stop_pipeline_without_output_close
+    %% @lastActive: mingle_app_landing_test_section_rebase
 
     %% === START ===
     %% @project_start [start, closed]
@@ -271,6 +271,9 @@ flowchart TD
     %% @stt_stop_pipeline_without_output_close [ai-task, closed]
     stt_stop_pipeline_without_output_close("STT 중지 시 출력 오디오 세션 보존<br/><sub>STT 정지에서 AudioContext를 close하던 경로를<br/>suspend 기반으로 변경하고 context 재사용을 도입해<br/>마이크 종료 시점에 iOS 출력 경로가 흔들리며<br/>TTS 재생이 끊기던 현상을 완화하도록 조정</sub>")
 
+    %% @mingle_app_landing_test_section_rebase [ai-task, closed]
+    mingle_app_landing_test_section_rebase("mingle-app 테스트 섹션 원본 재이식<br/><sub>mingle-landing 테스트 섹션 최신 코드를<br/>LivePhoneDemo/useRealtimeSTT와 번역/TTS API에<br/>원본 기준으로 다시 동기화하고 폰 프레임을 제거해<br/>앱 전역 480px 모바일 캔버스 스케일을 적용</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -365,10 +368,10 @@ flowchart TD
     translation_decouple_http --> finalize_inline_tts_bundle
     finalize_inline_tts_bundle --> finalize_tts_double_playback_rootcause
     finalize_tts_double_playback_rootcause --> finalize_tts_dedupe_alignment_fix
-    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable --> tts_queue_race_retrigger_fix --> stt_background_stop_policy_update --> stt_background_auto_recovery --> stt_lock_resume_reconnect_removal --> stt_mic_button_tts_decouple --> tts_queue_watchdog_and_start_prime_guard --> tts_prime_failure_volume_recovery_fix --> stt_lock_resume_reconnect_restore_and_stop_click_tts_resume --> stt_stop_pipeline_without_output_close
-    stt_stop_pipeline_without_output_close --> tts_echo_reference_filter_research
-    stt_stop_pipeline_without_output_close --> windows_loopback_capture_validation
-    stt_stop_pipeline_without_output_close --> macos_loopback_capture_validation
+    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable --> tts_queue_race_retrigger_fix --> stt_background_stop_policy_update --> stt_background_auto_recovery --> stt_lock_resume_reconnect_removal --> stt_mic_button_tts_decouple --> tts_queue_watchdog_and_start_prime_guard --> tts_prime_failure_volume_recovery_fix --> stt_lock_resume_reconnect_restore_and_stop_click_tts_resume --> stt_stop_pipeline_without_output_close --> mingle_app_landing_test_section_rebase
+    mingle_app_landing_test_section_rebase --> tts_echo_reference_filter_research
+    mingle_app_landing_test_section_rebase --> windows_loopback_capture_validation
+    mingle_app_landing_test_section_rebase --> macos_loopback_capture_validation
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -377,7 +380,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        stt_stop_pipeline_without_output_close
+        mingle_app_landing_test_section_rebase
     end
 
     %% === STYLES ===
@@ -523,6 +526,7 @@ flowchart TD
     style tts_prime_failure_volume_recovery_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_lock_resume_reconnect_restore_and_stop_click_tts_resume fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_stop_pipeline_without_output_close fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_landing_test_section_rebase fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -548,7 +552,8 @@ flowchart TD
     style tts_queue_watchdog_and_start_prime_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_prime_failure_volume_recovery_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_lock_resume_reconnect_restore_and_stop_click_tts_resume fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style stt_stop_pipeline_without_output_close fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style stt_stop_pipeline_without_output_close fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_landing_test_section_rebase fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style
