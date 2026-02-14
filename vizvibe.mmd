@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: landing_favicon_route_module_not_found_fix
+    %% @lastActive: opencode_codex_oauth_pending
 
     %% === START ===
     %% @project_start [start, closed]
@@ -337,6 +337,12 @@ flowchart TD
     %% @macos_loopback_capture_validation [ai-task, opened]
     macos_loopback_capture_validation("macOS 루프백 캡처 검증 (추후)<br/><sub>시스템 오디오 캡처 권한 승인 이후<br/>ScreenCaptureKit 경로에서 디스코드<br/>출력 음성을 안정적으로 수집 가능한지<br/>권한 거절/재요청 UX까지 점검</sub>")
 
+    %% @opencode_oh_my_setup [ai-task, closed]
+    opencode_oh_my_setup("OpenCode + Oh-My 설치 완료<br/><sub>opencode-ai와 oh-my-opencode를 설치하고<br/>OpenAI 중심 플래그로 기본 에이전트 설정을 생성해<br/>~/.config/opencode에 플러그인/모델 프리셋을<br/>즉시 사용 가능한 상태로 초기화</sub>")
+
+    %% @opencode_codex_oauth_pending [human-task, opened]
+    opencode_codex_oauth_pending("Codex OAuth 승인 대기<br/><sub>opencode auth login OpenAI(headless)에서<br/>장치 코드 발급까지 완료했고 브라우저 승인만 남음<br/>승인 완료 시 auth.json에 크리덴셜이 저장되어<br/>openai/gpt-5.2-codex 모델을 바로 실행 가능</sub>")
+
     %% @ultimate_goal [end, opened]
     ultimate_goal("Mingle Launch<br/><sub>소셜링 중심의 실시간 번역 앱으로<br/>외국인과 깊이 있는 대화를 나누고<br/>지속적인 관계를 만들어가는 서비스</sub>")
 
@@ -439,15 +445,18 @@ flowchart TD
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
     mingle_app_remove_60s_usage_limit --> macos_loopback_capture_validation
+    project_start --> opencode_oh_my_setup
+    opencode_oh_my_setup --> opencode_codex_oauth_pending
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
     mobile_app_development -.-> ultimate_goal
+    opencode_codex_oauth_pending -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        landing_favicon_route_module_not_found_fix
+        opencode_codex_oauth_pending
     end
 
     %% === STYLES ===
@@ -615,6 +624,8 @@ flowchart TD
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style macos_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style opencode_oh_my_setup fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
@@ -650,7 +661,7 @@ flowchart TD
     style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_scaffold fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style landing_favicon_route_module_not_found_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style opencode_codex_oauth_pending fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style
