@@ -12,7 +12,7 @@ const DEFAULT_MODEL = process.env.DEMO_TRANSLATE_MODEL || 'gemini-2.5-flash-lite
 const INWORLD_API_BASE = 'https://api.inworld.ai'
 const DEFAULT_TTS_MODEL_ID = process.env.INWORLD_TTS_MODEL_ID || 'inworld-tts-1.5-mini'
 const DEFAULT_TTS_VOICE_ID = process.env.INWORLD_TTS_DEFAULT_VOICE_ID || 'Ashley'
-const DEFAULT_TTS_SPEAKING_RATE = Number(process.env.INWORLD_TTS_SPEAKING_RATE || '1.2')
+const DEFAULT_TTS_SPEAKING_RATE = Number(process.env.INWORLD_TTS_SPEAKING_RATE || '1.3')
 const VOICE_CACHE_TTL_MS = 1000 * 60 * 30
 
 const LANG_NAMES: Record<string, string> = {
@@ -182,7 +182,7 @@ async function synthesizeTtsInline(args: {
         audioConfig: {
           speakingRate: Number.isFinite(DEFAULT_TTS_SPEAKING_RATE) && DEFAULT_TTS_SPEAKING_RATE > 0
             ? DEFAULT_TTS_SPEAKING_RATE
-            : 1.2,
+            : 1.3,
         },
       }),
       cache: 'no-store',
