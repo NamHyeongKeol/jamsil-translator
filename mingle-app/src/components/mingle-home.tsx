@@ -1,7 +1,11 @@
 "use client";
 
-import LivePhoneDemo from "@/components/LivePhoneDemo/LivePhoneDemo";
+import dynamic from "next/dynamic";
 import type { AppDictionary } from "@/i18n/types";
+
+const LivePhoneDemo = dynamic(() => import("@/components/LivePhoneDemo/LivePhoneDemo"), {
+  ssr: false,
+});
 
 type MingleHomeProps = {
   dictionary: AppDictionary;
