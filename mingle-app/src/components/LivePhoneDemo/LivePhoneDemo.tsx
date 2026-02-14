@@ -10,7 +10,6 @@ import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
 
 const VOLUME_THRESHOLD = 0.05
-const USAGE_LIMIT_SEC = 60
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
 const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='
 const TTS_ORDER_WAIT_TIMEOUT_MS = 2000
@@ -262,6 +261,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     partialLang,
     usageSec,
     isLimitReached,
+    usageLimitSec,
     // Demo animation states
     isDemoAnimating,
     demoTypingText,
@@ -550,8 +550,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     ? Object.entries(partialTranslations).filter(([lang]) => selectedLanguages.includes(lang) && lang !== detectedLang)
     : []
 
-  const remainingSec = Math.max(0, USAGE_LIMIT_SEC - usageSec)
-  const usagePercent = Math.min(100, (usageSec / USAGE_LIMIT_SEC) * 100)
+  const isUsageLimited = typeof usageLimitSec === 'number'
+  const remainingSec = isUsageLimited
+    ? Math.max(0, usageLimitSec - usageSec)
+    : null
+  const usagePercent = isUsageLimited
+    ? Math.min(100, (usageSec / usageLimitSec) * 100)
+    : null
 
   return (
     <PhoneFrame>
@@ -763,15 +768,23 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             {/* Usage progress bar */}
             {usageSec > 0 && (
               <div className="flex items-center gap-1.5">
-                <div className="w-20 h-1 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${usageSec >= 25 ? 'bg-red-400' : 'bg-amber-400'}`}
-                    style={{ width: `${usagePercent}%` }}
-                  />
-                </div>
-                <span className={`text-[10px] tabular-nums ${isLimitReached ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
-                  {remainingSec}s
-                </span>
+                {isUsageLimited ? (
+                  <>
+                    <div className="w-20 h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${usageSec >= 25 ? 'bg-red-400' : 'bg-amber-400'}`}
+                        style={{ width: `${usagePercent}%` }}
+                      />
+                    </div>
+                    <span className={`text-[10px] tabular-nums ${isLimitReached ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
+                      {remainingSec}s
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px] tabular-nums text-gray-400">
+                    {usageSec}s
+                  </span>
+                )}
                 {enableAutoTTS && (
                   <button
                     onClick={() => {

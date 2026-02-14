@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: shared_live_demo_core_package_split
+    %% @lastActive: mingle_app_remove_60s_usage_limit
 
     %% === START ===
     %% @project_start [start, closed]
@@ -304,6 +304,9 @@ flowchart TD
     %% @shared_live_demo_core_package_split [ai-task, closed]
     shared_live_demo_core_package_split("라이브 데모 코어 패키지 분리<br/><sub>mingle-landing 최신 useRealtimeSTT/ChatBubble/LanguageSelector를<br/>packages/live-demo-core로 추출해 단일 소스로 관리하고<br/>landing/app 모두 로컬 래퍼를 통해 공통 패키지를 참조하도록<br/>연결해 UI 분기와 코어 로직 분리를 동시에 달성</sub>")
 
+    %% @mingle_app_remove_60s_usage_limit [ai-task, closed]
+    mingle_app_remove_60s_usage_limit("mingle-app 60초 제한 해제<br/><sub>공통 useRealtimeSTT 훅에 usageLimitSec 옵션을 추가해<br/>기본값 60초는 landing에 유지하고 app 래퍼에서 null 주입<br/>앱 UI는 제한 진행바/잔여초 대신 경과 시간 표시로 전환해<br/>제한 없는 녹음 흐름과 표시 정합성을 맞추도록 보정</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -408,9 +411,10 @@ flowchart TD
     mingle_app_top_level_scale_only --> mingle_app_fixed_footer_via_svh_and_flex_constraints
     mingle_app_fixed_footer_via_svh_and_flex_constraints --> mingle_app_footer_bottom_anchor_with_frame_height_inheritance
     mingle_app_footer_bottom_anchor_with_frame_height_inheritance --> shared_live_demo_core_package_split
-    shared_live_demo_core_package_split --> tts_echo_reference_filter_research
-    shared_live_demo_core_package_split --> windows_loopback_capture_validation
-    shared_live_demo_core_package_split --> macos_loopback_capture_validation
+    shared_live_demo_core_package_split --> mingle_app_remove_60s_usage_limit
+    mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
+    mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
+    mingle_app_remove_60s_usage_limit --> macos_loopback_capture_validation
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -419,7 +423,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        shared_live_demo_core_package_split
+        mingle_app_remove_60s_usage_limit
     end
 
     %% === STYLES ===
@@ -576,6 +580,7 @@ flowchart TD
     style mingle_app_fixed_footer_via_svh_and_flex_constraints fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_footer_bottom_anchor_with_frame_height_inheritance fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -612,7 +617,8 @@ flowchart TD
     style mingle_app_top_level_scale_only fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_fixed_footer_via_svh_and_flex_constraints fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_footer_bottom_anchor_with_frame_height_inheritance fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style shared_live_demo_core_package_split fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_remove_60s_usage_limit fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style

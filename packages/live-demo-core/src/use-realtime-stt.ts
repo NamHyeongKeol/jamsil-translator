@@ -12,7 +12,7 @@ const getWsUrl = () => {
   return `${protocol}://${host}:${WS_PORT}`
 }
 const VOLUME_THRESHOLD = 0.05
-const USAGE_LIMIT_SEC = 60
+const DEFAULT_USAGE_LIMIT_SEC = 60
 
 const LS_KEY_UTTERANCES = 'mingle_demo_utterances'
 const LS_KEY_USAGE = 'mingle_demo_usage_sec'
@@ -89,6 +89,7 @@ interface UseRealtimeSTTOptions {
   onLimitReached?: () => void
   onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string) => void
   enableTts?: boolean
+  usageLimitSec?: number | null
 }
 
 interface LocalFinalizeResult {
@@ -118,7 +119,7 @@ function decodeBase64AudioToBlob(base64: string, mime = 'audio/mpeg'): Blob | nu
   }
 }
 
-export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, enableTts }: UseRealtimeSTTOptions) {
+export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, enableTts, usageLimitSec = DEFAULT_USAGE_LIMIT_SEC }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   
   // Demo animation states
@@ -311,7 +312,12 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     }
   }, [isDemoAnimating])
 
-  const isLimitReached = usageSec >= USAGE_LIMIT_SEC
+  const normalizedUsageLimitSec = (
+    typeof usageLimitSec === 'number'
+    && Number.isFinite(usageLimitSec)
+    && usageLimitSec > 0
+  ) ? usageLimitSec : null
+  const isLimitReached = normalizedUsageLimitSec !== null && usageSec >= normalizedUsageLimitSec
 
   const stopAudioPipeline = useCallback((options?: { closeContext?: boolean }) => {
     const shouldCloseContext = options?.closeContext === true
@@ -623,7 +629,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     }
 
     // Check limit before starting
-    if (usageSec >= USAGE_LIMIT_SEC) {
+    if (normalizedUsageLimitSec !== null && usageSec >= normalizedUsageLimitSec) {
       onLimitReachedRef.current?.()
       return
     }
@@ -693,7 +699,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
           usageIntervalRef.current = setInterval(() => {
             setUsageSec(prev => {
               const next = prev + 1
-              if (next >= USAGE_LIMIT_SEC) {
+              if (normalizedUsageLimitSec !== null && next >= normalizedUsageLimitSec) {
                 // Hit limit - defer cleanup to avoid setState-during-render
                 setTimeout(() => {
                   void stopRecordingGracefully(true)
@@ -833,7 +839,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, handleInlineTtsFromTranslate, languages, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
+  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, handleInlineTtsFromTranslate, languages, normalizedUsageLimitSec, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
 
   const recoverFromBackgroundIfNeeded = useCallback(async () => {
     if (connectionStatus !== 'ready') return
@@ -969,6 +975,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     partialLang,
     usageSec,
     isLimitReached,
+    usageLimitSec: normalizedUsageLimitSec,
     // Demo animation states
     isDemoAnimating,
     demoTypingText,
