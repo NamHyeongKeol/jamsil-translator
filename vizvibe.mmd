@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: tts_queue_watchdog_and_start_prime_guard
+    %% @lastActive: tts_prime_failure_volume_recovery_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -259,6 +259,9 @@ flowchart TD
     %% @tts_queue_watchdog_and_start_prime_guard [ai-task, closed]
     tts_queue_watchdog_and_start_prime_guard("TTS 큐 독립 재시도 + 시작 프라임 보강<br/><sub>inline 오디오 도착 후 트리거 누락 시를 대비해<br/>pending 큐를 짧은 주기로 재평가하는 watchdog을 추가하고<br/>마이크 시작 제스처(pointerdown/click)에서만 프라임하며<br/>재생 중 플레이어는 건드리지 않도록 인터럽트 가드 적용</sub>")
 
+    %% @tts_prime_failure_volume_recovery_fix [ai-task, closed]
+    tts_prime_failure_volume_recovery_fix("프라임 실패 시 볼륨 복구 보장<br/><sub>silent priming 도중 play() 실패가 발생하면<br/>공유 오디오 플레이어 volume이 0으로 남아<br/>TTS가 작게 들리거나 무음처럼 보이던 경로를<br/>실패 처리에서 volume/src를 즉시 복구하도록 수정</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -353,10 +356,10 @@ flowchart TD
     translation_decouple_http --> finalize_inline_tts_bundle
     finalize_inline_tts_bundle --> finalize_tts_double_playback_rootcause
     finalize_tts_double_playback_rootcause --> finalize_tts_dedupe_alignment_fix
-    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable --> tts_queue_race_retrigger_fix --> stt_background_stop_policy_update --> stt_background_auto_recovery --> stt_mic_button_tts_decouple --> tts_queue_watchdog_and_start_prime_guard
-    tts_queue_watchdog_and_start_prime_guard --> tts_echo_reference_filter_research
-    tts_queue_watchdog_and_start_prime_guard --> windows_loopback_capture_validation
-    tts_queue_watchdog_and_start_prime_guard --> macos_loopback_capture_validation
+    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable --> tts_queue_race_retrigger_fix --> stt_background_stop_policy_update --> stt_background_auto_recovery --> stt_mic_button_tts_decouple --> tts_queue_watchdog_and_start_prime_guard --> tts_prime_failure_volume_recovery_fix
+    tts_prime_failure_volume_recovery_fix --> tts_echo_reference_filter_research
+    tts_prime_failure_volume_recovery_fix --> windows_loopback_capture_validation
+    tts_prime_failure_volume_recovery_fix --> macos_loopback_capture_validation
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -365,7 +368,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        tts_queue_watchdog_and_start_prime_guard
+        tts_prime_failure_volume_recovery_fix
     end
 
     %% === STYLES ===
@@ -507,6 +510,7 @@ flowchart TD
     style stt_background_auto_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_mic_button_tts_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_queue_watchdog_and_start_prime_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_prime_failure_volume_recovery_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -528,7 +532,8 @@ flowchart TD
     style stt_background_stop_policy_update fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_background_auto_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style stt_mic_button_tts_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style tts_queue_watchdog_and_start_prime_guard fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style tts_queue_watchdog_and_start_prime_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_prime_failure_volume_recovery_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style

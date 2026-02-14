@@ -329,6 +329,21 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       setIsTtsBlocked(false)
       return true
     } catch {
+      const player = playerAudioRef.current
+      if (player) {
+        // Ensure failed priming never leaves the shared player muted.
+        player.volume = 1
+        if (
+          player.src === SILENT_WAV_DATA_URI
+          || player.src.startsWith('data:audio/wav;base64,')
+        ) {
+          player.pause()
+          player.currentTime = 0
+          player.src = ''
+          player.load()
+        }
+      }
+      isAudioPrimedRef.current = false
       return false
     }
   }, [ensureAudioPlayer])
