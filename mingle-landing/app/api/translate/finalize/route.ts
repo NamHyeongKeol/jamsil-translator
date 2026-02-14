@@ -9,6 +9,11 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || ''
 const DEFAULT_MODEL = process.env.DEMO_TRANSLATE_MODEL || 'gemini-2.5-flash-lite'
+const INWORLD_API_BASE = 'https://api.inworld.ai'
+const DEFAULT_TTS_MODEL_ID = process.env.INWORLD_TTS_MODEL_ID || 'inworld-tts-1.5-mini'
+const DEFAULT_TTS_VOICE_ID = process.env.INWORLD_TTS_DEFAULT_VOICE_ID || 'Ashley'
+const DEFAULT_TTS_SPEAKING_RATE = Number(process.env.INWORLD_TTS_SPEAKING_RATE || '1.2')
+const VOICE_CACHE_TTL_MS = 1000 * 60 * 30
 
 const LANG_NAMES: Record<string, string> = {
   en: 'English', ko: 'Korean', zh: 'Chinese', ja: 'Japanese',
@@ -17,6 +22,14 @@ const LANG_NAMES: Record<string, string> = {
   it: 'Italian', id: 'Indonesian', tr: 'Turkish', pl: 'Polish',
   nl: 'Dutch', sv: 'Swedish', th: 'Thai', ms: 'Malay',
 }
+
+interface InworldVoiceItem {
+  id?: string
+  voiceId?: string
+  name?: string
+}
+
+const voiceCache = new Map<string, { voiceId: string, expiresAt: number }>()
 
 function normalizeLang(input: string): string {
   return input.trim().replace('_', '-').toLowerCase().split('-')[0] || ''
@@ -51,6 +64,143 @@ function parseTranslations(raw: string): Record<string, string> {
     output[key] = cleaned
   }
   return output
+}
+
+function getAuthHeaderValue(): string | null {
+  const jwtToken = process.env.INWORLD_JWT?.trim()
+  if (jwtToken) {
+    if (jwtToken.startsWith('Bearer ')) return jwtToken
+    return `Bearer ${jwtToken}`
+  }
+
+  const basicCredential = (
+    process.env.INWORLD_BASIC
+    || process.env.INWORLD_BASIC_KEY
+    || process.env.INWORLD_RUNTIME_BASE64_CREDENTIAL
+    || process.env.INWORLD_BASIC_CREDENTIAL
+    || ''
+  ).trim()
+  if (basicCredential) {
+    if (basicCredential.startsWith('Basic ')) return basicCredential
+    return `Basic ${basicCredential}`
+  }
+
+  const apiKey = process.env.INWORLD_API_KEY?.trim()
+  const apiSecret = process.env.INWORLD_API_SECRET?.trim()
+  if (apiKey && !apiSecret) {
+    if (apiKey.startsWith('Basic ')) return apiKey
+    return `Basic ${apiKey}`
+  }
+  if (apiKey && apiSecret) {
+    const credential = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
+    return `Basic ${credential}`
+  }
+  return null
+}
+
+function pickVoiceId(item: InworldVoiceItem): string | null {
+  if (item.voiceId && typeof item.voiceId === 'string') return item.voiceId
+  if (item.id && typeof item.id === 'string') return item.id
+  if (item.name && typeof item.name === 'string') return item.name
+  return null
+}
+
+async function resolveVoiceId(authHeader: string, language: string | null): Promise<string> {
+  if (!language) return DEFAULT_TTS_VOICE_ID
+
+  const now = Date.now()
+  const cached = voiceCache.get(language)
+  if (cached && cached.expiresAt > now) {
+    return cached.voiceId
+  }
+
+  try {
+    const url = `${INWORLD_API_BASE}/tts/v1/voices?filter=${encodeURIComponent(`language=${language}`)}`
+    const response = await fetch(url, {
+      headers: { Authorization: authHeader },
+      cache: 'no-store',
+    })
+    if (!response.ok) {
+      return DEFAULT_TTS_VOICE_ID
+    }
+
+    const data = await response.json() as { voices?: InworldVoiceItem[], items?: InworldVoiceItem[] }
+    const voices = Array.isArray(data.voices) ? data.voices : (Array.isArray(data.items) ? data.items : [])
+    const resolved = voices
+      .map(pickVoiceId)
+      .find((id): id is string => Boolean(id))
+    const voiceId = resolved || DEFAULT_TTS_VOICE_ID
+    voiceCache.set(language, { voiceId, expiresAt: now + VOICE_CACHE_TTL_MS })
+    return voiceId
+  } catch {
+    return DEFAULT_TTS_VOICE_ID
+  }
+}
+
+function decodeAudioContent(audioContent?: string): Buffer | null {
+  if (!audioContent || typeof audioContent !== 'string') return null
+  const cleaned = audioContent.replace(/^data:audio\/[a-zA-Z0-9.+-]+;base64,/, '').trim()
+  if (!cleaned) return null
+  try {
+    return Buffer.from(cleaned, 'base64')
+  } catch {
+    return null
+  }
+}
+
+function detectAudioMime(audioBuffer: Buffer): string {
+  if (audioBuffer.length < 4) return 'application/octet-stream'
+  const b = audioBuffer
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46) return 'audio/wav'
+  if (b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) return 'audio/mpeg'
+  if (b[0] === 0xff && (b[1] & 0xe0) === 0xe0) return 'audio/mpeg'
+  if (b[0] === 0x4f && b[1] === 0x67 && b[2] === 0x67 && b[3] === 0x53) return 'audio/ogg'
+  return 'application/octet-stream'
+}
+
+async function synthesizeTtsInline(args: {
+  text: string
+  language: string
+  requestedVoiceId?: string
+}): Promise<{ audioBase64: string, audioMime: string, voiceId: string } | null> {
+  if (!args.text.trim() || !args.language.trim()) return null
+  const authHeader = getAuthHeaderValue()
+  if (!authHeader) return null
+
+  const resolvedVoiceId = args.requestedVoiceId?.trim() || await resolveVoiceId(authHeader, args.language)
+  try {
+    const response = await fetch(`${INWORLD_API_BASE}/tts/v1/voice`, {
+      method: 'POST',
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: args.text,
+        voiceId: resolvedVoiceId,
+        modelId: DEFAULT_TTS_MODEL_ID,
+        audioConfig: {
+          speakingRate: Number.isFinite(DEFAULT_TTS_SPEAKING_RATE) && DEFAULT_TTS_SPEAKING_RATE > 0
+            ? DEFAULT_TTS_SPEAKING_RATE
+            : 1.2,
+        },
+      }),
+      cache: 'no-store',
+    })
+
+    if (!response.ok) return null
+    const data = await response.json() as { audioContent?: string }
+    const audioBuffer = decodeAudioContent(data.audioContent)
+    if (!audioBuffer) return null
+
+    return {
+      audioBase64: audioBuffer.toString('base64'),
+      audioMime: detectAudioMime(audioBuffer),
+      voiceId: resolvedVoiceId,
+    }
+  } catch {
+    return null
+  }
 }
 
 type TranslateContext = {
@@ -126,6 +276,9 @@ export async function POST(request: NextRequest) {
   const text = typeof body.text === 'string' ? body.text.trim() : ''
   const sourceLanguage = normalizeLang(typeof body.sourceLanguage === 'string' ? body.sourceLanguage : '')
   const targetLanguagesRaw: unknown[] = Array.isArray(body.targetLanguages) ? body.targetLanguages : []
+  const ttsPayload = (typeof body.tts === 'object' && body.tts !== null) ? body.tts as Record<string, unknown> : null
+  const ttsLanguage = normalizeLang(typeof ttsPayload?.language === 'string' ? ttsPayload.language : '')
+  const ttsVoiceId = typeof ttsPayload?.voiceId === 'string' ? ttsPayload.voiceId.trim() : ''
 
   const targetLanguagesSet = new Set<string>()
   for (const item of targetLanguagesRaw) {
@@ -166,7 +319,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
     }
 
-    return NextResponse.json({ translations })
+    const responsePayload: Record<string, unknown> = { translations }
+    if (ttsLanguage && targetLanguages.includes(ttsLanguage)) {
+      const ttsText = (translations[ttsLanguage] || '').trim()
+      if (ttsText) {
+        const ttsResult = await synthesizeTtsInline({
+          text: ttsText,
+          language: ttsLanguage,
+          requestedVoiceId: ttsVoiceId,
+        })
+        if (ttsResult) {
+          responsePayload.ttsLanguage = ttsLanguage
+          responsePayload.ttsAudioBase64 = ttsResult.audioBase64
+          responsePayload.ttsAudioMime = ttsResult.audioMime
+          responsePayload.ttsVoiceId = ttsResult.voiceId
+        }
+      }
+    }
+
+    return NextResponse.json(responsePayload)
   } catch (error) {
     console.error('Finalize translation route error:', error)
     return NextResponse.json({ error: 'finalize_translation_failed' }, { status: 500 })
