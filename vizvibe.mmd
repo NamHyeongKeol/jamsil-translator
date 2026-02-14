@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: finalize_translate_first_tts_split
+    %% @lastActive: tts_global_queue_sequential_playback
 
     %% === START ===
     %% @project_start [start, closed]
@@ -226,6 +226,9 @@ flowchart TD
     %% @finalize_translate_first_tts_split [ai-task, closed]
     finalize_translate_first_tts_split("번역 우선 응답 + TTS 별도 호출 전환<br/><sub>/api/translate/finalize에서 인라인 TTS 병합을 제거해<br/>번역 결과를 먼저 즉시 응답하도록 경로를 단순화하고<br/>클라 훅은 번역 반영 후 /api/tts/inworld를 별도 호출해<br/>서버 경유 TTS를 1회만 실행하도록 재구성</sub>")
 
+    %% @tts_global_queue_sequential_playback [ai-task, closed]
+    tts_global_queue_sequential_playback("TTS 글로벌 큐 순차 재생 적용<br/><sub>인라인 TTS 응답을 도착 순서대로 큐잉하고<br/>재생 중인 음성을 중간에 끊지 않도록 보장해<br/>현재 음성 종료 후 다음 음성을 이어 재생하는<br/>단일 플레이백 루프로 발화 끊김을 제거</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -320,10 +323,10 @@ flowchart TD
     translation_decouple_http --> finalize_inline_tts_bundle
     finalize_inline_tts_bundle --> finalize_tts_double_playback_rootcause
     finalize_tts_double_playback_rootcause --> finalize_tts_dedupe_alignment_fix
-    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split
-    finalize_translate_first_tts_split --> tts_echo_reference_filter_research
-    finalize_translate_first_tts_split --> windows_loopback_capture_validation
-    finalize_translate_first_tts_split --> macos_loopback_capture_validation
+    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback
+    tts_global_queue_sequential_playback --> tts_echo_reference_filter_research
+    tts_global_queue_sequential_playback --> windows_loopback_capture_validation
+    tts_global_queue_sequential_playback --> macos_loopback_capture_validation
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -332,7 +335,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        finalize_translate_first_tts_split
+        tts_global_queue_sequential_playback
     end
 
     %% === STYLES ===
@@ -463,6 +466,7 @@ flowchart TD
     style finalize_inline_tts_bundle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_translate_first_tts_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_global_queue_sequential_playback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -473,7 +477,8 @@ flowchart TD
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style finalize_translate_first_tts_split fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style finalize_translate_first_tts_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_global_queue_sequential_playback fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style
