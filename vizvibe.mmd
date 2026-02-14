@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_git_push
+    %% @lastActive: mingle_app_gitignore_cleanup_for_deploy
 
     %% === START ===
     %% @project_start [start, closed]
@@ -346,6 +346,9 @@ flowchart TD
     %% @mingle_app_git_push [ai-task, closed, 2026-02-15, ai]
     mingle_app_git_push("mingle-app git push 완료<br/><sub>LivePhoneDemo/i18n/ios 설정 등<br/>15개 파일 변경사항을 커밋하고<br/>origin/main에 푸시 완료<br/>f1a9940: sync mingle app demo and i18n</sub>")
 
+    %% @mingle_app_gitignore_cleanup_for_deploy [ai-task, closed, 2026-02-15, ai]
+    mingle_app_gitignore_cleanup_for_deploy("mingle-app 배포용 gitignore 정리<br/><sub>iOS/Xcode 생성 산출물 경로를<br/>mingle-app/.gitignore에 추가해<br/>ios/build 및 중첩 ios 폴더가<br/>커밋 후보에 다시 올라오지 않게 정리</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -468,7 +471,7 @@ flowchart TD
     capacitor_server_url_env_loading_fix --> ios_device_signing_and_run_validation
     ios_device_signing_and_run_validation --> ios_safe_area_and_icon_sizing_fix
     ios_safe_area_and_icon_sizing_fix --> ios_device_rebuild_and_run
-    ios_device_rebuild_and_run --> ios_cli_build_install_run --> mingle_app_git_push
+    ios_device_rebuild_and_run --> ios_cli_build_install_run --> mingle_app_git_push --> mingle_app_gitignore_cleanup_for_deploy
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
     mingle_app_remove_60s_usage_limit --> macos_loopback_capture_validation
@@ -483,7 +486,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_git_push
+        mingle_app_gitignore_cleanup_for_deploy
     end
 
     %% === STYLES ===
@@ -653,7 +656,8 @@ flowchart TD
     style ios_safe_area_and_icon_sizing_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style ios_device_rebuild_and_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style ios_cli_build_install_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_git_push fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_git_push fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_gitignore_cleanup_for_deploy fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px

@@ -20,6 +20,11 @@
 # production
 /build
 
+# iOS / Xcode generated artifacts
+ios/build/
+ios/App/ios/
+ios/App/CapApp-SPM/ios/
+
 # misc
 .DS_Store
 *.pem
