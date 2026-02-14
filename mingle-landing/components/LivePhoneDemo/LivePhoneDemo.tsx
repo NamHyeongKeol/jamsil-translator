@@ -85,6 +85,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [isSoundEnabled, setIsSoundEnabled] = useState(true)
+  const [isTtsBlocked, setIsTtsBlocked] = useState(false)
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const utterancesRef = useRef<Utterance[]>([])
   const playerAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -222,6 +223,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       }
       setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
       ttsNeedsUnlockRef.current = true
+      setIsTtsBlocked(true)
       ttsPendingByUtteranceRef.current.set(next.utteranceId, next)
       isTtsProcessingRef.current = false
     })
@@ -295,11 +297,45 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       player.load()
       isAudioPrimedRef.current = true
       ttsNeedsUnlockRef.current = false
+      setIsTtsBlocked(false)
       return true
     } catch {
       return false
     }
   }, [ensureAudioPlayer])
+
+  const resumeTtsPlayback = useCallback((withPriming = false) => {
+    if (!enableAutoTTS || !isSoundEnabled) return
+    const current = playerAudioRef.current
+    if (current && !current.ended && current.paused) {
+      void current.play().then(() => {
+        ttsNeedsUnlockRef.current = false
+        setIsTtsBlocked(false)
+      }).catch(() => {
+        ttsNeedsUnlockRef.current = true
+        setIsTtsBlocked(true)
+      })
+      return
+    }
+
+    if (withPriming && ttsNeedsUnlockRef.current) {
+      void primeAudioPlayback().then((ok) => {
+        if (!ok) {
+          ttsNeedsUnlockRef.current = true
+          setIsTtsBlocked(true)
+          return
+        }
+        ttsNeedsUnlockRef.current = false
+        setIsTtsBlocked(false)
+        processTtsQueue()
+      })
+      return
+    }
+
+    if (!isTtsProcessingRef.current) {
+      processTtsQueue()
+    }
+  }, [enableAutoTTS, isSoundEnabled, primeAudioPlayback, processTtsQueue])
 
   // Stop current playback when sound is disabled.
   useEffect(() => {
@@ -309,45 +345,40 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     ttsPlayedUtteranceRef.current.clear()
     ttsWaitingSinceRef.current.clear()
     isTtsProcessingRef.current = false
+    ttsNeedsUnlockRef.current = false
+    setIsTtsBlocked(false)
     cleanupCurrentAudio()
     setSpeakingItem(null)
   }, [clearTtsOrderWaitTimer, isSoundEnabled, cleanupCurrentAudio])
 
   useEffect(() => {
+    if (!enableAutoTTS) return
     const handleVisibilityChange = () => {
       if (document.hidden) return
-      const audio = playerAudioRef.current
-      if (!audio || audio.ended || !audio.paused) return
-
-      audio.play().catch(() => {
-        ttsNeedsUnlockRef.current = true
-      })
+      resumeTtsPlayback(false)
+    }
+    const handlePageShow = () => {
+      resumeTtsPlayback(false)
+    }
+    const handleWindowFocus = () => {
+      resumeTtsPlayback(false)
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pageshow', handlePageShow)
+    window.addEventListener('focus', handleWindowFocus)
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pageshow', handlePageShow)
+      window.removeEventListener('focus', handleWindowFocus)
     }
-  }, [])
+  }, [enableAutoTTS, resumeTtsPlayback])
 
   useEffect(() => {
     if (!enableAutoTTS) return
     const handleUserGesture = () => {
       if (!ttsNeedsUnlockRef.current) return
-      void primeAudioPlayback().then((ok) => {
-        if (!ok) return
-        const current = playerAudioRef.current
-        if (current) {
-          void current.play().then(() => {
-            ttsNeedsUnlockRef.current = false
-          }).catch(() => {
-            ttsNeedsUnlockRef.current = true
-          })
-          return
-        }
-        ttsNeedsUnlockRef.current = false
-        processTtsQueue()
-      })
+      resumeTtsPlayback(true)
     }
 
     window.addEventListener('pointerdown', handleUserGesture, { passive: true })
@@ -356,7 +387,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       window.removeEventListener('pointerdown', handleUserGesture)
       window.removeEventListener('touchstart', handleUserGesture)
     }
-  }, [enableAutoTTS, primeAudioPlayback, processTtsQueue])
+  }, [enableAutoTTS, resumeTtsPlayback])
 
   useEffect(() => {
     return () => {
@@ -365,6 +396,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       ttsPlayedUtteranceRef.current.clear()
       ttsWaitingSinceRef.current.clear()
       isTtsProcessingRef.current = false
+      ttsNeedsUnlockRef.current = false
+      setIsTtsBlocked(false)
       cleanupCurrentAudio()
     }
   }, [clearTtsOrderWaitTimer, cleanupCurrentAudio])
@@ -387,6 +420,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       void primeAudioPlayback().then((ok) => {
         if (!ok) {
           ttsNeedsUnlockRef.current = true
+          setIsTtsBlocked(true)
           return
         }
         processTtsQueue()
@@ -681,6 +715,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                     ) : (
                       <VolumeX size={14} className="text-gray-400" />
                     )}
+                  </button>
+                )}
+                {enableAutoTTS && isSoundEnabled && isTtsBlocked && (
+                  <button
+                    onClick={() => resumeTtsPlayback(true)}
+                    className="ml-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold border border-amber-300"
+                  >
+                    Resume Audio
                   </button>
                 )}
               </div>
