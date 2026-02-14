@@ -99,6 +99,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const ttsNeedsUnlockRef = useRef(false)
   const processTtsQueueRef = useRef<() => void>(() => {})
   const initialUtteranceIdsRef = useRef<string[] | null>(null)
+  const stopClickResumeTimerIdsRef = useRef<number[]>([])
 
   // Persist selected languages
   useEffect(() => {
@@ -381,6 +382,27 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
   }, [enableAutoTTS, isSoundEnabled, primeAudioPlayback, processTtsQueue])
 
+  const clearStopClickResumeTimers = useCallback(() => {
+    if (stopClickResumeTimerIdsRef.current.length === 0) return
+    for (const id of stopClickResumeTimerIdsRef.current) {
+      window.clearTimeout(id)
+    }
+    stopClickResumeTimerIdsRef.current = []
+  }, [])
+
+  const scheduleTtsResumeAfterStopClick = useCallback(() => {
+    if (!enableAutoTTS || !isSoundEnabled) return
+    resumeTtsPlayback(true)
+    const delays = [140, 420]
+    for (const delay of delays) {
+      const timerId = window.setTimeout(() => {
+        stopClickResumeTimerIdsRef.current = stopClickResumeTimerIdsRef.current.filter(id => id !== timerId)
+        resumeTtsPlayback(true)
+      }, delay)
+      stopClickResumeTimerIdsRef.current.push(timerId)
+    }
+  }, [enableAutoTTS, isSoundEnabled, resumeTtsPlayback])
+
   // Stop current playback when sound is disabled.
   useEffect(() => {
     if (isSoundEnabled) return
@@ -448,6 +470,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   useEffect(() => {
     return () => {
+      clearStopClickResumeTimers()
       clearTtsOrderWaitTimer()
       ttsPendingByUtteranceRef.current.clear()
       ttsPlayedUtteranceRef.current.clear()
@@ -457,7 +480,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       setIsTtsBlocked(false)
       cleanupCurrentAudio()
     }
-  }, [clearTtsOrderWaitTimer, cleanupCurrentAudio])
+  }, [clearStopClickResumeTimers, clearTtsOrderWaitTimer, cleanupCurrentAudio])
 
   const handleToggleLanguage = useCallback((code: string) => {
     setSelectedLanguages(prev => {
@@ -478,9 +501,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       onLimitReached?.()
       return
     }
+    const wasActive = isActive
     // Mic button controls STT only.
     // Prime audio player only when starting STT from idle, not when stopping.
-    if (enableAutoTTS && !isActive) {
+    if (enableAutoTTS && !wasActive) {
       void primeAudioPlayback().then((ok) => {
         if (!ok) {
           ttsNeedsUnlockRef.current = true
@@ -489,7 +513,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       })
     }
     toggleRecording()
-  }, [enableAutoTTS, isActive, isLimitReached, onLimitReached, primeAudioPlayback, toggleRecording])
+    if (wasActive) {
+      scheduleTtsResumeAfterStopClick()
+    }
+  }, [enableAutoTTS, isActive, isLimitReached, onLimitReached, primeAudioPlayback, scheduleTtsResumeAfterStopClick, toggleRecording])
 
   useImperativeHandle(ref, () => ({
     startRecording: handleMicClick,
