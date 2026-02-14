@@ -739,7 +739,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           {/* Error state */}
           {isError && (
             <div className="flex flex-col items-center justify-center h-full text-center text-red-400 gap-2 pt-12">
-              <p className="text-sm">Connection failed. Retrying...</p>
+              <p className="text-xs">Connection failed. Retrying...</p>
             </div>
           )}
         </div>
