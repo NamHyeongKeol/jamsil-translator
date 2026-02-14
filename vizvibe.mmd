@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: live_demo_core_demo_logic_split
+    %% @lastActive: xcode_install_and_ios_device_build
 
     %% === START ===
     %% @project_start [start, closed]
@@ -313,8 +313,11 @@ flowchart TD
     %% @live_demo_core_demo_logic_split [ai-task, closed]
     live_demo_core_demo_logic_split("live-demo-core 데모 로직 분리<br/><sub>공통 useRealtimeSTT에서 초기 3개 예시/타이핑 애니메이션을 제거하고<br/>localStorage 기반 utterances/usage 저장 정책은 코어에 유지<br/>landing 래퍼 훅에서만 데모 시드/애니메이션을 담당하도록 재배치해<br/>app은 공통 코어만 사용하고 랜딩 전용 UX를 분리</sub>")
 
-    %% @xcode_install_and_ios_device_build [human-task, opened]
-    xcode_install_and_ios_device_build("Xcode 설치 후 실기기 빌드 진행<br/><sub>App Store CLI로 Xcode 식별/설치 시도는 확인됐지만<br/>관리자 비밀번호 입력 단계에서 자동 진행이 중단됨<br/>로컬 관리자 인증으로 Xcode 설치를 완료한 뒤<br/>xcodebuild/디바이스 런을 이어서 최종 검증 필요</sub>")
+    %% @xcode_install_and_ios_device_build [human-task, closed]
+    xcode_install_and_ios_device_build("Xcode 설치 및 iOS 빌드 준비 완료<br/><sub>Xcode 26.2 설치와 xcode-select 경로 전환,<br/>First Launch 초기화까지 로컬에서 완료됨<br/>mingle-app cap:sync와 xcodebuild 스킴 조회로<br/>네이티브 빌드 준비 상태를 검증 완료</sub>")
+
+    %% @ios_device_signing_and_run_validation [human-task, opened]
+    ios_device_signing_and_run_validation("실기기 서명/런 최종 검증<br/><sub>현재 남은 단계는 Xcode에서 Team 서명 설정 후<br/>실제 iPhone 대상 App 실행/설치 동작 확인이며<br/>마이크/오디오 권한 승인 흐름과 실시간 STT/TTS가<br/>실기기에서도 동일하게 동작하는지 점검 필요</sub>")
 
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
@@ -424,6 +427,7 @@ flowchart TD
     mingle_app_remove_60s_usage_limit --> mingle_app_ios_scaffold
     mingle_app_remove_60s_usage_limit --> live_demo_core_demo_logic_split
     mingle_app_ios_scaffold --> xcode_install_and_ios_device_build
+    xcode_install_and_ios_device_build --> ios_device_signing_and_run_validation
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
     mingle_app_remove_60s_usage_limit --> macos_loopback_capture_validation
@@ -435,7 +439,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        live_demo_core_demo_logic_split
+        xcode_install_and_ios_device_build
     end
 
     %% === STYLES ===
@@ -595,7 +599,8 @@ flowchart TD
     style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_scaffold fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style live_demo_core_demo_logic_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style xcode_install_and_ios_device_build fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style xcode_install_and_ios_device_build fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_device_signing_and_run_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -635,7 +640,7 @@ flowchart TD
     style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_scaffold fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style live_demo_core_demo_logic_split fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style xcode_install_and_ios_device_build fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style
