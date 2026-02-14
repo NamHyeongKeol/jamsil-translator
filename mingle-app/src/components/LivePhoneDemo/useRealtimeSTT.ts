@@ -1,3 +1,10 @@
 'use client'
 
-export { default } from '@mingle/live-demo-core/use-realtime-stt'
+import useRealtimeSTTCore from '@mingle/live-demo-core/use-realtime-stt'
+
+export default function useRealtimeSTT(options: Parameters<typeof useRealtimeSTTCore>[0]) {
+  return useRealtimeSTTCore({
+    ...options,
+    usageLimitSec: null,
+  })
+}
