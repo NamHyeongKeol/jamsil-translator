@@ -29,7 +29,7 @@ export default function MobileCanvasShell({ children }: { children: ReactNode })
   }, []);
 
   const normalizedScale = scale > 0 ? scale : 1;
-  const frameHeight = useMemo(() => `calc(100dvh / ${normalizedScale})`, [normalizedScale]);
+  const frameHeight = useMemo(() => `calc(100svh / ${normalizedScale})`, [normalizedScale]);
   const scaledWidth = useMemo(() => `${CANVAS_WIDTH * normalizedScale}px`, [normalizedScale]);
 
   return (

@@ -555,9 +555,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   return (
     <PhoneFrame>
-      <div className="flex h-[100dvh] min-h-[100dvh] flex-col">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 pb-4 pt-8">
+        <div className="shrink-0 flex items-center justify-between border-b border-gray-100 px-6 pb-4 pt-8">
           <span className="text-xl font-extrabold leading-none bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
             Mingle
           </span>
@@ -591,7 +591,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         <div
           ref={chatRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 space-y-3 bg-gray-50/50"
+          className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-3 py-3 space-y-3 bg-gray-50/50"
         >
           <AnimatePresence mode="popLayout">
             {utterances.map((u) => (
@@ -723,7 +723,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         </div>
 
         {/* Bottom Bar with Mic Button */}
-        <div className="flex items-center justify-center py-3 border-t border-gray-100 bg-white">
+        <div className="shrink-0 flex items-center justify-center py-3 border-t border-gray-100 bg-white">
           <div className="flex items-center gap-1.5">
             <button
               onPointerDown={handleMicPointerDown}
