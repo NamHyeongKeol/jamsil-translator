@@ -31,6 +31,12 @@ interface LivePhoneDemoProps {
   enableAutoTTS?: boolean
 }
 
+type TtsQueueItem = {
+  utteranceId: string
+  audioDataUrl: string
+  language: string
+}
+
 async function saveConversation(utterances: Utterance[], selectedLanguages: string[], usageSec: number) {
   try {
     await fetch('/api/log-conversation', {
@@ -68,6 +74,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const currentAudioUrlRef = useRef<string | null>(null)
+  const ttsQueueRef = useRef<TtsQueueItem[]>([])
+  const isTtsProcessingRef = useRef(false)
   const isAudioPrimedRef = useRef(false)
   const ttsNeedsUnlockRef = useRef(false)
 
@@ -78,12 +86,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { /* ignore */ }
   }, [selectedLanguages])
 
-  // Handle TTS audio received inline with translation response.
-  const handleTtsAudio = useCallback((utteranceId: string, audioDataUrl: string, language: string) => {
-    if (!enableAutoTTS || !isSoundEnabled) return
-    setSpeakingItem({ utteranceId, language })
-
-    // Inline cleanup of any currently playing audio.
+  const cleanupCurrentAudio = useCallback(() => {
     if (currentAudioRef.current) {
       currentAudioRef.current.pause()
       currentAudioRef.current.src = ''
@@ -95,21 +98,59 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       URL.revokeObjectURL(currentAudioUrlRef.current)
       currentAudioUrlRef.current = null
     }
+  }, [])
 
-    const audio = new Audio(audioDataUrl)
-    currentAudioRef.current = audio
-    audio.onended = () => {
-      setSpeakingItem(prev => (prev?.utteranceId === utteranceId ? null : prev))
-      currentAudioRef.current = null
+  const processTtsQueue = useCallback(() => {
+    if (isTtsProcessingRef.current) return
+    if (!enableAutoTTS || !isSoundEnabled) {
+      ttsQueueRef.current = []
+      return
     }
-    audio.onerror = () => {
-      setSpeakingItem(prev => (prev?.utteranceId === utteranceId ? null : prev))
-      currentAudioRef.current = null
+
+    const playNext = () => {
+      const next = ttsQueueRef.current.shift()
+      if (!next) {
+        isTtsProcessingRef.current = false
+        setSpeakingItem(null)
+        return
+      }
+
+      cleanupCurrentAudio()
+      setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
+      const audio = new Audio(next.audioDataUrl)
+      currentAudioRef.current = audio
+
+      audio.onended = () => {
+        if (currentAudioRef.current === audio) currentAudioRef.current = null
+        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
+        playNext()
+      }
+
+      audio.onerror = () => {
+        if (currentAudioRef.current === audio) currentAudioRef.current = null
+        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
+        playNext()
+      }
+
+      audio.play().catch(() => {
+        if (currentAudioRef.current === audio) currentAudioRef.current = null
+        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
+        ttsNeedsUnlockRef.current = true
+        ttsQueueRef.current.unshift(next)
+        isTtsProcessingRef.current = false
+      })
     }
-    audio.play().catch(() => {
-      ttsNeedsUnlockRef.current = true
-    })
-  }, [enableAutoTTS, isSoundEnabled])
+
+    isTtsProcessingRef.current = true
+    playNext()
+  }, [cleanupCurrentAudio, enableAutoTTS, isSoundEnabled])
+
+  // Handle TTS audio received inline with translation response.
+  const handleTtsAudio = useCallback((utteranceId: string, audioDataUrl: string, language: string) => {
+    if (!enableAutoTTS || !isSoundEnabled) return
+    ttsQueueRef.current.push({ utteranceId, audioDataUrl, language })
+    processTtsQueue()
+  }, [enableAutoTTS, isSoundEnabled, processTtsQueue])
 
   const {
     utterances,
@@ -154,20 +195,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     prevIsActiveRef.current = isActive
   }, [isActive, utterances, selectedLanguages, usageSec])
 
-  const cleanupCurrentAudio = useCallback(() => {
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause()
-      currentAudioRef.current.src = ''
-      currentAudioRef.current.onended = null
-      currentAudioRef.current.onerror = null
-      currentAudioRef.current = null
-    }
-    if (currentAudioUrlRef.current) {
-      URL.revokeObjectURL(currentAudioUrlRef.current)
-      currentAudioUrlRef.current = null
-    }
-  }, [])
-
   const primeAudioPlayback = useCallback(async (): Promise<boolean> => {
     if (isAudioPrimedRef.current) return true
     try {
@@ -187,6 +214,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   // Stop current playback when sound is disabled.
   useEffect(() => {
     if (isSoundEnabled) return
+    ttsQueueRef.current = []
+    isTtsProcessingRef.current = false
     cleanupCurrentAudio()
     setSpeakingItem(null)
   }, [isSoundEnabled, cleanupCurrentAudio])
@@ -215,11 +244,16 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       void primeAudioPlayback().then((ok) => {
         if (!ok) return
         const current = currentAudioRef.current
-        if (!current) return
+        if (current) {
+          void current.play().then(() => {
+            ttsNeedsUnlockRef.current = false
+          }).catch(() => {
+            ttsNeedsUnlockRef.current = true
+          })
+          return
+        }
         ttsNeedsUnlockRef.current = false
-        void current.play().catch(() => {
-          ttsNeedsUnlockRef.current = true
-        })
+        processTtsQueue()
       })
     }
 
@@ -229,10 +263,12 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       window.removeEventListener('pointerdown', handleUserGesture)
       window.removeEventListener('touchstart', handleUserGesture)
     }
-  }, [enableAutoTTS, primeAudioPlayback])
+  }, [enableAutoTTS, primeAudioPlayback, processTtsQueue])
 
   useEffect(() => {
     return () => {
+      ttsQueueRef.current = []
+      isTtsProcessingRef.current = false
       cleanupCurrentAudio()
     }
   }, [cleanupCurrentAudio])
@@ -257,10 +293,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           ttsNeedsUnlockRef.current = true
           return
         }
+        processTtsQueue()
       })
     }
     toggleRecording()
-  }, [enableAutoTTS, isLimitReached, onLimitReached, primeAudioPlayback, toggleRecording])
+  }, [enableAutoTTS, isLimitReached, onLimitReached, primeAudioPlayback, processTtsQueue, toggleRecording])
 
   useImperativeHandle(ref, () => ({
     startRecording: handleMicClick,
