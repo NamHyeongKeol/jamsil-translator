@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_ios_scaffold
+    %% @lastActive: live_demo_core_demo_logic_split
 
     %% === START ===
     %% @project_start [start, closed]
@@ -310,6 +310,9 @@ flowchart TD
     %% @mingle_app_ios_scaffold [ai-task, closed]
     mingle_app_ios_scaffold("mingle-app iOS 래핑 스캐폴드 생성<br/><sub>Capacitor iOS 네이티브 프로젝트를 신규 생성하고<br/>웹 번들을 capacitor-web로 빌드/복사해 동기화 완료<br/>ios/App/App/public 및 Package.swift 플러그인 구성을<br/>현재 웹 코드 기준으로 정합되게 초기 세팅</sub>")
 
+    %% @live_demo_core_demo_logic_split [ai-task, closed]
+    live_demo_core_demo_logic_split("live-demo-core 데모 로직 분리<br/><sub>공통 useRealtimeSTT에서 초기 3개 예시/타이핑 애니메이션을 제거하고<br/>localStorage 기반 utterances/usage 저장 정책은 코어에 유지<br/>landing 래퍼 훅에서만 데모 시드/애니메이션을 담당하도록 재배치해<br/>app은 공통 코어만 사용하고 랜딩 전용 UX를 분리</sub>")
+
     %% @xcode_install_and_ios_device_build [human-task, opened]
     xcode_install_and_ios_device_build("Xcode 설치 후 실기기 빌드 진행<br/><sub>App Store CLI로 Xcode 식별/설치 시도는 확인됐지만<br/>관리자 비밀번호 입력 단계에서 자동 진행이 중단됨<br/>로컬 관리자 인증으로 Xcode 설치를 완료한 뒤<br/>xcodebuild/디바이스 런을 이어서 최종 검증 필요</sub>")
 
@@ -419,6 +422,7 @@ flowchart TD
     mingle_app_footer_bottom_anchor_with_frame_height_inheritance --> shared_live_demo_core_package_split
     shared_live_demo_core_package_split --> mingle_app_remove_60s_usage_limit
     mingle_app_remove_60s_usage_limit --> mingle_app_ios_scaffold
+    mingle_app_remove_60s_usage_limit --> live_demo_core_demo_logic_split
     mingle_app_ios_scaffold --> xcode_install_and_ios_device_build
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
@@ -431,7 +435,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_ios_scaffold
+        live_demo_core_demo_logic_split
     end
 
     %% === STYLES ===
@@ -590,6 +594,7 @@ flowchart TD
     style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_scaffold fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style live_demo_core_demo_logic_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style xcode_install_and_ios_device_build fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -629,7 +634,8 @@ flowchart TD
     style mingle_app_footer_bottom_anchor_with_frame_height_inheritance fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_ios_scaffold fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_scaffold fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style live_demo_core_demo_logic_split fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style

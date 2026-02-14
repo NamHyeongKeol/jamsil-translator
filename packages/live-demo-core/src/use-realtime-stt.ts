@@ -11,58 +11,10 @@ const getWsUrl = () => {
   const protocol = isSecure ? 'wss' : 'ws'
   return `${protocol}://${host}:${WS_PORT}`
 }
-const VOLUME_THRESHOLD = 0.05
 const DEFAULT_USAGE_LIMIT_SEC = 60
 
 const LS_KEY_UTTERANCES = 'mingle_demo_utterances'
 const LS_KEY_USAGE = 'mingle_demo_usage_sec'
-const LS_KEY_DEMO_COMPLETED = 'mingle_demo_animation_completed'
-
-// Initial demo conversation data - shown when user first visits
-const INITIAL_UTTERANCES: Utterance[] = [
-  {
-    id: 'demo-1',
-    originalText: '最近週末はいつも何をしていますか。',
-    originalLang: 'ja',
-    translations: {
-      en: 'What do you usually do on weekends recently.',
-      ko: '요즘 주말에는 항상 무엇을 하고 있나요.',
-    },
-  },
-  {
-    id: 'demo-2',
-    originalText: '저는 보통 집에서 영화 보거나 게임해요.',
-    originalLang: 'ko',
-    translations: {
-      en: 'I usually watch movies or play games at home.',
-      ja: '私は普段、家で映画を見たりゲームをしたりします。',
-    },
-  },
-  {
-    id: 'demo-3',
-    originalText: 'I usually go hiking. The weather is so nice these days.',
-    originalLang: 'en',
-    translations: {
-      ko: '저는 보통 하이킹을 갑니다. 요즘 날씨가 정말 좋네요.',
-      ja: '私は普段ハイキングに行きます。最近とても天気が良いです。',
-    },
-  },
-]
-
-// Check if demo animation has been completed before
-function isDemoCompleted(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return localStorage.getItem(LS_KEY_DEMO_COMPLETED) === 'true'
-  } catch { return false }
-}
-
-// Mark demo animation as completed
-function markDemoCompleted(): void {
-  try {
-    localStorage.setItem(LS_KEY_DEMO_COMPLETED, 'true')
-  } catch { /* ignore */ }
-}
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
@@ -90,7 +42,6 @@ interface UseRealtimeSTTOptions {
   onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string) => void
   enableTts?: boolean
   usageLimitSec?: number | null
-  enableInitialDemo?: boolean
 }
 
 interface LocalFinalizeResult {
@@ -126,42 +77,14 @@ export default function useRealtimeSTT({
   onTtsAudio,
   enableTts,
   usageLimitSec = DEFAULT_USAGE_LIMIT_SEC,
-  enableInitialDemo = true,
 }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
-  const demoSeedEnabled = enableInitialDemo
-  
-  // Demo animation states
-  const [isDemoAnimating, setIsDemoAnimating] = useState(() => {
-    if (typeof window === 'undefined') return false
-    if (!demoSeedEnabled) return false
-    return !isDemoCompleted()
-  })
-  const [demoTypingText, setDemoTypingText] = useState('')
-  const [demoTypingLang, setDemoTypingLang] = useState<string | null>(null)
-  const [demoTypingTranslations, setDemoTypingTranslations] = useState<Record<string, string>>({})
-  
+
   const [utterances, setUtterances] = useState<Utterance[]>(() => {
-    if (typeof window === 'undefined') return demoSeedEnabled ? INITIAL_UTTERANCES : []
-    if (!demoSeedEnabled) {
-      try {
-        const stored = localStorage.getItem(LS_KEY_UTTERANCES)
-        if (!stored) return []
-        const parsed: Utterance[] = JSON.parse(stored)
-        const seen = new Set<string>()
-        return parsed.filter((u) => {
-          if (u.id.startsWith('demo-')) return false
-          if (seen.has(u.id)) return false
-          seen.add(u.id)
-          return true
-        })
-      } catch { return [] }
-    }
-    // If demo not completed, start with empty array for animation
-    if (!isDemoCompleted()) return []
+    if (typeof window === 'undefined') return []
     try {
       const stored = localStorage.getItem(LS_KEY_UTTERANCES)
-      if (!stored) return INITIAL_UTTERANCES
+      if (!stored) return []
       const parsed: Utterance[] = JSON.parse(stored)
       // Deduplicate by id (fix corrupted data from previous bug)
       const seen = new Set<string>()
@@ -170,7 +93,7 @@ export default function useRealtimeSTT({
         seen.add(u.id)
         return true
       })
-    } catch { return INITIAL_UTTERANCES }
+    } catch { return [] }
   })
   const [partialTranscript, setPartialTranscript] = useState('')
   const [partialTranslations, setPartialTranslations] = useState<Record<string, string>>({})
@@ -244,98 +167,19 @@ export default function useRealtimeSTT({
     partialLangRef.current = partialLang
   }, [partialLang])
 
-  // Demo animation effect - typewriter effect for initial utterances
-  useEffect(() => {
-    if (!isDemoAnimating) return
-    if (!demoSeedEnabled) return
-
-    let isCancelled = false
-    const TYPING_DELAY = 40 // ms per character
-    const UTTERANCE_PAUSE = 800 // ms between utterances
-    const INITIAL_DELAY = 1000 // ms before starting
-    const TRANSLATION_START_OFFSET = 3 // Start translation after N original chars
-
-    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-    const animateDemo = async () => {
-      await sleep(INITIAL_DELAY)
-      if (isCancelled) return
-
-      for (let i = 0; i < INITIAL_UTTERANCES.length; i++) {
-        const utterance = INITIAL_UTTERANCES[i]
-        const text = utterance.originalText
-        const translations = utterance.translations
-        const translationEntries = Object.entries(translations)
-
-        // Set the language we're typing in
-        setDemoTypingLang(utterance.originalLang)
-        // Initialize all translation slots as empty strings (so UI shows the boxes)
-        const initialTranslations: Record<string, string> = {}
-        for (const [lang] of translationEntries) {
-          initialTranslations[lang] = ''
-        }
-        setDemoTypingTranslations(initialTranslations)
-
-        // Typewriter effect - original and translations typed in parallel
-        for (let j = 0; j <= text.length; j++) {
-          if (isCancelled) return
-          
-          // Update original text
-          setDemoTypingText(text.slice(0, j))
-          
-          // Update translations proportionally
-          // Start translations after TRANSLATION_START_OFFSET characters
-          const translationProgress = Math.max(0, j - TRANSLATION_START_OFFSET)
-          const progressRatio = text.length > TRANSLATION_START_OFFSET 
-            ? translationProgress / (text.length - TRANSLATION_START_OFFSET)
-            : (j > 0 ? 1 : 0)
-          
-          const newTranslations: Record<string, string> = {}
-          for (const [lang, fullText] of translationEntries) {
-            const charsToShow = Math.floor(fullText.length * progressRatio)
-            newTranslations[lang] = fullText.slice(0, charsToShow)
-          }
-          setDemoTypingTranslations(newTranslations)
-          
-          await sleep(TYPING_DELAY)
-        }
-
-        // Complete all translations (in case of rounding issues)
-        const finalTranslations: Record<string, string> = {}
-        for (const [lang, fullText] of translationEntries) {
-          finalTranslations[lang] = fullText
-        }
-        setDemoTypingTranslations(finalTranslations)
-
-        // Small pause after typing complete
-        await sleep(400)
-        if (isCancelled) return
-
-        // Finalize this utterance
-        setUtterances(prev => [...prev, utterance])
-        setDemoTypingText('')
-        setDemoTypingLang(null)
-        setDemoTypingTranslations({})
-
-        // Pause before next utterance
-        if (i < INITIAL_UTTERANCES.length - 1) {
-          await sleep(UTTERANCE_PAUSE)
-        }
+  const appendUtterances = useCallback((items: Utterance[]) => {
+    if (items.length === 0) return
+    setUtterances((prev) => {
+      const seen = new Set(prev.map((utterance) => utterance.id))
+      const merged = [...prev]
+      for (const item of items) {
+        if (seen.has(item.id)) continue
+        seen.add(item.id)
+        merged.push(item)
       }
-
-      // Mark demo as completed
-      if (!isCancelled) {
-        setIsDemoAnimating(false)
-        markDemoCompleted()
-      }
-    }
-
-    animateDemo()
-
-    return () => {
-      isCancelled = true
-    }
-  }, [demoSeedEnabled, isDemoAnimating])
+      return merged
+    })
+  }, [])
 
   const normalizedUsageLimitSec = (
     typeof usageLimitSec === 'number'
@@ -659,15 +503,6 @@ export default function useRealtimeSTT({
       return
     }
 
-    // Stop demo animation if running (discard current typing, keep completed utterances)
-    if (isDemoAnimating) {
-      setIsDemoAnimating(false)
-      setDemoTypingText('')
-      setDemoTypingLang(null)
-      setDemoTypingTranslations({})
-      markDemoCompleted()
-    }
-
     try {
       setConnectionStatus('connecting')
       stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
@@ -864,7 +699,7 @@ export default function useRealtimeSTT({
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, handleInlineTtsFromTranslate, languages, normalizedUsageLimitSec, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
+  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, handleInlineTtsFromTranslate, languages, normalizedUsageLimitSec, resetToIdle, startAudioProcessing, translateViaApi, usageSec, stopRecordingGracefully])
 
   const recoverFromBackgroundIfNeeded = useCallback(async () => {
     if (connectionStatus !== 'ready') return
@@ -1001,10 +836,6 @@ export default function useRealtimeSTT({
     usageSec,
     isLimitReached,
     usageLimitSec: normalizedUsageLimitSec,
-    // Demo animation states
-    isDemoAnimating,
-    demoTypingText,
-    demoTypingLang,
-    demoTypingTranslations,
+    appendUtterances,
   }
 }
