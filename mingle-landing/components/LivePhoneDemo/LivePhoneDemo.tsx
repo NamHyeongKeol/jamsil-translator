@@ -728,20 +728,24 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             </div>
           )}
 
-          {/* Connecting state */}
-          {isConnecting && (
-            <div className="flex items-center justify-center gap-2 py-4">
-              <Loader2 size={16} className="text-amber-400 animate-spin" />
-              <p className="text-xs text-gray-400">Connecting...</p>
-            </div>
-          )}
-
-          {/* Error state */}
-          {isError && (
-            <div className="flex flex-col items-center justify-center h-full text-center text-red-400 gap-2 pt-12">
-              <p className="text-xs">Connection failed. Retrying...</p>
-            </div>
-          )}
+          {/* Connection status slot (uniform size + smooth enter/exit) */}
+          <AnimatePresence mode="wait" initial={false}>
+            {(isConnecting || isError) && (
+              <motion.div
+                key={isConnecting ? 'connecting' : 'error'}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                className={`mx-auto mt-2 flex h-8 items-center justify-center gap-2 rounded-full px-3 text-xs ${
+                  isError ? 'text-red-400 bg-red-50/70 border border-red-100' : 'text-gray-400'
+                }`}
+              >
+                <Loader2 size={16} className={isError ? 'text-red-400 animate-spin' : 'text-amber-400 animate-spin'} />
+                <p>{isConnecting ? 'Connecting...' : 'Connection failed. Retrying...'}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Bottom Bar with Mic Button */}
