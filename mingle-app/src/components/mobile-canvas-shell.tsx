@@ -29,7 +29,7 @@ export default function MobileCanvasShell({ children }: { children: ReactNode })
   }, []);
 
   const normalizedScale = scale > 0 ? scale : 1;
-  const minHeight = useMemo(() => `calc(100vh / ${normalizedScale})`, [normalizedScale]);
+  const frameHeight = useMemo(() => `calc(100dvh / ${normalizedScale})`, [normalizedScale]);
 
   return (
     <div className="mobile-canvas-stage">
@@ -37,7 +37,7 @@ export default function MobileCanvasShell({ children }: { children: ReactNode })
         className="mobile-canvas-frame"
         style={{
           transform: `scale(${normalizedScale})`,
-          minHeight,
+          height: frameHeight,
         }}
       >
         {children}

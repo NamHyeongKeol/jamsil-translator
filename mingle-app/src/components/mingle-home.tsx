@@ -17,7 +17,7 @@ export default function MingleHome(props: MingleHomeProps) {
   void props;
 
   return (
-    <main className="h-[100dvh] w-full bg-white text-slate-900">
+    <main className="h-[100dvh] w-full overflow-hidden bg-white text-slate-900">
       <LivePhoneDemo enableAutoTTS />
     </main>
   );
