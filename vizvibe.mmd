@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: landing_inline_tts_reenable
+    %% @lastActive: tts_queue_race_retrigger_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -244,6 +244,9 @@ flowchart TD
     %% @landing_inline_tts_reenable [ai-task, closed]
     landing_inline_tts_reenable("landing 서버 인라인 TTS 재활성화<br/><sub>finalize 번역 API에 tts.language 입력을 다시 연결해<br/>번역 완료 즉시 서버가 Inworld TTS를 호출하고<br/>번역+TTS 오디오(base64)를 한 응답으로 반환하도록<br/>클라이언트 후속 /api/tts/inworld RTT를 제거</sub>")
 
+    %% @tts_queue_race_retrigger_fix [ai-task, closed]
+    tts_queue_race_retrigger_fix("TTS 큐 타이밍 레이스 재트리거 보강<br/><sub>inline TTS 도착이 번역 state 커밋보다 빠를 때<br/>첫 발화가 큐에서 누락되어 지연되던 경로를 추적해<br/>utterances 커밋 이후 pending 오디오가 있으면<br/>processTtsQueue를 재호출하도록 트리거를 추가</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -338,10 +341,10 @@ flowchart TD
     translation_decouple_http --> finalize_inline_tts_bundle
     finalize_inline_tts_bundle --> finalize_tts_double_playback_rootcause
     finalize_tts_double_playback_rootcause --> finalize_tts_dedupe_alignment_fix
-    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable
-    landing_inline_tts_reenable --> tts_echo_reference_filter_research
-    landing_inline_tts_reenable --> windows_loopback_capture_validation
-    landing_inline_tts_reenable --> macos_loopback_capture_validation
+    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable --> tts_queue_race_retrigger_fix
+    tts_queue_race_retrigger_fix --> tts_echo_reference_filter_research
+    tts_queue_race_retrigger_fix --> windows_loopback_capture_validation
+    tts_queue_race_retrigger_fix --> macos_loopback_capture_validation
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -350,7 +353,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        landing_inline_tts_reenable
+        tts_queue_race_retrigger_fix
     end
 
     %% === STYLES ===
@@ -487,6 +490,7 @@ flowchart TD
     style ios_safari_lock_resume_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_test_section_migration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style landing_inline_tts_reenable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_queue_race_retrigger_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -503,7 +507,8 @@ flowchart TD
     style ios_chrome_audio_player_reuse fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style ios_safari_lock_resume_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_test_section_migration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style landing_inline_tts_reenable fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style landing_inline_tts_reenable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_queue_race_retrigger_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style

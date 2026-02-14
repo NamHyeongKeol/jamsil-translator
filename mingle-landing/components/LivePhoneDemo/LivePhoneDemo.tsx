@@ -265,6 +265,15 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   })
   utterancesRef.current = utterances
 
+  // Re-evaluate queue after utterance state commit.
+  // This closes the race where inline TTS arrives before translationFinalized state is rendered.
+  useEffect(() => {
+    if (!enableAutoTTS || !isSoundEnabled) return
+    if (isTtsProcessingRef.current) return
+    if (ttsPendingByUtteranceRef.current.size === 0) return
+    processTtsQueue()
+  }, [enableAutoTTS, isSoundEnabled, processTtsQueue, utterances])
+
   // Save conversation to DB when recording stops
   const prevIsActiveRef = useRef(false)
   const sessionStartCountRef = useRef(0)
