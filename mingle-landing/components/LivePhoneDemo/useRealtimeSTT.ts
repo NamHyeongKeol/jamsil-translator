@@ -854,28 +854,14 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
   useEffect(() => {
     const shouldStop = () => connectionStatus === 'ready' || connectionStatus === 'connecting'
 
-    const handlePageHide = () => {
-      if (!shouldStop()) return
-      void stopRecordingGracefully()
-    }
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden || !shouldStop()) return
-      void stopRecordingGracefully()
-    }
-
     const handleOffline = () => {
       if (!shouldStop()) return
       void stopRecordingGracefully()
     }
 
-    window.addEventListener('pagehide', handlePageHide)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('offline', handleOffline)
 
     return () => {
-      window.removeEventListener('pagehide', handlePageHide)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('offline', handleOffline)
     }
   }, [connectionStatus, stopRecordingGracefully])
