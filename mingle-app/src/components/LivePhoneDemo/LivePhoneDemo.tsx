@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, Wifi, Battery, Signal, Loader2, Volume2, VolumeX } from 'lucide-react'
+import { Mic, Loader2, Volume2, VolumeX } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
@@ -541,9 +541,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const showRipple = isReady && volume > VOLUME_THRESHOLD
   const rippleScale = showRipple ? 1 + (volume - VOLUME_THRESHOLD) * 5 : 1
 
-  const now = new Date()
-  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
-
   // Determine target languages for bouncing dots during partial transcript
   const detectedLang = partialLang || (utterances.length > 0 ? utterances[utterances.length - 1].originalLang : null)
   const pendingPartialLangs = partialTranscript
@@ -559,26 +556,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   return (
     <PhoneFrame>
       <div className="flex h-[100dvh] min-h-[100dvh] flex-col">
-        {/* Status Bar - overlaps with notch area */}
-        <div className="relative z-30 flex items-center justify-between px-8 pt-2 pb-1 text-xs text-gray-500 select-none h-9">
-          {isReady ? (
-            <span className="flex items-center gap-1 bg-red-500 text-white font-semibold px-1.5 py-0.5 rounded-full">
-              <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-              {timeStr}
-            </span>
-          ) : (
-            <span className="font-semibold">{timeStr}</span>
-          )}
-          <div className="flex items-center gap-1">
-            <Signal className="w-3 h-3" />
-            <Wifi className="w-3 h-3" />
-            <Battery className="w-3 h-3" />
-          </div>
-        </div>
-
-        {/* Spacer for notch */}
-        <div className="h-1" />
-
         {/* Header */}
         <div className="flex items-center justify-between px-6 pb-2 border-b border-gray-100">
           <span className="text-base font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
