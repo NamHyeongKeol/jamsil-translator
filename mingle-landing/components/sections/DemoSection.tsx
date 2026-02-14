@@ -50,13 +50,16 @@ export default function DemoSection({ openModal }: DemoSectionProps) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="flex justify-center"
+          className="flex flex-col items-center"
         >
           <LivePhoneDemo
             ref={demoRef}
             onLimitReached={() => openModal('demo-limit')}
             enableAutoTTS
           />
+          <p className="mt-4 text-center text-xs text-gray-500">
+            {t('socialHero.gaming.demoDisclaimer')}
+          </p>
         </motion.div>
       </div>
     </section>

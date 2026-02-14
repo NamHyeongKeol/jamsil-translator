@@ -149,7 +149,8 @@
       "subtitle": "Juega globalmente. Habla libremente. Sin barreras de idioma.",
       "ctaMain": "Descargar",
       "ctaSub": "Únete a gamers de todo el mundo",
-      "tryDemo": "Pruébalo"
+      "tryDemo": "Pruébalo",
+      "demoDisclaimer": "* Esta es solo una demo para pruebas de rendimiento. La app real se ve diferente."
     }
   },
   "globalStats": {

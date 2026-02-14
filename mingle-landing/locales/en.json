@@ -149,7 +149,8 @@
       "subtitle": "Play Globally. Speak Freely. Zero Language Barriers.",
       "ctaMain": "Download",
       "ctaSub": "Join gamers worldwide",
-      "tryDemo": "Try it out"
+      "tryDemo": "Try it out",
+      "demoDisclaimer": "* This is only a demo for performance testing. The real app looks different."
     }
   },
   "globalStats": {

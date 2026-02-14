@@ -149,7 +149,8 @@
       "subtitle": "Jouez mondialement. Parlez librement. Zéro barrière linguistique.",
       "ctaMain": "Télécharger",
       "ctaSub": "Rejoignez des gamers du monde entier",
-      "tryDemo": "Essayer"
+      "tryDemo": "Essayer",
+      "demoDisclaimer": "* Ceci est une démo de test de performance. L'application réelle est différente."
     }
   },
   "globalStats": {
