@@ -138,7 +138,7 @@
     margin: 0;
     min-height: 100vh;
     overflow-x: hidden;
-    background: linear-gradient(180deg, #fff8e8 0%, #fffdf8 100%);
+    background: #f6f7f9;
   }
 
   html {
@@ -159,15 +159,7 @@
   width: 480px;
   transform-origin: top center;
   will-change: transform;
-  background-color: var(--background);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--border) 48%, transparent),
-    0 22px 56px -28px rgba(17, 24, 39, 0.45);
-}
-
-@media (max-width: 479.98px) {
-  .mobile-canvas-frame {
-    box-shadow: none;
-  }
+  min-height: 100vh;
 }
 
 .mobile-safe-shell {
