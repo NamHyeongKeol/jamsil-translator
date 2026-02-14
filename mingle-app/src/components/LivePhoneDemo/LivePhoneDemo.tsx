@@ -582,25 +582,25 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         <div
           className="shrink-0 flex items-center justify-between border-b border-gray-100"
           style={{
-            paddingTop: "max(calc(env(safe-area-inset-top) + 16px), 20px)",
-            paddingBottom: "14px",
-            paddingLeft: "max(calc(env(safe-area-inset-left) + 20px), 26px)",
-            paddingRight: "max(calc(env(safe-area-inset-right) + 20px), 26px)",
+            paddingTop: "max(calc(env(safe-area-inset-top) + 20px), 24px)",
+            paddingBottom: "10px",
+            paddingLeft: "max(calc(env(safe-area-inset-left) + 14px), 18px)",
+            paddingRight: "max(calc(env(safe-area-inset-right) + 14px), 18px)",
           }}
         >
-          <span className="text-[2.6rem] font-extrabold leading-none bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+          <span className="text-[2.15rem] font-extrabold leading-none bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
             Mingle
           </span>
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex items-center gap-1.5">
             <button
               onClick={() => !isActive && setLangSelectorOpen(o => !o)}
               disabled={isActive}
-              className="flex items-center gap-1.5 disabled:opacity-60"
+              className="flex items-center gap-1 disabled:opacity-60"
             >
               {selectedLanguages.map((lang) => (
                 <span
                   key={lang}
-                  className="text-2xl"
+                  className="text-[1.35rem]"
                   title={lang.toUpperCase()}
                 >
                   {FLAG_MAP[lang] || '🌐'}
@@ -621,10 +621,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         <div
           ref={chatRef}
           onScroll={handleScroll}
-          className="min-h-0 flex-1 overflow-y-auto no-scrollbar py-3 space-y-4 bg-gray-50/50"
+          className="min-h-0 flex-1 overflow-y-auto no-scrollbar py-2.5 space-y-3 bg-gray-50/50"
           style={{
-            paddingLeft: "max(calc(env(safe-area-inset-left) + 8px), 12px)",
-            paddingRight: "max(calc(env(safe-area-inset-right) + 8px), 12px)",
+            paddingLeft: "max(calc(env(safe-area-inset-left) + 6px), 10px)",
+            paddingRight: "max(calc(env(safe-area-inset-right) + 6px), 10px)",
           }}
         >
           <AnimatePresence mode="popLayout">
@@ -645,34 +645,34 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               animate={{ opacity: 1 }}
               className="flex flex-col gap-1"
             >
-                <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3">
-                <p className="text-base text-gray-400 leading-snug">
+                <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+                <p className="text-sm text-gray-400 leading-snug">
                   {partialTranscript}
-                  <span className="inline-block w-1 h-3.5 ml-0.5 bg-amber-400 rounded-full animate-pulse" />
+                  <span className="inline-block w-1 h-3 ml-0.5 bg-amber-400 rounded-full animate-pulse" />
                 </p>
               </div>
               {/* Available partial translations */}
               {availablePartialTranslations.map(([lang, text]) => (
                 <div
                   key={lang}
-                  className="ml-3 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-4 py-2.5"
+                  className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-lg">{FLAG_MAP[lang] || '🌐'}</span>
-                  <span className="text-sm font-semibold text-amber-500 uppercase">{lang}</span>
+                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                  <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
                 </div>
-                  <p className="text-base text-gray-500 leading-relaxed">{text}</p>
+                  <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
                 </div>
               ))}
               {/* Bouncing dots for pending partial translations */}
               {pendingPartialLangs.map((lang) => (
                 <div
                 key={`partial-pending-${lang}`}
-                  className="ml-3 max-w-[80%] bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-4 py-2.5"
+                  className="ml-2.5 max-w-[80%] bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-lg">{FLAG_MAP[lang] || '🌐'}</span>
-                    <span className="text-sm font-semibold text-amber-400 uppercase">{lang}</span>
+                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                    <span className="text-xs font-semibold text-amber-400 uppercase">{lang}</span>
                   </div>
                   <div className="flex items-center gap-0.5 h-4">
                     <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -691,14 +691,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               animate={{ opacity: 1 }}
               className="flex flex-col gap-1"
             >
-              <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3">
+              <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-lg">{FLAG_MAP[demoTypingLang] || '🌐'}</span>
-                    <span className="text-sm font-semibold text-gray-500 uppercase">{demoTypingLang}</span>
+                    <span className="text-base">{FLAG_MAP[demoTypingLang] || '🌐'}</span>
+                    <span className="text-xs font-semibold text-gray-500 uppercase">{demoTypingLang}</span>
                   </div>
-                <p className="text-base text-gray-600 leading-snug">
+                <p className="text-sm text-gray-600 leading-snug">
                   {demoTypingText}
-                  <span className="inline-block w-1 h-3.5 ml-0.5 bg-amber-400 rounded-full animate-pulse" />
+                  <span className="inline-block w-1 h-3 ml-0.5 bg-amber-400 rounded-full animate-pulse" />
                 </p>
               </div>
               {/* Demo translations - typed in parallel */}
@@ -707,13 +707,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   key={lang}
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                   className="ml-3 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-4 py-2.5"
+                   className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
                  >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-lg">{FLAG_MAP[lang] || '🌐'}</span>
-                     <span className="text-sm font-semibold text-amber-500 uppercase">{lang}</span>
+                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                     <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
                   </div>
-                  <p className="text-base text-gray-500 leading-relaxed">
+                  <p className="text-sm text-gray-500 leading-relaxed">
                     {text}
                     <span className="inline-block w-0.5 h-3 ml-0.5 bg-amber-300 rounded-full animate-pulse" />
                   </p>
@@ -725,8 +725,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           {/* Empty state */}
           {utterances.length === 0 && !partialTranscript && !demoTypingText && !demoTypingLang && !isDemoAnimating && !isActive && !isError && !isLimitReached && (
             <div className="flex min-h-full flex-col items-center justify-center text-center text-gray-400 gap-2">
-                <Play size={44} className="text-gray-300" />
-                <p className="text-lg">{tapPlayToStartLabel}</p>
+                <Play size={38} className="text-gray-300" />
+                <p className="text-base">{tapPlayToStartLabel}</p>
               </div>
             )}
 
@@ -744,14 +744,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           {isConnecting && (
             <div className="flex items-center justify-center gap-2 py-4">
                 <Loader2 size={20} className="text-amber-400 animate-spin" />
-                <p className="text-base text-gray-400">{connectingLabel}</p>
+                <p className="text-sm text-gray-400">{connectingLabel}</p>
             </div>
           )}
 
           {/* Error state */}
           {isError && (
               <div className="flex min-h-full flex-col items-center justify-center text-center text-red-400 gap-2">
-                <p className="text-base">{connectionFailedLabel}</p>
+                <p className="text-sm">{connectionFailedLabel}</p>
              </div>
           )}
         </div>
@@ -760,10 +760,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         <div
           className="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center border-t border-gray-100 bg-white"
           style={{
-            paddingTop: "12px",
-            paddingBottom: "max(calc(env(safe-area-inset-bottom) + 10px), 14px)",
-            paddingLeft: "max(calc(env(safe-area-inset-left) + 12px), 16px)",
-            paddingRight: "max(calc(env(safe-area-inset-right) + 12px), 16px)",
+            paddingTop: "10px",
+            paddingBottom: "max(calc(env(safe-area-inset-bottom) + 16px), 20px)",
+            paddingLeft: "max(calc(env(safe-area-inset-left) + 10px), 14px)",
+            paddingRight: "max(calc(env(safe-area-inset-right) + 10px), 14px)",
           }}
         >
           <div />
@@ -772,7 +772,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               onPointerDown={handleMicPointerDown}
               onClick={handleMicClick}
               disabled={isConnecting || isError}
-              className="relative flex items-center justify-center w-[4.5rem] h-[4.5rem] rounded-full transition-all duration-200 active:scale-95 disabled:opacity-50"
+              className="relative flex items-center justify-center w-[4rem] h-[4rem] rounded-full transition-all duration-200 active:scale-95 disabled:opacity-50"
             >
               {showRipple && (
                 <span
@@ -797,9 +797,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   }`}
                 >
                   {isConnecting ? (
-                   <Loader2 size={34} className="text-white animate-spin" />
+                   <Loader2 size={30} className="text-white animate-spin" />
                   ) : (
-                   <Play size={34} className="text-white" />
+                   <Play size={30} className="text-white" />
                   )}
                 </span>
              </button>
@@ -816,12 +816,12 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                         style={{ width: `${usagePercent}%` }}
                       />
                     </div>
-                    <span className={`text-base tabular-nums ${isLimitReached ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
+                    <span className={`text-sm tabular-nums ${isLimitReached ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
                       {remainingSec}s
                     </span>
                   </>
                 ) : (
-                  <span className="text-base tabular-nums text-gray-400">
+                  <span className="text-sm tabular-nums text-gray-400">
                     {usageSec}s
                   </span>
                 )}
@@ -836,13 +836,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                         return next
                       })
                     }}
-                     className="ml-2 p-2.5 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
+                     className="ml-2 p-2 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
                       aria-label={isSoundEnabled ? muteTtsLabel : unmuteTtsLabel}
                     >
                     {isSoundEnabled ? (
-                       <Volume2 size={20} className="text-amber-500" />
+                       <Volume2 size={18} className="text-amber-500" />
                     ) : (
-                       <VolumeX size={20} className="text-gray-400" />
+                       <VolumeX size={18} className="text-gray-400" />
                     )}
                   </button>
                 )}
