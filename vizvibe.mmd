@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: gaming_demo_disclaimer_i18n
+    %% @lastActive: landing_favicon_route_module_not_found_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -214,6 +214,9 @@ flowchart TD
     %% @gaming_demo_disclaimer_i18n [ai-task, closed]
     gaming_demo_disclaimer_i18n("Gaming 데모 안내문 i18n 반영<br/><sub>테스트폰 하단에 성능 테스트용 데모라는<br/>고지 문구를 작은 텍스트로 추가하고<br/>socialHero.gaming.demoDisclaimer 키를<br/>15개 로케일에 맞춰 번역 동기화</sub>")
 
+    %% @landing_favicon_route_module_not_found_fix [ai-task, closed]
+    landing_favicon_route_module_not_found_fix("Landing favicon 500 오류 안정화<br/><sub>app/favicon.ico 메타데이터 라우트가<br/>간헐적으로 MODULE_NOT_FOUND를 내는<br/>개발환경 이슈를 줄이기 위해 favicon을<br/>public 정적 파일 서빙 경로로 전환</sub>")
+
     %% @translation_decouple_http [ai-task, closed]
     translation_decouple_http("번역 탈WebSocket → HTTP API 전환<br/><sub>STT 서버에서 번역 로직 전체 제거(~200줄)<br/>클라이언트가 /api/translate/finalize 직접 호출<br/>5글자 partial 번역, utteranceId 바인딩 오염 차단<br/>소리 토글 버튼 추가, 번역 표시 순서 고정</sub>")
 
@@ -413,6 +416,7 @@ flowchart TD
     stop_ack_server_final_turn_payload --> stop_translation_json_and_single_fallback
     landing_copy_update --> gaming_socialhero_multilingual_copy_refresh
     gaming_socialhero_multilingual_copy_refresh --> gaming_demo_disclaimer_i18n
+    mingle_landing_prototype --> landing_favicon_route_module_not_found_fix
     stop_translation_json_and_single_fallback --> translation_decouple_http
     translation_decouple_http --> finalize_inline_tts_bundle
     finalize_inline_tts_bundle --> finalize_tts_double_playback_rootcause
@@ -443,7 +447,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        gaming_demo_disclaimer_i18n
+        landing_favicon_route_module_not_found_fix
     end
 
     %% === STYLES ===
@@ -572,6 +576,7 @@ flowchart TD
     style stop_translation_json_and_single_fallback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style gaming_socialhero_multilingual_copy_refresh fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style gaming_demo_disclaimer_i18n fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style landing_favicon_route_module_not_found_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_inline_tts_bundle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_translate_first_tts_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -645,7 +650,7 @@ flowchart TD
     style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_scaffold fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style gaming_demo_disclaimer_i18n fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style landing_favicon_route_module_not_found_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style
