@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: landing_social_version_route_block
+    %% @lastActive: normal_global_connect_to_explore_swap
 
     %% === START ===
     %% @project_start [start, closed]
@@ -328,6 +328,9 @@ flowchart TD
     %% @landing_social_version_route_block [ai-task, closed]
     landing_social_version_route_block("Landing social 버전 외부 라우팅 차단<br/><sub>mingle-landing에서 version 허용 목록의 social을 제거해<br/>/social 및 /social/{locale} 경로가 유효 버전으로 매칭되지 않도록 수정<br/>middleware + 동적 버전 페이지 + locale 감지 프로바이더를 동기화해<br/>외부 직접 접근 시 404로 차단되게 정리</sub>")
 
+    %% @normal_global_connect_to_explore_swap [ai-task, closed]
+    normal_global_connect_to_explore_swap("Normal 글로벌 연결→Explore 교체<br/><sub>normal 버전 섹션 배열에서<br/>talkToWorld(글로벌 연결)를 제거하고<br/>worldMap(Explore) 섹션으로 교체해<br/>중간 콘텐츠 흐름을 Explore로 전환</sub>")
+
     %% @ios_device_signing_and_run_validation [human-task, opened]
     ios_device_signing_and_run_validation("실기기 서명/런 최종 검증<br/><sub>현재 남은 단계는 Xcode에서 Team 서명 설정 후<br/>실제 iPhone 대상 App 실행/설치 동작 확인이며<br/>마이크/오디오 권한 승인 흐름과 실시간 STT/TTS가<br/>실기기에서도 동일하게 동작하는지 점검 필요</sub>")
 
@@ -449,6 +452,7 @@ flowchart TD
     mingle_app_ios_scaffold --> xcode_install_and_ios_device_build
     xcode_install_and_ios_device_build --> capacitor_server_url_env_loading_fix
     capacitor_server_url_env_loading_fix --> landing_social_version_route_block
+    landing_social_version_route_block --> normal_global_connect_to_explore_swap
     capacitor_server_url_env_loading_fix --> ios_device_signing_and_run_validation
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
@@ -464,7 +468,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        landing_social_version_route_block
+        normal_global_connect_to_explore_swap
     end
 
     %% === STYLES ===
@@ -629,6 +633,7 @@ flowchart TD
     style xcode_install_and_ios_device_build fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style capacitor_server_url_env_loading_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style landing_social_version_route_block fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style normal_global_connect_to_explore_swap fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style ios_device_signing_and_run_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -671,7 +676,7 @@ flowchart TD
     style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_scaffold fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style landing_social_version_route_block fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style normal_global_connect_to_explore_swap fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style
