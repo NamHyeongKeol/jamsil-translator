@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: ios_safari_lock_resume_recovery
+    %% @lastActive: mingle_app_test_section_migration
 
     %% === START ===
     %% @project_start [start, closed]
@@ -238,6 +238,9 @@ flowchart TD
     %% @ios_safari_lock_resume_recovery [ai-task, closed]
     ios_safari_lock_resume_recovery("iOS 잠금복귀 TTS 회복 로직 강화<br/><sub>visibilitychange 외 pageshow/focus 복귀 훅을 추가해<br/>잠금 해제 후 자동 재개 시도를 다중 트리거로 보강하고<br/>재생 차단 시 BLOCKED 상태를 유지한 채 큐를 보존하며<br/>Resume Audio 버튼으로 사용자 제스처 재개 경로를 제공</sub>")
 
+    %% @mingle_app_test_section_migration [ai-task, closed]
+    mingle_app_test_section_migration("mingle-app 테스트 섹션 이식<br/><sub>mingle-landing의 최신 LivePhoneDemo 컴포넌트와<br/>/api/translate/finalize + /api/tts/inworld 서버 경유 경로를<br/>mingle-app /[locale]/translator 페이지에 통합해<br/>동일한 STT→번역→TTS 테스트 플로우를 구성</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -332,10 +335,10 @@ flowchart TD
     translation_decouple_http --> finalize_inline_tts_bundle
     finalize_inline_tts_bundle --> finalize_tts_double_playback_rootcause
     finalize_tts_double_playback_rootcause --> finalize_tts_dedupe_alignment_fix
-    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery
-    ios_safari_lock_resume_recovery --> tts_echo_reference_filter_research
-    ios_safari_lock_resume_recovery --> windows_loopback_capture_validation
-    ios_safari_lock_resume_recovery --> macos_loopback_capture_validation
+    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration
+    mingle_app_test_section_migration --> tts_echo_reference_filter_research
+    mingle_app_test_section_migration --> windows_loopback_capture_validation
+    mingle_app_test_section_migration --> macos_loopback_capture_validation
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -344,7 +347,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        ios_safari_lock_resume_recovery
+        mingle_app_test_section_migration
     end
 
     %% === STYLES ===
@@ -479,6 +482,7 @@ flowchart TD
     style tts_priority_queue_ordering fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style ios_chrome_audio_player_reuse fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style ios_safari_lock_resume_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_test_section_migration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -493,7 +497,8 @@ flowchart TD
     style tts_global_queue_sequential_playback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_priority_queue_ordering fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style ios_chrome_audio_player_reuse fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style ios_safari_lock_resume_recovery fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style ios_safari_lock_resume_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_test_section_migration fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style

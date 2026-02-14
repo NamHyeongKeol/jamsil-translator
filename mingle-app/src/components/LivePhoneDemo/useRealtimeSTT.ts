@@ -1,0 +1,890 @@
+'use client'
+
+import { useState, useRef, useEffect, useCallback } from 'react'
+import type { Utterance } from './ChatBubble'
+
+const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '3001'
+const getWsUrl = () => {
+  if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
+  const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  const protocol = isSecure ? 'wss' : 'ws'
+  return `${protocol}://${host}:${WS_PORT}`
+}
+const USAGE_LIMIT_SEC = 60
+
+const LS_KEY_UTTERANCES = 'mingle_demo_utterances'
+const LS_KEY_USAGE = 'mingle_demo_usage_sec'
+const LS_KEY_DEMO_COMPLETED = 'mingle_demo_animation_completed'
+
+// Initial demo conversation data - shown when user first visits
+const INITIAL_UTTERANCES: Utterance[] = [
+  {
+    id: 'demo-1',
+    originalText: '最近週末はいつも何をしていますか。',
+    originalLang: 'ja',
+    translations: {
+      en: 'What do you usually do on weekends recently.',
+      ko: '요즘 주말에는 항상 무엇을 하고 있나요.',
+    },
+  },
+  {
+    id: 'demo-2',
+    originalText: '저는 보통 집에서 영화 보거나 게임해요.',
+    originalLang: 'ko',
+    translations: {
+      en: 'I usually watch movies or play games at home.',
+      ja: '私は普段、家で映画を見たりゲームをしたりします。',
+    },
+  },
+  {
+    id: 'demo-3',
+    originalText: 'I usually go hiking. The weather is so nice these days.',
+    originalLang: 'en',
+    translations: {
+      ko: '저는 보통 하이킹을 갑니다. 요즘 날씨가 정말 좋네요.',
+      ja: '私は普段ハイキングに行きます。最近とても天気が良いです。',
+    },
+  },
+]
+
+// Check if demo animation has been completed before
+function isDemoCompleted(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return localStorage.getItem(LS_KEY_DEMO_COMPLETED) === 'true'
+  } catch { return false }
+}
+
+// Mark demo animation as completed
+function markDemoCompleted(): void {
+  try {
+    localStorage.setItem(LS_KEY_DEMO_COMPLETED, 'true')
+  } catch { /* ignore */ }
+}
+
+type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
+
+function floatTo16BitPCM(input: Float32Array): Int16Array {
+  const output = new Int16Array(input.length)
+  for (let i = 0; i < input.length; i++) {
+    const s = Math.max(-1, Math.min(1, input[i]))
+    output[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+  }
+  return output
+}
+
+function toBase64(data: Int16Array): string {
+  const bytes = new Uint8Array(data.buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
+
+interface UseRealtimeSTTOptions {
+  languages: string[]
+  onLimitReached?: () => void
+  onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string) => void
+  enableTts?: boolean
+}
+
+interface LocalFinalizeResult {
+  utteranceId: string
+  text: string
+  lang: string
+}
+
+export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, enableTts }: UseRealtimeSTTOptions) {
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
+  
+  // Demo animation states
+  const [isDemoAnimating, setIsDemoAnimating] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return !isDemoCompleted()
+  })
+  const [demoTypingText, setDemoTypingText] = useState('')
+  const [demoTypingLang, setDemoTypingLang] = useState<string | null>(null)
+  const [demoTypingTranslations, setDemoTypingTranslations] = useState<Record<string, string>>({})
+  
+  const [utterances, setUtterances] = useState<Utterance[]>(() => {
+    if (typeof window === 'undefined') return INITIAL_UTTERANCES
+    // If demo not completed, start with empty array for animation
+    if (!isDemoCompleted()) return []
+    try {
+      const stored = localStorage.getItem(LS_KEY_UTTERANCES)
+      if (!stored) return INITIAL_UTTERANCES
+      const parsed: Utterance[] = JSON.parse(stored)
+      // Deduplicate by id (fix corrupted data from previous bug)
+      const seen = new Set<string>()
+      return parsed.filter(u => {
+        if (seen.has(u.id)) return false
+        seen.add(u.id)
+        return true
+      })
+    } catch { return INITIAL_UTTERANCES }
+  })
+  const [partialTranscript, setPartialTranscript] = useState('')
+  const [partialTranslations, setPartialTranslations] = useState<Record<string, string>>({})
+  const [partialLang, setPartialLang] = useState<string | null>(null)
+  const [volume, setVolume] = useState(0)
+  const [usageSec, setUsageSec] = useState(() => {
+    if (typeof window === 'undefined') return 0
+    try {
+      return parseInt(localStorage.getItem(LS_KEY_USAGE) || '0', 10)
+    } catch { return 0 }
+  })
+
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const socketRef = useRef<WebSocket | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
+  const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const utteranceIdRef = useRef(0)
+  const usageIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const onLimitReachedRef = useRef(onLimitReached)
+  onLimitReachedRef.current = onLimitReached
+
+  // Ref mirror of partialTranslations for synchronous read
+  // (avoids nesting setUtterances inside setPartialTranslations updater,
+  //  which causes duplicates in React Strict Mode)
+  const partialTranslationsRef = useRef<Record<string, string>>({})
+  const partialTranscriptRef = useRef('')
+  const partialLangRef = useRef<string | null>(null)
+  const isStoppingRef = useRef(false)
+  const onTtsAudioRef = useRef(onTtsAudio)
+  onTtsAudioRef.current = onTtsAudio
+  const enableTtsRef = useRef(enableTts)
+  enableTtsRef.current = enableTts
+  const stopFinalizeDedupRef = useRef<{ sig: string, expiresAt: number }>({ sig: '', expiresAt: 0 })
+  const pendingLocalFinalizeRef = useRef<{ utteranceId: string, text: string, lang: string, expiresAt: number } | null>(null)
+  const finalizedTtsSignatureRef = useRef<Map<string, string>>(new Map())
+  // Monotonically increasing sequence number for translation requests.
+  // Responses with a seq lower than the latest applied seq are discarded,
+  // preventing old (slow) translations from overwriting newer ones.
+  const translateSeqRef = useRef(0)
+  const lastAppliedSeqRef = useRef<Map<string, number>>(new Map()) // utteranceId -> last applied seq
+  // Track the partial transcript length at which we last fired a partial translation.
+  // We fire a new partial translation every time the length crosses the next 5-char threshold.
+  const lastPartialTranslateLenRef = useRef(0)
+  const partialTranslateControllerRef = useRef<AbortController | null>(null)
+
+  // Persist utterances to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY_UTTERANCES, JSON.stringify(utterances))
+    } catch { /* ignore */ }
+  }, [utterances])
+
+  // Persist usage to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY_USAGE, String(usageSec))
+    } catch { /* ignore */ }
+  }, [usageSec])
+
+  useEffect(() => {
+    partialTranscriptRef.current = partialTranscript
+  }, [partialTranscript])
+
+  useEffect(() => {
+    partialLangRef.current = partialLang
+  }, [partialLang])
+
+  // Demo animation effect - typewriter effect for initial utterances
+  useEffect(() => {
+    if (!isDemoAnimating) return
+
+    let isCancelled = false
+    const TYPING_DELAY = 40 // ms per character
+    const UTTERANCE_PAUSE = 800 // ms between utterances
+    const INITIAL_DELAY = 1000 // ms before starting
+    const TRANSLATION_START_OFFSET = 3 // Start translation after N original chars
+
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+    const animateDemo = async () => {
+      await sleep(INITIAL_DELAY)
+      if (isCancelled) return
+
+      for (let i = 0; i < INITIAL_UTTERANCES.length; i++) {
+        const utterance = INITIAL_UTTERANCES[i]
+        const text = utterance.originalText
+        const translations = utterance.translations
+        const translationEntries = Object.entries(translations)
+
+        // Set the language we're typing in
+        setDemoTypingLang(utterance.originalLang)
+        // Initialize all translation slots as empty strings (so UI shows the boxes)
+        const initialTranslations: Record<string, string> = {}
+        for (const [lang] of translationEntries) {
+          initialTranslations[lang] = ''
+        }
+        setDemoTypingTranslations(initialTranslations)
+
+        // Typewriter effect - original and translations typed in parallel
+        for (let j = 0; j <= text.length; j++) {
+          if (isCancelled) return
+          
+          // Update original text
+          setDemoTypingText(text.slice(0, j))
+          
+          // Update translations proportionally
+          // Start translations after TRANSLATION_START_OFFSET characters
+          const translationProgress = Math.max(0, j - TRANSLATION_START_OFFSET)
+          const progressRatio = text.length > TRANSLATION_START_OFFSET 
+            ? translationProgress / (text.length - TRANSLATION_START_OFFSET)
+            : (j > 0 ? 1 : 0)
+          
+          const newTranslations: Record<string, string> = {}
+          for (const [lang, fullText] of translationEntries) {
+            const charsToShow = Math.floor(fullText.length * progressRatio)
+            newTranslations[lang] = fullText.slice(0, charsToShow)
+          }
+          setDemoTypingTranslations(newTranslations)
+          
+          await sleep(TYPING_DELAY)
+        }
+
+        // Complete all translations (in case of rounding issues)
+        const finalTranslations: Record<string, string> = {}
+        for (const [lang, fullText] of translationEntries) {
+          finalTranslations[lang] = fullText
+        }
+        setDemoTypingTranslations(finalTranslations)
+
+        // Small pause after typing complete
+        await sleep(400)
+        if (isCancelled) return
+
+        // Finalize this utterance
+        setUtterances(prev => [...prev, utterance])
+        setDemoTypingText('')
+        setDemoTypingLang(null)
+        setDemoTypingTranslations({})
+
+        // Pause before next utterance
+        if (i < INITIAL_UTTERANCES.length - 1) {
+          await sleep(UTTERANCE_PAUSE)
+        }
+      }
+
+      // Mark demo as completed
+      if (!isCancelled) {
+        setIsDemoAnimating(false)
+        markDemoCompleted()
+      }
+    }
+
+    animateDemo()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [isDemoAnimating])
+
+  const isLimitReached = usageSec >= USAGE_LIMIT_SEC
+
+  const stopAudioPipeline = useCallback(() => {
+    if (usageIntervalRef.current) {
+      clearInterval(usageIntervalRef.current)
+      usageIntervalRef.current = null
+    }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+    if (processorRef.current) {
+      processorRef.current.disconnect()
+      processorRef.current = null
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close()
+    }
+    audioContextRef.current = null
+    analyserRef.current = null
+    setVolume(0)
+  }, [])
+
+  const cleanup = useCallback(() => {
+    stopAudioPipeline()
+    if (socketRef.current) {
+      socketRef.current.close()
+      socketRef.current = null
+    }
+  }, [stopAudioPipeline])
+
+  const resetToIdle = useCallback(() => {
+    isStoppingRef.current = false
+    cleanup()
+    setConnectionStatus('idle')
+  }, [cleanup])
+
+  const clearPartialBuffers = useCallback(() => {
+    setPartialTranslations({})
+    partialTranslationsRef.current = {}
+    setPartialTranscript('')
+    partialTranscriptRef.current = ''
+    setPartialLang(null)
+    partialLangRef.current = null
+    lastPartialTranslateLenRef.current = 0
+    if (partialTranslateControllerRef.current) {
+      partialTranslateControllerRef.current.abort()
+      partialTranslateControllerRef.current = null
+    }
+  }, [])
+
+  // ===== HTTP Translation via /api/translate/finalize =====
+  const translateViaApi = useCallback(async (
+    text: string,
+    sourceLanguage: string,
+    targetLanguages: string[],
+    options?: { signal?: AbortSignal },
+  ): Promise<{ translations: Record<string, string> }> => {
+    const langs = targetLanguages.filter(l => l !== sourceLanguage)
+    if (!text.trim() || langs.length === 0) return { translations: {} }
+    try {
+      const body: Record<string, unknown> = { text, sourceLanguage, targetLanguages: langs }
+      const res = await fetch('/api/translate/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: options?.signal,
+      })
+      if (!res.ok) return { translations: {} }
+      const data = await res.json()
+      return {
+        translations: (data.translations || {}) as Record<string, string>,
+      }
+    } catch {
+      return { translations: {} }
+    }
+  }, [])
+
+  const requestTtsViaApi = useCallback(async (text: string, language: string): Promise<Blob | null> => {
+    if (!text.trim() || !language.trim()) return null
+    try {
+      const res = await fetch('/api/tts/inworld', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language }),
+      })
+      if (!res.ok) return null
+      const audioBlob = await res.blob()
+      if (!audioBlob.size) return null
+      return audioBlob
+    } catch {
+      return null
+    }
+  }, [])
+
+  const requestFinalTtsForUtterance = useCallback((
+    utteranceId: string,
+    sourceLanguage: string,
+    translations: Record<string, string>,
+  ) => {
+    if (!enableTtsRef.current) return
+    const ttsTargetLang = languages.filter(l => l !== sourceLanguage)[0]
+    if (!ttsTargetLang) return
+    const ttsText = (translations[ttsTargetLang] || '').trim()
+    if (!ttsText) return
+
+    const signature = `${ttsTargetLang}::${ttsText}`
+    if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return
+    finalizedTtsSignatureRef.current.set(utteranceId, signature)
+
+    void requestTtsViaApi(ttsText, ttsTargetLang).then(audioBlob => {
+      if (!audioBlob) {
+        finalizedTtsSignatureRef.current.delete(utteranceId)
+        return
+      }
+      onTtsAudioRef.current?.(utteranceId, audioBlob, ttsTargetLang)
+    })
+  }, [languages, requestTtsViaApi])
+
+  const applyTranslationToUtterance = useCallback((
+    utteranceId: string,
+    translations: Record<string, string>,
+    seq: number,
+    markFinalized: boolean,
+  ) => {
+    // Discard if a newer translation has already been applied.
+    const lastApplied = lastAppliedSeqRef.current.get(utteranceId) ?? -1
+    if (seq <= lastApplied) return
+    lastAppliedSeqRef.current.set(utteranceId, seq)
+
+    setUtterances(prev => {
+      const idx = prev.findIndex(u => u.id === utteranceId)
+      if (idx < 0) return prev
+      const target = prev[idx]
+      const newTranslations = { ...target.translations }
+      const newFinalized = { ...(target.translationFinalized || {}) }
+      for (const [lang, text] of Object.entries(translations)) {
+        if (text.trim()) {
+          newTranslations[lang] = text.trim()
+          if (markFinalized) newFinalized[lang] = true
+        }
+      }
+      return [
+        ...prev.slice(0, idx),
+        { ...target, translations: newTranslations, translationFinalized: newFinalized },
+        ...prev.slice(idx + 1),
+      ]
+    })
+  }, [])
+
+  const finalizePendingLocally = useCallback((rawText: string, rawLang: string): LocalFinalizeResult | null => {
+    const text = rawText.replace(/<\/?end>/gi, '').trim()
+    const lang = (rawLang || 'unknown').trim() || 'unknown'
+    if (!text) return null
+
+    const sig = `${lang}::${text}`
+    const now = Date.now()
+    if (
+      sig
+      && stopFinalizeDedupRef.current.sig === sig
+      && now < stopFinalizeDedupRef.current.expiresAt
+    ) {
+      setPartialTranslations({})
+      partialTranslationsRef.current = {}
+      setPartialTranscript('')
+      partialTranscriptRef.current = ''
+      setPartialLang(null)
+      partialLangRef.current = null
+      return null
+    }
+    stopFinalizeDedupRef.current = { sig, expiresAt: now + 5000 }
+
+    utteranceIdRef.current += 1
+    const seedTranslations = { ...partialTranslationsRef.current }
+    const seedFinalized: Record<string, boolean> = {}
+    for (const key of Object.keys(seedTranslations)) {
+      seedFinalized[key] = false
+    }
+
+    const utteranceId = `u-${Date.now()}-${utteranceIdRef.current}`
+    setUtterances(prev => [...prev, {
+      id: utteranceId,
+      originalText: text,
+      originalLang: lang,
+      translations: seedTranslations,
+      translationFinalized: seedFinalized,
+    }])
+    setPartialTranslations({})
+    partialTranslationsRef.current = {}
+    setPartialTranscript('')
+    partialTranscriptRef.current = ''
+    setPartialLang(null)
+    partialLangRef.current = null
+    pendingLocalFinalizeRef.current = { utteranceId, text, lang, expiresAt: now + 15000 }
+    return { utteranceId, text, lang }
+  }, [])
+
+  const stopRecordingGracefully = useCallback(async (notifyLimitReached = false) => {
+    if (isStoppingRef.current) return
+    isStoppingRef.current = true
+
+    stopAudioPipeline()
+
+    const socket = socketRef.current
+    const pendingText = partialTranscriptRef.current.trim()
+    const pendingLang = partialLangRef.current || 'unknown'
+    let localFinalizeResult: LocalFinalizeResult | null = null
+
+    // Finalize immediately in UI.
+    if (pendingText) {
+      localFinalizeResult = finalizePendingLocally(pendingText, pendingLang)
+    }
+
+    // Fire-and-forget stop_recording to server (so it can clean up STT provider)
+    try {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: 'stop_recording',
+          data: {
+            pending_text: pendingText,
+            pending_language: pendingLang,
+          },
+        }))
+      }
+    } catch { /* ignore */ }
+
+    // Close socket immediately — no need to wait for ACK since translation is HTTP.
+    if (socketRef.current) {
+      socketRef.current.close()
+      socketRef.current = null
+    }
+    setConnectionStatus('idle')
+    isStoppingRef.current = false
+
+    if (notifyLimitReached) {
+      onLimitReachedRef.current?.()
+    }
+
+    // Translate the finalized text via HTTP (fire-and-forget, results update utterance).
+    if (localFinalizeResult && languages.length > 0) {
+      const { utteranceId, text, lang } = localFinalizeResult
+      const seq = ++translateSeqRef.current
+      translateViaApi(text, lang, languages).then(result => {
+        if (Object.keys(result.translations).length > 0) {
+          applyTranslationToUtterance(utteranceId, result.translations, seq, true)
+          requestFinalTtsForUtterance(utteranceId, lang, result.translations)
+        }
+      })
+    }
+  }, [applyTranslationToUtterance, finalizePendingLocally, languages, requestFinalTtsForUtterance, stopAudioPipeline, translateViaApi])
+
+  const visualize = useCallback(function drawVolume() {
+    if (analyserRef.current) {
+      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount)
+      analyserRef.current.getByteTimeDomainData(dataArray)
+      let sum = 0
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += Math.pow((dataArray[i] - 128) / 128, 2)
+      }
+      const rms = Math.sqrt(sum / dataArray.length)
+      setVolume(rms)
+      animationFrameRef.current = requestAnimationFrame(drawVolume)
+    } else {
+      setVolume(0)
+    }
+  }, [])
+
+  const startAudioProcessing = useCallback(() => {
+    if (!audioContextRef.current || !streamRef.current || !socketRef.current) return
+
+    const context = audioContextRef.current
+    const stream = streamRef.current
+    const socket = socketRef.current
+
+    const source = context.createMediaStreamSource(stream)
+    const analyser = context.createAnalyser()
+    analyser.fftSize = 256
+    source.connect(analyser)
+    analyserRef.current = analyser
+    visualize()
+
+    const processor = context.createScriptProcessor(4096, 1, 1)
+    processorRef.current = processor
+    source.connect(processor)
+    processor.connect(context.destination)
+    processor.onaudioprocess = (e) => {
+      if (socket.readyState === WebSocket.OPEN) {
+        const inputData = e.inputBuffer.getChannelData(0)
+        const pcmData = floatTo16BitPCM(inputData)
+        const base64Data = toBase64(pcmData)
+        socket.send(JSON.stringify({
+          type: 'audio_chunk',
+          data: { chunk: base64Data }
+        }))
+      }
+    }
+  }, [visualize])
+
+  const startRecording = useCallback(async () => {
+    if (isStoppingRef.current) return
+    if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
+      return
+    }
+
+    // Check limit before starting
+    if (usageSec >= USAGE_LIMIT_SEC) {
+      onLimitReachedRef.current?.()
+      return
+    }
+
+    // Stop demo animation if running (discard current typing, keep completed utterances)
+    if (isDemoAnimating) {
+      setIsDemoAnimating(false)
+      setDemoTypingText('')
+      setDemoTypingLang(null)
+      setDemoTypingTranslations({})
+      markDemoCompleted()
+    }
+
+    try {
+      setConnectionStatus('connecting')
+      stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
+      pendingLocalFinalizeRef.current = null
+      setPartialTranscript('')
+      setPartialTranslations({})
+      partialTranslationsRef.current = {}
+      setPartialLang(null)
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      })
+      streamRef.current = stream
+
+      const context = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+      audioContextRef.current = context
+
+      const socket = new WebSocket(getWsUrl())
+      socketRef.current = socket
+
+      socket.onopen = () => {
+        const config = {
+          sample_rate: context.sampleRate,
+          languages,
+          stt_model: 'soniox',
+          lang_hints_strict: true,
+        }
+        socket.send(JSON.stringify(config))
+      }
+
+      socket.onmessage = (event) => {
+        if (socket !== socketRef.current) return
+        const message = JSON.parse(event.data)
+
+        if (message.status === 'ready') {
+          setConnectionStatus('ready')
+          startAudioProcessing()
+
+          // Start usage timer
+          usageIntervalRef.current = setInterval(() => {
+            setUsageSec(prev => {
+              const next = prev + 1
+              if (next >= USAGE_LIMIT_SEC) {
+                // Hit limit - defer cleanup to avoid setState-during-render
+                setTimeout(() => {
+                  void stopRecordingGracefully(true)
+                }, 0)
+              }
+              return next
+            })
+          }, 1000)
+        } else if (message.type === 'stop_recording_ack') {
+          // Server cleaned up STT provider — no translation data expected.
+        } else if (message.type === 'transcript' && message.data?.utterance) {
+          const rawText = message.data.utterance.text || ''
+          const text = rawText.replace(/<\/?end>/gi, '').trim()
+          const lang = message.data.utterance.language || 'unknown'
+
+          if (isStoppingRef.current && !message.data.is_final) {
+            return
+          }
+
+          if (message.data.is_final) {
+            const sig = `${lang}::${text}`
+            const now = Date.now()
+            if (
+              sig
+              && stopFinalizeDedupRef.current.sig === sig
+              && now < stopFinalizeDedupRef.current.expiresAt
+            ) {
+              stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
+              return
+            }
+            stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
+
+            const pendingLocal = pendingLocalFinalizeRef.current
+            if (
+              pendingLocal
+              && now < pendingLocal.expiresAt
+              && pendingLocal.lang === lang
+              && (
+                text.startsWith(pendingLocal.text)
+                || pendingLocal.text.startsWith(text)
+              )
+            ) {
+              const mergedText = isStoppingRef.current
+                ? pendingLocal.text
+                : (text.length >= pendingLocal.text.length ? text : pendingLocal.text)
+              setUtterances(prev => prev.map((utterance) => {
+                if (utterance.id !== pendingLocal.utteranceId) return utterance
+                return {
+                  ...utterance,
+                  originalText: mergedText,
+                }
+              }))
+              pendingLocalFinalizeRef.current = null
+              clearPartialBuffers()
+              return
+            }
+
+            utteranceIdRef.current += 1
+            const seedTranslations = { ...partialTranslationsRef.current }
+            const seedFinalized: Record<string, boolean> = {}
+            for (const key of Object.keys(seedTranslations)) {
+              seedFinalized[key] = false
+            }
+            const newUtteranceId = `u-${Date.now()}-${utteranceIdRef.current}`
+            const newUtterance: Utterance = {
+              id: newUtteranceId,
+              originalText: text,
+              originalLang: lang,
+              translations: seedTranslations,
+              translationFinalized: seedFinalized,
+            }
+            setUtterances(u => [...u, newUtterance])
+            clearPartialBuffers()
+            pendingLocalFinalizeRef.current = null
+
+            // Translate via HTTP (fire-and-forget).
+            if (languages.length > 0) {
+              const seq = ++translateSeqRef.current
+              translateViaApi(text, lang, languages).then(result => {
+                if (Object.keys(result.translations).length > 0) {
+                  applyTranslationToUtterance(newUtteranceId, result.translations, seq, true)
+                  requestFinalTtsForUtterance(newUtteranceId, lang, result.translations)
+                }
+              })
+            }
+          } else {
+            setPartialTranscript(text)
+            partialTranscriptRef.current = text
+            setPartialLang(lang)
+            partialLangRef.current = lang
+          }
+        }
+      }
+
+      socket.onerror = () => {
+        if (socket !== socketRef.current) return
+        const remainingPartial = partialTranscriptRef.current.trim()
+        if (remainingPartial) {
+          const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+          // Translate the finalized text from error path
+          if (result && languages.length > 0) {
+            const seq = ++translateSeqRef.current
+            translateViaApi(result.text, result.lang, languages).then(res => {
+              if (Object.keys(res.translations).length > 0) {
+                applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
+              }
+            })
+          }
+        }
+        cleanup()
+        setConnectionStatus('error')
+        setTimeout(() => setConnectionStatus('idle'), 3000)
+      }
+
+      socket.onclose = () => {
+        if (socket !== socketRef.current) return
+        if (!isStoppingRef.current) {
+          const remainingPartial = partialTranscriptRef.current.trim()
+          if (remainingPartial) {
+            const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+            // Translate the finalized text from close path
+            if (result && languages.length > 0) {
+              const seq = ++translateSeqRef.current
+              translateViaApi(result.text, result.lang, languages).then(res => {
+                if (Object.keys(res.translations).length > 0) {
+                  applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
+                }
+              })
+            }
+          }
+        }
+        resetToIdle()
+      }
+    } catch {
+      cleanup()
+      setConnectionStatus('error')
+      setTimeout(() => setConnectionStatus('idle'), 3000)
+    }
+  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, languages, requestFinalTtsForUtterance, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
+
+  // ===== Partial translation: fire every 5-char threshold =====
+  const PARTIAL_TRANSLATE_STEP = 5
+  useEffect(() => {
+    const len = partialTranscript.trim().length
+    if (len === 0 || languages.length === 0 || connectionStatus !== 'ready') return
+    // Determine the next threshold the length must reach to fire a translation.
+    const nextThreshold = lastPartialTranslateLenRef.current + PARTIAL_TRANSLATE_STEP
+    if (len < nextThreshold) return
+
+    // We crossed a threshold — fire partial translation.
+    lastPartialTranslateLenRef.current = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
+
+    // Capture the utterance counter at request time so we can discard stale responses
+    // that arrive after a new utterance has started (prevents cross-utterance contamination).
+    const requestUtteranceId = utteranceIdRef.current
+    const currentLang = partialLangRef.current || 'unknown'
+    translateViaApi(partialTranscript.trim(), currentLang, languages)
+      .then(result => {
+        // Discard if a new utterance has started since this request was fired.
+        if (utteranceIdRef.current !== requestUtteranceId) return
+        for (const [lang, text] of Object.entries(result.translations)) {
+          partialTranslationsRef.current = { ...partialTranslationsRef.current, [lang]: text }
+          setPartialTranslations(prev => ({ ...prev, [lang]: text }))
+        }
+      })
+  }, [partialTranscript, languages, connectionStatus, translateViaApi])
+
+  const toggleRecording = useCallback(() => {
+    if (connectionStatus === 'error') return
+    if (connectionStatus !== 'idle') {
+      void stopRecordingGracefully()
+    } else {
+      startRecording()
+    }
+  }, [connectionStatus, startRecording, stopRecordingGracefully])
+
+  useEffect(() => {
+    return () => {
+      cleanup()
+    }
+  }, [cleanup])
+
+  useEffect(() => {
+    const shouldStop = () => connectionStatus === 'ready' || connectionStatus === 'connecting'
+
+    const handlePageHide = () => {
+      if (!shouldStop()) return
+      void stopRecordingGracefully()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden || !shouldStop()) return
+      void stopRecordingGracefully()
+    }
+
+    const handleOffline = () => {
+      if (!shouldStop()) return
+      void stopRecordingGracefully()
+    }
+
+    window.addEventListener('pagehide', handlePageHide)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [connectionStatus, stopRecordingGracefully])
+
+  return {
+    connectionStatus,
+    utterances,
+    partialTranscript,
+    volume,
+    toggleRecording,
+    isActive: connectionStatus !== 'idle' && connectionStatus !== 'error',
+    isReady: connectionStatus === 'ready',
+    isConnecting: connectionStatus === 'connecting',
+    isError: connectionStatus === 'error',
+    partialTranslations,
+    partialLang,
+    usageSec,
+    isLimitReached,
+    // Demo animation states
+    isDemoAnimating,
+    demoTypingText,
+    demoTypingLang,
+    demoTypingTranslations,
+  }
+}
