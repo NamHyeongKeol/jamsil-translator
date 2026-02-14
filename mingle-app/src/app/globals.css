@@ -4,16 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-html {
-  font-size: calc(100vw / 390 * 16);
-}
-
-@media (min-width: 480px) {
-  html {
-    font-size: calc(480px / 390 * 16);
-  }
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -148,6 +138,35 @@ html {
     margin: 0;
     min-height: 100vh;
     overflow-x: hidden;
+    background: linear-gradient(180deg, #fff8e8 0%, #fffdf8 100%);
+  }
+
+  html {
+    font-size: 16px;
+  }
+}
+
+.mobile-canvas-stage {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-x: hidden;
+}
+
+.mobile-canvas-frame {
+  width: 480px;
+  transform-origin: top center;
+  will-change: transform;
+  background-color: var(--background);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--border) 48%, transparent),
+    0 22px 56px -28px rgba(17, 24, 39, 0.45);
+}
+
+@media (max-width: 479.98px) {
+  .mobile-canvas-frame {
+    box-shadow: none;
   }
 }
 

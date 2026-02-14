@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
+import MobileCanvasShell from "@/components/mobile-canvas-shell";
 import { DEFAULT_LOCALE } from "@/i18n";
 import "./globals.css";
 
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  maximumScale: 1.0,
   userScalable: false,
 };
 
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang={DEFAULT_LOCALE}>
       <body className="antialiased">
-        <AuthSessionProvider>{children}</AuthSessionProvider>
+        <AuthSessionProvider>
+          <MobileCanvasShell>{children}</MobileCanvasShell>
+        </AuthSessionProvider>
       </body>
     </html>
   );
