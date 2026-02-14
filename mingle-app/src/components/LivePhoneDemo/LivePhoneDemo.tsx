@@ -557,8 +557,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     <PhoneFrame>
       <div className="flex h-[100dvh] min-h-[100dvh] flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pb-2 border-b border-gray-100">
-          <span className="text-base font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 pb-3 pt-6">
+          <span className="text-xl font-extrabold leading-none bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
             Mingle
           </span>
           <div className="relative flex items-center gap-1">
