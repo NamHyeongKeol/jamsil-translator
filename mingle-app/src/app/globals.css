@@ -177,11 +177,17 @@
   overflow: hidden;
 }
 
+.mobile-canvas-shell {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
 .mobile-canvas-frame {
   width: 480px;
   height: 100dvh;
   min-height: 100dvh;
-  transform-origin: top center;
+  transform-origin: top left;
   will-change: transform;
   overflow: hidden;
 }
