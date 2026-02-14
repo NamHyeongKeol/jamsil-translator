@@ -84,6 +84,17 @@ function toBase64(data: Int16Array): string {
   return btoa(binary)
 }
 
+function blobToDataUrl(blob: Blob): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onerror = () => resolve(null)
+    reader.onloadend = () => {
+      resolve(typeof reader.result === 'string' ? reader.result : null)
+    }
+    reader.readAsDataURL(blob)
+  })
+}
+
 interface UseRealtimeSTTOptions {
   languages: string[]
   onLimitReached?: () => void
@@ -161,6 +172,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
   enableTtsRef.current = enableTts
   const stopFinalizeDedupRef = useRef<{ sig: string, expiresAt: number }>({ sig: '', expiresAt: 0 })
   const pendingLocalFinalizeRef = useRef<{ utteranceId: string, text: string, lang: string, expiresAt: number } | null>(null)
+  const finalizedTtsSignatureRef = useRef<Map<string, string>>(new Map())
   // Monotonically increasing sequence number for translation requests.
   // Responses with a seq lower than the latest applied seq are discarded,
   // preventing old (slow) translations from overwriting newer ones.
@@ -345,13 +357,12 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     text: string,
     sourceLanguage: string,
     targetLanguages: string[],
-    options?: { signal?: AbortSignal, tts?: { language: string } },
-  ): Promise<{ translations: Record<string, string>, ttsAudio?: string, ttsLanguage?: string }> => {
+    options?: { signal?: AbortSignal },
+  ): Promise<{ translations: Record<string, string> }> => {
     const langs = targetLanguages.filter(l => l !== sourceLanguage)
     if (!text.trim() || langs.length === 0) return { translations: {} }
     try {
       const body: Record<string, unknown> = { text, sourceLanguage, targetLanguages: langs }
-      if (options?.tts) body.tts = options.tts
       const res = await fetch('/api/translate/finalize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -362,13 +373,52 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       const data = await res.json()
       return {
         translations: (data.translations || {}) as Record<string, string>,
-        ttsAudio: data.ttsAudio as string | undefined,
-        ttsLanguage: data.ttsLanguage as string | undefined,
       }
     } catch {
       return { translations: {} }
     }
   }, [])
+
+  const requestTtsViaApi = useCallback(async (text: string, language: string): Promise<string | null> => {
+    if (!text.trim() || !language.trim()) return null
+    try {
+      const res = await fetch('/api/tts/inworld', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language }),
+      })
+      if (!res.ok) return null
+      const audioBlob = await res.blob()
+      if (!audioBlob.size) return null
+      return await blobToDataUrl(audioBlob)
+    } catch {
+      return null
+    }
+  }, [])
+
+  const requestFinalTtsForUtterance = useCallback((
+    utteranceId: string,
+    sourceLanguage: string,
+    translations: Record<string, string>,
+  ) => {
+    if (!enableTtsRef.current) return
+    const ttsTargetLang = languages.filter(l => l !== sourceLanguage)[0]
+    if (!ttsTargetLang) return
+    const ttsText = (translations[ttsTargetLang] || '').trim()
+    if (!ttsText) return
+
+    const signature = `${ttsTargetLang}::${ttsText}`
+    if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return
+    finalizedTtsSignatureRef.current.set(utteranceId, signature)
+
+    void requestTtsViaApi(ttsText, ttsTargetLang).then(audioDataUrl => {
+      if (!audioDataUrl) {
+        finalizedTtsSignatureRef.current.delete(utteranceId)
+        return
+      }
+      onTtsAudioRef.current?.(utteranceId, audioDataUrl, ttsTargetLang)
+    })
+  }, [languages, requestTtsViaApi])
 
   const applyTranslationToUtterance = useCallback((
     utteranceId: string,
@@ -493,18 +543,14 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     if (localFinalizeResult && languages.length > 0) {
       const { utteranceId, text, lang } = localFinalizeResult
       const seq = ++translateSeqRef.current
-      const ttsTargetLang = enableTtsRef.current ? languages.filter(l => l !== lang)[0] : undefined
-      const ttsOpt = ttsTargetLang ? { language: ttsTargetLang } : undefined
-      translateViaApi(text, lang, languages, { tts: ttsOpt }).then(result => {
+      translateViaApi(text, lang, languages).then(result => {
         if (Object.keys(result.translations).length > 0) {
           applyTranslationToUtterance(utteranceId, result.translations, seq, true)
-        }
-        if (result.ttsAudio && result.ttsLanguage) {
-          onTtsAudioRef.current?.(utteranceId, result.ttsAudio, result.ttsLanguage)
+          requestFinalTtsForUtterance(utteranceId, lang, result.translations)
         }
       })
     }
-  }, [applyTranslationToUtterance, finalizePendingLocally, languages, stopAudioPipeline, translateViaApi])
+  }, [applyTranslationToUtterance, finalizePendingLocally, languages, requestFinalTtsForUtterance, stopAudioPipeline, translateViaApi])
 
   const visualize = useCallback(() => {
     if (analyserRef.current) {
@@ -700,14 +746,10 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
             // Translate via HTTP (fire-and-forget).
             if (languages.length > 0) {
               const seq = ++translateSeqRef.current
-              const ttsTargetLang = enableTtsRef.current ? languages.filter(l => l !== lang)[0] : undefined
-              const ttsOpt = ttsTargetLang ? { language: ttsTargetLang } : undefined
-              translateViaApi(text, lang, languages, { tts: ttsOpt }).then(result => {
+              translateViaApi(text, lang, languages).then(result => {
                 if (Object.keys(result.translations).length > 0) {
                   applyTranslationToUtterance(newUtteranceId, result.translations, seq, true)
-                }
-                if (result.ttsAudio && result.ttsLanguage) {
-                  onTtsAudioRef.current?.(newUtteranceId, result.ttsAudio, result.ttsLanguage)
+                  requestFinalTtsForUtterance(newUtteranceId, lang, result.translations)
                 }
               })
             }
@@ -764,7 +806,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, languages, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
+  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, languages, requestFinalTtsForUtterance, resetToIdle, startAudioProcessing, translateViaApi, usageSec, isDemoAnimating, stopRecordingGracefully])
 
   // ===== Partial translation: fire every 5-char threshold =====
   const PARTIAL_TRANSLATE_STEP = 5
