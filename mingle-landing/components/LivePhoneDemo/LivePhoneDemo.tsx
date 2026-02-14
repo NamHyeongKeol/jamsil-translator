@@ -85,7 +85,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [isSoundEnabled, setIsSoundEnabled] = useState(true)
-  const [isTtsBlocked, setIsTtsBlocked] = useState(false)
+  const [, setIsTtsBlocked] = useState(false)
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const utterancesRef = useRef<Utterance[]>([])
   const playerAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -715,14 +715,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                     ) : (
                       <VolumeX size={14} className="text-gray-400" />
                     )}
-                  </button>
-                )}
-                {enableAutoTTS && isSoundEnabled && isTtsBlocked && (
-                  <button
-                    onClick={() => resumeTtsPlayback(true)}
-                    className="ml-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold border border-amber-300"
-                  >
-                    Resume Audio
                   </button>
                 )}
               </div>
