@@ -1,6 +1,15 @@
 import type { AppDictionary } from "@/i18n/types";
 
 export const enDictionary: AppDictionary = {
+  demo: {
+    tapPlayToStart: "Tap play to start",
+    usageLimitReached: "Usage limit reached",
+    usageLimitRetryHint: "Please try again in a new session.",
+    connecting: "Connecting...",
+    connectionFailed: "Connection failed. Retrying...",
+    muteTts: "Mute TTS",
+    unmuteTts: "Unmute TTS",
+  },
   tabs: {
     chats: "Chats",
     connect: "Connect",

@@ -1,4 +1,13 @@
 export type AppDictionary = {
+  demo: {
+    tapPlayToStart: string;
+    usageLimitReached: string;
+    usageLimitRetryHint: string;
+    connecting: string;
+    connectionFailed: string;
+    muteTts: string;
+    unmuteTts: string;
+  };
   tabs: {
     chats: string;
     connect: string;

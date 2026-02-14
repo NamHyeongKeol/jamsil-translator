@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-const CANVAS_WIDTH = 480;
+const CANVAS_WIDTH = 390;
 
 function calculateScale() {
   if (typeof window === "undefined") return 1;
@@ -40,6 +40,7 @@ export default function MobileCanvasShell({ children }: { children: ReactNode })
           style={{
             transform: `scale(${normalizedScale})`,
             height: frameHeight,
+            width: `${CANVAS_WIDTH}px`,
           }}
         >
           {children}

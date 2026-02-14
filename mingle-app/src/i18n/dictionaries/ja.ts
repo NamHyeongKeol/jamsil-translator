@@ -1,6 +1,15 @@
 import type { AppDictionary } from "@/i18n/types";
 
 export const jaDictionary: AppDictionary = {
+  demo: {
+    tapPlayToStart: "再生ボタンをタップして開始",
+    usageLimitReached: "使用制限に達しました",
+    usageLimitRetryHint: "次のセッションで再試行してください。",
+    connecting: "接続中...",
+    connectionFailed: "接続に失敗しました。再試行中...",
+    muteTts: "音声再生をミュート",
+    unmuteTts: "音声再生をミュート解除",
+  },
   tabs: {
     chats: "チャット",
     connect: "つながる",
