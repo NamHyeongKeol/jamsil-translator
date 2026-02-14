@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import useRealtimeSTTCore from '@mingle/live-demo-core/use-realtime-stt'
-import type { Utterance } from '@mingle/live-demo-core/chat-bubble'
+import useRealtimeSTTCore from './use-realtime-stt'
+import type { Utterance } from './ChatBubble'
 
 const LS_KEY_DEMO_COMPLETED = 'mingle_demo_animation_completed'
 

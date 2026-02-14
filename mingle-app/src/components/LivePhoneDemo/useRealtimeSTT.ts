@@ -1,6 +1,6 @@
 'use client'
 
-import useRealtimeSTTCore from '@mingle/live-demo-core/use-realtime-stt'
+import useRealtimeSTTCore from './use-realtime-stt'
 
 export default function useRealtimeSTT(options: Parameters<typeof useRealtimeSTTCore>[0]) {
   const core = useRealtimeSTTCore({

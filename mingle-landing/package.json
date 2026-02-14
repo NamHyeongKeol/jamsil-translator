@@ -13,7 +13,6 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@mingle/live-demo-core": "file:../packages/live-demo-core",
     "@anthropic-ai/sdk": "^0.73.0",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.2",
