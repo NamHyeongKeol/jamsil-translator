@@ -162,6 +162,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
   const streamRef = useRef<MediaStream | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const processorRef = useRef<ScriptProcessorNode | null>(null)
   const utteranceIdRef = useRef(0)
@@ -312,7 +313,8 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
 
   const isLimitReached = usageSec >= USAGE_LIMIT_SEC
 
-  const stopAudioPipeline = useCallback(() => {
+  const stopAudioPipeline = useCallback((options?: { closeContext?: boolean }) => {
+    const shouldCloseContext = options?.closeContext === true
     if (usageIntervalRef.current) {
       clearInterval(usageIntervalRef.current)
       usageIntervalRef.current = null
@@ -325,20 +327,30 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       processorRef.current.disconnect()
       processorRef.current = null
     }
+    if (sourceRef.current) {
+      sourceRef.current.disconnect()
+      sourceRef.current = null
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
-    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-      audioContextRef.current.close()
+    const context = audioContextRef.current
+    if (context && context.state !== 'closed') {
+      if (shouldCloseContext) {
+        audioContextRef.current = null
+        void context.close().catch(() => {})
+      } else if (context.state === 'running') {
+        // Keep context for next STT start; closing can disrupt playback route on iOS.
+        void context.suspend().catch(() => {})
+      }
     }
-    audioContextRef.current = null
     analyserRef.current = null
     setVolume(0)
   }, [])
 
   const cleanup = useCallback(() => {
-    stopAudioPipeline()
+    stopAudioPipeline({ closeContext: true })
     if (socketRef.current) {
       socketRef.current.close()
       socketRef.current = null
@@ -504,7 +516,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     if (isStoppingRef.current) return
     isStoppingRef.current = true
 
-    stopAudioPipeline()
+    stopAudioPipeline({ closeContext: false })
 
     const socket = socketRef.current
     const pendingText = partialTranscriptRef.current.trim()
@@ -579,6 +591,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     const socket = socketRef.current
 
     const source = context.createMediaStreamSource(stream)
+    sourceRef.current = source
     const analyser = context.createAnalyser()
     analyser.fftSize = 256
     source.connect(analyser)
@@ -643,8 +656,16 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       })
       streamRef.current = stream
 
-      const context = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-      audioContextRef.current = context
+      let context = audioContextRef.current
+      if (!context || context.state === 'closed') {
+        context = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+        audioContextRef.current = context
+      }
+      if (context.state === 'suspended') {
+        try {
+          await context.resume()
+        } catch { /* no-op */ }
+      }
 
       const socket = new WebSocket(getWsUrl())
       socketRef.current = socket
