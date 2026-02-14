@@ -6,5 +6,6 @@ export default function useRealtimeSTT(options: Parameters<typeof useRealtimeSTT
   return useRealtimeSTTCore({
     ...options,
     usageLimitSec: null,
+    enableInitialDemo: false,
   })
 }

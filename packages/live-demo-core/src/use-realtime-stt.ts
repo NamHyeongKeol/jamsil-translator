@@ -90,6 +90,7 @@ interface UseRealtimeSTTOptions {
   onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string) => void
   enableTts?: boolean
   usageLimitSec?: number | null
+  enableInitialDemo?: boolean
 }
 
 interface LocalFinalizeResult {
@@ -119,12 +120,21 @@ function decodeBase64AudioToBlob(base64: string, mime = 'audio/mpeg'): Blob | nu
   }
 }
 
-export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, enableTts, usageLimitSec = DEFAULT_USAGE_LIMIT_SEC }: UseRealtimeSTTOptions) {
+export default function useRealtimeSTT({
+  languages,
+  onLimitReached,
+  onTtsAudio,
+  enableTts,
+  usageLimitSec = DEFAULT_USAGE_LIMIT_SEC,
+  enableInitialDemo = true,
+}: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
+  const demoSeedEnabled = enableInitialDemo
   
   // Demo animation states
   const [isDemoAnimating, setIsDemoAnimating] = useState(() => {
     if (typeof window === 'undefined') return false
+    if (!demoSeedEnabled) return false
     return !isDemoCompleted()
   })
   const [demoTypingText, setDemoTypingText] = useState('')
@@ -132,7 +142,21 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
   const [demoTypingTranslations, setDemoTypingTranslations] = useState<Record<string, string>>({})
   
   const [utterances, setUtterances] = useState<Utterance[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_UTTERANCES
+    if (typeof window === 'undefined') return demoSeedEnabled ? INITIAL_UTTERANCES : []
+    if (!demoSeedEnabled) {
+      try {
+        const stored = localStorage.getItem(LS_KEY_UTTERANCES)
+        if (!stored) return []
+        const parsed: Utterance[] = JSON.parse(stored)
+        const seen = new Set<string>()
+        return parsed.filter((u) => {
+          if (u.id.startsWith('demo-')) return false
+          if (seen.has(u.id)) return false
+          seen.add(u.id)
+          return true
+        })
+      } catch { return [] }
+    }
     // If demo not completed, start with empty array for animation
     if (!isDemoCompleted()) return []
     try {
@@ -223,6 +247,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
   // Demo animation effect - typewriter effect for initial utterances
   useEffect(() => {
     if (!isDemoAnimating) return
+    if (!demoSeedEnabled) return
 
     let isCancelled = false
     const TYPING_DELAY = 40 // ms per character
@@ -310,7 +335,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     return () => {
       isCancelled = true
     }
-  }, [isDemoAnimating])
+  }, [demoSeedEnabled, isDemoAnimating])
 
   const normalizedUsageLimitSec = (
     typeof usageLimitSec === 'number'
