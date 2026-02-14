@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation'
 import HomePage from '@/components/HomePage'
 import { notFound } from 'next/navigation'
 
-const versions = ['normal', 'flirting', 'working', 'social', 'gaming']
+const versions = ['normal', 'flirting', 'working', 'gaming']
 const locales = ['en', 'ko', 'ja', 'zh-CN', 'zh-TW', 'fr', 'de', 'es', 'pt', 'it', 'ru', 'ar', 'hi', 'th', 'vi']
 
 export default function VersionPage() {
