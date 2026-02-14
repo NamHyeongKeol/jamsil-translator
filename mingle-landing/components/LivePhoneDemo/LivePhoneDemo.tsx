@@ -34,7 +34,7 @@ interface LivePhoneDemoProps {
 
 type TtsQueueItem = {
   utteranceId: string
-  audioDataUrl: string
+  audioBlob: Blob
   language: string
 }
 
@@ -87,7 +87,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const [isSoundEnabled, setIsSoundEnabled] = useState(true)
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const utterancesRef = useRef<Utterance[]>([])
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+  const playerAudioRef = useRef<HTMLAudioElement | null>(null)
+  const currentAudioUrlRef = useRef<string | null>(null)
   const ttsPendingByUtteranceRef = useRef<Map<string, TtsQueueItem>>(new Map())
   const ttsPlayedUtteranceRef = useRef<Set<string>>(new Set())
   const ttsWaitingSinceRef = useRef<Map<string, number>>(new Map())
@@ -104,13 +105,27 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { /* ignore */ }
   }, [selectedLanguages])
 
+  const ensureAudioPlayer = useCallback(() => {
+    if (playerAudioRef.current) return playerAudioRef.current
+    const audio = new Audio()
+    audio.preload = 'auto'
+    ;(audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
+    playerAudioRef.current = audio
+    return audio
+  }, [])
+
   const cleanupCurrentAudio = useCallback(() => {
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause()
-      currentAudioRef.current.src = ''
-      currentAudioRef.current.onended = null
-      currentAudioRef.current.onerror = null
-      currentAudioRef.current = null
+    const player = playerAudioRef.current
+    if (player) {
+      player.pause()
+      player.onended = null
+      player.onerror = null
+      player.src = ''
+      player.load()
+    }
+    if (currentAudioUrlRef.current) {
+      URL.revokeObjectURL(currentAudioUrlRef.current)
+      currentAudioUrlRef.current = null
     }
   }, [])
 
@@ -172,11 +187,16 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     isTtsProcessingRef.current = true
     cleanupCurrentAudio()
     setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
-    const audio = new Audio(next.audioDataUrl)
-    currentAudioRef.current = audio
+    const audio = ensureAudioPlayer()
+    const objectUrl = URL.createObjectURL(next.audioBlob)
+    currentAudioUrlRef.current = objectUrl
+    audio.src = objectUrl
 
     audio.onended = () => {
-      if (currentAudioRef.current === audio) currentAudioRef.current = null
+      if (currentAudioUrlRef.current === objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+        currentAudioUrlRef.current = null
+      }
       ttsPlayedUtteranceRef.current.add(next.utteranceId)
       setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
       isTtsProcessingRef.current = false
@@ -184,7 +204,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
 
     audio.onerror = () => {
-      if (currentAudioRef.current === audio) currentAudioRef.current = null
+      if (currentAudioUrlRef.current === objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+        currentAudioUrlRef.current = null
+      }
       // Keep ordering moving even if one audio payload is broken.
       ttsPlayedUtteranceRef.current.add(next.utteranceId)
       setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
@@ -193,20 +216,23 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
 
     audio.play().catch(() => {
-      if (currentAudioRef.current === audio) currentAudioRef.current = null
+      if (currentAudioUrlRef.current === objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+        currentAudioUrlRef.current = null
+      }
       setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
       ttsNeedsUnlockRef.current = true
       ttsPendingByUtteranceRef.current.set(next.utteranceId, next)
       isTtsProcessingRef.current = false
     })
-  }, [cleanupCurrentAudio, clearTtsOrderWaitTimer, enableAutoTTS, isSoundEnabled, selectedLanguages])
+  }, [cleanupCurrentAudio, clearTtsOrderWaitTimer, enableAutoTTS, ensureAudioPlayer, isSoundEnabled, selectedLanguages])
   processTtsQueueRef.current = processTtsQueue
 
   // Handle TTS audio received inline with translation response.
-  const handleTtsAudio = useCallback((utteranceId: string, audioDataUrl: string, language: string) => {
+  const handleTtsAudio = useCallback((utteranceId: string, audioBlob: Blob, language: string) => {
     if (!enableAutoTTS || !isSoundEnabled) return
     if (ttsPlayedUtteranceRef.current.has(utteranceId)) return
-    ttsPendingByUtteranceRef.current.set(utteranceId, { utteranceId, audioDataUrl, language })
+    ttsPendingByUtteranceRef.current.set(utteranceId, { utteranceId, audioBlob, language })
     ttsWaitingSinceRef.current.delete(utteranceId)
     processTtsQueue()
   }, [enableAutoTTS, isSoundEnabled, processTtsQueue])
@@ -258,18 +284,22 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const primeAudioPlayback = useCallback(async (): Promise<boolean> => {
     if (isAudioPrimedRef.current) return true
     try {
-      const unlockAudio = new Audio(SILENT_WAV_DATA_URI)
-      unlockAudio.volume = 0
-      await unlockAudio.play()
-      unlockAudio.pause()
-      unlockAudio.currentTime = 0
+      const player = ensureAudioPlayer()
+      player.src = SILENT_WAV_DATA_URI
+      player.volume = 0
+      await player.play()
+      player.pause()
+      player.currentTime = 0
+      player.volume = 1
+      player.src = ''
+      player.load()
       isAudioPrimedRef.current = true
       ttsNeedsUnlockRef.current = false
       return true
     } catch {
       return false
     }
-  }, [])
+  }, [ensureAudioPlayer])
 
   // Stop current playback when sound is disabled.
   useEffect(() => {
@@ -286,7 +316,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) return
-      const audio = currentAudioRef.current
+      const audio = playerAudioRef.current
       if (!audio || audio.ended || !audio.paused) return
 
       audio.play().catch(() => {
@@ -306,7 +336,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       if (!ttsNeedsUnlockRef.current) return
       void primeAudioPlayback().then((ok) => {
         if (!ok) return
-        const current = currentAudioRef.current
+        const current = playerAudioRef.current
         if (current) {
           void current.play().then(() => {
             ttsNeedsUnlockRef.current = false

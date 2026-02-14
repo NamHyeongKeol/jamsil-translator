@@ -84,21 +84,10 @@ function toBase64(data: Int16Array): string {
   return btoa(binary)
 }
 
-function blobToDataUrl(blob: Blob): Promise<string | null> {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onerror = () => resolve(null)
-    reader.onloadend = () => {
-      resolve(typeof reader.result === 'string' ? reader.result : null)
-    }
-    reader.readAsDataURL(blob)
-  })
-}
-
 interface UseRealtimeSTTOptions {
   languages: string[]
   onLimitReached?: () => void
-  onTtsAudio?: (utteranceId: string, audioDataUrl: string, language: string) => void
+  onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string) => void
   enableTts?: boolean
 }
 
@@ -379,7 +368,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     }
   }, [])
 
-  const requestTtsViaApi = useCallback(async (text: string, language: string): Promise<string | null> => {
+  const requestTtsViaApi = useCallback(async (text: string, language: string): Promise<Blob | null> => {
     if (!text.trim() || !language.trim()) return null
     try {
       const res = await fetch('/api/tts/inworld', {
@@ -390,7 +379,7 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
       if (!res.ok) return null
       const audioBlob = await res.blob()
       if (!audioBlob.size) return null
-      return await blobToDataUrl(audioBlob)
+      return audioBlob
     } catch {
       return null
     }
@@ -411,12 +400,12 @@ export default function useRealtimeSTT({ languages, onLimitReached, onTtsAudio, 
     if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return
     finalizedTtsSignatureRef.current.set(utteranceId, signature)
 
-    void requestTtsViaApi(ttsText, ttsTargetLang).then(audioDataUrl => {
-      if (!audioDataUrl) {
+    void requestTtsViaApi(ttsText, ttsTargetLang).then(audioBlob => {
+      if (!audioBlob) {
         finalizedTtsSignatureRef.current.delete(utteranceId)
         return
       }
-      onTtsAudioRef.current?.(utteranceId, audioDataUrl, ttsTargetLang)
+      onTtsAudioRef.current?.(utteranceId, audioBlob, ttsTargetLang)
     })
   }, [languages, requestTtsViaApi])
 

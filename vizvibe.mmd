@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: tts_priority_queue_ordering
+    %% @lastActive: ios_chrome_audio_player_reuse
 
     %% === START ===
     %% @project_start [start, closed]
@@ -232,6 +232,9 @@ flowchart TD
     %% @tts_priority_queue_ordering [ai-task, closed]
     tts_priority_queue_ordering("TTS 메시지 순서 우선순위 큐 적용<br/><sub>응답 도착 순서가 역전되어도 utterance 순서를 기준으로<br/>앞선 발화 오디오를 우선 재생하도록 큐 우선순위를 재정렬<br/>선행 오디오 미도착 시 짧게 대기 후 타임아웃 스킵을 허용해<br/>순서 보장과 무한 대기 방지를 동시에 만족</sub>")
 
+    %% @ios_chrome_audio_player_reuse [ai-task, closed]
+    ios_chrome_audio_player_reuse("iOS Chrome 무음 대응 재생기 교체<br/><sub>TTS payload를 data URL 대신 Blob으로 전달하고<br/>재생 시 단일 HTMLAudioElement를 계속 재사용해<br/>사용자 제스처 언락 상태를 동일 플레이어에 유지하고<br/>iOS 브라우저별 자동재생 차단 케이스를 완화</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -326,10 +329,10 @@ flowchart TD
     translation_decouple_http --> finalize_inline_tts_bundle
     finalize_inline_tts_bundle --> finalize_tts_double_playback_rootcause
     finalize_tts_double_playback_rootcause --> finalize_tts_dedupe_alignment_fix
-    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering
-    tts_priority_queue_ordering --> tts_echo_reference_filter_research
-    tts_priority_queue_ordering --> windows_loopback_capture_validation
-    tts_priority_queue_ordering --> macos_loopback_capture_validation
+    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse
+    ios_chrome_audio_player_reuse --> tts_echo_reference_filter_research
+    ios_chrome_audio_player_reuse --> windows_loopback_capture_validation
+    ios_chrome_audio_player_reuse --> macos_loopback_capture_validation
     tts_echo_reference_filter_research --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
@@ -338,7 +341,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        tts_priority_queue_ordering
+        ios_chrome_audio_player_reuse
     end
 
     %% === STYLES ===
@@ -471,6 +474,7 @@ flowchart TD
     style finalize_translate_first_tts_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_global_queue_sequential_playback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_priority_queue_ordering fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_chrome_audio_player_reuse fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -483,7 +487,8 @@ flowchart TD
     style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_translate_first_tts_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style tts_global_queue_sequential_playback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style tts_priority_queue_ordering fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style tts_priority_queue_ordering fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_chrome_audio_player_reuse fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
 
     %% Blocked subgraph style (red dashed)
     %% Recent subgraph style
