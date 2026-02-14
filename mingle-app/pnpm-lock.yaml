@@ -17,6 +17,9 @@ importers:
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
+      '@mingle/live-demo-core':
+        specifier: file:../packages/live-demo-core
+        version: file:../packages/live-demo-core(framer-motion@12.34.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -594,6 +597,13 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@mingle/live-demo-core@file:../packages/live-demo-core':
+    resolution: {directory: ../packages/live-demo-core, type: directory}
+    peerDependencies:
+      framer-motion: ^12.0.0
+      react: ^19.0.0
+      react-dom: ^19.0.0
 
   '@modelcontextprotocol/sdk@1.26.0':
     resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
@@ -4664,6 +4674,12 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@mingle/live-demo-core@file:../packages/live-demo-core(framer-motion@12.34.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      framer-motion: 12.34.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
 
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.76)':
     dependencies:
