@@ -66,7 +66,7 @@ export const versionConfigs: Record<string, VersionConfig> = {
       { id: 'features' },
       { id: 'realtimeSync' },
       { id: 'coreValue' },
-      { id: 'talkToWorld' },
+      { id: 'worldMap' },
       { id: 'cta' },
     ]
   },
@@ -122,4 +122,3 @@ export const versionConfigs: Record<string, VersionConfig> = {
 
 // 기본 설정 - 알 수 없는 버전일 때 fallback
 export const defaultVersion = 'normal'
-
