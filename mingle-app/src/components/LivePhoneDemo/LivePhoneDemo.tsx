@@ -149,15 +149,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { /* ignore */ }
   }, [selectedLanguages])
 
-  // Ignore preloaded/history utterances for TTS queue ordering.
-  // Only utterances created after this component mount should be considered for playback.
-  useEffect(() => {
-    const initialIds = initialUtteranceIdsRef.current ?? []
-    for (const id of initialIds) {
-      ttsPlayedUtteranceRef.current.add(id)
-    }
-  }, [])
-
   const ensureAudioPlayer = useCallback(() => {
     if (playerAudioRef.current) return playerAudioRef.current
     const audio = new Audio()
@@ -345,7 +336,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   useEffect(() => {
     utterancesRef.current = utterances
     if (initialUtteranceIdsRef.current === null) {
-      initialUtteranceIdsRef.current = utterances.map(utterance => utterance.id)
+      const initialIds = utterances.map(utterance => utterance.id)
+      initialUtteranceIdsRef.current = initialIds
+      // Ignore preloaded/history utterances for TTS queue ordering.
+      // Only utterances created after initial hydration should be spoken.
+      for (const id of initialIds) {
+        ttsPlayedUtteranceRef.current.add(id)
+      }
     }
   }, [utterances])
 
