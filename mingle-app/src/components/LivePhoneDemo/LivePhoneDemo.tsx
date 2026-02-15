@@ -8,6 +8,7 @@ import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
+import { playNativeTtsAudio, shouldUseNativeTtsPlayback, stopNativeTtsAudio } from '@/lib/native-tts-player'
 
 const VOLUME_THRESHOLD = 0.05
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
@@ -235,6 +236,38 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     isTtsProcessingRef.current = true
     cleanupCurrentAudio()
     setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
+
+    if (shouldUseNativeTtsPlayback()) {
+      ttsNeedsUnlockRef.current = false
+      logTtsQueue('play.native.start', {
+        utteranceId: next.utteranceId,
+        language: next.language,
+        audioBytes: next.audioBlob.size,
+      })
+      void playNativeTtsAudio(next.audioBlob, next.language).then(() => {
+        logTtsQueue('play.native.ended', {
+          utteranceId: next.utteranceId,
+          language: next.language,
+        })
+        ttsPlayedUtteranceRef.current.add(next.utteranceId)
+        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
+        isTtsProcessingRef.current = false
+        processTtsQueueRef.current()
+      }).catch((error) => {
+        logTtsQueue('play.native.error', {
+          utteranceId: next.utteranceId,
+          language: next.language,
+          error: error instanceof Error ? error.message : 'native_play_failed',
+        })
+        // Keep ordering moving even if native playback fails.
+        ttsPlayedUtteranceRef.current.add(next.utteranceId)
+        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
+        isTtsProcessingRef.current = false
+        processTtsQueueRef.current()
+      })
+      return
+    }
+
     const audio = ensureAudioPlayer()
     const objectUrl = URL.createObjectURL(next.audioBlob)
     currentAudioUrlRef.current = objectUrl
@@ -478,6 +511,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     ttsWaitingSinceRef.current.clear()
     isTtsProcessingRef.current = false
     ttsNeedsUnlockRef.current = false
+    void stopNativeTtsAudio()
     cleanupCurrentAudio()
   }, [clearTtsOrderWaitTimer, isSoundEnabled, cleanupCurrentAudio])
 
@@ -545,6 +579,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       waitingSince.clear()
       isTtsProcessingRef.current = false
       ttsNeedsUnlockRef.current = false
+      void stopNativeTtsAudio()
       cleanupCurrentAudio()
     }
   }, [clearStopClickResumeTimers, clearTtsOrderWaitTimer, cleanupCurrentAudio])

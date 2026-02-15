@@ -59,6 +59,16 @@ pnpm cap:verify
 - `cap:sync` builds the web app and prepares a fallback `capacitor-web` bundle.
 - If `CAPACITOR_SERVER_URL` is set, native builds will load that URL at runtime.
 
+## Native iOS TTS Toggle
+
+- `NEXT_PUBLIC_NATIVE_TTS_MODE=auto|on|off`
+- default is `auto` (iOS Capacitor runtime uses native AVAudioPlayer path)
+- quick rollback without code change:
+  - set env to `off`, redeploy web, run `pnpm cap:sync` and reinstall app
+  - or in Safari Web Inspector console:
+    - `localStorage.setItem("mingle_native_tts_mode", "off")`
+    - app restart
+
 ## Seed Data
 
 ```bash

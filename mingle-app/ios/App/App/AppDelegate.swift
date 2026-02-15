@@ -94,3 +94,117 @@ class NativeAudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 }
+
+@objc(NativeTTSPlayerPlugin)
+class NativeTTSPlayerPlugin: CAPPlugin, CAPBridgedPlugin, AVAudioPlayerDelegate {
+    public let identifier = "NativeTTSPlayerPlugin"
+    public let jsName = "NativeTTSPlayer"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "play", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
+    ]
+
+    private var audioPlayer: AVAudioPlayer?
+    private var activePlayCallId: String?
+
+    private func clearActivePlayback() {
+        if let player = audioPlayer {
+            player.stop()
+            player.delegate = nil
+        }
+        audioPlayer = nil
+    }
+
+    private func rejectActivePlayCall(_ message: String) {
+        guard let callId = activePlayCallId else { return }
+        activePlayCallId = nil
+        guard let call = bridge?.savedCall(withID: callId) else { return }
+        call.reject(message)
+        bridge?.releaseCall(call)
+    }
+
+    private func resolveActivePlayCall() {
+        guard let callId = activePlayCallId else { return }
+        activePlayCallId = nil
+        guard let call = bridge?.savedCall(withID: callId) else { return }
+        call.resolve([
+            "ok": true,
+        ])
+        bridge?.releaseCall(call)
+    }
+
+    @objc func play(_ call: CAPPluginCall) {
+        guard let rawAudioBase64 = call.getString("audioBase64"), !rawAudioBase64.isEmpty else {
+            call.reject("audioBase64 is required")
+            return
+        }
+
+        let cleanedAudioBase64: String
+        if let range = rawAudioBase64.range(of: "base64,") {
+            cleanedAudioBase64 = String(rawAudioBase64[range.upperBound...])
+        } else {
+            cleanedAudioBase64 = rawAudioBase64
+        }
+
+        guard let audioData = Data(base64Encoded: cleanedAudioBase64, options: [.ignoreUnknownCharacters]), !audioData.isEmpty else {
+            call.reject("Invalid base64 audio payload")
+            return
+        }
+
+        // Keep only one active playback call at a time.
+        rejectActivePlayCall("native_tts_interrupted")
+        clearActivePlayback()
+
+        let session = AVAudioSession.sharedInstance()
+
+        do {
+            try session.setCategory(
+                .playback,
+                mode: .default,
+                options: [.allowBluetoothA2DP, .mixWithOthers]
+            )
+            try session.setActive(true, options: [])
+
+            let player = try AVAudioPlayer(data: audioData)
+            player.delegate = self
+            player.prepareToPlay()
+            let didStart = player.play()
+            if !didStart {
+                call.reject("Failed to start native playback")
+                return
+            }
+
+            audioPlayer = player
+            bridge?.saveCall(call)
+            activePlayCallId = call.callbackId
+            NSLog("[NativeTTSPlayer] play started route=%@", String(describing: session.currentRoute.outputs.first?.portType.rawValue))
+        } catch {
+            clearActivePlayback()
+            call.reject("Failed to play native TTS audio", nil, error)
+        }
+    }
+
+    @objc func stop(_ call: CAPPluginCall) {
+        clearActivePlayback()
+        rejectActivePlayCall("native_tts_stopped")
+        call.resolve()
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        clearActivePlayback()
+        if flag {
+            resolveActivePlayCall()
+        } else {
+            rejectActivePlayCall("Native playback finished unsuccessfully")
+        }
+    }
+
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        clearActivePlayback()
+        if let decodeError = error {
+            rejectActivePlayCall("Native decode error: \(decodeError.localizedDescription)")
+        } else {
+            rejectActivePlayCall("Native decode error")
+        }
+    }
+}
