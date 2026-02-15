@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Utterance } from './ChatBubble'
+import { setNativeAudioMode } from '@/lib/native-audio-session'
 
 const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '3001'
 const getWsUrl = () => {
@@ -391,6 +392,7 @@ export default function useRealtimeSTT({
     if (isStoppingRef.current) return
     isStoppingRef.current = true
 
+    void setNativeAudioMode('playback')
     stopAudioPipeline({ closeContext: false })
 
     const socket = socketRef.current
@@ -511,6 +513,7 @@ export default function useRealtimeSTT({
       setPartialTranslations({})
       partialTranslationsRef.current = {}
       setPartialLang(null)
+      await setNativeAudioMode('recording')
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -695,6 +698,7 @@ export default function useRealtimeSTT({
         resetToIdle()
       }
     } catch {
+      void setNativeAudioMode('playback')
       cleanup()
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)

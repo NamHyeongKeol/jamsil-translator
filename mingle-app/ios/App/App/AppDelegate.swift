@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import AVFoundation
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -46,4 +47,46 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+}
+
+@objc(NativeAudioSessionPlugin)
+class NativeAudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "NativeAudioSessionPlugin"
+    public let jsName = "NativeAudioSession"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "setMode", returnType: CAPPluginReturnPromise),
+    ]
+
+    @objc func setMode(_ call: CAPPluginCall) {
+        let mode = call.getString("mode") ?? "playback"
+        let session = AVAudioSession.sharedInstance()
+
+        do {
+            switch mode {
+            case "recording":
+                try session.setCategory(
+                    .playAndRecord,
+                    mode: .voiceChat,
+                    options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP, .mixWithOthers]
+                )
+                try session.setActive(true, options: [])
+            case "playback":
+                try session.setCategory(
+                    .playback,
+                    mode: .spokenAudio,
+                    options: [.mixWithOthers]
+                )
+                try session.setActive(true, options: [])
+            default:
+                call.reject("Unsupported mode: \(mode)")
+                return
+            }
+
+            call.resolve([
+                "mode": mode,
+            ])
+        } catch {
+            call.reject("Failed to configure AVAudioSession", nil, error)
+        }
+    }
 }
