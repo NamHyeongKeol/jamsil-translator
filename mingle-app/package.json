@@ -16,9 +16,7 @@
     "cap:open:android": "pnpm exec cap open android",
     "cap:verify": "node scripts/verify-capacitor.mjs",
     "seed:check": "node scripts/seed-data.mjs --check",
-    "seed:populate": "node scripts/seed-data.mjs",
-    "crawl:instagram": "node scripts/crawl-instagram.mjs",
-    "crawl:hellotalk": "node scripts/crawl-hellotalk.mjs"
+    "seed:populate": "node scripts/seed-data.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",

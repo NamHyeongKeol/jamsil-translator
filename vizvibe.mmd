@@ -133,9 +133,6 @@ flowchart TD
     %% @instagram_crawling [ai-task, closed]
     instagram_crawling("인스타 크롤링 기능<br/><sub>타깃 데이터 수집 범위와 정책을 정의하고<br/>수집/정제 파이프라인을 구현해<br/>후속 분석 및 데이터 구축에 활용</sub>")
 
-    %% @hellotalk_crawling [ai-task, closed]
-    hellotalk_crawling("헬로톡 크롤링 기능<br/><sub>언어교환 도메인 데이터 수집 파이프라인을<br/>설계/구현하고 데이터 품질 기준을 정해<br/>시드/추천 실험에 활용</sub>")
-
     %% @tts_provider_research [ai-task, closed]
     tts_provider_research("TTS 프로바이더 리서치/비교<br/><sub>실시간/비실시간 후보군 가격을 시간당으로 통일<br/>언어수/스트리밍 여부/데모 유무 비교 완료<br/>Inworld 중심 도입 방향으로 정리</sub>")
 
@@ -445,14 +442,12 @@ flowchart TD
     chat_invite_feature --> next_i18n_adoption
     chat_invite_feature --> next_auth_adoption
     chat_invite_feature --> instagram_crawling
-    chat_invite_feature --> hellotalk_crawling
     next_auth_adoption --> google_oauth_login
     next_i18n_adoption --> mobile_app_development
     google_oauth_login --> mobile_app_development
     translator_feature_build --> mobile_app_development
     mobile_app_development --> capacitor_app_build
     instagram_crawling --> seed_data_population
-    hellotalk_crawling --> seed_data_population
     translation_engine_research --> tts_provider_research
     tts_provider_research --> inworld_non_realtime_strategy
     inworld_non_realtime_strategy --> gaming_tts_test_section_spec
@@ -710,7 +705,6 @@ flowchart TD
     style macos_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style opencode_oh_my_setup fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
-    style hellotalk_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

@@ -73,10 +73,7 @@ pnpm seed:populate
 
 ```bash
 pnpm crawl:instagram
-pnpm crawl:hellotalk
 ```
 
 - Input sample: `data/crawl/instagram-input.sample.json`
 - Normalized output: `data/crawl/instagram-normalized.json`
-- Input sample: `data/crawl/hellotalk-input.sample.json`
-- Normalized output: `data/crawl/hellotalk-normalized.json`
