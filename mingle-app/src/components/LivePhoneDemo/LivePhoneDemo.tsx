@@ -515,7 +515,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     void primeAudioPlayback()
   }, [enableAutoTTS, isActive, primeAudioPlayback])
 
-  const handleMicClick = useCallback(() => {
+  const handleMicClick = useCallback(async () => {
     if (isLimitReached) {
       onLimitReached?.()
       return
@@ -524,11 +524,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     // Mic button controls STT only.
     // Prime audio player only when starting STT from idle, not when stopping.
     if (enableAutoTTS && !wasActive) {
-      void primeAudioPlayback().then((ok) => {
-        if (!ok) {
-          ttsNeedsUnlockRef.current = true
-        }
-      })
+      const ok = await primeAudioPlayback()
+      if (!ok) {
+        ttsNeedsUnlockRef.current = true
+      }
     }
     toggleRecording()
     if (wasActive) {

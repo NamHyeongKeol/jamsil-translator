@@ -66,15 +66,16 @@ class NativeAudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
             case "recording":
                 try session.setCategory(
                     .playAndRecord,
-                    mode: .voiceChat,
-                    options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP, .mixWithOthers]
+                    mode: .default,
+                    options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP]
                 )
+                try session.overrideOutputAudioPort(.speaker)
                 try session.setActive(true, options: [])
             case "playback":
                 try session.setCategory(
                     .playback,
-                    mode: .spokenAudio,
-                    options: [.mixWithOthers]
+                    mode: .default,
+                    options: []
                 )
                 try session.setActive(true, options: [])
             default:

@@ -513,7 +513,6 @@ export default function useRealtimeSTT({
       setPartialTranslations({})
       partialTranslationsRef.current = {}
       setPartialLang(null)
-      await setNativeAudioMode('recording')
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -535,6 +534,8 @@ export default function useRealtimeSTT({
           await context.resume()
         } catch { /* no-op */ }
       }
+
+      await setNativeAudioMode('recording')
 
       const socket = new WebSocket(getWsUrl())
       socketRef.current = socket
