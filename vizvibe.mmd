@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_ios_tts_audio_route_stability_fix
+    %% @lastActive: mingle_app_tts_fallback_recovery_path
 
     %% === START ===
     %% @project_start [start, closed]
@@ -382,6 +382,9 @@ flowchart TD
     %% @mingle_app_ios_tts_audio_route_stability_fix [ai-task, closed, 2026-02-15, ai]
     mingle_app_ios_tts_audio_route_stability_fix("mingle-app iOS TTS 무음 안정화<br/><sub>STT 시작 직후 priming 실패 레이스를 줄이기 위해<br/>오디오 priming 완료 후 녹음 시작 순서로 조정하고<br/>native 녹음 세션을 voiceChat에서 default로 전환해<br/>스피커 출력 라우팅을 강제하도록 iOS 플러그인을 보정</sub>")
 
+    %% @mingle_app_tts_fallback_recovery_path [ai-task, closed, 2026-02-15, ai]
+    mingle_app_tts_fallback_recovery_path("mingle-app TTS 수신 복구 경로 추가<br/><sub>/api/translate/finalize에서 inline TTS가 누락되거나<br/>base64 오디오가 깨질 때 /api/tts/inworld로 fallback 요청해<br/>큐에 음성을 넣도록 보강하고 socket error/close finalize 경로도<br/>ttsLanguage 전달 및 inline 처리까지 연결해 누락 케이스를 축소</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -506,6 +509,7 @@ flowchart TD
     vercel_ignore_command_scope_fix --> vercel_dashboard_deploy_filter_check
     vercel_dashboard_deploy_filter_check --> live_demo_core_full_decouple
     live_demo_core_full_decouple --> mingle_app_ios_tts_audio_route_stability_fix
+    mingle_app_ios_tts_audio_route_stability_fix --> mingle_app_tts_fallback_recovery_path
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
     mingle_app_remove_60s_usage_limit --> macos_loopback_capture_validation
@@ -520,7 +524,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_ios_tts_audio_route_stability_fix
+        mingle_app_tts_fallback_recovery_path
     end
 
     %% === STYLES ===
@@ -703,7 +707,8 @@ flowchart TD
     style vercel_ignore_command_scope_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_dashboard_deploy_filter_check fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style live_demo_core_full_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_ios_tts_audio_route_stability_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_tts_audio_route_stability_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_fallback_recovery_path fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px

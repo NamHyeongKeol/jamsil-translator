@@ -290,13 +290,32 @@ export default function useRealtimeSTT({
     }
   }, [])
 
+  const synthesizeTtsViaApi = useCallback(async (text: string, language: string): Promise<Blob | null> => {
+    const normalizedText = text.trim()
+    const normalizedLang = language.trim()
+    if (!normalizedText || !normalizedLang) return null
+    try {
+      const res = await fetch('/api/tts/inworld', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: normalizedText, language: normalizedLang }),
+      })
+      if (!res.ok) return null
+      const arrayBuffer = await res.arrayBuffer()
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) return null
+      const mime = res.headers.get('content-type') || 'audio/mpeg'
+      return new Blob([arrayBuffer], { type: mime })
+    } catch {
+      return null
+    }
+  }, [])
+
   const handleInlineTtsFromTranslate = useCallback((
     utteranceId: string,
     sourceLanguage: string,
     result: TranslateApiResult,
   ) => {
     if (!enableTtsRef.current) return
-    if (!result.ttsAudioBase64) return
     const ttsTargetLang = (result.ttsLanguage || languages.filter(l => l !== sourceLanguage)[0] || '').trim()
     if (!ttsTargetLang) return
     const ttsText = (result.translations[ttsTargetLang] || '').trim()
@@ -304,11 +323,25 @@ export default function useRealtimeSTT({
 
     const signature = `${ttsTargetLang}::${ttsText}`
     if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return
-    const audioBlob = decodeBase64AudioToBlob(result.ttsAudioBase64, result.ttsAudioMime || 'audio/mpeg')
-    if (!audioBlob || audioBlob.size === 0) return
-    finalizedTtsSignatureRef.current.set(utteranceId, signature)
-    onTtsAudioRef.current?.(utteranceId, audioBlob, ttsTargetLang)
-  }, [languages])
+
+    const queueAudioIfValid = (audioBlob: Blob | null): boolean => {
+      if (!audioBlob || audioBlob.size === 0) return false
+      if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return true
+      finalizedTtsSignatureRef.current.set(utteranceId, signature)
+      onTtsAudioRef.current?.(utteranceId, audioBlob, ttsTargetLang)
+      return true
+    }
+
+    if (result.ttsAudioBase64) {
+      const audioBlob = decodeBase64AudioToBlob(result.ttsAudioBase64, result.ttsAudioMime || 'audio/mpeg')
+      if (queueAudioIfValid(audioBlob)) return
+    }
+
+    // Inline TTS is missing/invalid: recover by calling server-side Inworld proxy.
+    void synthesizeTtsViaApi(ttsText, ttsTargetLang).then((fallbackBlob) => {
+      queueAudioIfValid(fallbackBlob)
+    })
+  }, [languages, synthesizeTtsViaApi])
 
   const applyTranslationToUtterance = useCallback((
     utteranceId: string,
@@ -667,9 +700,11 @@ export default function useRealtimeSTT({
           // Translate the finalized text from error path
           if (result && languages.length > 0) {
             const seq = ++translateSeqRef.current
-            translateViaApi(result.text, result.lang, languages).then(res => {
+            const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== result.lang)[0] || '') : ''
+            translateViaApi(result.text, result.lang, languages, { ttsLanguage: ttsTargetLang }).then(res => {
               if (Object.keys(res.translations).length > 0) {
                 applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
+                handleInlineTtsFromTranslate(result.utteranceId, result.lang, res)
               }
             })
           }
@@ -688,9 +723,11 @@ export default function useRealtimeSTT({
             // Translate the finalized text from close path
             if (result && languages.length > 0) {
               const seq = ++translateSeqRef.current
-              translateViaApi(result.text, result.lang, languages).then(res => {
+              const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== result.lang)[0] || '') : ''
+              translateViaApi(result.text, result.lang, languages, { ttsLanguage: ttsTargetLang }).then(res => {
                 if (Object.keys(res.translations).length > 0) {
                   applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
+                  handleInlineTtsFromTranslate(result.utteranceId, result.lang, res)
                 }
               })
             }
