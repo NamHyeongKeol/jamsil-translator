@@ -1,0 +1,23 @@
+{
+  "name": "mingle-stt",
+  "private": true,
+  "version": "0.0.0",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "dev": "ts-node stt-server.ts",
+    "build": "tsc stt-server.ts --outDir dist --esModuleInterop --module commonjs --target ES2017 --skipLibCheck --resolveJsonModule",
+    "start": "node dist/stt-server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "node-fetch": "^2.7.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/node-fetch": "^2.6.13",
+    "@types/ws": "^8.18.1",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.3"
+  }
+}

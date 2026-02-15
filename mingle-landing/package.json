@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "license": "GPL-3.0-only",
   "scripts": {
-    "dev": "concurrently \"next dev -p 4000\" \"ts-node stt-server.ts\"",
+    "dev": "next dev -p 4000",
+    "dev:with-stt": "concurrently \"next dev -p 4000\" \"pnpm --dir ../mingle-stt dev\"",
     "build": "prisma generate && next build",
     "start": "next start -p 4000",
     "lint": "next lint",
