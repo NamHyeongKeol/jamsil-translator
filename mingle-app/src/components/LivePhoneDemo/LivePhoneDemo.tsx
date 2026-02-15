@@ -237,6 +237,65 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     cleanupCurrentAudio()
     setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
 
+    const playViaHtmlAudio = () => {
+      const audio = ensureAudioPlayer()
+      const objectUrl = URL.createObjectURL(next.audioBlob)
+      currentAudioUrlRef.current = objectUrl
+      audio.src = objectUrl
+      logTtsQueue('play.start', {
+        utteranceId: next.utteranceId,
+        language: next.language,
+        audioBytes: next.audioBlob.size,
+      })
+
+      audio.onended = () => {
+        if (currentAudioUrlRef.current === objectUrl) {
+          URL.revokeObjectURL(objectUrl)
+          currentAudioUrlRef.current = null
+        }
+        logTtsQueue('play.ended', {
+          utteranceId: next.utteranceId,
+          language: next.language,
+        })
+        ttsPlayedUtteranceRef.current.add(next.utteranceId)
+        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
+        isTtsProcessingRef.current = false
+        processTtsQueueRef.current()
+      }
+
+      audio.onerror = () => {
+        if (currentAudioUrlRef.current === objectUrl) {
+          URL.revokeObjectURL(objectUrl)
+          currentAudioUrlRef.current = null
+        }
+        logTtsQueue('play.error', {
+          utteranceId: next.utteranceId,
+          language: next.language,
+        })
+        // Keep ordering moving even if one audio payload is broken.
+        ttsPlayedUtteranceRef.current.add(next.utteranceId)
+        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
+        isTtsProcessingRef.current = false
+        processTtsQueueRef.current()
+      }
+
+      audio.play().catch((error) => {
+        if (currentAudioUrlRef.current === objectUrl) {
+          URL.revokeObjectURL(objectUrl)
+          currentAudioUrlRef.current = null
+        }
+        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
+        ttsNeedsUnlockRef.current = true
+        ttsPendingByUtteranceRef.current.set(next.utteranceId, next)
+        logTtsQueue('play.blocked', {
+          utteranceId: next.utteranceId,
+          language: next.language,
+          error: error instanceof Error ? error.message : 'play_failed',
+        })
+        isTtsProcessingRef.current = false
+      })
+    }
+
     if (shouldUseNativeTtsPlayback()) {
       ttsNeedsUnlockRef.current = false
       logTtsQueue('play.native.start', {
@@ -259,71 +318,16 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           language: next.language,
           error: error instanceof Error ? error.message : 'native_play_failed',
         })
-        // Keep ordering moving even if native playback fails.
-        ttsPlayedUtteranceRef.current.add(next.utteranceId)
-        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
-        isTtsProcessingRef.current = false
-        processTtsQueueRef.current()
+        logTtsQueue('play.native.fallback_to_html_audio', {
+          utteranceId: next.utteranceId,
+          language: next.language,
+        })
+        playViaHtmlAudio()
       })
       return
     }
 
-    const audio = ensureAudioPlayer()
-    const objectUrl = URL.createObjectURL(next.audioBlob)
-    currentAudioUrlRef.current = objectUrl
-    audio.src = objectUrl
-    logTtsQueue('play.start', {
-      utteranceId: next.utteranceId,
-      language: next.language,
-      audioBytes: next.audioBlob.size,
-    })
-
-    audio.onended = () => {
-      if (currentAudioUrlRef.current === objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-        currentAudioUrlRef.current = null
-      }
-      logTtsQueue('play.ended', {
-        utteranceId: next.utteranceId,
-        language: next.language,
-      })
-      ttsPlayedUtteranceRef.current.add(next.utteranceId)
-      setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
-      isTtsProcessingRef.current = false
-      processTtsQueueRef.current()
-    }
-
-    audio.onerror = () => {
-      if (currentAudioUrlRef.current === objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-        currentAudioUrlRef.current = null
-      }
-      logTtsQueue('play.error', {
-        utteranceId: next.utteranceId,
-        language: next.language,
-      })
-      // Keep ordering moving even if one audio payload is broken.
-      ttsPlayedUtteranceRef.current.add(next.utteranceId)
-      setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
-      isTtsProcessingRef.current = false
-      processTtsQueueRef.current()
-    }
-
-    audio.play().catch((error) => {
-      if (currentAudioUrlRef.current === objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-        currentAudioUrlRef.current = null
-      }
-      setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
-      ttsNeedsUnlockRef.current = true
-      ttsPendingByUtteranceRef.current.set(next.utteranceId, next)
-      logTtsQueue('play.blocked', {
-        utteranceId: next.utteranceId,
-        language: next.language,
-        error: error instanceof Error ? error.message : 'play_failed',
-      })
-      isTtsProcessingRef.current = false
-    })
+    playViaHtmlAudio()
   }, [cleanupCurrentAudio, clearTtsOrderWaitTimer, enableAutoTTS, ensureAudioPlayer, isSoundEnabled, selectedLanguages])
 
   useEffect(() => {
