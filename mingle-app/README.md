@@ -69,6 +69,16 @@ pnpm cap:verify
     - `localStorage.setItem("mingle_native_tts_mode", "off")`
     - app restart
 
+## Native iOS STT Toggle
+
+- `NEXT_PUBLIC_NATIVE_STT_MODE=auto|on|off`
+- default is `auto` (iOS Capacitor runtime uses native AVAudioEngine + native WS path)
+- quick rollback without code change:
+  - set env to `off`, redeploy web, run `pnpm cap:sync` and reinstall app
+  - or in Safari Web Inspector console:
+    - `localStorage.setItem("mingle_native_stt_mode", "off")`
+    - app restart
+
 ## Seed Data
 
 ```bash

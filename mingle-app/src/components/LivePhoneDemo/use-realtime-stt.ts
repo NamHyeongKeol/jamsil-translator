@@ -3,6 +3,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Utterance } from './ChatBubble'
 import { setNativeAudioMode } from '@/lib/native-audio-session'
+import {
+  addNativeSttListener,
+  shouldUseNativeSttSession,
+  startNativeSttSession,
+  stopNativeSttSession,
+} from '@/lib/native-stt-session'
 
 const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '3001'
 const getWsUrl = () => {
@@ -57,6 +63,10 @@ interface TranslateApiResult {
   ttsLanguage?: string
   ttsAudioBase64?: string
   ttsAudioMime?: string
+}
+
+type NativeListenerHandle = {
+  remove: () => Promise<void>
 }
 
 function decodeBase64AudioToBlob(base64: string, mime = 'audio/mpeg'): Blob | null {
@@ -147,6 +157,8 @@ export default function useRealtimeSTT({
   const lastAudioChunkAtRef = useRef(0)
   const isBackgroundRecoveringRef = useRef(false)
   const wasBackgroundedRef = useRef(false)
+  const nativeListenerHandlesRef = useRef<NativeListenerHandle[]>([])
+  const isUsingNativeSttRef = useRef(false)
   const onLimitReachedRef = useRef(onLimitReached)
   onLimitReachedRef.current = onLimitReached
 
@@ -173,6 +185,14 @@ export default function useRealtimeSTT({
   // We fire a new partial translation every time the length crosses the next 5-char threshold.
   const lastPartialTranslateLenRef = useRef(0)
   const partialTranslateControllerRef = useRef<AbortController | null>(null)
+
+  const removeNativeSttListeners = useCallback(() => {
+    const handles = nativeListenerHandlesRef.current
+    nativeListenerHandlesRef.current = []
+    for (const handle of handles) {
+      void handle.remove().catch(() => {})
+    }
+  }, [])
 
   // Persist utterances to localStorage
   useEffect(() => {
@@ -259,7 +279,12 @@ export default function useRealtimeSTT({
       socketRef.current.close()
       socketRef.current = null
     }
-  }, [stopAudioPipeline])
+    removeNativeSttListeners()
+    if (isUsingNativeSttRef.current) {
+      isUsingNativeSttRef.current = false
+      void stopNativeSttSession()
+    }
+  }, [removeNativeSttListeners, stopAudioPipeline])
 
   const resetToIdle = useCallback(() => {
     isStoppingRef.current = false
@@ -512,6 +537,7 @@ export default function useRealtimeSTT({
     stopAudioPipeline({ closeContext: false })
 
     const socket = socketRef.current
+    const usingNativeStt = isUsingNativeSttRef.current
     const pendingText = partialTranscriptRef.current.trim()
     const pendingLang = partialLangRef.current || 'unknown'
     let localFinalizeResult: LocalFinalizeResult | null = null
@@ -521,23 +547,32 @@ export default function useRealtimeSTT({
       localFinalizeResult = finalizePendingLocally(pendingText, pendingLang)
     }
 
-    // Fire-and-forget stop_recording to server (so it can clean up STT provider)
-    try {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          type: 'stop_recording',
-          data: {
-            pending_text: pendingText,
-            pending_language: pendingLang,
-          },
-        }))
-      }
-    } catch { /* ignore */ }
+    if (usingNativeStt) {
+      isUsingNativeSttRef.current = false
+      removeNativeSttListeners()
+      await stopNativeSttSession({
+        pendingText,
+        pendingLanguage: pendingLang,
+      })
+    } else {
+      // Fire-and-forget stop_recording to server (so it can clean up STT provider)
+      try {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'stop_recording',
+            data: {
+              pending_text: pendingText,
+              pending_language: pendingLang,
+            },
+          }))
+        }
+      } catch { /* ignore */ }
 
-    // Close socket immediately — no need to wait for ACK since translation is HTTP.
-    if (socketRef.current) {
-      socketRef.current.close()
-      socketRef.current = null
+      // Close socket immediately — no need to wait for ACK since translation is HTTP.
+      if (socketRef.current) {
+        socketRef.current.close()
+        socketRef.current = null
+      }
     }
     setConnectionStatus('idle')
     isStoppingRef.current = false
@@ -558,7 +593,7 @@ export default function useRealtimeSTT({
         }
       })
     }
-  }, [applyTranslationToUtterance, finalizePendingLocally, handleInlineTtsFromTranslate, languages, stopAudioPipeline, translateViaApi])
+  }, [applyTranslationToUtterance, finalizePendingLocally, handleInlineTtsFromTranslate, languages, removeNativeSttListeners, stopAudioPipeline, translateViaApi])
 
   const visualize = useCallback(() => {
     if (analyserRef.current) {
@@ -609,9 +644,174 @@ export default function useRealtimeSTT({
     }
   }, [visualize])
 
+  const handleSttTransportError = useCallback(() => {
+    const remainingPartial = partialTranscriptRef.current.trim()
+    if (remainingPartial) {
+      const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+      if (result && languages.length > 0) {
+        const seq = ++translateSeqRef.current
+        const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== result.lang)[0] || '') : ''
+        translateViaApi(result.text, result.lang, languages, { ttsLanguage: ttsTargetLang }).then(res => {
+          if (Object.keys(res.translations).length > 0) {
+            applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
+            handleInlineTtsFromTranslate(result.utteranceId, result.lang, res)
+          }
+        })
+      }
+    }
+    cleanup()
+    setConnectionStatus('error')
+    setTimeout(() => setConnectionStatus('idle'), 3000)
+  }, [applyTranslationToUtterance, cleanup, finalizePendingLocally, handleInlineTtsFromTranslate, languages, translateViaApi])
+
+  const handleSttTransportClose = useCallback(() => {
+    if (!isStoppingRef.current) {
+      const remainingPartial = partialTranscriptRef.current.trim()
+      if (remainingPartial) {
+        const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
+        if (result && languages.length > 0) {
+          const seq = ++translateSeqRef.current
+          const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== result.lang)[0] || '') : ''
+          translateViaApi(result.text, result.lang, languages, { ttsLanguage: ttsTargetLang }).then(res => {
+            if (Object.keys(res.translations).length > 0) {
+              applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
+              handleInlineTtsFromTranslate(result.utteranceId, result.lang, res)
+            }
+          })
+        }
+      }
+    }
+    resetToIdle()
+  }, [applyTranslationToUtterance, finalizePendingLocally, handleInlineTtsFromTranslate, languages, resetToIdle, translateViaApi])
+
+  const handleSttServerMessage = useCallback((message: Record<string, unknown>) => {
+    if (message.status === 'ready') {
+      setConnectionStatus('ready')
+      lastAudioChunkAtRef.current = Date.now()
+      if (!isUsingNativeSttRef.current) {
+        startAudioProcessing()
+      }
+
+      if (usageIntervalRef.current) {
+        clearInterval(usageIntervalRef.current)
+      }
+      usageIntervalRef.current = setInterval(() => {
+        setUsageSec(prev => {
+          const next = prev + 1
+          if (normalizedUsageLimitSec !== null && next >= normalizedUsageLimitSec) {
+            setTimeout(() => {
+              void stopRecordingGracefully(true)
+            }, 0)
+          }
+          return next
+        })
+      }, 1000)
+      return
+    }
+
+    if (message.type === 'stop_recording_ack') {
+      return
+    }
+
+    if (message.type === 'transcript' && typeof message.data === 'object' && message.data !== null) {
+      const data = message.data as Record<string, unknown>
+      const utterance = (typeof data.utterance === 'object' && data.utterance !== null)
+        ? data.utterance as Record<string, unknown>
+        : null
+      if (!utterance) return
+
+      const rawText = typeof utterance.text === 'string' ? utterance.text : ''
+      const text = rawText.replace(/<\/?end>/gi, '').trim()
+      const lang = typeof utterance.language === 'string' ? utterance.language : 'unknown'
+      const isFinal = data.is_final === true
+
+      if (isStoppingRef.current && !isFinal) {
+        return
+      }
+
+      if (isFinal) {
+        const sig = `${lang}::${text}`
+        const now = Date.now()
+        if (
+          sig
+          && stopFinalizeDedupRef.current.sig === sig
+          && now < stopFinalizeDedupRef.current.expiresAt
+        ) {
+          stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
+          return
+        }
+        stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
+
+        const pendingLocal = pendingLocalFinalizeRef.current
+        if (
+          pendingLocal
+          && now < pendingLocal.expiresAt
+          && pendingLocal.lang === lang
+          && (
+            text.startsWith(pendingLocal.text)
+            || pendingLocal.text.startsWith(text)
+          )
+        ) {
+          const mergedText = isStoppingRef.current
+            ? pendingLocal.text
+            : (text.length >= pendingLocal.text.length ? text : pendingLocal.text)
+          setUtterances(prev => prev.map((utteranceItem) => {
+            if (utteranceItem.id !== pendingLocal.utteranceId) return utteranceItem
+            return {
+              ...utteranceItem,
+              originalText: mergedText,
+            }
+          }))
+          pendingLocalFinalizeRef.current = null
+          clearPartialBuffers()
+          return
+        }
+
+        utteranceIdRef.current += 1
+        const seedTranslations = { ...partialTranslationsRef.current }
+        const seedFinalized: Record<string, boolean> = {}
+        for (const key of Object.keys(seedTranslations)) {
+          seedFinalized[key] = false
+        }
+        const newUtteranceId = `u-${Date.now()}-${utteranceIdRef.current}`
+        const newUtterance: Utterance = {
+          id: newUtteranceId,
+          originalText: text,
+          originalLang: lang,
+          translations: seedTranslations,
+          translationFinalized: seedFinalized,
+        }
+        setUtterances(u => [...u, newUtterance])
+        clearPartialBuffers()
+        pendingLocalFinalizeRef.current = null
+
+        if (languages.length > 0) {
+          const seq = ++translateSeqRef.current
+          const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== lang)[0] || '') : ''
+          translateViaApi(text, lang, languages, { ttsLanguage: ttsTargetLang }).then(result => {
+            if (Object.keys(result.translations).length > 0) {
+              applyTranslationToUtterance(newUtteranceId, result.translations, seq, true)
+              handleInlineTtsFromTranslate(newUtteranceId, lang, result)
+            }
+          })
+        }
+      } else {
+        setPartialTranscript(text)
+        partialTranscriptRef.current = text
+        setPartialLang(lang)
+        partialLangRef.current = lang
+      }
+    }
+  }, [applyTranslationToUtterance, clearPartialBuffers, handleInlineTtsFromTranslate, languages, normalizedUsageLimitSec, startAudioProcessing, stopRecordingGracefully, translateViaApi])
+
   const startRecording = useCallback(async () => {
     if (isStoppingRef.current) return
-    if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
+    const useNativeStt = shouldUseNativeSttSession()
+    if (
+      !useNativeStt
+      && socketRef.current
+      && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)
+    ) {
       return
     }
 
@@ -629,14 +829,48 @@ export default function useRealtimeSTT({
       setPartialTranslations({})
       partialTranslationsRef.current = {}
       setPartialLang(null)
+      removeNativeSttListeners()
 
+      if (useNativeStt) {
+        isUsingNativeSttRef.current = true
+        await setNativeAudioMode('recording')
+        const statusHandle = await addNativeSttListener('status', (event) => {
+          handleSttServerMessage(event)
+        })
+        const messageHandle = await addNativeSttListener('message', (event) => {
+          const raw = typeof event.raw === 'string' ? event.raw : ''
+          if (!raw) return
+          try {
+            const message = JSON.parse(raw) as Record<string, unknown>
+            handleSttServerMessage(message)
+          } catch {
+            // ignore malformed event payload
+          }
+        })
+        const errorHandle = await addNativeSttListener('error', () => {
+          handleSttTransportError()
+        })
+        const closeHandle = await addNativeSttListener('close', () => {
+          handleSttTransportClose()
+        })
+        nativeListenerHandlesRef.current = [statusHandle, messageHandle, errorHandle, closeHandle]
+        await startNativeSttSession({
+          wsUrl: getWsUrl(),
+          languages,
+          sttModel: 'soniox',
+          langHintsStrict: true,
+        })
+        return
+      }
+
+      isUsingNativeSttRef.current = false
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
           channelCount: 1,
-        },
+        }
       })
       streamRef.current = stream
 
@@ -668,155 +902,22 @@ export default function useRealtimeSTT({
 
       socket.onmessage = (event) => {
         if (socket !== socketRef.current) return
-        const message = JSON.parse(event.data)
-
-        if (message.status === 'ready') {
-          setConnectionStatus('ready')
-          lastAudioChunkAtRef.current = Date.now()
-          startAudioProcessing()
-
-          // Start usage timer
-          usageIntervalRef.current = setInterval(() => {
-            setUsageSec(prev => {
-              const next = prev + 1
-              if (normalizedUsageLimitSec !== null && next >= normalizedUsageLimitSec) {
-                // Hit limit - defer cleanup to avoid setState-during-render
-                setTimeout(() => {
-                  void stopRecordingGracefully(true)
-                }, 0)
-              }
-              return next
-            })
-          }, 1000)
-        } else if (message.type === 'stop_recording_ack') {
-          // Server cleaned up STT provider — no translation data expected.
-        } else if (message.type === 'transcript' && message.data?.utterance) {
-          const rawText = message.data.utterance.text || ''
-          const text = rawText.replace(/<\/?end>/gi, '').trim()
-          const lang = message.data.utterance.language || 'unknown'
-
-          if (isStoppingRef.current && !message.data.is_final) {
-            return
-          }
-
-          if (message.data.is_final) {
-            const sig = `${lang}::${text}`
-            const now = Date.now()
-            if (
-              sig
-              && stopFinalizeDedupRef.current.sig === sig
-              && now < stopFinalizeDedupRef.current.expiresAt
-            ) {
-              stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
-              return
-            }
-            stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
-
-            const pendingLocal = pendingLocalFinalizeRef.current
-            if (
-              pendingLocal
-              && now < pendingLocal.expiresAt
-              && pendingLocal.lang === lang
-              && (
-                text.startsWith(pendingLocal.text)
-                || pendingLocal.text.startsWith(text)
-              )
-            ) {
-              const mergedText = isStoppingRef.current
-                ? pendingLocal.text
-                : (text.length >= pendingLocal.text.length ? text : pendingLocal.text)
-              setUtterances(prev => prev.map((utterance) => {
-                if (utterance.id !== pendingLocal.utteranceId) return utterance
-                return {
-                  ...utterance,
-                  originalText: mergedText,
-                }
-              }))
-              pendingLocalFinalizeRef.current = null
-              clearPartialBuffers()
-              return
-            }
-
-            utteranceIdRef.current += 1
-            const seedTranslations = { ...partialTranslationsRef.current }
-            const seedFinalized: Record<string, boolean> = {}
-            for (const key of Object.keys(seedTranslations)) {
-              seedFinalized[key] = false
-            }
-            const newUtteranceId = `u-${Date.now()}-${utteranceIdRef.current}`
-            const newUtterance: Utterance = {
-              id: newUtteranceId,
-              originalText: text,
-              originalLang: lang,
-              translations: seedTranslations,
-              translationFinalized: seedFinalized,
-            }
-            setUtterances(u => [...u, newUtterance])
-            clearPartialBuffers()
-            pendingLocalFinalizeRef.current = null
-
-            // Translate via HTTP (fire-and-forget).
-            if (languages.length > 0) {
-              const seq = ++translateSeqRef.current
-              const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== lang)[0] || '') : ''
-              translateViaApi(text, lang, languages, { ttsLanguage: ttsTargetLang }).then(result => {
-                if (Object.keys(result.translations).length > 0) {
-                  applyTranslationToUtterance(newUtteranceId, result.translations, seq, true)
-                  handleInlineTtsFromTranslate(newUtteranceId, lang, result)
-                }
-              })
-            }
-          } else {
-            setPartialTranscript(text)
-            partialTranscriptRef.current = text
-            setPartialLang(lang)
-            partialLangRef.current = lang
-          }
+        try {
+          const message = JSON.parse(event.data) as Record<string, unknown>
+          handleSttServerMessage(message)
+        } catch {
+          // ignore malformed payload
         }
       }
 
       socket.onerror = () => {
         if (socket !== socketRef.current) return
-        const remainingPartial = partialTranscriptRef.current.trim()
-        if (remainingPartial) {
-          const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
-          // Translate the finalized text from error path
-          if (result && languages.length > 0) {
-            const seq = ++translateSeqRef.current
-            const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== result.lang)[0] || '') : ''
-            translateViaApi(result.text, result.lang, languages, { ttsLanguage: ttsTargetLang }).then(res => {
-              if (Object.keys(res.translations).length > 0) {
-                applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
-                handleInlineTtsFromTranslate(result.utteranceId, result.lang, res)
-              }
-            })
-          }
-        }
-        cleanup()
-        setConnectionStatus('error')
-        setTimeout(() => setConnectionStatus('idle'), 3000)
+        handleSttTransportError()
       }
 
       socket.onclose = () => {
         if (socket !== socketRef.current) return
-        if (!isStoppingRef.current) {
-          const remainingPartial = partialTranscriptRef.current.trim()
-          if (remainingPartial) {
-            const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
-            // Translate the finalized text from close path
-            if (result && languages.length > 0) {
-              const seq = ++translateSeqRef.current
-              const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== result.lang)[0] || '') : ''
-              translateViaApi(result.text, result.lang, languages, { ttsLanguage: ttsTargetLang }).then(res => {
-                if (Object.keys(res.translations).length > 0) {
-                  applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
-                  handleInlineTtsFromTranslate(result.utteranceId, result.lang, res)
-                }
-              })
-            }
-          }
-        }
-        resetToIdle()
+        handleSttTransportClose()
       }
     } catch {
       void setNativeAudioMode('playback')
@@ -824,9 +925,10 @@ export default function useRealtimeSTT({
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [applyTranslationToUtterance, cleanup, clearPartialBuffers, finalizePendingLocally, handleInlineTtsFromTranslate, languages, normalizedUsageLimitSec, resetToIdle, startAudioProcessing, translateViaApi, usageSec, stopRecordingGracefully])
+  }, [cleanup, handleSttServerMessage, handleSttTransportClose, handleSttTransportError, languages, normalizedUsageLimitSec, removeNativeSttListeners, usageSec])
 
   const recoverFromBackgroundIfNeeded = useCallback(async () => {
+    if (isUsingNativeSttRef.current) return
     if (connectionStatus !== 'ready') return
     if (isBackgroundRecoveringRef.current) return
     isBackgroundRecoveringRef.current = true

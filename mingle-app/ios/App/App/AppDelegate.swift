@@ -208,3 +208,242 @@ class NativeTTSPlayerPlugin: CAPPlugin, CAPBridgedPlugin, AVAudioPlayerDelegate 
         }
     }
 }
+
+@objc(NativeSTTPlugin)
+class NativeSTTPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "NativeSTTPlugin"
+    public let jsName = "NativeSTT"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
+    ]
+
+    private let audioEngine = AVAudioEngine()
+    private let wsQueue = DispatchQueue(label: "NativeSTT.wsQueue")
+    private var webSocketSession: URLSession?
+    private var socketTask: URLSessionWebSocketTask?
+    private var hasInputTap = false
+    private var isRunning = false
+
+    private func notifyOnMain(_ event: String, data: [String: Any]) {
+        DispatchQueue.main.async {
+            self.notifyListeners(event, data: data)
+        }
+    }
+
+    private func emitError(_ message: String) {
+        NSLog("[NativeSTT] error=%@", message)
+        notifyOnMain("error", data: [
+            "message": message,
+        ])
+    }
+
+    private func emitMessage(raw: String) {
+        notifyOnMain("message", data: [
+            "raw": raw,
+        ])
+    }
+
+    private func emitStatus(_ status: String) {
+        notifyOnMain("status", data: [
+            "status": status,
+        ])
+    }
+
+    private func emitClose(_ reason: String) {
+        notifyOnMain("close", data: [
+            "reason": reason,
+        ])
+    }
+
+    private func removeTapIfNeeded() {
+        if hasInputTap {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            hasInputTap = false
+        }
+    }
+
+    private func stopAndCleanup(notifyClose reason: String? = nil) {
+        isRunning = false
+        removeTapIfNeeded()
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+
+        if let task = socketTask {
+            task.cancel(with: .goingAway, reason: nil)
+        }
+        socketTask = nil
+
+        webSocketSession?.invalidateAndCancel()
+        webSocketSession = nil
+
+        if let closeReason = reason {
+            emitClose(closeReason)
+        }
+    }
+
+    private func sendJson(_ payload: [String: Any]) {
+        guard let task = socketTask, isRunning else { return }
+        do {
+            let data = try JSONSerialization.data(withJSONObject: payload, options: [])
+            guard let text = String(data: data, encoding: .utf8) else {
+                emitError("json_encoding_failed")
+                return
+            }
+            task.send(.string(text)) { [weak self] error in
+                guard let self = self else { return }
+                if let error = error, self.isRunning {
+                    self.emitError("ws_send_failed: \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            emitError("json_serialize_failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func receiveLoop() {
+        guard let task = socketTask, isRunning else { return }
+        task.receive { [weak self] result in
+            guard let self = self else { return }
+            guard self.isRunning else { return }
+            switch result {
+            case .failure(let error):
+                self.emitError("ws_receive_failed: \(error.localizedDescription)")
+                self.stopAndCleanup(notifyClose: "receive_failed")
+            case .success(let message):
+                switch message {
+                case .string(let text):
+                    self.emitMessage(raw: text)
+                case .data(let data):
+                    if let text = String(data: data, encoding: .utf8) {
+                        self.emitMessage(raw: text)
+                    }
+                @unknown default:
+                    break
+                }
+                self.receiveLoop()
+            }
+        }
+    }
+
+    private func encodePcmBase64(_ buffer: AVAudioPCMBuffer) -> String? {
+        guard let channelData = buffer.floatChannelData?[0] else { return nil }
+        let frameLength = Int(buffer.frameLength)
+        if frameLength == 0 { return nil }
+
+        var pcmData = Data(capacity: frameLength * MemoryLayout<Int16>.size)
+        for i in 0..<frameLength {
+            let sample = max(-1.0, min(1.0, channelData[i]))
+            var intSample = Int16(sample < 0 ? sample * 32768.0 : sample * 32767.0)
+            withUnsafeBytes(of: &intSample) { bytes in
+                pcmData.append(contentsOf: bytes)
+            }
+        }
+        return pcmData.base64EncodedString()
+    }
+
+    @objc func start(_ call: CAPPluginCall) {
+        if isRunning {
+            call.reject("native_stt_already_running")
+            return
+        }
+
+        guard let wsUrlString = call.getString("wsUrl"), let wsUrl = URL(string: wsUrlString) else {
+            call.reject("Invalid wsUrl")
+            return
+        }
+
+        let languages = call.getArray("languages", String.self) ?? []
+        let sttModel = call.getString("sttModel") ?? "soniox"
+        let langHintsStrict = call.getBool("langHintsStrict") ?? true
+
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(
+                .playAndRecord,
+                mode: .default,
+                options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP]
+            )
+            try audioSession.setActive(true, options: [])
+        } catch {
+            call.reject("Failed to configure AVAudioSession", nil, error)
+            return
+        }
+
+        removeTapIfNeeded()
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+
+        let inputNode = audioEngine.inputNode
+        let inputFormat = inputNode.inputFormat(forBus: 0)
+        let sampleRate = Int(inputFormat.sampleRate.rounded())
+
+        let configuration = URLSessionConfiguration.default
+        configuration.waitsForConnectivity = true
+        let session = URLSession(configuration: configuration)
+        let task = session.webSocketTask(with: wsUrl)
+        webSocketSession = session
+        socketTask = task
+
+        isRunning = true
+        task.resume()
+        receiveLoop()
+
+        inputNode.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { [weak self] buffer, _ in
+            guard let self = self else { return }
+            guard self.isRunning else { return }
+            guard let chunkBase64 = self.encodePcmBase64(buffer) else { return }
+            self.wsQueue.async { [weak self] in
+                self?.sendJson([
+                    "type": "audio_chunk",
+                    "data": [
+                        "chunk": chunkBase64,
+                    ],
+                ])
+            }
+        }
+        hasInputTap = true
+
+        do {
+            audioEngine.prepare()
+            try audioEngine.start()
+        } catch {
+            stopAndCleanup()
+            call.reject("Failed to start AVAudioEngine", nil, error)
+            return
+        }
+
+        sendJson([
+            "sample_rate": sampleRate,
+            "languages": languages,
+            "stt_model": sttModel,
+            "lang_hints_strict": langHintsStrict,
+        ])
+
+        NSLog("[NativeSTT] started sampleRate=%d ws=%@", sampleRate, wsUrlString)
+        call.resolve([
+            "sampleRate": sampleRate,
+        ])
+    }
+
+    @objc func stop(_ call: CAPPluginCall) {
+        let pendingText = call.getString("pendingText") ?? ""
+        let pendingLanguage = call.getString("pendingLanguage") ?? "unknown"
+
+        if isRunning {
+            sendJson([
+                "type": "stop_recording",
+                "data": [
+                    "pending_text": pendingText,
+                    "pending_language": pendingLanguage,
+                ],
+            ])
+        }
+
+        stopAndCleanup(notifyClose: "stopped")
+        NSLog("[NativeSTT] stopped")
+        call.resolve()
+    }
+}
