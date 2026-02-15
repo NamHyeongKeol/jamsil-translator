@@ -60,6 +60,7 @@ class NativeAudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func setMode(_ call: CAPPluginCall) {
         let mode = call.getString("mode") ?? "playback"
         let session = AVAudioSession.sharedInstance()
+        NSLog("[NativeAudioSession] request mode=%@", mode)
 
         do {
             switch mode {
@@ -86,7 +87,9 @@ class NativeAudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve([
                 "mode": mode,
             ])
+            NSLog("[NativeAudioSession] applied mode=%@ category=%@ route=%@", mode, session.category.rawValue, String(describing: session.currentRoute.outputs.first?.portType.rawValue))
         } catch {
+            NSLog("[NativeAudioSession] failed mode=%@ error=%@", mode, String(describing: error))
             call.reject("Failed to configure AVAudioSession", nil, error)
         }
     }

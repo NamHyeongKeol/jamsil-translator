@@ -16,6 +16,7 @@ const DEFAULT_USAGE_LIMIT_SEC = 60
 
 const LS_KEY_UTTERANCES = 'mingle_demo_utterances'
 const LS_KEY_USAGE = 'mingle_demo_usage_sec'
+const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
@@ -70,6 +71,33 @@ function decodeBase64AudioToBlob(base64: string, mime = 'audio/mpeg'): Blob | nu
   } catch {
     return null
   }
+}
+
+function isTtsDebugEnabled(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const forced = window.localStorage.getItem(LS_KEY_TTS_DEBUG)
+    if (forced === '1') return true
+    if (forced === '0') return false
+  } catch {
+    // no-op
+  }
+  try {
+    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
+    if (cap?.isNativePlatform?.()) return true
+  } catch {
+    // no-op
+  }
+  return /(?:\?|&)ttsDebug=1(?:&|$)/.test(window.location.search || '')
+}
+
+function logTtsDebug(event: string, payload?: Record<string, unknown>) {
+  if (!isTtsDebugEnabled()) return
+  if (payload) {
+    console.log('[MingleTTS]', event, payload)
+    return
+  }
+  console.log('[MingleTTS]', event)
 }
 
 export default function useRealtimeSTT({
@@ -265,6 +293,14 @@ export default function useRealtimeSTT({
   ): Promise<TranslateApiResult> => {
     const langs = targetLanguages.filter(l => l !== sourceLanguage)
     if (!text.trim() || langs.length === 0) return { translations: {} }
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    logTtsDebug('translate.request', {
+      requestId,
+      sourceLanguage,
+      targetLanguages: langs,
+      ttsLanguage: options?.ttsLanguage || null,
+      textLen: text.trim().length,
+    })
     try {
       const body: Record<string, unknown> = { text, sourceLanguage, targetLanguages: langs }
       const normalizedTtsLang = (options?.ttsLanguage || '').trim()
@@ -277,15 +313,27 @@ export default function useRealtimeSTT({
         body: JSON.stringify(body),
         signal: options?.signal,
       })
-      if (!res.ok) return { translations: {} }
+      if (!res.ok) {
+        logTtsDebug('translate.non_ok', { requestId, status: res.status })
+        return { translations: {} }
+      }
       const data = await res.json()
+      const ttsAudioBase64 = typeof data.ttsAudioBase64 === 'string' ? data.ttsAudioBase64 : undefined
+      logTtsDebug('translate.response', {
+        requestId,
+        translationKeys: Object.keys((data.translations || {}) as Record<string, string>),
+        ttsLanguage: typeof data.ttsLanguage === 'string' ? data.ttsLanguage : null,
+        hasInlineTts: Boolean(ttsAudioBase64),
+        ttsAudioLen: ttsAudioBase64?.length || 0,
+      })
       return {
         translations: (data.translations || {}) as Record<string, string>,
         ttsLanguage: typeof data.ttsLanguage === 'string' ? data.ttsLanguage : undefined,
-        ttsAudioBase64: typeof data.ttsAudioBase64 === 'string' ? data.ttsAudioBase64 : undefined,
+        ttsAudioBase64,
         ttsAudioMime: typeof data.ttsAudioMime === 'string' ? data.ttsAudioMime : undefined,
       }
     } catch {
+      logTtsDebug('translate.error', { requestId })
       return { translations: {} }
     }
   }, [])
@@ -294,18 +342,36 @@ export default function useRealtimeSTT({
     const normalizedText = text.trim()
     const normalizedLang = language.trim()
     if (!normalizedText || !normalizedLang) return null
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    logTtsDebug('tts_fallback.request', {
+      requestId,
+      language: normalizedLang,
+      textLen: normalizedText.length,
+    })
     try {
       const res = await fetch('/api/tts/inworld', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: normalizedText, language: normalizedLang }),
       })
-      if (!res.ok) return null
+      if (!res.ok) {
+        logTtsDebug('tts_fallback.non_ok', { requestId, status: res.status })
+        return null
+      }
       const arrayBuffer = await res.arrayBuffer()
-      if (!arrayBuffer || arrayBuffer.byteLength === 0) return null
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        logTtsDebug('tts_fallback.empty_audio', { requestId })
+        return null
+      }
       const mime = res.headers.get('content-type') || 'audio/mpeg'
+      logTtsDebug('tts_fallback.response', {
+        requestId,
+        mime,
+        audioBytes: arrayBuffer.byteLength,
+      })
       return new Blob([arrayBuffer], { type: mime })
     } catch {
+      logTtsDebug('tts_fallback.error', { requestId })
       return null
     }
   }, [])
@@ -323,11 +389,27 @@ export default function useRealtimeSTT({
 
     const signature = `${ttsTargetLang}::${ttsText}`
     if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return
+    logTtsDebug('tts.inline.received', {
+      utteranceId,
+      sourceLanguage,
+      ttsTargetLang,
+      textLen: ttsText.length,
+      hasInlineAudio: Boolean(result.ttsAudioBase64),
+      inlineAudioLen: result.ttsAudioBase64?.length || 0,
+    })
 
     const queueAudioIfValid = (audioBlob: Blob | null): boolean => {
-      if (!audioBlob || audioBlob.size === 0) return false
+      if (!audioBlob || audioBlob.size === 0) {
+        logTtsDebug('tts.queue.skip_invalid_audio', { utteranceId, ttsTargetLang })
+        return false
+      }
       if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return true
       finalizedTtsSignatureRef.current.set(utteranceId, signature)
+      logTtsDebug('tts.queue.enqueue', {
+        utteranceId,
+        ttsTargetLang,
+        audioBytes: audioBlob.size,
+      })
       onTtsAudioRef.current?.(utteranceId, audioBlob, ttsTargetLang)
       return true
     }
@@ -338,6 +420,7 @@ export default function useRealtimeSTT({
     }
 
     // Inline TTS is missing/invalid: recover by calling server-side Inworld proxy.
+    logTtsDebug('tts.inline.missing_or_invalid_fallback', { utteranceId, ttsTargetLang })
     void synthesizeTtsViaApi(ttsText, ttsTargetLang).then((fallbackBlob) => {
       queueAudioIfValid(fallbackBlob)
     })

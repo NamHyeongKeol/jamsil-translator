@@ -13,6 +13,34 @@ const VOLUME_THRESHOLD = 0.05
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
 const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='
 const TTS_ORDER_WAIT_TIMEOUT_MS = 2000
+const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
+
+function isTtsDebugEnabled(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const forced = window.localStorage.getItem(LS_KEY_TTS_DEBUG)
+    if (forced === '1') return true
+    if (forced === '0') return false
+  } catch {
+    // no-op
+  }
+  try {
+    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
+    if (cap?.isNativePlatform?.()) return true
+  } catch {
+    // no-op
+  }
+  return /(?:\?|&)ttsDebug=1(?:&|$)/.test(window.location.search || '')
+}
+
+function logTtsQueue(event: string, payload?: Record<string, unknown>) {
+  if (!isTtsDebugEnabled()) return
+  if (payload) {
+    console.log('[MingleTTSQueue]', event, payload)
+    return
+  }
+  console.log('[MingleTTSQueue]', event)
+}
 
 const FLAG_MAP: Record<string, string> = {
   en: '🇺🇸', ko: '🇰🇷', ja: '🇯🇵', zh: '🇨🇳', es: '🇪🇸',
@@ -189,6 +217,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       const waitedMs = now - waitSince
       if (waitedMs >= TTS_ORDER_WAIT_TIMEOUT_MS) {
         // Skip missing earlier TTS after timeout so later items don't block forever.
+        logTtsQueue('queue.timeout_skip', {
+          utteranceId: nextSpeakableUtterance.id,
+          waitedMs,
+        })
         ttsPlayedUtteranceRef.current.add(nextSpeakableUtterance.id)
         ttsWaitingSinceRef.current.delete(nextSpeakableUtterance.id)
         processTtsQueueRef.current()
@@ -216,12 +248,21 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     const objectUrl = URL.createObjectURL(next.audioBlob)
     currentAudioUrlRef.current = objectUrl
     audio.src = objectUrl
+    logTtsQueue('play.start', {
+      utteranceId: next.utteranceId,
+      language: next.language,
+      audioBytes: next.audioBlob.size,
+    })
 
     audio.onended = () => {
       if (currentAudioUrlRef.current === objectUrl) {
         URL.revokeObjectURL(objectUrl)
         currentAudioUrlRef.current = null
       }
+      logTtsQueue('play.ended', {
+        utteranceId: next.utteranceId,
+        language: next.language,
+      })
       ttsPlayedUtteranceRef.current.add(next.utteranceId)
       setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
       isTtsProcessingRef.current = false
@@ -233,6 +274,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         URL.revokeObjectURL(objectUrl)
         currentAudioUrlRef.current = null
       }
+      logTtsQueue('play.error', {
+        utteranceId: next.utteranceId,
+        language: next.language,
+      })
       // Keep ordering moving even if one audio payload is broken.
       ttsPlayedUtteranceRef.current.add(next.utteranceId)
       setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
@@ -240,7 +285,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       processTtsQueueRef.current()
     }
 
-    audio.play().catch(() => {
+    audio.play().catch((error) => {
       if (currentAudioUrlRef.current === objectUrl) {
         URL.revokeObjectURL(objectUrl)
         currentAudioUrlRef.current = null
@@ -248,6 +293,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
       ttsNeedsUnlockRef.current = true
       ttsPendingByUtteranceRef.current.set(next.utteranceId, next)
+      logTtsQueue('play.blocked', {
+        utteranceId: next.utteranceId,
+        language: next.language,
+        error: error instanceof Error ? error.message : 'play_failed',
+      })
       isTtsProcessingRef.current = false
     })
   }, [cleanupCurrentAudio, clearTtsOrderWaitTimer, enableAutoTTS, ensureAudioPlayer, isSoundEnabled, selectedLanguages])
@@ -260,6 +310,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const handleTtsAudio = useCallback((utteranceId: string, audioBlob: Blob, language: string) => {
     if (!enableAutoTTS || !isSoundEnabled) return
     if (ttsPlayedUtteranceRef.current.has(utteranceId)) return
+    logTtsQueue('queue.add', { utteranceId, language, audioBytes: audioBlob.size })
     ttsPendingByUtteranceRef.current.set(utteranceId, { utteranceId, audioBlob, language })
     ttsWaitingSinceRef.current.delete(utteranceId)
     processTtsQueue()
