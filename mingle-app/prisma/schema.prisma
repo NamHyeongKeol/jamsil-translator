@@ -13,8 +13,18 @@ model AppUser {
   externalUserId  String?  @unique @map("external_user_id")
   email           String?
   latestIpAddress String?  @map("latest_ip_address")
+  latestUserAgent String?  @map("latest_user_agent")
+  language        String?
+  pageLanguage    String?  @map("page_language")
+  referrer        String?
+  fullUrl         String?  @map("full_url")
+  queryParams     String?  @map("query_params")
+  screenWidth     Int?     @map("screen_width")
+  screenHeight    Int?     @map("screen_height")
+  timezone        String?
+  platform        String?
+  pathname        String?
   totalUsageSec   Int      @default(0) @map("total_usage_sec")
-  metadata        Json?
   firstSeenAt     DateTime @default(now()) @map("first_seen_at")
   lastSeenAt      DateTime @default(now()) @map("last_seen_at")
   createdAt       DateTime @default(now()) @map("created_at")

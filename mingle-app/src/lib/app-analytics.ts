@@ -164,32 +164,6 @@ export function fireAndForgetDbWrite(taskName: string, task: () => Promise<void>
     });
 }
 
-function buildUserMetadata(
-  tracking: TrackingContext,
-  clientContext: ClientContext,
-): Prisma.JsonObject | undefined {
-  const metadata: Prisma.JsonObject = {};
-  const assign = (key: string, value: string | number | null) => {
-    if (value === null) return;
-    metadata[key] = value;
-  };
-
-  assign("language", clientContext.language);
-  assign("pageLanguage", clientContext.pageLanguage);
-  assign("referrer", clientContext.referrer);
-  assign("fullUrl", clientContext.fullUrl ?? tracking.requestFullUrl);
-  assign("queryParams", clientContext.queryParams);
-  assign("screenWidth", clientContext.screenWidth);
-  assign("screenHeight", clientContext.screenHeight);
-  assign("timezone", clientContext.timezone);
-  assign("platform", clientContext.platform);
-  assign("pathname", clientContext.pathname ?? tracking.requestPathname);
-  assign("userAgent", tracking.userAgent);
-  assign("locale", tracking.requestLocale);
-
-  return Object.keys(metadata).length > 0 ? metadata : undefined;
-}
-
 export async function upsertTrackedUser(args: {
   tracking: TrackingContext;
   clientContext: ClientContext;
@@ -197,22 +171,45 @@ export async function upsertTrackedUser(args: {
   const { tracking, clientContext } = args;
   const now = new Date();
   const usageSec = clientContext.usageSec;
-  const metadata = buildUserMetadata(tracking, clientContext);
+  const language = clientContext.language ?? tracking.requestLocale;
+  const fullUrl = clientContext.fullUrl ?? tracking.requestFullUrl;
+  const pathname = clientContext.pathname ?? tracking.requestPathname;
+  const latestUserAgent = tracking.userAgent;
 
   const user = await prisma.appUser.upsert({
     where: { externalUserId: tracking.externalUserId },
     create: {
       externalUserId: tracking.externalUserId,
       latestIpAddress: tracking.ipAddress ?? undefined,
+      latestUserAgent: latestUserAgent ?? undefined,
+      language: language ?? undefined,
+      pageLanguage: clientContext.pageLanguage ?? undefined,
+      referrer: clientContext.referrer ?? undefined,
+      fullUrl: fullUrl ?? undefined,
+      queryParams: clientContext.queryParams ?? undefined,
+      screenWidth: clientContext.screenWidth ?? undefined,
+      screenHeight: clientContext.screenHeight ?? undefined,
+      timezone: clientContext.timezone ?? undefined,
+      platform: clientContext.platform ?? undefined,
+      pathname: pathname ?? undefined,
       totalUsageSec: usageSec ?? 0,
-      metadata,
       firstSeenAt: now,
       lastSeenAt: now,
     },
     update: {
       latestIpAddress: tracking.ipAddress ?? undefined,
+      latestUserAgent: latestUserAgent ?? undefined,
+      language: language ?? undefined,
+      pageLanguage: clientContext.pageLanguage ?? undefined,
+      referrer: clientContext.referrer ?? undefined,
+      fullUrl: fullUrl ?? undefined,
+      queryParams: clientContext.queryParams ?? undefined,
+      screenWidth: clientContext.screenWidth ?? undefined,
+      screenHeight: clientContext.screenHeight ?? undefined,
+      timezone: clientContext.timezone ?? undefined,
+      platform: clientContext.platform ?? undefined,
+      pathname: pathname ?? undefined,
       lastSeenAt: now,
-      metadata,
     },
     select: {
       id: true,
