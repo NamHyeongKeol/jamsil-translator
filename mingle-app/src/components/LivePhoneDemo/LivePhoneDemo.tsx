@@ -15,7 +15,7 @@ const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABA
 const TTS_ORDER_WAIT_TIMEOUT_MS = 2000
 // Boost factor applied to TTS playback while STT is active.
 // iOS .playAndRecord reduces speaker output; this compensates in software.
-const TTS_STT_GAIN = 4.0
+const TTS_STT_GAIN = 2.0
 const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 
 function isTtsDebugEnabled(): boolean {
@@ -140,7 +140,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const processTtsQueueRef = useRef<() => void>(() => {})
   const initialUtteranceIdsRef = useRef<string[] | null>(null)
   const stopClickResumeTimerIdsRef = useRef<number[]>([])
-  const activeTtsTextRef = useRef<string | null>(null)
+
 
   // Persist selected languages
   useEffect(() => {
@@ -257,13 +257,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     cleanupCurrentAudio()
     setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
 
-    // Track the text being spoken so the STT echo filter can discard mic echo.
-    // Only in the native app — web browsers handle AEC in getUserMedia.
-    if (typeof window !== 'undefined' && typeof window.ReactNativeWebView?.postMessage === 'function') {
-      const spokenUtterance = utterancesRef.current.find(u => u.id === next.utteranceId)
-      activeTtsTextRef.current = spokenUtterance?.translations[next.language]?.trim() ?? null
-    }
-
     const playViaHtmlAudio = async () => {
       const audio = ensureAudioPlayer()
 
@@ -289,8 +282,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       })
 
       audio.onended = () => {
-        // Keep echo filter active briefly after playback ends (echo tail).
-        setTimeout(() => { activeTtsTextRef.current = null }, 800)
         if (currentAudioUrlRef.current === objectUrl) {
           URL.revokeObjectURL(objectUrl)
           currentAudioUrlRef.current = null
@@ -306,7 +297,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       }
 
       audio.onerror = () => {
-        activeTtsTextRef.current = null
         if (currentAudioUrlRef.current === objectUrl) {
           URL.revokeObjectURL(objectUrl)
           currentAudioUrlRef.current = null
@@ -380,7 +370,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     onLimitReached,
     onTtsAudio: handleTtsAudio,
     enableTts: enableAutoTTS && isSoundEnabled,
-    activeTtsTextRef,
   })
 
   // Boost TTS volume while STT is active to compensate for iOS

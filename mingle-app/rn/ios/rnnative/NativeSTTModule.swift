@@ -435,7 +435,7 @@ class NativeSTTModule: RCTEventEmitter {
         let inputNode = audioEngine.inputNode
         // AEC (voice processing) is intentionally disabled.  It suppressed
         // the mic input while TTS played, making STT stop recognising.
-        // Echo filtering is handled in software on the JS side instead.
+        // TTS echo may appear in STT but continuous STT is the priority.
         if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(false) }
         let inputFormat = inputNode.inputFormat(forBus: 0)
         let sampleRate = Int(inputFormat.sampleRate.rounded())
