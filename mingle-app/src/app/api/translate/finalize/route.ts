@@ -1,7 +1,17 @@
+import type { Prisma } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
+import { prisma } from '@/lib/prisma'
+import {
+  createTrackedEventLog,
+  ensureTrackingContext,
+  fireAndForgetDbWrite,
+  parseClientContext,
+  sanitizeNonNegativeInt,
+  upsertTrackedUser,
+} from '@/lib/app-analytics'
 
 export const runtime = 'nodejs'
 
@@ -27,6 +37,24 @@ interface InworldVoiceItem {
   id?: string
   voiceId?: string
   name?: string
+}
+
+type TranslationUsage = {
+  promptTokens?: number
+  completionTokens?: number
+  totalTokens?: number
+}
+
+type TranslationEngineResult = {
+  translations: Record<string, string>
+  provider: 'gemini' | 'openai' | 'claude'
+  model: string
+  usage?: TranslationUsage
+}
+
+type TranslateContext = {
+  text: string
+  targetLanguages: string[]
 }
 
 const voiceCache = new Map<string, { voiceId: string, expiresAt: number }>()
@@ -64,6 +92,145 @@ function parseTranslations(raw: string): Record<string, string> {
     output[key] = cleaned
   }
   return output
+}
+
+function buildPrompt(ctx: TranslateContext): { systemPrompt: string, userPrompt: string } {
+  const langList = ctx.targetLanguages.map((lang) => `${lang} (${LANG_NAMES[lang] || lang})`).join(', ')
+  return {
+    systemPrompt: 'You are a translator. Respond ONLY with JSON mapping language codes to translations. No extra text.',
+    userPrompt: `Translate to ${langList}:\n"${ctx.text}"`,
+  }
+}
+
+function normalizeUsage(raw: {
+  prompt?: unknown
+  completion?: unknown
+  total?: unknown
+}): TranslationUsage | undefined {
+  const promptTokens = sanitizeNonNegativeInt(raw.prompt)
+  const completionTokens = sanitizeNonNegativeInt(raw.completion)
+  const totalTokens = sanitizeNonNegativeInt(raw.total)
+
+  if (promptTokens === null && completionTokens === null && totalTokens === null) {
+    return undefined
+  }
+
+  const usage: TranslationUsage = {}
+  if (promptTokens !== null) usage.promptTokens = promptTokens
+  if (completionTokens !== null) usage.completionTokens = completionTokens
+  if (totalTokens !== null) usage.totalTokens = totalTokens
+  return usage
+}
+
+async function translateWithGemini(ctx: TranslateContext): Promise<TranslationEngineResult | null> {
+  if (!GEMINI_API_KEY) return null
+
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
+  const { systemPrompt, userPrompt } = buildPrompt(ctx)
+  const model = genAI.getGenerativeModel({
+    model: DEFAULT_MODEL,
+    systemInstruction: systemPrompt,
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  })
+
+  const result = await model.generateContent(userPrompt)
+  const content = result.response.text()?.trim() || ''
+  if (!content) return null
+
+  const translations = parseTranslations(content)
+  if (Object.keys(translations).length === 0) return null
+
+  const usageMetadata = (result.response as unknown as {
+    usageMetadata?: {
+      promptTokenCount?: unknown
+      candidatesTokenCount?: unknown
+      totalTokenCount?: unknown
+    }
+  }).usageMetadata
+
+  return {
+    translations,
+    provider: 'gemini',
+    model: DEFAULT_MODEL,
+    usage: normalizeUsage({
+      prompt: usageMetadata?.promptTokenCount,
+      completion: usageMetadata?.candidatesTokenCount,
+      total: usageMetadata?.totalTokenCount,
+    }),
+  }
+}
+
+async function translateWithOpenAI(ctx: TranslateContext): Promise<TranslationEngineResult | null> {
+  if (!OPENAI_API_KEY) return null
+
+  const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
+  const { systemPrompt, userPrompt } = buildPrompt(ctx)
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5-nano',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.1,
+  })
+
+  const content = response.choices[0]?.message?.content?.trim() || ''
+  if (!content) return null
+
+  const translations = parseTranslations(content)
+  if (Object.keys(translations).length === 0) return null
+
+  return {
+    translations,
+    provider: 'openai',
+    model: 'gpt-5-nano',
+    usage: normalizeUsage({
+      prompt: response.usage?.prompt_tokens,
+      completion: response.usage?.completion_tokens,
+      total: response.usage?.total_tokens,
+    }),
+  }
+}
+
+async function translateWithClaude(ctx: TranslateContext): Promise<TranslationEngineResult | null> {
+  if (!CLAUDE_API_KEY) return null
+
+  const anthropic = new Anthropic({ apiKey: CLAUDE_API_KEY })
+  const { systemPrompt, userPrompt } = buildPrompt(ctx)
+
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+  })
+
+  const block = response.content[0]
+  if (!block || block.type !== 'text') return null
+
+  const content = block.text.trim()
+  if (!content) return null
+
+  const translations = parseTranslations(content)
+  if (Object.keys(translations).length === 0) return null
+
+  return {
+    translations,
+    provider: 'claude',
+    model: 'claude-haiku-4-5-20251001',
+    usage: normalizeUsage({
+      prompt: response.usage?.input_tokens,
+      completion: response.usage?.output_tokens,
+      total: (
+        sanitizeNonNegativeInt(response.usage?.input_tokens) ?? 0
+      ) + (
+        sanitizeNonNegativeInt(response.usage?.output_tokens) ?? 0
+      ),
+    }),
+  }
 }
 
 function getAuthHeaderValue(): string | null {
@@ -203,82 +370,32 @@ async function synthesizeTtsInline(args: {
   }
 }
 
-type TranslateContext = {
-  text: string
-  targetLanguages: string[]
-}
-
-function buildPrompt(ctx: TranslateContext): { systemPrompt: string, userPrompt: string } {
-  const langList = ctx.targetLanguages.map((lang) => `${lang} (${LANG_NAMES[lang] || lang})`).join(', ')
-  return {
-    systemPrompt: 'You are a translator. Respond ONLY with JSON mapping language codes to translations. No extra text.',
-    userPrompt: `Translate to ${langList}:\n"${ctx.text}"`,
-  }
-}
-
-async function translateWithGemini(ctx: TranslateContext): Promise<Record<string, string>> {
-  if (!GEMINI_API_KEY) return {}
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  const { systemPrompt, userPrompt } = buildPrompt(ctx)
-  const model = genAI.getGenerativeModel({
-    model: DEFAULT_MODEL,
-    systemInstruction: systemPrompt,
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
-  })
-  const result = await model.generateContent(userPrompt)
-  const content = result.response.text()?.trim() || ''
-  if (!content) return {}
-  return parseTranslations(content)
-}
-
-async function translateWithOpenAI(ctx: TranslateContext): Promise<Record<string, string>> {
-  if (!OPENAI_API_KEY) return {}
-  const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
-  const { systemPrompt, userPrompt } = buildPrompt(ctx)
-  const response = await openai.chat.completions.create({
-    model: 'gpt-5-nano',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.1,
-  })
-  const content = response.choices[0]?.message?.content?.trim() || ''
-  if (!content) return {}
-  return parseTranslations(content)
-}
-
-async function translateWithClaude(ctx: TranslateContext): Promise<Record<string, string>> {
-  if (!CLAUDE_API_KEY) return {}
-  const anthropic = new Anthropic({ apiKey: CLAUDE_API_KEY })
-  const { systemPrompt, userPrompt } = buildPrompt(ctx)
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
-  })
-  const block = response.content[0]
-  if (!block || block.type !== 'text') return {}
-  const content = block.text.trim()
-  if (!content) return {}
-  return parseTranslations(content)
-}
-
 export async function POST(request: NextRequest) {
-  if (!GEMINI_API_KEY && !OPENAI_API_KEY && !CLAUDE_API_KEY) {
-    return NextResponse.json({ error: 'No translation API key configured' }, { status: 500 })
-  }
-
+  const requestStartedAt = Date.now()
   const body = await request.json().catch((): Record<string, unknown> => ({}))
   const text = typeof body.text === 'string' ? body.text.trim() : ''
-  const sourceLanguage = normalizeLang(typeof body.sourceLanguage === 'string' ? body.sourceLanguage : '')
+  const sourceLanguageRaw = normalizeLang(typeof body.sourceLanguage === 'string' ? body.sourceLanguage : '')
+  const sourceLanguage = sourceLanguageRaw || 'unknown'
   const targetLanguagesRaw: unknown[] = Array.isArray(body.targetLanguages) ? body.targetLanguages : []
   const ttsPayload = (typeof body.tts === 'object' && body.tts !== null) ? body.tts as Record<string, unknown> : null
   const ttsLanguage = normalizeLang(typeof ttsPayload?.language === 'string' ? ttsPayload.language : '')
   const ttsVoiceId = typeof ttsPayload?.voiceId === 'string' ? ttsPayload.voiceId.trim() : ''
+  const sessionKeyHint = typeof body.sessionKey === 'string' ? body.sessionKey.trim() : null
+  const clientMessageId = typeof body.clientMessageId === 'string' ? body.clientMessageId.trim().slice(0, 128) : null
+  const isFinal = body.isFinal === true
+  const sttDurationMs = sanitizeNonNegativeInt(body.sttDurationMs)
+  const totalDurationMsFromClient = sanitizeNonNegativeInt(body.totalDurationMs)
+  const clientContext = parseClientContext(body.clientContext)
+  const usageSecFromBody = sanitizeNonNegativeInt(body.usageSec)
+  if (usageSecFromBody !== null) {
+    clientContext.usageSec = usageSecFromBody
+  }
+
+  if (!GEMINI_API_KEY && !OPENAI_API_KEY && !CLAUDE_API_KEY) {
+    const response = NextResponse.json({ error: 'No translation API key configured' }, { status: 500 })
+    ensureTrackingContext(request, response, { sessionKeyHint })
+    return response
+  }
 
   const targetLanguagesSet = new Set<string>()
   for (const item of targetLanguagesRaw) {
@@ -290,29 +407,44 @@ export async function POST(request: NextRequest) {
   const targetLanguages = Array.from(targetLanguagesSet)
 
   if (!text) {
-    return NextResponse.json({ error: 'text is required' }, { status: 400 })
+    const response = NextResponse.json({ error: 'text is required' }, { status: 400 })
+    ensureTrackingContext(request, response, { sessionKeyHint })
+    return response
   }
+
   if (targetLanguages.length === 0) {
-    return NextResponse.json({ translations: {} })
+    const response = NextResponse.json({ translations: {} })
+    ensureTrackingContext(request, response, { sessionKeyHint })
+    return response
   }
 
   const ctx: TranslateContext = { text, targetLanguages }
 
   try {
-    let allTranslations: Record<string, string> = {}
+    let selectedResult: TranslationEngineResult | null = null
     const translators = [translateWithGemini, translateWithOpenAI, translateWithClaude]
+
     for (const translator of translators) {
       try {
-        allTranslations = await translator(ctx)
+        const translated = await translator(ctx)
+        if (translated && Object.keys(translated.translations).length > 0) {
+          selectedResult = translated
+          break
+        }
       } catch {
-        allTranslations = {}
+        // Continue to next provider.
       }
-      if (Object.keys(allTranslations).length > 0) break
+    }
+
+    if (!selectedResult) {
+      return NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
     }
 
     const translations: Record<string, string> = {}
     for (const lang of targetLanguages) {
-      if (allTranslations[lang]) translations[lang] = allTranslations[lang]
+      if (selectedResult.translations[lang]) {
+        translations[lang] = selectedResult.translations[lang]
+      }
     }
 
     if (Object.keys(translations).length === 0) {
@@ -320,6 +452,7 @@ export async function POST(request: NextRequest) {
     }
 
     const responsePayload: Record<string, unknown> = { translations }
+
     if (ttsLanguage && targetLanguages.includes(ttsLanguage)) {
       const ttsText = (translations[ttsLanguage] || '').trim()
       if (ttsText) {
@@ -328,6 +461,7 @@ export async function POST(request: NextRequest) {
           language: ttsLanguage,
           requestedVoiceId: ttsVoiceId,
         })
+
         if (ttsResult) {
           responsePayload.ttsLanguage = ttsLanguage
           responsePayload.ttsAudioBase64 = ttsResult.audioBase64
@@ -337,7 +471,98 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(responsePayload)
+    const response = NextResponse.json(responsePayload)
+    const tracking = ensureTrackingContext(request, response, { sessionKeyHint })
+    const totalDurationMs = totalDurationMsFromClient ?? Math.max(0, Date.now() - requestStartedAt)
+
+    fireAndForgetDbWrite('translate.finalize', async () => {
+      const userId = await upsertTrackedUser({ tracking, clientContext })
+      let messageId: string | null = null
+
+      if (isFinal) {
+        const messageMetadata: Prisma.JsonObject = {
+          sourceLanguage,
+          targetLanguages,
+          provider: selectedResult.provider,
+          model: selectedResult.model,
+          hasInlineTts: Boolean(responsePayload.ttsAudioBase64),
+        }
+        if (clientMessageId) messageMetadata.clientMessageId = clientMessageId
+
+        const message = await prisma.appMessage.create({
+          data: {
+            userId,
+            sessionKey: tracking.sessionKey,
+            clientMessageId: clientMessageId || undefined,
+            sourceLanguage,
+            translationPromptTokens: selectedResult.usage?.promptTokens,
+            translationCompletionTokens: selectedResult.usage?.completionTokens,
+            translationTotalTokens: selectedResult.usage?.totalTokens,
+            sttDurationMs: sttDurationMs ?? undefined,
+            totalDurationMs: totalDurationMs ?? undefined,
+            metadata: messageMetadata,
+          },
+        })
+        messageId = message.id
+
+        const contentRows: Array<{
+          messageId: string
+          contentType: string
+          language: string
+          text: string
+          provider?: string
+          model?: string
+        }> = [
+          {
+            messageId: message.id,
+            contentType: 'SOURCE',
+            language: sourceLanguage,
+            text,
+            provider: selectedResult.provider,
+            model: selectedResult.model,
+          },
+        ]
+
+        for (const [language, translatedText] of Object.entries(translations)) {
+          const cleanedText = translatedText.trim()
+          if (!cleanedText) continue
+          contentRows.push({
+            messageId: message.id,
+            contentType: 'TRANSLATION_FINAL',
+            language,
+            text: cleanedText,
+            provider: selectedResult.provider,
+            model: selectedResult.model,
+          })
+        }
+
+        await prisma.appMessageContent.createMany({
+          data: contentRows,
+          skipDuplicates: true,
+        })
+      }
+
+      await createTrackedEventLog({
+        userId,
+        tracking,
+        clientContext,
+        sessionKey: tracking.sessionKey,
+        messageId,
+        eventType: isFinal ? 'stt_turn_finalized' : 'translate_partial',
+        metadata: {
+          sourceLanguage,
+          targetLanguages,
+          provider: selectedResult.provider,
+          model: selectedResult.model,
+          clientMessageId,
+          isFinal,
+          ttsLanguage: ttsLanguage || null,
+          ttsVoiceId: typeof responsePayload.ttsVoiceId === 'string' ? responsePayload.ttsVoiceId : null,
+        },
+      })
+    })
+
+    return response
   } catch (error) {
     console.error('Finalize translation route error:', error)
     return NextResponse.json({ error: 'finalize_translation_failed' }, { status: 500 })

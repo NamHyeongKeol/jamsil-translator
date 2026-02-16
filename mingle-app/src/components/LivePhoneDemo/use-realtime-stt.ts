@@ -22,6 +22,7 @@ const DEFAULT_USAGE_LIMIT_SEC = 60
 
 const LS_KEY_UTTERANCES = 'mingle_demo_utterances'
 const LS_KEY_USAGE = 'mingle_demo_usage_sec'
+const LS_KEY_SESSION = 'mingle_demo_session_key'
 const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 const LS_KEY_STT_DEBUG = 'mingle_stt_debug'
 
@@ -68,6 +69,54 @@ interface TranslateApiResult {
 
 type NativeListenerHandle = {
   remove: () => Promise<void>
+}
+
+function createSessionKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `sess_${crypto.randomUUID().replace(/-/g, '')}`
+  }
+  return `sess_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`
+}
+
+function getOrCreateSessionKey(): string {
+  if (typeof window === 'undefined') return createSessionKey()
+  try {
+    const existing = window.localStorage.getItem(LS_KEY_SESSION)?.trim()
+    if (existing) return existing
+    const generated = createSessionKey()
+    window.localStorage.setItem(LS_KEY_SESSION, generated)
+    return generated
+  } catch {
+    return createSessionKey()
+  }
+}
+
+function buildClientContextPayload(usageSec: number): Record<string, unknown> {
+  if (typeof window === 'undefined') {
+    return { usageSec }
+  }
+
+  let timezone: string | null = null
+  try {
+    timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || null
+  } catch {
+    timezone = null
+  }
+
+  return {
+    language: navigator.language || null,
+    pageLanguage: document.documentElement?.lang || null,
+    referrer: document.referrer || null,
+    fullUrl: window.location.href || null,
+    queryParams: window.location.search || null,
+    pathname: window.location.pathname || null,
+    screenWidth: window.screen?.width ?? null,
+    screenHeight: window.screen?.height ?? null,
+    timezone,
+    platform: navigator.platform || null,
+    appVersion: process.env.NEXT_PUBLIC_APP_VERSION || null,
+    usageSec,
+  }
 }
 
 function decodeBase64AudioToBlob(base64: string, mime = 'audio/mpeg'): Blob | null {
@@ -213,6 +262,8 @@ export default function useRealtimeSTT({
   // We fire a new partial translation every time the length crosses the next 5-char threshold.
   const lastPartialTranslateLenRef = useRef(0)
   const partialTranslateControllerRef = useRef<AbortController | null>(null)
+  const sessionKeyRef = useRef('')
+  const turnStartedAtRef = useRef<number | null>(null)
 
   const removeNativeSttListeners = useCallback(() => {
     const handles = nativeListenerHandlesRef.current
@@ -243,6 +294,17 @@ export default function useRealtimeSTT({
   useEffect(() => {
     partialLangRef.current = partialLang
   }, [partialLang])
+
+  const ensureSessionKey = useCallback(() => {
+    if (sessionKeyRef.current) return sessionKeyRef.current
+    const resolved = getOrCreateSessionKey()
+    sessionKeyRef.current = resolved
+    return resolved
+  }, [])
+
+  useEffect(() => {
+    ensureSessionKey()
+  }, [ensureSessionKey])
 
   const appendUtterances = useCallback((items: Utterance[]) => {
     if (items.length === 0) return
@@ -332,6 +394,7 @@ export default function useRealtimeSTT({
       partialTranslateControllerRef.current.abort()
       partialTranslateControllerRef.current = null
     }
+    turnStartedAtRef.current = null
   }, [])
 
   // ===== HTTP Translation via /api/translate/finalize =====
@@ -342,6 +405,10 @@ export default function useRealtimeSTT({
     options?: {
       signal?: AbortSignal
       ttsLanguage?: string
+      isFinal?: boolean
+      clientMessageId?: string
+      sttDurationMs?: number
+      totalDurationMs?: number
     },
   ): Promise<TranslateApiResult> => {
     const langs = targetLanguages.filter(l => l !== sourceLanguage)
@@ -356,6 +423,18 @@ export default function useRealtimeSTT({
     })
     try {
       const body: Record<string, unknown> = { text, sourceLanguage, targetLanguages: langs }
+      body.isFinal = options?.isFinal === true
+      body.sessionKey = ensureSessionKey()
+      body.clientContext = buildClientContextPayload(usageSec)
+      if (options?.clientMessageId) {
+        body.clientMessageId = options.clientMessageId
+      }
+      if (typeof options?.sttDurationMs === 'number' && Number.isFinite(options.sttDurationMs) && options.sttDurationMs >= 0) {
+        body.sttDurationMs = Math.floor(options.sttDurationMs)
+      }
+      if (typeof options?.totalDurationMs === 'number' && Number.isFinite(options.totalDurationMs) && options.totalDurationMs >= 0) {
+        body.totalDurationMs = Math.floor(options.totalDurationMs)
+      }
       const normalizedTtsLang = (options?.ttsLanguage || '').trim()
       if (normalizedTtsLang) {
         body.tts = { language: normalizedTtsLang }
@@ -389,7 +468,7 @@ export default function useRealtimeSTT({
       logTtsDebug('translate.error', { requestId })
       return { translations: {} }
     }
-  }, [])
+  }, [ensureSessionKey, usageSec])
 
   const synthesizeTtsViaApi = useCallback(async (text: string, language: string): Promise<Blob | null> => {
     const normalizedText = text.trim()
@@ -405,7 +484,12 @@ export default function useRealtimeSTT({
       const res = await fetch('/api/tts/inworld', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: normalizedText, language: normalizedLang }),
+        body: JSON.stringify({
+          text: normalizedText,
+          language: normalizedLang,
+          sessionKey: ensureSessionKey(),
+          clientContext: buildClientContextPayload(usageSec),
+        }),
       })
       if (!res.ok) {
         logTtsDebug('tts_fallback.non_ok', { requestId, status: res.status })
@@ -427,7 +511,7 @@ export default function useRealtimeSTT({
       logTtsDebug('tts_fallback.error', { requestId })
       return null
     }
-  }, [])
+  }, [ensureSessionKey, usageSec])
 
   const handleInlineTtsFromTranslate = useCallback((
     utteranceId: string,
@@ -613,8 +697,15 @@ export default function useRealtimeSTT({
     if (localFinalizeResult && languages.length > 0) {
       const { utteranceId, text, lang } = localFinalizeResult
       const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== lang)[0] || '') : ''
+      const sttDurationMs = turnStartedAtRef.current ? Math.max(0, Date.now() - turnStartedAtRef.current) : undefined
+      turnStartedAtRef.current = null
       const seq = ++translateSeqRef.current
-      translateViaApi(text, lang, languages, { ttsLanguage: ttsTargetLang }).then(result => {
+      translateViaApi(text, lang, languages, {
+        ttsLanguage: ttsTargetLang,
+        isFinal: true,
+        clientMessageId: utteranceId,
+        sttDurationMs,
+      }).then(result => {
         if (Object.keys(result.translations).length > 0) {
           applyTranslationToUtterance(utteranceId, result.translations, seq, true)
           handleInlineTtsFromTranslate(utteranceId, lang, result)
@@ -678,9 +769,16 @@ export default function useRealtimeSTT({
     if (remainingPartial) {
       const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
       if (result && languages.length > 0) {
+        const sttDurationMs = turnStartedAtRef.current ? Math.max(0, Date.now() - turnStartedAtRef.current) : undefined
+        turnStartedAtRef.current = null
         const seq = ++translateSeqRef.current
         const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== result.lang)[0] || '') : ''
-        translateViaApi(result.text, result.lang, languages, { ttsLanguage: ttsTargetLang }).then(res => {
+        translateViaApi(result.text, result.lang, languages, {
+          ttsLanguage: ttsTargetLang,
+          isFinal: true,
+          clientMessageId: result.utteranceId,
+          sttDurationMs,
+        }).then(res => {
           if (Object.keys(res.translations).length > 0) {
             applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
             handleInlineTtsFromTranslate(result.utteranceId, result.lang, res)
@@ -700,9 +798,16 @@ export default function useRealtimeSTT({
       if (remainingPartial) {
         const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
         if (result && languages.length > 0) {
+          const sttDurationMs = turnStartedAtRef.current ? Math.max(0, Date.now() - turnStartedAtRef.current) : undefined
+          turnStartedAtRef.current = null
           const seq = ++translateSeqRef.current
           const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== result.lang)[0] || '') : ''
-          translateViaApi(result.text, result.lang, languages, { ttsLanguage: ttsTargetLang }).then(res => {
+          translateViaApi(result.text, result.lang, languages, {
+            ttsLanguage: ttsTargetLang,
+            isFinal: true,
+            clientMessageId: result.utteranceId,
+            sttDurationMs,
+          }).then(res => {
             if (Object.keys(res.translations).length > 0) {
               applyTranslationToUtterance(result.utteranceId, res.translations, seq, true)
               handleInlineTtsFromTranslate(result.utteranceId, result.lang, res)
@@ -763,6 +868,8 @@ export default function useRealtimeSTT({
       if (isFinal) {
         const sig = `${lang}::${text}`
         const now = Date.now()
+        const sttDurationMs = turnStartedAtRef.current ? Math.max(0, now - turnStartedAtRef.current) : undefined
+        turnStartedAtRef.current = null
         if (
           sig
           && stopFinalizeDedupRef.current.sig === sig
@@ -819,7 +926,12 @@ export default function useRealtimeSTT({
         if (languages.length > 0) {
           const seq = ++translateSeqRef.current
           const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== lang)[0] || '') : ''
-          translateViaApi(text, lang, languages, { ttsLanguage: ttsTargetLang }).then(result => {
+          translateViaApi(text, lang, languages, {
+            ttsLanguage: ttsTargetLang,
+            isFinal: true,
+            clientMessageId: newUtteranceId,
+            sttDurationMs,
+          }).then(result => {
             if (Object.keys(result.translations).length > 0) {
               applyTranslationToUtterance(newUtteranceId, result.translations, seq, true)
               handleInlineTtsFromTranslate(newUtteranceId, lang, result)
@@ -827,6 +939,9 @@ export default function useRealtimeSTT({
           })
         }
       } else {
+        if (!turnStartedAtRef.current && text) {
+          turnStartedAtRef.current = Date.now()
+        }
         setPartialTranscript(text)
         partialTranscriptRef.current = text
         setPartialLang(lang)
@@ -861,6 +976,7 @@ export default function useRealtimeSTT({
       setConnectionStatus('connecting')
       stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
       pendingLocalFinalizeRef.current = null
+      turnStartedAtRef.current = null
       setPartialTranscript('')
       setPartialTranslations({})
       partialTranslationsRef.current = {}

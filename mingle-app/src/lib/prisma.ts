@@ -1,8 +1,6 @@
 import * as PrismaClientPackage from "@prisma/client";
 
-type PrismaClientLike = {
-  $disconnect: () => Promise<void>;
-};
+type PrismaClientLike = import("@prisma/client").PrismaClient;
 
 type PrismaClientConstructor = new (options?: {
   datasources?: {
@@ -26,13 +24,17 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function prismaClientSingleton() {
-  return new ResolvedPrismaClientCtor({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
+  const databaseUrl = process.env.DATABASE_URL;
+  if (databaseUrl) {
+    return new ResolvedPrismaClientCtor({
+      datasources: {
+        db: {
+          url: databaseUrl,
+        },
       },
-    },
-  });
+    });
+  }
+  return new ResolvedPrismaClientCtor();
 }
 
 export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();

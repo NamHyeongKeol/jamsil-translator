@@ -1,4 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  createTrackedEventLog,
+  ensureTrackingContext,
+  fireAndForgetDbWrite,
+  parseClientContext,
+  upsertTrackedUser,
+} from '@/lib/app-analytics'
 
 export const runtime = 'nodejs'
 
@@ -39,7 +46,6 @@ function getAuthHeaderValue(): string | null {
     return `Basic ${basicCredential}`
   }
 
-  // Some environments store the Base64 Basic credential in INWORLD_API_KEY.
   const apiKey = process.env.INWORLD_API_KEY?.trim()
   const apiSecret = process.env.INWORLD_API_SECRET?.trim()
   if (apiKey && !apiSecret) {
@@ -47,7 +53,6 @@ function getAuthHeaderValue(): string | null {
     return `Basic ${apiKey}`
   }
 
-  // Fallback for setups where key/secret pair is provided.
   if (apiKey && apiSecret) {
     const credential = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
     return `Basic ${credential}`
@@ -126,24 +131,31 @@ function detectAudioMime(audioBuffer: Buffer): string {
 }
 
 export async function POST(request: NextRequest) {
+  const body = await request.json().catch((): Record<string, unknown> => ({}))
+  const text = typeof body?.text === 'string' ? body.text.trim() : ''
+  const requestedVoiceId = typeof body?.voiceId === 'string' ? body.voiceId.trim() : ''
+  const language = normalizeLanguage(typeof body?.language === 'string' ? body.language : '')
+  const sessionKeyHint = typeof body?.sessionKey === 'string' ? body.sessionKey.trim() : null
+  const clientMessageId = typeof body?.clientMessageId === 'string' ? body.clientMessageId.trim().slice(0, 128) : null
+  const clientContext = parseClientContext(body?.clientContext)
+
   const authHeader = getAuthHeaderValue()
   if (!authHeader) {
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         error:
           'INWORLD_BASIC (or INWORLD_RUNTIME_BASE64_CREDENTIAL / INWORLD_BASIC_CREDENTIAL) is required',
       },
       { status: 500 },
     )
+    ensureTrackingContext(request, response, { sessionKeyHint })
+    return response
   }
 
-  const body = await request.json().catch(() => ({}))
-  const text = typeof body?.text === 'string' ? body.text.trim() : ''
-  const requestedVoiceId = typeof body?.voiceId === 'string' ? body.voiceId.trim() : ''
-  const language = normalizeLanguage(typeof body?.language === 'string' ? body.language : '')
-
   if (!text) {
-    return NextResponse.json({ error: 'text is required' }, { status: 400 })
+    const response = NextResponse.json({ error: 'text is required' }, { status: 400 })
+    ensureTrackingContext(request, response, { sessionKeyHint })
+    return response
   }
 
   const voiceId = requestedVoiceId || await resolveVoiceId(authHeader, language)
@@ -170,20 +182,44 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const detail = await response.text().catch(() => '')
-      return NextResponse.json(
+      const errorResponse = NextResponse.json(
         { error: 'inworld_tts_failed', status: response.status, detail: detail.slice(0, 300) },
         { status: response.status },
       )
+
+      const tracking = ensureTrackingContext(request, errorResponse, { sessionKeyHint })
+      fireAndForgetDbWrite('tts.inworld.failed', async () => {
+        const userId = await upsertTrackedUser({ tracking, clientContext })
+        await createTrackedEventLog({
+          userId,
+          tracking,
+          clientContext,
+          sessionKey: tracking.sessionKey,
+          eventType: 'tts_failed',
+          metadata: {
+            status: response.status,
+            language,
+            voiceId,
+            modelId: DEFAULT_MODEL_ID,
+            textLength: text.length,
+            clientMessageId,
+          },
+        })
+      })
+
+      return errorResponse
     }
 
     const data = await response.json() as { audioContent?: string }
     const audioBuffer = decodeAudioContent(data.audioContent)
 
     if (!audioBuffer) {
-      return NextResponse.json({ error: 'invalid_audio_content' }, { status: 502 })
+      const invalidResponse = NextResponse.json({ error: 'invalid_audio_content' }, { status: 502 })
+      ensureTrackingContext(request, invalidResponse, { sessionKeyHint })
+      return invalidResponse
     }
 
-    return new NextResponse(new Uint8Array(audioBuffer), {
+    const audioResponse = new NextResponse(new Uint8Array(audioBuffer), {
       headers: {
         'Content-Type': detectAudioMime(audioBuffer),
         'Cache-Control': 'no-store',
@@ -191,6 +227,28 @@ export async function POST(request: NextRequest) {
         'X-TTS-Voice-Id': voiceId,
       },
     })
+
+    const tracking = ensureTrackingContext(request, audioResponse, { sessionKeyHint })
+    fireAndForgetDbWrite('tts.inworld.success', async () => {
+      const userId = await upsertTrackedUser({ tracking, clientContext })
+      await createTrackedEventLog({
+        userId,
+        tracking,
+        clientContext,
+        sessionKey: tracking.sessionKey,
+        eventType: 'tts_generated',
+        metadata: {
+          language,
+          voiceId,
+          modelId: DEFAULT_MODEL_ID,
+          textLength: text.length,
+          audioBytes: audioBuffer.byteLength,
+          clientMessageId,
+        },
+      })
+    })
+
+    return audioResponse
   } catch (error) {
     console.error('Inworld TTS route error:', error)
     return NextResponse.json({ error: 'inworld_tts_internal_error' }, { status: 500 })
