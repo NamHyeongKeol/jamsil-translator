@@ -13,6 +13,8 @@ class NativeSTTModule: RCTEventEmitter {
     private var isRunning = false
     private var hasListeners = false
     private var audioObserversInstalled = false
+    private var isRestartingAudio = false
+    private var lastAudioRestartAt = Date.distantPast
 
     override static func requiresMainQueueSetup() -> Bool {
         false
@@ -38,8 +40,8 @@ class NativeSTTModule: RCTEventEmitter {
         let audioSession = AVAudioSession.sharedInstance()
         try audioSession.setCategory(
             .playAndRecord,
-            mode: .default,
-            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+            mode: .voiceChat,
+            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
         )
         try? audioSession.setPreferredSampleRate(48_000)
         try? audioSession.setPreferredIOBufferDuration(0.02)
@@ -121,10 +123,22 @@ class NativeSTTModule: RCTEventEmitter {
 
     private func restartAudioCapture(reason: String) {
         guard isRunning else { return }
+        let now = Date()
+        if isRestartingAudio {
+            return
+        }
+        if now.timeIntervalSince(lastAudioRestartAt) < 0.5 {
+            return
+        }
 
+        isRestartingAudio = true
+        lastAudioRestartAt = now
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             guard self.isRunning else { return }
+            defer {
+                self.isRestartingAudio = false
+            }
 
             do {
                 try self.configureAudioSession()
@@ -178,12 +192,17 @@ class NativeSTTModule: RCTEventEmitter {
         guard isRunning else { return }
         guard
             let userInfo = notification.userInfo,
-            let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt
+            let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+            let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue)
         else {
             return
         }
-
-        restartAudioCapture(reason: "route_change_\(reasonValue)")
+        switch reason {
+        case .newDeviceAvailable, .oldDeviceUnavailable, .noSuitableRouteForCategory, .wakeFromSleep:
+            restartAudioCapture(reason: "route_change_\(reasonValue)")
+        default:
+            break
+        }
     }
 
     @objc
