@@ -78,18 +78,6 @@ If you apply SQL manually to remote, use:
 
 - `prisma/migrations/20260216173000_init_app_schema/migration.sql`
 
-## Capacitor Build Flow
-
-```bash
-pnpm cap:add:ios
-pnpm cap:add:android
-pnpm cap:sync
-pnpm cap:verify
-```
-
-- `cap:sync` builds the web app and prepares a fallback `capacitor-web` bundle.
-- If `CAPACITOR_SERVER_URL` is set, native builds will load that URL at runtime.
-
 ## React Native (mingle-app/rn)
 
 `mingle-app` now also includes a dedicated RN workspace at `rn/`.
@@ -107,26 +95,6 @@ pnpm rn:ios
 - RN screen for basic STT verification:
   - `rn/App.tsx`
 
-## Native iOS TTS Toggle
-
-- `NEXT_PUBLIC_NATIVE_TTS_MODE=auto|on|off`
-- default is `auto` (iOS Capacitor runtime uses native AVAudioPlayer path)
-- quick rollback without code change:
-  - set env to `off`, redeploy web, run `pnpm cap:sync` and reinstall app
-  - or in Safari Web Inspector console:
-    - `localStorage.setItem("mingle_native_tts_mode", "off")`
-    - app restart
-
-## Native iOS STT Toggle
-
-- `NEXT_PUBLIC_NATIVE_STT_MODE=auto|on|off`
-- default is `auto` (iOS Capacitor runtime uses native AVAudioEngine + native WS path)
-- quick rollback without code change:
-  - set env to `off`, redeploy web, run `pnpm cap:sync` and reinstall app
-  - or in Safari Web Inspector console:
-    - `localStorage.setItem("mingle_native_stt_mode", "off")`
-    - app restart
-
 ## Seed Data
 
 ```bash
@@ -135,7 +103,7 @@ pnpm seed:populate
 ```
 
 - Source file: `data/seed/mingle-seed.json`
-- Export target: `capacitor-web/seed/mingle-seed.json`
+- Export target: `public/seed/mingle-seed.json`
 
 ## Crawling Pipeline
 

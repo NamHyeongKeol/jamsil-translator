@@ -2,13 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Utterance } from './ChatBubble'
-import { setNativeAudioMode } from '@/lib/native-audio-session'
-import {
-  addNativeSttListener,
-  shouldUseNativeSttSession,
-  startNativeSttSession,
-  stopNativeSttSession,
-} from '@/lib/native-stt-session'
 
 const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '3001'
 const getWsUrl = () => {
@@ -65,10 +58,6 @@ interface TranslateApiResult {
   ttsLanguage?: string
   ttsAudioBase64?: string
   ttsAudioMime?: string
-}
-
-type NativeListenerHandle = {
-  remove: () => Promise<void>
 }
 
 function createSessionKey(): string {
@@ -142,12 +131,6 @@ function isTtsDebugEnabled(): boolean {
   } catch {
     // no-op
   }
-  try {
-    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
-    if (cap?.isNativePlatform?.()) return true
-  } catch {
-    // no-op
-  }
   return /(?:\?|&)ttsDebug=1(?:&|$)/.test(window.location.search || '')
 }
 
@@ -166,12 +149,6 @@ function isSttDebugEnabled(): boolean {
     const forced = window.localStorage.getItem(LS_KEY_STT_DEBUG)
     if (forced === '1') return true
     if (forced === '0') return false
-  } catch {
-    // no-op
-  }
-  try {
-    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
-    if (cap?.isNativePlatform?.()) return true
   } catch {
     // no-op
   }
@@ -234,8 +211,6 @@ export default function useRealtimeSTT({
   const lastAudioChunkAtRef = useRef(0)
   const isBackgroundRecoveringRef = useRef(false)
   const wasBackgroundedRef = useRef(false)
-  const nativeListenerHandlesRef = useRef<NativeListenerHandle[]>([])
-  const isUsingNativeSttRef = useRef(false)
   const onLimitReachedRef = useRef(onLimitReached)
   onLimitReachedRef.current = onLimitReached
 
@@ -264,14 +239,6 @@ export default function useRealtimeSTT({
   const partialTranslateControllerRef = useRef<AbortController | null>(null)
   const sessionKeyRef = useRef('')
   const turnStartedAtRef = useRef<number | null>(null)
-
-  const removeNativeSttListeners = useCallback(() => {
-    const handles = nativeListenerHandlesRef.current
-    nativeListenerHandlesRef.current = []
-    for (const handle of handles) {
-      void handle.remove().catch(() => {})
-    }
-  }, [])
 
   // Persist utterances to localStorage
   useEffect(() => {
@@ -369,12 +336,7 @@ export default function useRealtimeSTT({
       socketRef.current.close()
       socketRef.current = null
     }
-    removeNativeSttListeners()
-    if (isUsingNativeSttRef.current) {
-      isUsingNativeSttRef.current = false
-      void stopNativeSttSession()
-    }
-  }, [removeNativeSttListeners, stopAudioPipeline])
+  }, [stopAudioPipeline])
 
   const resetToIdle = useCallback(() => {
     isStoppingRef.current = false
@@ -645,11 +607,9 @@ export default function useRealtimeSTT({
     if (isStoppingRef.current) return
     isStoppingRef.current = true
 
-    void setNativeAudioMode('playback')
     stopAudioPipeline({ closeContext: false })
 
     const socket = socketRef.current
-    const usingNativeStt = isUsingNativeSttRef.current
     const pendingText = partialTranscriptRef.current.trim()
     const pendingLang = partialLangRef.current || 'unknown'
     let localFinalizeResult: LocalFinalizeResult | null = null
@@ -659,32 +619,23 @@ export default function useRealtimeSTT({
       localFinalizeResult = finalizePendingLocally(pendingText, pendingLang)
     }
 
-    if (usingNativeStt) {
-      isUsingNativeSttRef.current = false
-      removeNativeSttListeners()
-      await stopNativeSttSession({
-        pendingText,
-        pendingLanguage: pendingLang,
-      })
-    } else {
-      // Fire-and-forget stop_recording to server (so it can clean up STT provider)
-      try {
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: 'stop_recording',
-            data: {
-              pending_text: pendingText,
-              pending_language: pendingLang,
-            },
-          }))
-        }
-      } catch { /* ignore */ }
-
-      // Close socket immediately — no need to wait for ACK since translation is HTTP.
-      if (socketRef.current) {
-        socketRef.current.close()
-        socketRef.current = null
+    // Fire-and-forget stop_recording to server (so it can clean up STT provider)
+    try {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: 'stop_recording',
+          data: {
+            pending_text: pendingText,
+            pending_language: pendingLang,
+          },
+        }))
       }
+    } catch { /* ignore */ }
+
+    // Close socket immediately — no need to wait for ACK since translation is HTTP.
+    if (socketRef.current) {
+      socketRef.current.close()
+      socketRef.current = null
     }
     setConnectionStatus('idle')
     isStoppingRef.current = false
@@ -712,7 +663,7 @@ export default function useRealtimeSTT({
         }
       })
     }
-  }, [applyTranslationToUtterance, finalizePendingLocally, handleInlineTtsFromTranslate, languages, removeNativeSttListeners, stopAudioPipeline, translateViaApi])
+  }, [applyTranslationToUtterance, finalizePendingLocally, handleInlineTtsFromTranslate, languages, stopAudioPipeline, translateViaApi])
 
   const visualize = useCallback(() => {
     if (analyserRef.current) {
@@ -821,12 +772,10 @@ export default function useRealtimeSTT({
 
   const handleSttServerMessage = useCallback((message: Record<string, unknown>) => {
     if (message.status === 'ready') {
-      logSttDebug('transport.ready', { native: isUsingNativeSttRef.current })
+      logSttDebug('transport.ready')
       setConnectionStatus('ready')
       lastAudioChunkAtRef.current = Date.now()
-      if (!isUsingNativeSttRef.current) {
-        startAudioProcessing()
-      }
+      startAudioProcessing()
 
       if (usageIntervalRef.current) {
         clearInterval(usageIntervalRef.current)
@@ -952,15 +901,12 @@ export default function useRealtimeSTT({
 
   const startRecording = useCallback(async () => {
     if (isStoppingRef.current) return
-    const useNativeStt = shouldUseNativeSttSession()
     logSttDebug('recording.start.request', {
-      useNativeStt,
       wsUrl: getWsUrl(),
       languagesCount: languages.length,
     })
     if (
-      !useNativeStt
-      && socketRef.current
+      socketRef.current
       && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)
     ) {
       return
@@ -981,53 +927,8 @@ export default function useRealtimeSTT({
       setPartialTranslations({})
       partialTranslationsRef.current = {}
       setPartialLang(null)
-      removeNativeSttListeners()
-
-      if (useNativeStt) {
-        logSttDebug('native.start.begin')
-        isUsingNativeSttRef.current = true
-        await setNativeAudioMode('recording')
-        logSttDebug('native.step.audio_mode.ok')
-        const statusHandle = await addNativeSttListener('status', (event) => {
-          logSttDebug('native.status', event)
-          handleSttServerMessage(event)
-        })
-        const messageHandle = await addNativeSttListener('message', (event) => {
-          const raw = typeof event.raw === 'string' ? event.raw : ''
-          if (!raw) return
-          try {
-            const message = JSON.parse(raw) as Record<string, unknown>
-            handleSttServerMessage(message)
-          } catch {
-            // ignore malformed event payload
-          }
-        })
-        const errorHandle = await addNativeSttListener('error', (event) => {
-          handleSttTransportError({
-            native: true,
-            message: typeof event.message === 'string' ? event.message : '',
-          })
-        })
-        const closeHandle = await addNativeSttListener('close', (event) => {
-          handleSttTransportClose({
-            native: true,
-            reason: typeof event.reason === 'string' ? event.reason : '',
-          })
-        })
-        nativeListenerHandlesRef.current = [statusHandle, messageHandle, errorHandle, closeHandle]
-        logSttDebug('native.step.listeners.ok')
-        await startNativeSttSession({
-          wsUrl: getWsUrl(),
-          languages,
-          sttModel: 'soniox',
-          langHintsStrict: true,
-        })
-        logSttDebug('native.start.success')
-        return
-      }
 
       logSttDebug('web.start.begin')
-      isUsingNativeSttRef.current = false
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -1048,8 +949,6 @@ export default function useRealtimeSTT({
           await context.resume()
         } catch { /* no-op */ }
       }
-
-      await setNativeAudioMode('recording')
 
       const socket = new WebSocket(getWsUrl())
       socketRef.current = socket
@@ -1085,19 +984,17 @@ export default function useRealtimeSTT({
       }
     } catch (error) {
       logSttDebug('recording.start.failed', {
-        native: useNativeStt,
+        native: false,
         message: error instanceof Error ? error.message : String(error),
         name: error instanceof Error ? error.name : 'unknown',
       })
-      void setNativeAudioMode('playback')
       cleanup()
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [cleanup, handleSttServerMessage, handleSttTransportClose, handleSttTransportError, languages, normalizedUsageLimitSec, removeNativeSttListeners, usageSec])
+  }, [cleanup, handleSttServerMessage, handleSttTransportClose, handleSttTransportError, languages, normalizedUsageLimitSec, usageSec])
 
   const recoverFromBackgroundIfNeeded = useCallback(async () => {
-    if (isUsingNativeSttRef.current) return
     if (connectionStatus !== 'ready') return
     if (isBackgroundRecoveringRef.current) return
     isBackgroundRecoveringRef.current = true

@@ -8,7 +8,6 @@ import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
-import { playNativeTtsAudio, shouldUseNativeTtsPlayback, stopNativeTtsAudio } from '@/lib/native-tts-player'
 
 const VOLUME_THRESHOLD = 0.05
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
@@ -22,12 +21,6 @@ function isTtsDebugEnabled(): boolean {
     const forced = window.localStorage.getItem(LS_KEY_TTS_DEBUG)
     if (forced === '1') return true
     if (forced === '0') return false
-  } catch {
-    // no-op
-  }
-  try {
-    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
-    if (cap?.isNativePlatform?.()) return true
   } catch {
     // no-op
   }
@@ -296,37 +289,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       })
     }
 
-    if (shouldUseNativeTtsPlayback()) {
-      ttsNeedsUnlockRef.current = false
-      logTtsQueue('play.native.start', {
-        utteranceId: next.utteranceId,
-        language: next.language,
-        audioBytes: next.audioBlob.size,
-      })
-      void playNativeTtsAudio(next.audioBlob, next.language).then(() => {
-        logTtsQueue('play.native.ended', {
-          utteranceId: next.utteranceId,
-          language: next.language,
-        })
-        ttsPlayedUtteranceRef.current.add(next.utteranceId)
-        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
-        isTtsProcessingRef.current = false
-        processTtsQueueRef.current()
-      }).catch((error) => {
-        logTtsQueue('play.native.error', {
-          utteranceId: next.utteranceId,
-          language: next.language,
-          error: error instanceof Error ? error.message : 'native_play_failed',
-        })
-        logTtsQueue('play.native.fallback_to_html_audio', {
-          utteranceId: next.utteranceId,
-          language: next.language,
-        })
-        playViaHtmlAudio()
-      })
-      return
-    }
-
     playViaHtmlAudio()
   }, [cleanupCurrentAudio, clearTtsOrderWaitTimer, enableAutoTTS, ensureAudioPlayer, isSoundEnabled, selectedLanguages])
 
@@ -515,7 +477,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     ttsWaitingSinceRef.current.clear()
     isTtsProcessingRef.current = false
     ttsNeedsUnlockRef.current = false
-    void stopNativeTtsAudio()
     cleanupCurrentAudio()
   }, [clearTtsOrderWaitTimer, isSoundEnabled, cleanupCurrentAudio])
 
@@ -583,7 +544,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       waitingSince.clear()
       isTtsProcessingRef.current = false
       ttsNeedsUnlockRef.current = false
-      void stopNativeTtsAudio()
       cleanupCurrentAudio()
     }
   }, [clearStopClickResumeTimers, clearTtsOrderWaitTimer, cleanupCurrentAudio])

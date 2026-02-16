@@ -3,7 +3,7 @@ import path from "node:path";
 
 const cwd = process.cwd();
 const seedPath = path.join(cwd, "data/seed/mingle-seed.json");
-const outputPath = path.join(cwd, "capacitor-web/seed/mingle-seed.json");
+const outputPath = path.join(cwd, "public/seed/mingle-seed.json");
 const checkOnly = process.argv.includes("--check");
 
 function assert(condition, message) {

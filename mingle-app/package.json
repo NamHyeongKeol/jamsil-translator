@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "build:mobile": "pnpm run build && node scripts/prepare-capacitor-web.mjs",
     "rn:install": "pnpm --dir rn install",
     "rn:pods": "cd rn/ios && (bundle exec pod install || pod install)",
     "rn:start": "pnpm --dir rn start",
@@ -18,18 +17,11 @@
     "db:migrate:create": "prisma migrate dev --create-only",
     "db:migrate:dev": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "cap:add:ios": "pnpm exec cap add ios",
-    "cap:add:android": "pnpm exec cap add android",
-    "cap:sync": "pnpm run build:mobile && pnpm exec cap sync",
-    "cap:open:ios": "pnpm exec cap open ios",
-    "cap:open:android": "pnpm exec cap open android",
-    "cap:verify": "node scripts/verify-capacitor.mjs",
     "seed:check": "node scripts/seed-data.mjs --check",
     "seed:populate": "node scripts/seed-data.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",
-    "@capacitor/core": "^8.1.0",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.2",
     "class-variance-authority": "^0.7.1",
@@ -45,9 +37,6 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
-    "@capacitor/android": "^8.1.0",
-    "@capacitor/cli": "^8.1.0",
-    "@capacitor/ios": "^8.1.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
