@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_capacitor_path_removal
+    %% @lastActive: mingle_app_vercel_rn_typecheck_scope_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -433,6 +433,9 @@ flowchart TD
     %% @mingle_app_capacitor_path_removal [ai-task, closed, 2026-02-16, ai]
     mingle_app_capacitor_path_removal("mingle-app Capacitor 경로 완전 제거<br/><sub>package 의존성과 cap 스크립트, capacitor 설정/스크립트를 삭제하고<br/>legacy iOS 셸(ios/App)과 capacitor-web 번들을 전부 제거했으며<br/>LivePhoneDemo의 네이티브 플러그인 분기를 웹 경로로 단순화해<br/>웹+RN 이원 구조에서 검은 화면 원인이던 혼선 경로를 차단</sub>")
 
+    %% @mingle_app_vercel_rn_typecheck_scope_fix [ai-task, closed, 2026-02-16, ai]
+    mingle_app_vercel_rn_typecheck_scope_fix("Vercel RN 타입체크 스코프 분리<br/><sub>Next 빌드가 mingle-app/rn/App.tsx까지 검사해<br/>react-native 모듈 미존재로 실패하던 경로를 재현했고<br/>mingle-app tsconfig exclude에 rn/**/*를 추가해<br/>웹 빌드는 web 코드만 타입체크하도록 경계를 고정</sub>")
+
     %% @mingle_app_async_nonblocking_db_write [ai-task, closed, 2026-02-16, ai]
     mingle_app_async_nonblocking_db_write("앱 API 비동기 저장 경로 적용 완료<br/><sub>/api/translate/finalize·/translate·/tts/inworld에서<br/>응답 후 DB fire-and-forget 적재를 연결하고<br/>STT final일 때만 Message/MessageContent를 저장,<br/>app_users metadata JSON 대신 개별 컬럼으로 기록</sub>")
 
@@ -581,7 +584,8 @@ flowchart TD
     mingle_app_db_schema_prisma_init --> mingle_app_prisma_client_build_fix
     mingle_app_prisma_client_build_fix --> mingle_app_rn_workspace_alignment
     mingle_app_rn_workspace_alignment --> mingle_app_capacitor_path_removal
-    mingle_app_capacitor_path_removal --> mingle_app_async_nonblocking_db_write
+    mingle_app_capacitor_path_removal --> mingle_app_vercel_rn_typecheck_scope_fix
+    mingle_app_vercel_rn_typecheck_scope_fix --> mingle_app_async_nonblocking_db_write
     mingle_app_async_nonblocking_db_write --> mingle_app_usage_truth_policy
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
@@ -600,7 +604,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_capacitor_path_removal
+        mingle_app_vercel_rn_typecheck_scope_fix
     end
 
     %% === STYLES ===
@@ -800,7 +804,8 @@ flowchart TD
     style mingle_app_db_schema_prisma_init fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_prisma_client_build_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_workspace_alignment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_capacitor_path_removal fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_capacitor_path_removal fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_vercel_rn_typecheck_scope_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_async_nonblocking_db_write fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
