@@ -15,6 +15,11 @@ class NativeSTTModule: RCTEventEmitter {
     private var audioObserversInstalled = false
     private var isRestartingAudio = false
     private var lastAudioRestartAt = Date.distantPast
+    private var audioChunkCount: Int64 = 0
+    private var wsMessageCount: Int64 = 0
+    private var wsPingTimer: DispatchSourceTimer?
+    private var healthCheckTimer: DispatchSourceTimer?
+    private var lastChunkCountSnapshot: Int64 = 0
 
     override static func requiresMainQueueSetup() -> Bool {
         false
@@ -38,6 +43,8 @@ class NativeSTTModule: RCTEventEmitter {
 
     private func configureAudioSession() throws {
         let audioSession = AVAudioSession.sharedInstance()
+        NSLog("[NativeSTTModule] configureAudioSession category=%@ mode=%@ sampleRate=%.0f",
+              audioSession.category.rawValue, audioSession.mode.rawValue, audioSession.sampleRate)
         // Keep full-duplex (record + playback) but avoid voiceChat processing that
         // pushes output into low "call-like" playback on iOS.
         try audioSession.setCategory(
@@ -48,6 +55,8 @@ class NativeSTTModule: RCTEventEmitter {
         try? audioSession.setPreferredSampleRate(48_000)
         try? audioSession.setPreferredIOBufferDuration(0.02)
         try audioSession.setActive(true, options: [])
+        NSLog("[NativeSTTModule] audioSession active sampleRate=%.0f ioBufferDuration=%.4f",
+              audioSession.sampleRate, audioSession.ioBufferDuration)
     }
 
     private func installAudioObserversIfNeeded() {
@@ -105,10 +114,19 @@ class NativeSTTModule: RCTEventEmitter {
 
     private func installInputTap(format: AVAudioFormat) {
         let inputNode = audioEngine.inputNode
+        NSLog("[NativeSTTModule] installTap format=%@ channels=%d sampleRate=%.0f",
+              format.description, format.channelCount, format.sampleRate)
         inputNode.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
             guard let self else { return }
             guard self.isRunning else { return }
             guard let chunkBase64 = self.encodePcmBase64(buffer) else { return }
+
+            self.audioChunkCount += 1
+            let count = self.audioChunkCount
+            if count == 1 || count % 200 == 0 {
+                NSLog("[NativeSTTModule] audioChunk #%lld frames=%d engineRunning=%d",
+                      count, buffer.frameLength, self.audioEngine.isRunning ? 1 : 0)
+            }
 
             self.wsQueue.async { [weak self] in
                 self?.sendJson([
@@ -220,7 +238,11 @@ class NativeSTTModule: RCTEventEmitter {
     }
 
     private func stopAndCleanup(reason: String?) {
+        NSLog("[NativeSTTModule] stopAndCleanup reason=%@ chunks=%lld wsMessages=%lld",
+              reason ?? "nil", audioChunkCount, wsMessageCount)
         isRunning = false
+        stopWsPing()
+        stopHealthCheck()
         removeAudioObserversIfNeeded()
         removeTapIfNeeded()
 
@@ -266,7 +288,11 @@ class NativeSTTModule: RCTEventEmitter {
     }
 
     private func receiveLoop() {
-        guard let task = socketTask, isRunning else { return }
+        guard let task = socketTask, isRunning else {
+            NSLog("[NativeSTTModule] receiveLoop bail: task=%d isRunning=%d",
+                  socketTask != nil ? 1 : 0, isRunning ? 1 : 0)
+            return
+        }
 
         task.receive { [weak self] result in
             guard let self else { return }
@@ -274,11 +300,19 @@ class NativeSTTModule: RCTEventEmitter {
 
             switch result {
             case .failure(let error):
+                NSLog("[NativeSTTModule] ws_receive_failed: %@", error.localizedDescription)
                 self.emitError("ws_receive_failed: \(error.localizedDescription)")
                 self.stopAndCleanup(reason: "receive_failed")
             case .success(let message):
+                self.wsMessageCount += 1
+                let count = self.wsMessageCount
                 switch message {
                 case .string(let text):
+                    if count <= 3 || count % 50 == 0 {
+                        let preview = text.prefix(120)
+                        NSLog("[NativeSTTModule] ws_msg #%lld len=%d preview=%@",
+                              count, text.count, String(preview))
+                    }
                     self.emitMessage(raw: text)
                 case .data(let data):
                     if let text = String(data: data, encoding: .utf8) {
@@ -313,6 +347,58 @@ class NativeSTTModule: RCTEventEmitter {
         return pcmData.base64EncodedString()
     }
 
+    private func startWsPing() {
+        stopWsPing()
+        let timer = DispatchSource.makeTimerSource(queue: wsQueue)
+        timer.schedule(deadline: .now() + 15, repeating: 15)
+        timer.setEventHandler { [weak self] in
+            guard let self, self.isRunning, let task = self.socketTask else { return }
+            task.sendPing { error in
+                if let error {
+                    NSLog("[NativeSTTModule] ws_ping_failed: %@", error.localizedDescription)
+                }
+            }
+        }
+        timer.resume()
+        wsPingTimer = timer
+    }
+
+    private func stopWsPing() {
+        wsPingTimer?.cancel()
+        wsPingTimer = nil
+    }
+
+    private func startHealthCheck() {
+        stopHealthCheck()
+        lastChunkCountSnapshot = audioChunkCount
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+        timer.schedule(deadline: .now() + 5, repeating: 5)
+        timer.setEventHandler { [weak self] in
+            guard let self, self.isRunning else { return }
+            let current = self.audioChunkCount
+            let previous = self.lastChunkCountSnapshot
+            self.lastChunkCountSnapshot = current
+
+            let engineRunning = self.audioEngine.isRunning
+            if current == previous {
+                // No audio chunks in the last 5 seconds while supposedly running.
+                NSLog("[NativeSTTModule] healthCheck: STALL detected chunks=%lld engineRunning=%d hasTap=%d",
+                      current, engineRunning ? 1 : 0, self.hasInputTap ? 1 : 0)
+                self.restartAudioCapture(reason: "health_check_stall")
+            } else {
+                NSLog("[NativeSTTModule] healthCheck: OK chunks=%lld (+%lld) engineRunning=%d",
+                      current, current - previous, engineRunning ? 1 : 0)
+            }
+        }
+        timer.resume()
+        healthCheckTimer = timer
+    }
+
+    private func stopHealthCheck() {
+        healthCheckTimer?.cancel()
+        healthCheckTimer = nil
+    }
+
     private func startSession(
         wsUrl: URL,
         wsUrlString: String,
@@ -322,8 +408,19 @@ class NativeSTTModule: RCTEventEmitter {
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
+        audioChunkCount = 0
+        wsMessageCount = 0
+        NSLog("[NativeSTTModule] startSession ws=%@ languages=%@ model=%@",
+              wsUrlString, languages.joined(separator: ","), sttModel)
+
         do {
             try configureAudioSession()
+            let audioSession = AVAudioSession.sharedInstance()
+            let route = audioSession.currentRoute
+            let inputs = route.inputs.map { "\($0.portName)(\($0.portType.rawValue))" }.joined(separator: ",")
+            let outputs = route.outputs.map { "\($0.portName)(\($0.portType.rawValue))" }.joined(separator: ",")
+            NSLog("[NativeSTTModule] audioRoute inputs=[%@] outputs=[%@] sampleRate=%.0f",
+                  inputs, outputs, audioSession.sampleRate)
         } catch {
             reject("audio_session", "Failed to configure AVAudioSession", error)
             return
@@ -340,9 +437,17 @@ class NativeSTTModule: RCTEventEmitter {
         // input without switching to .voiceChat mode, which would lower
         // the playback volume.  Must be set before reading inputFormat
         // because enabling VP may change the hardware format.
-        if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(true) }
+        if #available(iOS 17.0, *) {
+            do {
+                try inputNode.setVoiceProcessingEnabled(true)
+                NSLog("[NativeSTTModule] voiceProcessing enabled OK")
+            } catch {
+                NSLog("[NativeSTTModule] voiceProcessing enable FAILED: %@", error.localizedDescription)
+            }
+        }
         let inputFormat = inputNode.inputFormat(forBus: 0)
         let sampleRate = Int(inputFormat.sampleRate.rounded())
+        NSLog("[NativeSTTModule] inputFormat=%@ sampleRate=%d", inputFormat.description, sampleRate)
 
         let configuration = URLSessionConfiguration.default
         configuration.waitsForConnectivity = true
@@ -356,13 +461,17 @@ class NativeSTTModule: RCTEventEmitter {
         emitStatus("connecting")
         task.resume()
         receiveLoop()
+        startWsPing()
+        startHealthCheck()
 
         installInputTap(format: inputFormat)
 
         do {
             audioEngine.prepare()
             try audioEngine.start()
+            NSLog("[NativeSTTModule] audioEngine started OK, isRunning=%d", audioEngine.isRunning ? 1 : 0)
         } catch {
+            NSLog("[NativeSTTModule] audioEngine start FAILED: %@", error.localizedDescription)
             stopAndCleanup(reason: nil)
             reject("audio_engine", "Failed to start AVAudioEngine", error)
             return

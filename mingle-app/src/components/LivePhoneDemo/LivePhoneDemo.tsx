@@ -250,8 +250,20 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     cleanupCurrentAudio()
     setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
 
-    const playViaHtmlAudio = () => {
+    const playViaHtmlAudio = async () => {
       const audio = ensureAudioPlayer()
+
+      // Ensure the TTS AudioContext is running before playback.
+      // iOS suspends the WebView AudioContext when the native AVAudioSession
+      // reconfigures (e.g. STT start). Since the <audio> element is routed
+      // through createMediaElementSource → GainNode → destination, a suspended
+      // context causes silent playback even though audio.play() succeeds.
+      const ctx = ttsAudioContextRef.current
+      if (ctx && ctx.state === 'suspended') {
+        logTtsQueue('play.resuming_context', { state: ctx.state })
+        try { await ctx.resume() } catch { /* best-effort */ }
+      }
+
       const objectUrl = URL.createObjectURL(next.audioBlob)
       currentAudioUrlRef.current = objectUrl
       audio.src = objectUrl
@@ -259,6 +271,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         utteranceId: next.utteranceId,
         language: next.language,
         audioBytes: next.audioBlob.size,
+        ctxState: ctx?.state ?? 'none',
       })
 
       audio.onended = () => {
@@ -309,7 +322,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       })
     }
 
-    playViaHtmlAudio()
+    void playViaHtmlAudio()
   }, [cleanupCurrentAudio, clearTtsOrderWaitTimer, enableAutoTTS, ensureAudioPlayer, isSoundEnabled, selectedLanguages])
 
   useEffect(() => {

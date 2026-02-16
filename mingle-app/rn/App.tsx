@@ -63,12 +63,19 @@ function App(): React.JSX.Element {
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
-    return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1`;
+    const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
+    return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1${debugParams}`;
   }, [locale]);
 
   const emitToWeb = useCallback((payload: NativeSttEvent) => {
     if (!isPageReadyRef.current) return;
     const serialized = JSON.stringify(payload);
+    if (__DEV__) {
+      const preview = payload.type === 'message'
+        ? `message(${(payload as { raw?: string }).raw?.slice(0, 80) ?? ''})`
+        : `${payload.type}(${JSON.stringify(payload).slice(0, 80)})`;
+      console.log(`[NativeSTT→Web] ${preview}`);
+    }
     const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_STT_EVENT)}, { detail: ${serialized} })); true;`;
     webViewRef.current?.injectJavaScript(script);
   }, []);
@@ -127,6 +134,9 @@ function App(): React.JSX.Element {
       return;
     }
     if (!parsed || typeof parsed !== 'object') return;
+    if (__DEV__) {
+      console.log(`[Web→NativeSTT] ${parsed.type}`, JSON.stringify(parsed.payload ?? {}).slice(0, 120));
+    }
 
     if (parsed.type === 'native_stt_start') {
       void handleNativeStart(parsed.payload);
@@ -140,6 +150,7 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     const statusSub = addNativeSttListener('status', event => {
+      if (__DEV__) console.log(`[NativeSTT] status: ${event.status}`);
       setNativeStatus(event.status);
       emitToWeb({ type: 'status', status: event.status });
     });
@@ -149,11 +160,13 @@ function App(): React.JSX.Element {
     });
 
     const errorSub = addNativeSttListener('error', event => {
+      if (__DEV__) console.log(`[NativeSTT] error: ${event.message}`);
       setNativeStatus('error');
       emitToWeb({ type: 'error', message: event.message });
     });
 
     const closeSub = addNativeSttListener('close', event => {
+      if (__DEV__) console.log(`[NativeSTT] close: ${event.reason}`);
       setNativeStatus('closed');
       emitToWeb({ type: 'close', reason: event.reason });
     });
