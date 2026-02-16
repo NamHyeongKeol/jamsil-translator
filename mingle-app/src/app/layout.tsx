@@ -5,7 +5,26 @@ import MobileCanvasShell from "@/components/mobile-canvas-shell";
 import { DEFAULT_LOCALE } from "@/i18n";
 import "./globals.css";
 
+function toMetadataBaseUrl(raw?: string): URL | undefined {
+  const value = raw?.trim();
+  if (!value) return undefined;
+  const normalized = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  try {
+    return new URL(normalized);
+  } catch {
+    return undefined;
+  }
+}
+
+const metadataBase =
+  toMetadataBaseUrl(process.env.NEXT_PUBLIC_SITE_URL) ??
+  toMetadataBaseUrl(process.env.NEXTAUTH_URL) ??
+  toMetadataBaseUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
+  toMetadataBaseUrl(process.env.VERCEL_URL) ??
+  new URL("https://mingle-app.vercel.app");
+
 export const metadata: Metadata = {
+  metadataBase,
   title: "Mingle, Seamless Translator",
   description: "Just stay in the conversation. Mingle lets you talk without translating sentence by sentence.",
   icons: {
