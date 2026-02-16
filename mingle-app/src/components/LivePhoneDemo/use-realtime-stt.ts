@@ -18,8 +18,56 @@ const LS_KEY_USAGE = 'mingle_demo_usage_sec'
 const LS_KEY_SESSION = 'mingle_demo_session_key'
 const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 const LS_KEY_STT_DEBUG = 'mingle_stt_debug'
+const NATIVE_STT_QUERY_KEY = 'nativeStt'
+const NATIVE_STT_EVENT = 'mingle:native-stt'
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
+
+type NativeSttStartCommand = {
+  type: 'native_stt_start'
+  payload: {
+    wsUrl: string
+    languages: string[]
+    sttModel: string
+    langHintsStrict: boolean
+  }
+}
+
+type NativeSttStopCommand = {
+  type: 'native_stt_stop'
+  payload: {
+    pendingText: string
+    pendingLanguage: string
+  }
+}
+
+type NativeSttBridgeCommand = NativeSttStartCommand | NativeSttStopCommand
+
+type NativeSttBridgeEvent =
+  | { type: 'status', status: string }
+  | { type: 'message', raw: string }
+  | { type: 'error', message: string }
+  | { type: 'close', reason: string }
+
+declare global {
+  interface Window {
+    ReactNativeWebView?: {
+      postMessage: (message: string) => void
+    }
+  }
+}
+
+function shouldUseNativeSttBridge(): boolean {
+  if (typeof window === 'undefined') return false
+  if (typeof window.ReactNativeWebView?.postMessage !== 'function') return false
+  try {
+    const params = new URLSearchParams(window.location.search || '')
+    const value = (params.get(NATIVE_STT_QUERY_KEY) || '').trim().toLowerCase()
+    return value === '1' || value === 'true'
+  } catch {
+    return false
+  }
+}
 
 function floatTo16BitPCM(input: Float32Array): Int16Array {
   const output = new Int16Array(input.length)
@@ -239,6 +287,24 @@ export default function useRealtimeSTT({
   const partialTranslateControllerRef = useRef<AbortController | null>(null)
   const sessionKeyRef = useRef('')
   const turnStartedAtRef = useRef<number | null>(null)
+  const useNativeSttRef = useRef(false)
+  const nativeStopRequestedRef = useRef(false)
+
+  const sendNativeSttCommand = useCallback((command: NativeSttBridgeCommand): boolean => {
+    if (typeof window === 'undefined') return false
+    const bridge = window.ReactNativeWebView
+    if (!bridge || typeof bridge.postMessage !== 'function') return false
+    try {
+      bridge.postMessage(JSON.stringify(command))
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
+  useEffect(() => {
+    useNativeSttRef.current = shouldUseNativeSttBridge()
+  }, [])
 
   // Persist utterances to localStorage
   useEffect(() => {
@@ -606,6 +672,7 @@ export default function useRealtimeSTT({
   const stopRecordingGracefully = useCallback(async (notifyLimitReached = false) => {
     if (isStoppingRef.current) return
     isStoppingRef.current = true
+    const useNativeStt = useNativeSttRef.current
 
     stopAudioPipeline({ closeContext: false })
 
@@ -619,23 +686,37 @@ export default function useRealtimeSTT({
       localFinalizeResult = finalizePendingLocally(pendingText, pendingLang)
     }
 
-    // Fire-and-forget stop_recording to server (so it can clean up STT provider)
-    try {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          type: 'stop_recording',
-          data: {
-            pending_text: pendingText,
-            pending_language: pendingLang,
-          },
-        }))
+    if (useNativeStt) {
+      nativeStopRequestedRef.current = true
+      const posted = sendNativeSttCommand({
+        type: 'native_stt_stop',
+        payload: {
+          pendingText,
+          pendingLanguage: pendingLang,
+        },
+      })
+      if (!posted) {
+        nativeStopRequestedRef.current = false
       }
-    } catch { /* ignore */ }
+    } else {
+      // Fire-and-forget stop_recording to server (so it can clean up STT provider)
+      try {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'stop_recording',
+            data: {
+              pending_text: pendingText,
+              pending_language: pendingLang,
+            },
+          }))
+        }
+      } catch { /* ignore */ }
 
-    // Close socket immediately — no need to wait for ACK since translation is HTTP.
-    if (socketRef.current) {
-      socketRef.current.close()
-      socketRef.current = null
+      // Close socket immediately — no need to wait for ACK since translation is HTTP.
+      if (socketRef.current) {
+        socketRef.current.close()
+        socketRef.current = null
+      }
     }
     setConnectionStatus('idle')
     isStoppingRef.current = false
@@ -663,7 +744,7 @@ export default function useRealtimeSTT({
         }
       })
     }
-  }, [applyTranslationToUtterance, finalizePendingLocally, handleInlineTtsFromTranslate, languages, stopAudioPipeline, translateViaApi])
+  }, [applyTranslationToUtterance, finalizePendingLocally, handleInlineTtsFromTranslate, languages, sendNativeSttCommand, stopAudioPipeline, translateViaApi])
 
   const visualize = useCallback(() => {
     if (analyserRef.current) {
@@ -775,7 +856,11 @@ export default function useRealtimeSTT({
       logSttDebug('transport.ready')
       setConnectionStatus('ready')
       lastAudioChunkAtRef.current = Date.now()
-      startAudioProcessing()
+      if (!useNativeSttRef.current) {
+        startAudioProcessing()
+      } else {
+        setVolume(0)
+      }
 
       if (usageIntervalRef.current) {
         clearInterval(usageIntervalRef.current)
@@ -901,14 +986,17 @@ export default function useRealtimeSTT({
 
   const startRecording = useCallback(async () => {
     if (isStoppingRef.current) return
+    const useNativeStt = shouldUseNativeSttBridge()
+    useNativeSttRef.current = useNativeStt
     logSttDebug('recording.start.request', {
+      useNativeStt,
       wsUrl: getWsUrl(),
       languagesCount: languages.length,
     })
-    if (
+    if (!useNativeStt && (
       socketRef.current
       && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)
-    ) {
+    )) {
       return
     }
 
@@ -927,6 +1015,24 @@ export default function useRealtimeSTT({
       setPartialTranslations({})
       partialTranslationsRef.current = {}
       setPartialLang(null)
+      nativeStopRequestedRef.current = false
+
+      if (useNativeStt) {
+        logSttDebug('native.start.begin')
+        const posted = sendNativeSttCommand({
+          type: 'native_stt_start',
+          payload: {
+            wsUrl: getWsUrl(),
+            languages,
+            sttModel: 'soniox',
+            langHintsStrict: true,
+          },
+        })
+        if (!posted) {
+          throw new Error('native_stt_bridge_unavailable')
+        }
+        return
+      }
 
       logSttDebug('web.start.begin')
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -984,7 +1090,7 @@ export default function useRealtimeSTT({
       }
     } catch (error) {
       logSttDebug('recording.start.failed', {
-        native: false,
+        native: useNativeStt,
         message: error instanceof Error ? error.message : String(error),
         name: error instanceof Error ? error.name : 'unknown',
       })
@@ -992,9 +1098,63 @@ export default function useRealtimeSTT({
       setConnectionStatus('error')
       setTimeout(() => setConnectionStatus('idle'), 3000)
     }
-  }, [cleanup, handleSttServerMessage, handleSttTransportClose, handleSttTransportError, languages, normalizedUsageLimitSec, usageSec])
+  }, [cleanup, handleSttServerMessage, handleSttTransportClose, handleSttTransportError, languages, normalizedUsageLimitSec, sendNativeSttCommand, usageSec])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!shouldUseNativeSttBridge()) return
+    useNativeSttRef.current = true
+
+    const handleNativeEvent = (event: Event) => {
+      const detail = (event as CustomEvent<NativeSttBridgeEvent>).detail
+      if (!detail || typeof detail !== 'object') return
+
+      if (detail.type === 'status') {
+        logSttDebug('native.status', { status: detail.status })
+        if (detail.status === 'connecting') {
+          setConnectionStatus('connecting')
+        } else if (detail.status === 'stopped') {
+          setConnectionStatus('idle')
+        }
+        return
+      }
+
+      if (detail.type === 'message') {
+        try {
+          const message = JSON.parse(detail.raw) as Record<string, unknown>
+          handleSttServerMessage(message)
+        } catch {
+          // ignore malformed payload
+        }
+        return
+      }
+
+      if (detail.type === 'error') {
+        logSttDebug('native.error', { message: detail.message })
+        if (nativeStopRequestedRef.current) return
+        handleSttTransportError({ native: true, message: detail.message })
+        return
+      }
+
+      if (detail.type === 'close') {
+        logSttDebug('native.close', { reason: detail.reason })
+        if (nativeStopRequestedRef.current) {
+          nativeStopRequestedRef.current = false
+          setConnectionStatus('idle')
+          return
+        }
+        handleSttTransportClose({ native: true, reason: detail.reason })
+      }
+    }
+
+    window.addEventListener(NATIVE_STT_EVENT, handleNativeEvent as EventListener)
+    return () => {
+      window.removeEventListener(NATIVE_STT_EVENT, handleNativeEvent as EventListener)
+    }
+  }, [handleSttServerMessage, handleSttTransportClose, handleSttTransportError])
 
   const recoverFromBackgroundIfNeeded = useCallback(async () => {
+    if (useNativeSttRef.current) return
     if (connectionStatus !== 'ready') return
     if (isBackgroundRecoveringRef.current) return
     isBackgroundRecoveringRef.current = true
