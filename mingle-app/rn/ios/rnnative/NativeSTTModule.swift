@@ -12,6 +12,7 @@ class NativeSTTModule: RCTEventEmitter {
     private var hasInputTap = false
     private var isRunning = false
     private var hasListeners = false
+    private var audioObserversInstalled = false
 
     override static func requiresMainQueueSetup() -> Bool {
         false
@@ -31,6 +32,42 @@ class NativeSTTModule: RCTEventEmitter {
 
     deinit {
         stopAndCleanup(reason: nil)
+    }
+
+    private func configureAudioSession() throws {
+        let audioSession = AVAudioSession.sharedInstance()
+        try audioSession.setCategory(
+            .playAndRecord,
+            mode: .voiceChat,
+            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
+        )
+        try? audioSession.setPreferredSampleRate(48_000)
+        try? audioSession.setPreferredIOBufferDuration(0.02)
+        try audioSession.setActive(true, options: [])
+    }
+
+    private func installAudioObserversIfNeeded() {
+        if audioObserversInstalled {
+            return
+        }
+        let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(handleAudioSessionInterruption(_:)), name: AVAudioSession.interruptionNotification, object: nil)
+        center.addObserver(self, selector: #selector(handleAudioSessionRouteChange(_:)), name: AVAudioSession.routeChangeNotification, object: nil)
+        center.addObserver(self, selector: #selector(handleMediaServicesReset(_:)), name: AVAudioSession.mediaServicesWereResetNotification, object: nil)
+        center.addObserver(self, selector: #selector(handleAudioEngineConfigurationChange(_:)), name: .AVAudioEngineConfigurationChange, object: audioEngine)
+        audioObserversInstalled = true
+    }
+
+    private func removeAudioObserversIfNeeded() {
+        if !audioObserversInstalled {
+            return
+        }
+        let center = NotificationCenter.default
+        center.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
+        center.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
+        center.removeObserver(self, name: AVAudioSession.mediaServicesWereResetNotification, object: nil)
+        center.removeObserver(self, name: .AVAudioEngineConfigurationChange, object: audioEngine)
+        audioObserversInstalled = false
     }
 
     private func emit(_ event: String, payload: [String: Any]) {
@@ -62,12 +99,116 @@ class NativeSTTModule: RCTEventEmitter {
         }
     }
 
+    private func installInputTap(format: AVAudioFormat) {
+        let inputNode = audioEngine.inputNode
+        inputNode.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
+            guard let self else { return }
+            guard self.isRunning else { return }
+            guard let chunkBase64 = self.encodePcmBase64(buffer) else { return }
+
+            self.wsQueue.async { [weak self] in
+                self?.sendJson([
+                    "type": "audio_chunk",
+                    "data": [
+                        "chunk": chunkBase64,
+                    ],
+                ])
+            }
+        }
+        hasInputTap = true
+    }
+
+    private func restartAudioCapture(reason: String) {
+        guard isRunning else { return }
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            guard self.isRunning else { return }
+
+            do {
+                try self.configureAudioSession()
+            } catch {
+                self.emitError("audio_reconfigure_failed(\(reason)): \(error.localizedDescription)")
+                return
+            }
+
+            self.removeTapIfNeeded()
+
+            let inputNode = self.audioEngine.inputNode
+            let inputFormat = inputNode.inputFormat(forBus: 0)
+            self.installInputTap(format: inputFormat)
+
+            if self.audioEngine.isRunning {
+                self.audioEngine.stop()
+            }
+
+            do {
+                self.audioEngine.prepare()
+                try self.audioEngine.start()
+                self.emitStatus("running")
+                NSLog("[NativeSTTModule] audio restarted reason=%@", reason)
+            } catch {
+                self.emitError("audio_restart_failed(\(reason)): \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @objc
+    private func handleAudioSessionInterruption(_ notification: Notification) {
+        guard isRunning else { return }
+        guard
+            let userInfo = notification.userInfo,
+            let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+            let type = AVAudioSession.InterruptionType(rawValue: typeValue)
+        else {
+            return
+        }
+
+        if type == .began {
+            emitStatus("interrupted")
+            return
+        }
+
+        restartAudioCapture(reason: "interruption_ended")
+    }
+
+    @objc
+    private func handleAudioSessionRouteChange(_ notification: Notification) {
+        guard isRunning else { return }
+        guard
+            let userInfo = notification.userInfo,
+            let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt
+        else {
+            return
+        }
+
+        restartAudioCapture(reason: "route_change_\(reasonValue)")
+    }
+
+    @objc
+    private func handleMediaServicesReset(_ notification: Notification) {
+        guard isRunning else { return }
+        restartAudioCapture(reason: "media_services_reset")
+    }
+
+    @objc
+    private func handleAudioEngineConfigurationChange(_ notification: Notification) {
+        guard isRunning else { return }
+        restartAudioCapture(reason: "engine_configuration_change")
+    }
+
     private func stopAndCleanup(reason: String?) {
         isRunning = false
+        removeAudioObserversIfNeeded()
         removeTapIfNeeded()
 
         if audioEngine.isRunning {
             audioEngine.stop()
+        }
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        } catch {
+            // Keep shutdown resilient even if AVAudioSession deactivation fails.
         }
 
         socketTask?.cancel(with: .goingAway, reason: nil)
@@ -159,21 +300,14 @@ class NativeSTTModule: RCTEventEmitter {
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
-        let audioSession = AVAudioSession.sharedInstance()
-
         do {
-            try audioSession.setCategory(
-                .playAndRecord,
-                mode: .default,
-                options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP]
-            )
-            try audioSession.overrideOutputAudioPort(.speaker)
-            try audioSession.setActive(true, options: [])
+            try configureAudioSession()
         } catch {
             reject("audio_session", "Failed to configure AVAudioSession", error)
             return
         }
 
+        installAudioObserversIfNeeded()
         removeTapIfNeeded()
         if audioEngine.isRunning {
             audioEngine.stop()
@@ -196,21 +330,7 @@ class NativeSTTModule: RCTEventEmitter {
         task.resume()
         receiveLoop()
 
-        inputNode.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { [weak self] buffer, _ in
-            guard let self else { return }
-            guard self.isRunning else { return }
-            guard let chunkBase64 = self.encodePcmBase64(buffer) else { return }
-
-            self.wsQueue.async { [weak self] in
-                self?.sendJson([
-                    "type": "audio_chunk",
-                    "data": [
-                        "chunk": chunkBase64,
-                    ],
-                ])
-            }
-        }
-        hasInputTap = true
+        installInputTap(format: inputFormat)
 
         do {
             audioEngine.prepare()
