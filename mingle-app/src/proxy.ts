@@ -23,6 +23,12 @@ function pickPreferredLocale(headerValue: string | null): AppLocale {
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Do not locale-redirect public/static files such as /og-image.png.
+  if (/\.[^/]+$/.test(pathname)) {
+    return NextResponse.next();
+  }
+
   const segments = pathname.split("/").filter(Boolean);
   const first = segments[0];
 
@@ -38,5 +44,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\..*).*)"],
 };
