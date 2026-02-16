@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // IMPORTANT: keep `?schema=app` in DATABASE_URL to isolate tables from landing.
+  url      = env("DATABASE_URL")
+}
+
+model AppUser {
+  id              String   @id @default(cuid())
+  externalUserId  String?  @unique @map("external_user_id")
+  email           String?
+  latestIpAddress String?  @map("latest_ip_address")
+  totalUsageSec   Int      @default(0) @map("total_usage_sec")
+  firstSeenAt     DateTime @default(now()) @map("first_seen_at")
+  lastSeenAt      DateTime @default(now()) @map("last_seen_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  messages  AppMessage[]
+  eventLogs AppEventLog[]
+
+  @@index([email], map: "app_users_email_idx")
+  @@index([lastSeenAt], map: "app_users_last_seen_at_idx")
+  @@map("app_users")
+}
+
+model AppMessage {
+  id                          String   @id @default(cuid())
+  userId                      String?  @map("user_id")
+  sessionKey                  String?  @map("session_key")
+  clientMessageId             String?  @map("client_message_id")
+  sourceLanguage              String   @map("source_language")
+  translationPromptTokens     Int?     @map("translation_prompt_tokens")
+  translationCompletionTokens Int?     @map("translation_completion_tokens")
+  translationTotalTokens      Int?     @map("translation_total_tokens")
+  ttsInputTokens              Int?     @map("tts_input_tokens")
+  ttsOutputTokens             Int?     @map("tts_output_tokens")
+  ttsTotalTokens              Int?     @map("tts_total_tokens")
+  sttDurationMs               Int?     @map("stt_duration_ms")
+  totalDurationMs             Int?     @map("total_duration_ms")
+  metadata                    Json?
+  createdAt                   DateTime @default(now()) @map("created_at")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
+
+  user      AppUser?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contents  AppMessageContent[]
+  eventLogs AppEventLog[]
+
+  @@unique([sessionKey, clientMessageId], map: "app_messages_session_client_message_uidx")
+  @@index([userId, createdAt], map: "app_messages_user_created_at_idx")
+  @@index([sessionKey, createdAt], map: "app_messages_session_created_at_idx")
+  @@index([createdAt], map: "app_messages_created_at_idx")
+  @@map("app_messages")
+}
+
+model AppMessageContent {
+  id          String   @id @default(cuid())
+  messageId   String   @map("message_id")
+  contentType String   @map("content_type")
+  language    String
+  text        String   @db.Text
+  provider    String?
+  model       String?
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  message AppMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, contentType, language], map: "app_message_contents_message_type_lang_uidx")
+  @@index([messageId, createdAt], map: "app_message_contents_message_created_at_idx")
+  @@index([contentType], map: "app_message_contents_type_idx")
+  @@index([language], map: "app_message_contents_language_idx")
+  @@map("app_message_contents")
+}
+
+model AppEventLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  messageId  String?  @map("message_id")
+  sessionKey String?  @map("session_key")
+  eventType  String   @map("event_type")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  platform   String?
+  appVersion String?  @map("app_version")
+  locale     String?
+  fullUrl    String?  @map("full_url")
+  pathname   String?
+  usageSec   Int?     @map("usage_sec")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user    AppUser?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  message AppMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([eventType], map: "app_event_logs_event_type_idx")
+  @@index([createdAt], map: "app_event_logs_created_at_idx")
+  @@index([userId], map: "app_event_logs_user_id_idx")
+  @@index([sessionKey], map: "app_event_logs_session_key_idx")
+  @@index([messageId], map: "app_event_logs_message_id_idx")
+  @@map("app_event_logs")
+}

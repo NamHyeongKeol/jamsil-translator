@@ -47,6 +47,31 @@ http://localhost:3000/api/auth/callback/google
 
 If Google OAuth env vars are missing, the app automatically falls back to demo credential login.
 
+## Database (Supabase, app schema)
+
+This app is designed to share the same Postgres instance as `mingle-landing`,
+but use a separate schema:
+
+- `mingle-landing` -> `public`
+- `mingle-app` -> `app`
+
+Set `DATABASE_URL` with `?schema=app`:
+
+```text
+postgresql://USER:PASSWORD@HOST:6543/postgres?schema=app
+```
+
+Create Prisma artifacts:
+
+```bash
+pnpm db:generate
+pnpm db:migrate:create
+```
+
+If you apply SQL manually to remote, use:
+
+- `prisma/migrations/20260216173000_init_app_schema/migration.sql`
+
 ## Capacitor Build Flow
 
 ```bash
