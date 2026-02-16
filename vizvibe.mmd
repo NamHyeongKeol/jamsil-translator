@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_ios_native_stt_debug_logging
+    %% @lastActive: backend_frontend_boundary_audit
 
     %% === START ===
     %% @project_start [start, closed]
@@ -409,6 +409,12 @@ flowchart TD
     %% @mingle_app_ios_native_stt_debug_logging [ai-task, closed, 2026-02-16, ai]
     mingle_app_ios_native_stt_debug_logging("iOS 네이티브 STT 디버그 로그 보강<br/><sub>연결 실패 원인 추적을 위해<br/>native/web STT 시작 분기와 transport 이벤트를<br/>[MingleSTT] 콘솔 로그로 표준화하고<br/>Safari Web Inspector에서 즉시 진단 가능하게 확장</sub>")
 
+    %% @backend_frontend_boundary_audit [ai-task, closed, 2026-02-16, ai]
+    backend_frontend_boundary_audit("백엔드/웹 경계 구조 파악<br/><sub>mingle-app/mingle-landing/mingle-stt를<br/>동시에 점검해 Vercel 웹 프론트와<br/>API 라우트, STT 중계 서버 책임을<br/>현재 코드 기준으로 재정리</sub>")
+
+    %% @backend_vercel_change_scope [human-task, opened, 2026-02-16, user]
+    backend_vercel_change_scope("백엔드+Vercel 웹 변경 범위 확정<br/><sub>클라 앱 작업과 분리해 서버/API와<br/>웹 프론트 페이지 변경 요구사항을<br/>우선순위/배포 단위로 나누고<br/>실행 순서를 합의해 진행 예정</sub>")
+
     %% @tts_echo_reference_filter_research [ai-task, opened]
     tts_echo_reference_filter_research("TTS 출력 음성 STT 유입 방지 고도화 (추후)<br/><sub>단순 suppress 제거 이후 피드백 루프 완화를 위해<br/>출력 참조 기반 에코 제거/ducking/VAD 정책 검토<br/>WebRTC AEC 한계 및 모바일 브라우저별 편차 검증 필요</sub>")
 
@@ -542,6 +548,9 @@ flowchart TD
     mingle_app_ios_icon_from_favicon_apply --> mingle_app_ios_native_tts_html_fallback_fix
     mingle_app_ios_native_tts_html_fallback_fix --> mingle_app_ios_native_stt_module_path
     mingle_app_ios_native_stt_module_path --> mingle_app_ios_native_stt_debug_logging
+    mingle_stt_service_split_from_landing --> backend_frontend_boundary_audit
+    vercel_ignore_command_scope_fix --> backend_frontend_boundary_audit
+    backend_frontend_boundary_audit --> backend_vercel_change_scope
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
     mingle_app_remove_60s_usage_limit --> macos_loopback_capture_validation
@@ -553,10 +562,11 @@ flowchart TD
     capacitor_app_build -.-> ultimate_goal
     mobile_app_development -.-> ultimate_goal
     opencode_codex_oauth_pending -.-> ultimate_goal
+    backend_vercel_change_scope -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_ios_native_stt_debug_logging
+        backend_frontend_boundary_audit
     end
 
     %% === STYLES ===
@@ -748,7 +758,9 @@ flowchart TD
     style mingle_app_ios_icon_from_favicon_apply fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_native_tts_html_fallback_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_native_stt_module_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_ios_native_stt_debug_logging fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_native_stt_debug_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style backend_frontend_boundary_audit fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style backend_vercel_change_scope fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
