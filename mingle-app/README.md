@@ -90,6 +90,23 @@ pnpm cap:verify
 - `cap:sync` builds the web app and prepares a fallback `capacitor-web` bundle.
 - If `CAPACITOR_SERVER_URL` is set, native builds will load that URL at runtime.
 
+## React Native (mingle-app/rn)
+
+`mingle-app` now also includes a dedicated RN workspace at `rn/`.
+
+```bash
+pnpm rn:install
+pnpm rn:pods
+pnpm rn:start
+pnpm rn:ios
+```
+
+- iOS native STT bridge lives in:
+  - `rn/ios/rnnative/NativeSTTModule.swift`
+  - `rn/ios/rnnative/NativeSTTModuleBridge.m`
+- RN screen for basic STT verification:
+  - `rn/App.tsx`
+
 ## Native iOS TTS Toggle
 
 - `NEXT_PUBLIC_NATIVE_TTS_MODE=auto|on|off`

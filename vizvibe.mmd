@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_prisma_client_build_fix
+    %% @lastActive: mingle_app_rn_workspace_alignment
 
     %% === START ===
     %% @project_start [start, closed]
@@ -427,6 +427,9 @@ flowchart TD
     %% @mingle_app_prisma_client_build_fix [ai-task, closed, 2026-02-16, ai]
     mingle_app_prisma_client_build_fix("mingle-app Prisma 빌드 오류 복구<br/><sub>Vercel TypeScript 단계에서 발생한<br/>@prisma/client PrismaClient export 오류를<br/>런타임 안전 로딩 + build 전 prisma generate<br/>강제로 보정해 프로덕션 빌드를 정상화</sub>")
 
+    %% @mingle_app_rn_workspace_alignment [ai-task, closed, 2026-02-16, ai]
+    mingle_app_rn_workspace_alignment("mingle-app 내부 RN 워크스페이스 정렬<br/><sub>분리 생성된 RN 프로젝트를 mingle-app/rn으로 고정하고<br/>nightly 의존성을 RN 0.84 안정 버전으로 핀 고정했으며<br/>iOS NativeSTTModule(AVAudioEngine+WS) 베이스를 추가해<br/>웹/Capacitor와 병행 가능한 네이티브 경로를 같은 저장소에 통합</sub>")
+
     %% @mingle_app_async_nonblocking_db_write [ai-task, opened, 2026-02-16, ai]
     mingle_app_async_nonblocking_db_write("앱 API 비동기 저장 경로 적용<br/><sub>번역/TTS 응답 레이턴시에 영향 없도록<br/>응답 후 백그라운드 upsert/log 처리로 전환하고<br/>번역문은 final 결과만 저장하며<br/>TTS 오디오는 저장하지 않는 경로를 구현</sub>")
 
@@ -570,7 +573,8 @@ flowchart TD
     backend_frontend_boundary_audit --> backend_vercel_change_scope
     backend_vercel_change_scope --> mingle_app_db_schema_prisma_init
     mingle_app_db_schema_prisma_init --> mingle_app_prisma_client_build_fix
-    mingle_app_prisma_client_build_fix --> mingle_app_async_nonblocking_db_write
+    mingle_app_prisma_client_build_fix --> mingle_app_rn_workspace_alignment
+    mingle_app_rn_workspace_alignment --> mingle_app_async_nonblocking_db_write
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
     mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
     mingle_app_remove_60s_usage_limit --> macos_loopback_capture_validation
@@ -587,7 +591,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_prisma_client_build_fix
+        mingle_app_rn_workspace_alignment
     end
 
     %% === STYLES ===
@@ -785,7 +789,8 @@ flowchart TD
     style mingle_app_ios_native_plugin_registration_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style backend_vercel_change_scope fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_db_schema_prisma_init fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_prisma_client_build_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_prisma_client_build_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_workspace_alignment fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_async_nonblocking_db_write fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
