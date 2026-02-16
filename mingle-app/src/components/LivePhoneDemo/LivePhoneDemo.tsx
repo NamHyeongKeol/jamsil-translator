@@ -634,7 +634,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             paddingRight: "max(calc(env(safe-area-inset-right) + 14px), 18px)",
           }}
         >
-          <span className="text-[2.15rem] font-extrabold leading-none bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
+          <span className="text-[2.05rem] font-extrabold leading-[1.08] bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
             Mingle
           </span>
           <div className="relative flex items-center gap-1.5">
