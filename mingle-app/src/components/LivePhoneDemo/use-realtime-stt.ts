@@ -93,6 +93,33 @@ interface UseRealtimeSTTOptions {
   onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string) => void
   enableTts?: boolean
   usageLimitSec?: number | null
+  /** Ref holding the text currently being spoken by TTS.  Used to filter
+   *  echo when hardware AEC is disabled (native app with speaker). */
+  activeTtsTextRef?: React.RefObject<string | null>
+}
+
+/** Check if an STT transcript is likely echo of the currently playing TTS. */
+function isLikelyTtsEcho(sttText: string, ttsText: string): boolean {
+  // Strip punctuation/whitespace and lowercase for comparison.
+  const norm = (s: string) => s.toLowerCase().replace(/[\s.,!?;:'"…—\-()[\]{}。、！？「」『』（）【】·‥]/g, '')
+  const a = norm(sttText)
+  const b = norm(ttsText)
+  if (!a || !b) return false
+  if (a.length < 2) return false
+  // Direct containment — covers exact and partial echo.
+  if (b.includes(a) || a.includes(b)) return true
+  // Character-bigram overlap for fuzzy match (handles slight STT variations).
+  const bigrams = (s: string) => {
+    const set = new Set<string>()
+    for (let i = 0; i < s.length - 1; i++) set.add(s.slice(i, i + 2))
+    return set
+  }
+  const ba = bigrams(a)
+  const bb = bigrams(b)
+  if (ba.size === 0 || bb.size === 0) return false
+  let overlap = 0
+  for (const bg of ba) { if (bb.has(bg)) overlap++ }
+  return overlap / Math.min(ba.size, bb.size) > 0.6
 }
 
 interface LocalFinalizeResult {
@@ -234,6 +261,7 @@ export default function useRealtimeSTT({
   onTtsAudio,
   enableTts,
   usageLimitSec = DEFAULT_USAGE_LIMIT_SEC,
+  activeTtsTextRef,
 }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
 
@@ -1012,6 +1040,15 @@ export default function useRealtimeSTT({
       const text = rawText.replace(/<\/?end>/gi, '').trim()
       const lang = typeof utterance.language === 'string' ? utterance.language : 'unknown'
       const isFinal = data.is_final === true
+
+      // Filter out TTS echo: when hardware AEC is off, the speaker output
+      // gets picked up by the mic.  Discard transcripts that match the
+      // text currently being spoken by TTS.
+      const currentTtsText = activeTtsTextRef?.current
+      if (currentTtsText && text && isLikelyTtsEcho(text, currentTtsText)) {
+        logSttDebug('echo.filtered', { text, ttsText: currentTtsText, isFinal })
+        return
+      }
 
       if (isStoppingRef.current && !isFinal) {
         return

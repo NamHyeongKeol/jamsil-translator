@@ -140,6 +140,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const processTtsQueueRef = useRef<() => void>(() => {})
   const initialUtteranceIdsRef = useRef<string[] | null>(null)
   const stopClickResumeTimerIdsRef = useRef<number[]>([])
+  const activeTtsTextRef = useRef<string | null>(null)
 
   // Persist selected languages
   useEffect(() => {
@@ -256,6 +257,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     cleanupCurrentAudio()
     setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
 
+    // Track the text being spoken so the STT echo filter can discard mic echo.
+    const spokenUtterance = utterancesRef.current.find(u => u.id === next.utteranceId)
+    const spokenText = spokenUtterance?.translations[next.language]?.trim() ?? null
+    activeTtsTextRef.current = spokenText
+
     const playViaHtmlAudio = async () => {
       const audio = ensureAudioPlayer()
 
@@ -281,6 +287,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       })
 
       audio.onended = () => {
+        // Keep echo filter active briefly after playback ends (echo tail).
+        setTimeout(() => { activeTtsTextRef.current = null }, 800)
         if (currentAudioUrlRef.current === objectUrl) {
           URL.revokeObjectURL(objectUrl)
           currentAudioUrlRef.current = null
@@ -296,6 +304,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       }
 
       audio.onerror = () => {
+        activeTtsTextRef.current = null
         if (currentAudioUrlRef.current === objectUrl) {
           URL.revokeObjectURL(objectUrl)
           currentAudioUrlRef.current = null
@@ -369,6 +378,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     onLimitReached,
     onTtsAudio: handleTtsAudio,
     enableTts: enableAutoTTS && isSoundEnabled,
+    activeTtsTextRef,
   })
 
   // Boost TTS volume while STT is active to compensate for iOS

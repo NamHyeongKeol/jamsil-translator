@@ -169,7 +169,7 @@ class NativeSTTModule: RCTEventEmitter {
             self.removeTapIfNeeded()
 
             let inputNode = self.audioEngine.inputNode
-            if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(true) }
+            if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(false) }
             let inputFormat = inputNode.inputFormat(forBus: 0)
             self.installInputTap(format: inputFormat)
 
@@ -433,18 +433,10 @@ class NativeSTTModule: RCTEventEmitter {
         }
 
         let inputNode = audioEngine.inputNode
-        // Enable Apple voice-processing (AEC + noise suppression) on the
-        // input without switching to .voiceChat mode, which would lower
-        // the playback volume.  Must be set before reading inputFormat
-        // because enabling VP may change the hardware format.
-        if #available(iOS 17.0, *) {
-            do {
-                try inputNode.setVoiceProcessingEnabled(true)
-                NSLog("[NativeSTTModule] voiceProcessing enabled OK")
-            } catch {
-                NSLog("[NativeSTTModule] voiceProcessing enable FAILED: %@", error.localizedDescription)
-            }
-        }
+        // AEC (voice processing) is intentionally disabled.  It suppressed
+        // the mic input while TTS played, making STT stop recognising.
+        // Echo filtering is handled in software on the JS side instead.
+        if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(false) }
         let inputFormat = inputNode.inputFormat(forBus: 0)
         let sampleRate = Int(inputFormat.sampleRate.rounded())
         NSLog("[NativeSTTModule] inputFormat=%@ sampleRate=%d", inputFormat.description, sampleRate)
