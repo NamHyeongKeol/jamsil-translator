@@ -15,9 +15,16 @@ import {
   stopNativeStt,
 } from './src/nativeStt';
 
+import {
+  addNativeTtsListener,
+  playNativeTts,
+  stopNativeTts,
+} from './src/nativeTts';
+
 const WEB_APP_BASE_URL = 'https://mingle-app-xi.vercel.app';
 const DEFAULT_WS_URL = 'wss://mingle.up.railway.app';
 const NATIVE_STT_EVENT = 'mingle:native-stt';
+const NATIVE_TTS_EVENT = 'mingle:native-tts';
 const SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
 
 type NativeSttCommand =
@@ -37,6 +44,21 @@ type NativeSttCommand =
         pendingLanguage?: string;
       };
     };
+
+type NativeTtsCommand =
+  | {
+      type: 'native_tts_play';
+      payload: {
+        utteranceId: string;
+        audioBase64: string;
+        contentType?: string;
+      };
+    }
+  | {
+      type: 'native_tts_stop';
+    };
+
+type WebViewCommand = NativeSttCommand | NativeTtsCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -60,6 +82,7 @@ function App(): React.JSX.Element {
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [nativeStatus, setNativeStatus] = useState('idle');
+  const currentTtsUtteranceIdRef = useRef<string | null>(null);
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
@@ -77,6 +100,16 @@ function App(): React.JSX.Element {
       console.log(`[NativeSTT→Web] ${preview}`);
     }
     const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_STT_EVENT)}, { detail: ${serialized} })); true;`;
+    webViewRef.current?.injectJavaScript(script);
+  }, []);
+
+  const emitTtsToWeb = useCallback((payload: Record<string, unknown>) => {
+    if (!isPageReadyRef.current) return;
+    const serialized = JSON.stringify(payload);
+    if (__DEV__) {
+      console.log(`[NativeTTS→Web] ${JSON.stringify(payload).slice(0, 120)}`);
+    }
+    const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_TTS_EVENT)}, { detail: ${serialized} })); true;`;
     webViewRef.current?.injectJavaScript(script);
   }, []);
 
@@ -127,26 +160,55 @@ function App(): React.JSX.Element {
   }, [emitToWeb]);
 
   const handleWebMessage = useCallback((event: WebViewMessageEvent) => {
-    let parsed: NativeSttCommand | null = null;
+    let parsed: WebViewCommand | null = null;
     try {
-      parsed = JSON.parse(event.nativeEvent.data) as NativeSttCommand;
+      parsed = JSON.parse(event.nativeEvent.data) as WebViewCommand;
     } catch {
       return;
     }
     if (!parsed || typeof parsed !== 'object') return;
-    if (__DEV__) {
-      console.log(`[Web→NativeSTT] ${parsed.type}`, JSON.stringify(parsed.payload ?? {}).slice(0, 120));
-    }
 
     if (parsed.type === 'native_stt_start') {
+      if (__DEV__) {
+        console.log(`[Web→NativeSTT] ${parsed.type}`, JSON.stringify(parsed.payload ?? {}).slice(0, 120));
+      }
       void handleNativeStart(parsed.payload);
       return;
     }
 
     if (parsed.type === 'native_stt_stop') {
+      if (__DEV__) {
+        console.log(`[Web→NativeSTT] ${parsed.type}`, JSON.stringify(parsed.payload ?? {}).slice(0, 120));
+      }
       void handleNativeStop(parsed.payload);
+      return;
     }
-  }, [handleNativeStart, handleNativeStop]);
+
+    if (parsed.type === 'native_tts_play') {
+      const { utteranceId, audioBase64, contentType } = parsed.payload;
+      currentTtsUtteranceIdRef.current = utteranceId;
+      if (__DEV__) {
+        console.log(`[Web→NativeTTS] play utteranceId=${utteranceId} base64Len=${audioBase64.length}`);
+      }
+      void playNativeTts({ audioBase64 }).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        if (__DEV__) {
+          console.log(`[NativeTTS] play error: ${message}`);
+        }
+        emitTtsToWeb({ type: 'tts_error', utteranceId, message });
+        currentTtsUtteranceIdRef.current = null;
+      });
+      return;
+    }
+
+    if (parsed.type === 'native_tts_stop') {
+      if (__DEV__) {
+        console.log('[Web→NativeTTS] stop');
+      }
+      currentTtsUtteranceIdRef.current = null;
+      void stopNativeTts();
+    }
+  }, [emitTtsToWeb, handleNativeStart, handleNativeStop]);
 
   useEffect(() => {
     const statusSub = addNativeSttListener('status', event => {
@@ -178,6 +240,38 @@ function App(): React.JSX.Element {
       closeSub.remove();
     };
   }, [emitToWeb]);
+
+  useEffect(() => {
+    const finishedSub = addNativeTtsListener('ttsPlaybackFinished', (event) => {
+      const utteranceId = currentTtsUtteranceIdRef.current;
+      currentTtsUtteranceIdRef.current = null;
+      if (__DEV__) {
+        console.log(`[NativeTTS] finished utteranceId=${utteranceId} success=${event.success}`);
+      }
+      emitTtsToWeb({ type: 'tts_ended', utteranceId: utteranceId || '' });
+    });
+
+    const stoppedSub = addNativeTtsListener('ttsPlaybackStopped', () => {
+      const utteranceId = currentTtsUtteranceIdRef.current;
+      currentTtsUtteranceIdRef.current = null;
+      emitTtsToWeb({ type: 'tts_stopped', utteranceId: utteranceId || '' });
+    });
+
+    const errorSub = addNativeTtsListener('ttsError', (event) => {
+      const utteranceId = currentTtsUtteranceIdRef.current;
+      currentTtsUtteranceIdRef.current = null;
+      if (__DEV__) {
+        console.log(`[NativeTTS] error: ${event.message}`);
+      }
+      emitTtsToWeb({ type: 'tts_error', utteranceId: utteranceId || '', message: event.message });
+    });
+
+    return () => {
+      finishedSub.remove();
+      stoppedSub.remove();
+      errorSub.remove();
+    };
+  }, [emitTtsToWeb]);
 
   return (
     <SafeAreaView style={styles.safeArea}>

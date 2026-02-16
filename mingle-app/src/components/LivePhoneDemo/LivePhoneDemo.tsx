@@ -17,6 +17,22 @@ const TTS_ORDER_WAIT_TIMEOUT_MS = 2000
 // iOS .playAndRecord reduces speaker output; this compensates in software.
 const TTS_STT_GAIN = 2.0
 const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
+const NATIVE_TTS_EVENT = 'mingle:native-tts'
+
+function isNativeApp(): boolean {
+  return typeof window !== 'undefined'
+    && typeof window.ReactNativeWebView?.postMessage === 'function'
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
 
 function isTtsDebugEnabled(): boolean {
   if (typeof window === 'undefined') return false
@@ -159,9 +175,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     // Creating a WebView AudioContext here conflicts with the native session
     // causing silent TTS playback and STT stalls.  Only use the GainNode
     // path on the regular mobile-web surface where there is no native session.
-    const isNativeApp = typeof window !== 'undefined'
-      && typeof window.ReactNativeWebView?.postMessage === 'function'
-    if (!isNativeApp) {
+    if (!isNativeApp()) {
       try {
         const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
         if (AudioCtx) {
@@ -257,6 +271,36 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     cleanupCurrentAudio()
     setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
 
+    const playViaNativeBridge = async () => {
+      try {
+        const audioBase64 = await blobToBase64(next.audioBlob)
+        logTtsQueue('native.play.start', {
+          utteranceId: next.utteranceId,
+          language: next.language,
+          audioBytes: next.audioBlob.size,
+          base64Len: audioBase64.length,
+        })
+        window.ReactNativeWebView!.postMessage(JSON.stringify({
+          type: 'native_tts_play',
+          payload: {
+            utteranceId: next.utteranceId,
+            audioBase64,
+            contentType: next.audioBlob.type || 'audio/mpeg',
+          },
+        }))
+        // Playback completion handled by native-tts event listener.
+      } catch (error) {
+        logTtsQueue('native.play.error', {
+          utteranceId: next.utteranceId,
+          error: error instanceof Error ? error.message : 'unknown',
+        })
+        ttsPlayedUtteranceRef.current.add(next.utteranceId)
+        setSpeakingItem(prev => (prev?.utteranceId === next.utteranceId ? null : prev))
+        isTtsProcessingRef.current = false
+        processTtsQueueRef.current()
+      }
+    }
+
     const playViaHtmlAudio = async () => {
       const audio = ensureAudioPlayer()
 
@@ -329,12 +373,55 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       })
     }
 
-    void playViaHtmlAudio()
+    if (isNativeApp()) {
+      void playViaNativeBridge()
+    } else {
+      void playViaHtmlAudio()
+    }
   }, [cleanupCurrentAudio, clearTtsOrderWaitTimer, enableAutoTTS, ensureAudioPlayer, isSoundEnabled, selectedLanguages])
 
   useEffect(() => {
     processTtsQueueRef.current = processTtsQueue
   }, [processTtsQueue])
+
+  // Listen for native TTS playback events (only in native app).
+  useEffect(() => {
+    if (!isNativeApp()) return
+
+    const handleNativeTtsEvent = (event: Event) => {
+      const detail = (event as CustomEvent).detail as {
+        type: string
+        utteranceId?: string
+        message?: string
+      } | null
+      if (!detail || typeof detail !== 'object') return
+
+      if (detail.type === 'tts_ended' || detail.type === 'tts_error') {
+        const utteranceId = detail.utteranceId || ''
+        logTtsQueue('native.event', { type: detail.type, utteranceId })
+        if (utteranceId) {
+          ttsPlayedUtteranceRef.current.add(utteranceId)
+        }
+        setSpeakingItem(prev => {
+          if (utteranceId && prev?.utteranceId === utteranceId) return null
+          return prev
+        })
+        isTtsProcessingRef.current = false
+        processTtsQueueRef.current()
+        return
+      }
+
+      if (detail.type === 'tts_stopped') {
+        isTtsProcessingRef.current = false
+        setSpeakingItem(null)
+      }
+    }
+
+    window.addEventListener(NATIVE_TTS_EVENT, handleNativeTtsEvent as EventListener)
+    return () => {
+      window.removeEventListener(NATIVE_TTS_EVENT, handleNativeTtsEvent as EventListener)
+    }
+  }, [])
 
   // Handle TTS audio received inline with translation response.
   const handleTtsAudio = useCallback((utteranceId: string, audioBlob: Blob, language: string) => {
@@ -530,6 +617,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     isTtsProcessingRef.current = false
     ttsNeedsUnlockRef.current = false
     cleanupCurrentAudio()
+    if (isNativeApp()) {
+      window.ReactNativeWebView!.postMessage(JSON.stringify({ type: 'native_tts_stop' }))
+    }
   }, [clearTtsOrderWaitTimer, isSoundEnabled, cleanupCurrentAudio])
 
   useEffect(() => {

@@ -14,6 +14,8 @@
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		A8F1C3B52D4E6A7091BC23D4 /* NativeSTTModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D9E1F32A4B6C8091DE45F6 /* NativeSTTModule.swift */; };
 		B1E2C3D44F5A6B7091CD23E4 /* NativeSTTModuleBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = D2E3F4A55B6C7D8091EF34A5 /* NativeSTTModuleBridge.m */; };
+		E3A4B5C62D5F7B8192CD34E5 /* NativeTTSModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B5C6D73B5D8E9192EF45F7 /* NativeTTSModule.swift */; };
+		F5C6D7E84F6A7C8192DE45F8 /* NativeTTSModuleBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5D6E7F65C7D9F0192FA56A8 /* NativeTTSModuleBridge.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +30,8 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = rnnative/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		C7D9E1F32A4B6C8091DE45F6 /* NativeSTTModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NativeSTTModule.swift; path = rnnative/NativeSTTModule.swift; sourceTree = "<group>"; };
 		D2E3F4A55B6C7D8091EF34A5 /* NativeSTTModuleBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = NativeSTTModuleBridge.m; path = rnnative/NativeSTTModuleBridge.m; sourceTree = "<group>"; };
+		F4B5C6D73B5D8E9192EF45F7 /* NativeTTSModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NativeTTSModule.swift; path = rnnative/NativeTTSModule.swift; sourceTree = "<group>"; };
+		A5D6E7F65C7D9F0192FA56A8 /* NativeTTSModuleBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = NativeTTSModuleBridge.m; path = rnnative/NativeTTSModuleBridge.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -50,6 +54,8 @@
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				C7D9E1F32A4B6C8091DE45F6 /* NativeSTTModule.swift */,
 				D2E3F4A55B6C7D8091EF34A5 /* NativeSTTModuleBridge.m */,
+				F4B5C6D73B5D8E9192EF45F7 /* NativeTTSModule.swift */,
+				A5D6E7F65C7D9F0192FA56A8 /* NativeTTSModuleBridge.m */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -255,6 +261,8 @@
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A8F1C3B52D4E6A7091BC23D4 /* NativeSTTModule.swift in Sources */,
 				B1E2C3D44F5A6B7091CD23E4 /* NativeSTTModuleBridge.m in Sources */,
+				E3A4B5C62D5F7B8192CD34E5 /* NativeTTSModule.swift in Sources */,
+				F5C6D7E84F6A7C8192DE45F8 /* NativeTTSModuleBridge.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
