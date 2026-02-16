@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_ios_stt_session_stability_rebalance
+    %% @lastActive: mingle_app_ios_stt_tts_volume_reboost
 
     %% === START ===
     %% @project_start [start, closed]
@@ -448,6 +448,9 @@ flowchart TD
     %% @mingle_app_ios_stt_session_stability_rebalance [ai-task, closed, 2026-02-16, ai]
     mingle_app_ios_stt_session_stability_rebalance("iOS STT 세션 안정화 리밸런스 적용<br/><sub>default 모드 전환 후 발생한 무음/재시작 루프를 완화하기 위해<br/>오디오 세션을 voiceChat+mixWithOthers로 되돌리고<br/>route change 복구는 기기 연결/해제 등 필수 사유만 처리하며<br/>연속 재시작 debounce 가드(0.5s)를 넣어 UI 프리즈를 차단</sub>")
 
+    %% @mingle_app_ios_stt_tts_volume_reboost [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_stt_tts_volume_reboost("iOS STT 중 TTS 볼륨 재보정<br/><sub>안정화 가드는 그대로 유지한 채<br/>AVAudioSession 모드를 default로 재조정하고<br/>mixWithOthers를 제거해 통화 모드처럼 작아지던<br/>STT 활성 중 TTS 출력 레벨을 우선 개선</sub>")
+
     %% @mingle_app_async_nonblocking_db_write [ai-task, closed, 2026-02-16, ai]
     mingle_app_async_nonblocking_db_write("앱 API 비동기 저장 경로 적용 완료<br/><sub>/api/translate/finalize·/translate·/tts/inworld에서<br/>응답 후 DB fire-and-forget 적재를 연결하고<br/>STT final일 때만 Message/MessageContent를 저장,<br/>app_users metadata JSON 대신 개별 컬럼으로 기록</sub>")
 
@@ -601,6 +604,7 @@ flowchart TD
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
+    mingle_app_ios_stt_session_stability_rebalance --> mingle_app_ios_stt_tts_volume_reboost
     mingle_app_ios_stt_session_stability_rebalance --> mingle_app_async_nonblocking_db_write
     mingle_app_async_nonblocking_db_write --> mingle_app_usage_truth_policy
     mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
@@ -620,7 +624,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_ios_stt_session_stability_rebalance
+        mingle_app_ios_stt_tts_volume_reboost
     end
 
     %% === STYLES ===
@@ -825,7 +829,8 @@ flowchart TD
     style mingle_app_rn_webview_native_stt_bridge fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_native_stt_interruption_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_stt_mode_output_gain_tune fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_ios_stt_session_stability_rebalance fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_stt_session_stability_rebalance fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_stt_tts_volume_reboost fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_async_nonblocking_db_write fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px

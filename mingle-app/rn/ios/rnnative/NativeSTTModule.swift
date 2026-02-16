@@ -38,10 +38,12 @@ class NativeSTTModule: RCTEventEmitter {
 
     private func configureAudioSession() throws {
         let audioSession = AVAudioSession.sharedInstance()
+        // Keep full-duplex (record + playback) but avoid voiceChat processing that
+        // pushes output into low "call-like" playback on iOS.
         try audioSession.setCategory(
             .playAndRecord,
-            mode: .voiceChat,
-            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
+            mode: .default,
+            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
         )
         try? audioSession.setPreferredSampleRate(48_000)
         try? audioSession.setPreferredIOBufferDuration(0.02)
