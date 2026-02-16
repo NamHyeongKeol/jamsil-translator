@@ -1,16 +1,10 @@
-import type { Prisma } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
-import { prisma } from '@/lib/prisma'
 import {
-  createTrackedEventLog,
   ensureTrackingContext,
-  fireAndForgetDbWrite,
-  parseClientContext,
   sanitizeNonNegativeInt,
-  upsertTrackedUser,
 } from '@/lib/app-analytics'
 
 export const runtime = 'nodejs'
@@ -371,7 +365,6 @@ async function synthesizeTtsInline(args: {
 }
 
 export async function POST(request: NextRequest) {
-  const requestStartedAt = Date.now()
   const body = await request.json().catch((): Record<string, unknown> => ({}))
   const text = typeof body.text === 'string' ? body.text.trim() : ''
   const sourceLanguageRaw = normalizeLang(typeof body.sourceLanguage === 'string' ? body.sourceLanguage : '')
@@ -381,15 +374,6 @@ export async function POST(request: NextRequest) {
   const ttsLanguage = normalizeLang(typeof ttsPayload?.language === 'string' ? ttsPayload.language : '')
   const ttsVoiceId = typeof ttsPayload?.voiceId === 'string' ? ttsPayload.voiceId.trim() : ''
   const sessionKeyHint = typeof body.sessionKey === 'string' ? body.sessionKey.trim() : null
-  const clientMessageId = typeof body.clientMessageId === 'string' ? body.clientMessageId.trim().slice(0, 128) : null
-  const isFinal = body.isFinal === true
-  const sttDurationMs = sanitizeNonNegativeInt(body.sttDurationMs)
-  const totalDurationMsFromClient = sanitizeNonNegativeInt(body.totalDurationMs)
-  const clientContext = parseClientContext(body.clientContext)
-  const usageSecFromBody = sanitizeNonNegativeInt(body.usageSec)
-  if (usageSecFromBody !== null) {
-    clientContext.usageSec = usageSecFromBody
-  }
 
   if (!GEMINI_API_KEY && !OPENAI_API_KEY && !CLAUDE_API_KEY) {
     const response = NextResponse.json({ error: 'No translation API key configured' }, { status: 500 })
@@ -437,7 +421,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (!selectedResult) {
-      return NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
+      const response = NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
+      ensureTrackingContext(request, response, { sessionKeyHint })
+      return response
     }
 
     const translations: Record<string, string> = {}
@@ -448,10 +434,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (Object.keys(translations).length === 0) {
-      return NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
+      const response = NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
+      ensureTrackingContext(request, response, { sessionKeyHint })
+      return response
     }
 
-    const responsePayload: Record<string, unknown> = { translations }
+    const responsePayload: Record<string, unknown> = {
+      translations,
+      provider: selectedResult.provider,
+      model: selectedResult.model,
+    }
 
     if (ttsLanguage && targetLanguages.includes(ttsLanguage)) {
       const ttsText = (translations[ttsLanguage] || '').trim()
@@ -472,99 +464,12 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json(responsePayload)
-    const tracking = ensureTrackingContext(request, response, { sessionKeyHint })
-    const totalDurationMs = totalDurationMsFromClient ?? Math.max(0, Date.now() - requestStartedAt)
-
-    fireAndForgetDbWrite('translate.finalize', async () => {
-      const userId = await upsertTrackedUser({ tracking, clientContext })
-      let messageId: string | null = null
-
-      if (isFinal) {
-        const messageMetadata: Prisma.JsonObject = {
-          sourceLanguage,
-          targetLanguages,
-          provider: selectedResult.provider,
-          model: selectedResult.model,
-          hasInlineTts: Boolean(responsePayload.ttsAudioBase64),
-        }
-        if (clientMessageId) messageMetadata.clientMessageId = clientMessageId
-
-        const message = await prisma.appMessage.create({
-          data: {
-            userId,
-            sessionKey: tracking.sessionKey,
-            clientMessageId: clientMessageId || undefined,
-            sourceLanguage,
-            translationPromptTokens: selectedResult.usage?.promptTokens,
-            translationCompletionTokens: selectedResult.usage?.completionTokens,
-            translationTotalTokens: selectedResult.usage?.totalTokens,
-            sttDurationMs: sttDurationMs ?? undefined,
-            totalDurationMs: totalDurationMs ?? undefined,
-            metadata: messageMetadata,
-          },
-        })
-        messageId = message.id
-
-        const contentRows: Array<{
-          messageId: string
-          contentType: string
-          language: string
-          text: string
-          provider?: string
-          model?: string
-        }> = [
-          {
-            messageId: message.id,
-            contentType: 'SOURCE',
-            language: sourceLanguage,
-            text,
-            provider: selectedResult.provider,
-            model: selectedResult.model,
-          },
-        ]
-
-        for (const [language, translatedText] of Object.entries(translations)) {
-          const cleanedText = translatedText.trim()
-          if (!cleanedText) continue
-          contentRows.push({
-            messageId: message.id,
-            contentType: 'TRANSLATION_FINAL',
-            language,
-            text: cleanedText,
-            provider: selectedResult.provider,
-            model: selectedResult.model,
-          })
-        }
-
-        await prisma.appMessageContent.createMany({
-          data: contentRows,
-          skipDuplicates: true,
-        })
-      }
-
-      await createTrackedEventLog({
-        userId,
-        tracking,
-        clientContext,
-        sessionKey: tracking.sessionKey,
-        messageId,
-        eventType: isFinal ? 'stt_turn_finalized' : 'translate_partial',
-        metadata: {
-          sourceLanguage,
-          targetLanguages,
-          provider: selectedResult.provider,
-          model: selectedResult.model,
-          clientMessageId,
-          isFinal,
-          ttsLanguage: ttsLanguage || null,
-          ttsVoiceId: typeof responsePayload.ttsVoiceId === 'string' ? responsePayload.ttsVoiceId : null,
-        },
-      })
-    })
-
+    ensureTrackingContext(request, response, { sessionKeyHint })
     return response
   } catch (error) {
     console.error('Finalize translation route error:', error)
-    return NextResponse.json({ error: 'finalize_translation_failed' }, { status: 500 })
+    const response = NextResponse.json({ error: 'finalize_translation_failed' }, { status: 500 })
+    ensureTrackingContext(request, response, { sessionKeyHint })
+    return response
   }
 }
