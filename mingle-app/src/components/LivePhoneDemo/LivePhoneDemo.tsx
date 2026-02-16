@@ -258,9 +258,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
 
     // Track the text being spoken so the STT echo filter can discard mic echo.
-    const spokenUtterance = utterancesRef.current.find(u => u.id === next.utteranceId)
-    const spokenText = spokenUtterance?.translations[next.language]?.trim() ?? null
-    activeTtsTextRef.current = spokenText
+    // Only in the native app — web browsers handle AEC in getUserMedia.
+    if (typeof window !== 'undefined' && typeof window.ReactNativeWebView?.postMessage === 'function') {
+      const spokenUtterance = utterancesRef.current.find(u => u.id === next.utteranceId)
+      activeTtsTextRef.current = spokenUtterance?.translations[next.language]?.trim() ?? null
+    }
 
     const playViaHtmlAudio = async () => {
       const audio = ensureAudioPlayer()
