@@ -23,6 +23,7 @@ const DEFAULT_USAGE_LIMIT_SEC = 60
 const LS_KEY_UTTERANCES = 'mingle_demo_utterances'
 const LS_KEY_USAGE = 'mingle_demo_usage_sec'
 const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
+const LS_KEY_STT_DEBUG = 'mingle_stt_debug'
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
@@ -108,6 +109,33 @@ function logTtsDebug(event: string, payload?: Record<string, unknown>) {
     return
   }
   console.log('[MingleTTS]', event)
+}
+
+function isSttDebugEnabled(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const forced = window.localStorage.getItem(LS_KEY_STT_DEBUG)
+    if (forced === '1') return true
+    if (forced === '0') return false
+  } catch {
+    // no-op
+  }
+  try {
+    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
+    if (cap?.isNativePlatform?.()) return true
+  } catch {
+    // no-op
+  }
+  return /(?:\?|&)sttDebug=1(?:&|$)/.test(window.location.search || '')
+}
+
+function logSttDebug(event: string, payload?: Record<string, unknown>) {
+  if (!isSttDebugEnabled()) return
+  if (payload) {
+    console.log('[MingleSTT]', event, payload)
+    return
+  }
+  console.log('[MingleSTT]', event)
 }
 
 export default function useRealtimeSTT({
@@ -644,7 +672,8 @@ export default function useRealtimeSTT({
     }
   }, [visualize])
 
-  const handleSttTransportError = useCallback(() => {
+  const handleSttTransportError = useCallback((details?: Record<string, unknown>) => {
+    logSttDebug('transport.error', details)
     const remainingPartial = partialTranscriptRef.current.trim()
     if (remainingPartial) {
       const result = finalizePendingLocally(remainingPartial, partialLangRef.current || 'unknown')
@@ -664,7 +693,8 @@ export default function useRealtimeSTT({
     setTimeout(() => setConnectionStatus('idle'), 3000)
   }, [applyTranslationToUtterance, cleanup, finalizePendingLocally, handleInlineTtsFromTranslate, languages, translateViaApi])
 
-  const handleSttTransportClose = useCallback(() => {
+  const handleSttTransportClose = useCallback((details?: Record<string, unknown>) => {
+    logSttDebug('transport.close', details)
     if (!isStoppingRef.current) {
       const remainingPartial = partialTranscriptRef.current.trim()
       if (remainingPartial) {
@@ -686,6 +716,7 @@ export default function useRealtimeSTT({
 
   const handleSttServerMessage = useCallback((message: Record<string, unknown>) => {
     if (message.status === 'ready') {
+      logSttDebug('transport.ready', { native: isUsingNativeSttRef.current })
       setConnectionStatus('ready')
       lastAudioChunkAtRef.current = Date.now()
       if (!isUsingNativeSttRef.current) {
@@ -807,6 +838,11 @@ export default function useRealtimeSTT({
   const startRecording = useCallback(async () => {
     if (isStoppingRef.current) return
     const useNativeStt = shouldUseNativeSttSession()
+    logSttDebug('recording.start.request', {
+      useNativeStt,
+      wsUrl: getWsUrl(),
+      languagesCount: languages.length,
+    })
     if (
       !useNativeStt
       && socketRef.current
@@ -832,9 +868,11 @@ export default function useRealtimeSTT({
       removeNativeSttListeners()
 
       if (useNativeStt) {
+        logSttDebug('native.start.begin')
         isUsingNativeSttRef.current = true
         await setNativeAudioMode('recording')
         const statusHandle = await addNativeSttListener('status', (event) => {
+          logSttDebug('native.status', event)
           handleSttServerMessage(event)
         })
         const messageHandle = await addNativeSttListener('message', (event) => {
@@ -847,11 +885,17 @@ export default function useRealtimeSTT({
             // ignore malformed event payload
           }
         })
-        const errorHandle = await addNativeSttListener('error', () => {
-          handleSttTransportError()
+        const errorHandle = await addNativeSttListener('error', (event) => {
+          handleSttTransportError({
+            native: true,
+            message: typeof event.message === 'string' ? event.message : '',
+          })
         })
-        const closeHandle = await addNativeSttListener('close', () => {
-          handleSttTransportClose()
+        const closeHandle = await addNativeSttListener('close', (event) => {
+          handleSttTransportClose({
+            native: true,
+            reason: typeof event.reason === 'string' ? event.reason : '',
+          })
         })
         nativeListenerHandlesRef.current = [statusHandle, messageHandle, errorHandle, closeHandle]
         await startNativeSttSession({
@@ -860,9 +904,11 @@ export default function useRealtimeSTT({
           sttModel: 'soniox',
           langHintsStrict: true,
         })
+        logSttDebug('native.start.success')
         return
       }
 
+      logSttDebug('web.start.begin')
       isUsingNativeSttRef.current = false
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -912,14 +958,15 @@ export default function useRealtimeSTT({
 
       socket.onerror = () => {
         if (socket !== socketRef.current) return
-        handleSttTransportError()
+        handleSttTransportError({ native: false })
       }
 
       socket.onclose = () => {
         if (socket !== socketRef.current) return
-        handleSttTransportClose()
+        handleSttTransportClose({ native: false })
       }
     } catch {
+      logSttDebug('recording.start.failed')
       void setNativeAudioMode('playback')
       cleanup()
       setConnectionStatus('error')
