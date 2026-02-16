@@ -38,12 +38,13 @@ class NativeSTTModule: RCTEventEmitter {
         let audioSession = AVAudioSession.sharedInstance()
         try audioSession.setCategory(
             .playAndRecord,
-            mode: .voiceChat,
-            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
+            mode: .default,
+            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
         )
         try? audioSession.setPreferredSampleRate(48_000)
         try? audioSession.setPreferredIOBufferDuration(0.02)
         try audioSession.setActive(true, options: [])
+        try audioSession.overrideOutputAudioPort(.speaker)
     }
 
     private func installAudioObserversIfNeeded() {
