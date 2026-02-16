@@ -343,21 +343,14 @@ class NativeSTTPlugin: CAPPlugin, CAPBridgedPlugin {
         return pcmData.base64EncodedString()
     }
 
-    @objc func start(_ call: CAPPluginCall) {
-        if isRunning {
-            call.reject("native_stt_already_running")
-            return
-        }
-
-        guard let wsUrlString = call.getString("wsUrl"), let wsUrl = URL(string: wsUrlString) else {
-            call.reject("Invalid wsUrl")
-            return
-        }
-
-        let languages = call.getArray("languages", String.self) ?? []
-        let sttModel = call.getString("sttModel") ?? "soniox"
-        let langHintsStrict = call.getBool("langHintsStrict") ?? true
-
+    private func startSession(
+        call: CAPPluginCall,
+        wsUrl: URL,
+        wsUrlString: String,
+        languages: [String],
+        sttModel: String,
+        langHintsStrict: Bool
+    ) {
         let audioSession = AVAudioSession.sharedInstance()
         do {
             try audioSession.setCategory(
@@ -426,6 +419,60 @@ class NativeSTTPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve([
             "sampleRate": sampleRate,
         ])
+    }
+
+    @objc func start(_ call: CAPPluginCall) {
+        if isRunning {
+            call.reject("native_stt_already_running")
+            return
+        }
+
+        guard let wsUrlString = call.getString("wsUrl"), let wsUrl = URL(string: wsUrlString) else {
+            call.reject("Invalid wsUrl")
+            return
+        }
+
+        let languages = call.getArray("languages", String.self) ?? []
+        let sttModel = call.getString("sttModel") ?? "soniox"
+        let langHintsStrict = call.getBool("langHintsStrict") ?? true
+
+        let audioSession = AVAudioSession.sharedInstance()
+        switch audioSession.recordPermission {
+        case .granted:
+            startSession(
+                call: call,
+                wsUrl: wsUrl,
+                wsUrlString: wsUrlString,
+                languages: languages,
+                sttModel: sttModel,
+                langHintsStrict: langHintsStrict
+            )
+        case .denied:
+            emitError("mic_permission_denied")
+            call.reject("Microphone permission denied")
+        case .undetermined:
+            audioSession.requestRecordPermission { [weak self] granted in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    if granted {
+                        self.startSession(
+                            call: call,
+                            wsUrl: wsUrl,
+                            wsUrlString: wsUrlString,
+                            languages: languages,
+                            sttModel: sttModel,
+                            langHintsStrict: langHintsStrict
+                        )
+                        return
+                    }
+                    self.emitError("mic_permission_denied_after_prompt")
+                    call.reject("Microphone permission denied")
+                }
+            }
+        @unknown default:
+            emitError("mic_permission_unknown_state")
+            call.reject("Unknown microphone permission state")
+        }
     }
 
     @objc func stop(_ call: CAPPluginCall) {

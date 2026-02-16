@@ -871,6 +871,7 @@ export default function useRealtimeSTT({
         logSttDebug('native.start.begin')
         isUsingNativeSttRef.current = true
         await setNativeAudioMode('recording')
+        logSttDebug('native.step.audio_mode.ok')
         const statusHandle = await addNativeSttListener('status', (event) => {
           logSttDebug('native.status', event)
           handleSttServerMessage(event)
@@ -898,6 +899,7 @@ export default function useRealtimeSTT({
           })
         })
         nativeListenerHandlesRef.current = [statusHandle, messageHandle, errorHandle, closeHandle]
+        logSttDebug('native.step.listeners.ok')
         await startNativeSttSession({
           wsUrl: getWsUrl(),
           languages,
@@ -965,8 +967,12 @@ export default function useRealtimeSTT({
         if (socket !== socketRef.current) return
         handleSttTransportClose({ native: false })
       }
-    } catch {
-      logSttDebug('recording.start.failed')
+    } catch (error) {
+      logSttDebug('recording.start.failed', {
+        native: useNativeStt,
+        message: error instanceof Error ? error.message : String(error),
+        name: error instanceof Error ? error.name : 'unknown',
+      })
       void setNativeAudioMode('playback')
       cleanup()
       setConnectionStatus('error')
