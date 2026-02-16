@@ -464,7 +464,7 @@ flowchart TD
     mingle_app_og_image_locale_redirect_fix("OG 이미지 locale 리다이렉트 404 수정<br/><sub>mingle-app-xi 도메인에서 /og-image.png 요청이<br/>/ko/og-image.png로 307 리다이렉트된 뒤 404 나는<br/>원인을 src/proxy.ts matcher 예외 누락으로 특정했고<br/>정적 파일 확장자 경로를 locale 리다이렉트에서 제외</sub>")
 
     %% @mingle_app_ios_stt_tts_resilience_diagnostics [ai-task, opened, 2026-02-16, ai]
-    mingle_app_ios_stt_tts_resilience_diagnostics("iOS STT/TTS 간헐 정지 진단 및 자동복구<br/><sub>TTS 재생 시 WebView AudioContext suspended로<br/>소리 없이 UI만 재생되고 native 오디오 엔진 stall로<br/>STT도 멈추는 문제에 AudioContext 자동 resume,<br/>5초 헬스체크 자동복구, WS ping 추가</sub>")
+    mingle_app_ios_stt_tts_resilience_diagnostics("iOS STT/TTS 동시 재생 안정화<br/><sub>네이티브 앱에서 AudioContext 충돌로 TTS 무음 재생되던<br/>문제를 native 앱 AudioContext 생성 스킵으로 해결하고<br/>AEC 비활성화로 STT 지속성을 최우선 확보함<br/>에코 필터(bigram) 시도→레이턴시로 제거,<br/>웹 TTS 볼륨 부스트 4x→2x로 완화</sub>")
 
     %% @mingle_app_usage_truth_policy [human-task, opened, 2026-02-16, user]
     mingle_app_usage_truth_policy("사용시간 Source of Truth 정책 확정 필요<br/><sub>현재 클라 localStorage usage와 DB 집계를 병행하므로<br/>제한/과금/분석 기준을 서버 우선으로 둘지 결정하고<br/>초기 부트스트랩/동기화 시점(앱 시작·턴 종료)을<br/>정책으로 고정해야 일관된 사용량이 보장됨</sub>")
