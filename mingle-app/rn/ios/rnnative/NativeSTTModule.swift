@@ -48,7 +48,6 @@ class NativeSTTModule: RCTEventEmitter {
         try? audioSession.setPreferredSampleRate(48_000)
         try? audioSession.setPreferredIOBufferDuration(0.02)
         try audioSession.setActive(true, options: [])
-        try audioSession.overrideOutputAudioPort(.speaker)
     }
 
     private func installAudioObserversIfNeeded() {
@@ -152,6 +151,7 @@ class NativeSTTModule: RCTEventEmitter {
             self.removeTapIfNeeded()
 
             let inputNode = self.audioEngine.inputNode
+            if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(true) }
             let inputFormat = inputNode.inputFormat(forBus: 0)
             self.installInputTap(format: inputFormat)
 
@@ -336,6 +336,11 @@ class NativeSTTModule: RCTEventEmitter {
         }
 
         let inputNode = audioEngine.inputNode
+        // Enable Apple voice-processing (AEC + noise suppression) on the
+        // input without switching to .voiceChat mode, which would lower
+        // the playback volume.  Must be set before reading inputFormat
+        // because enabling VP may change the hardware format.
+        if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(true) }
         let inputFormat = inputNode.inputFormat(forBus: 0)
         let sampleRate = Int(inputFormat.sampleRate.rounded())
 

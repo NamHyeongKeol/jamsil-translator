@@ -13,6 +13,9 @@ const VOLUME_THRESHOLD = 0.05
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
 const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='
 const TTS_ORDER_WAIT_TIMEOUT_MS = 2000
+// Boost factor applied to TTS playback while STT is active.
+// iOS .playAndRecord reduces speaker output; this compensates in software.
+const TTS_STT_GAIN = 4.0
 const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 
 function isTtsDebugEnabled(): boolean {
@@ -131,6 +134,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const ttsOrderWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isTtsProcessingRef = useRef(false)
   const isAudioPrimedRef = useRef(false)
+  const ttsAudioContextRef = useRef<AudioContext | null>(null)
+  const ttsGainNodeRef = useRef<GainNode | null>(null)
   const ttsNeedsUnlockRef = useRef(false)
   const processTtsQueueRef = useRef<() => void>(() => {})
   const initialUtteranceIdsRef = useRef<string[] | null>(null)
@@ -149,6 +154,21 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     audio.preload = 'auto'
     ;(audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
     playerAudioRef.current = audio
+    // Route through a GainNode so we can boost TTS volume while STT is
+    // active, compensating for iOS .playAndRecord speaker volume reduction.
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      if (AudioCtx) {
+        const ctx = new AudioCtx()
+        const source = ctx.createMediaElementSource(audio)
+        const gain = ctx.createGain()
+        gain.gain.value = 1.0
+        source.connect(gain)
+        gain.connect(ctx.destination)
+        ttsAudioContextRef.current = ctx
+        ttsGainNodeRef.current = gain
+      }
+    } catch { /* fallback: audio plays without gain control */ }
     return audio
   }, [])
 
@@ -332,6 +352,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     enableTts: enableAutoTTS && isSoundEnabled,
   })
 
+  // Boost TTS volume while STT is active to compensate for iOS
+  // .playAndRecord audio session reducing speaker output.
+  useEffect(() => {
+    const gain = ttsGainNodeRef.current
+    if (!gain) return
+    gain.gain.value = isActive ? TTS_STT_GAIN : 1.0
+  }, [isActive])
+
   useEffect(() => {
     utterancesRef.current = utterances
     if (initialUtteranceIdsRef.current === null) {
@@ -381,6 +409,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     if (!force && isAudioPrimedRef.current) return true
     try {
       const player = ensureAudioPlayer()
+      // Resume TTS AudioContext if suspended (iOS requires user gesture).
+      if (ttsAudioContextRef.current?.state === 'suspended') {
+        await ttsAudioContextRef.current.resume()
+      }
       // Don't interrupt active TTS playback.
       if (!player.paused && !player.ended) {
         isAudioPrimedRef.current = true
@@ -545,6 +577,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       isTtsProcessingRef.current = false
       ttsNeedsUnlockRef.current = false
       cleanupCurrentAudio()
+      ttsAudioContextRef.current?.close()
+      ttsAudioContextRef.current = null
+      ttsGainNodeRef.current = null
     }
   }, [clearStopClickResumeTimers, clearTtsOrderWaitTimer, cleanupCurrentAudio])
 
