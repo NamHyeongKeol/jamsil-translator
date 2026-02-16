@@ -154,21 +154,27 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     audio.preload = 'auto'
     ;(audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
     playerAudioRef.current = audio
-    // Route through a GainNode so we can boost TTS volume while STT is
-    // active, compensating for iOS .playAndRecord speaker volume reduction.
-    try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      if (AudioCtx) {
-        const ctx = new AudioCtx()
-        const source = ctx.createMediaElementSource(audio)
-        const gain = ctx.createGain()
-        gain.gain.value = 1.0
-        source.connect(gain)
-        gain.connect(ctx.destination)
-        ttsAudioContextRef.current = ctx
-        ttsGainNodeRef.current = gain
-      }
-    } catch { /* fallback: audio plays without gain control */ }
+    // In the native RN app, the native AVAudioSession handles AEC and volume.
+    // Creating a WebView AudioContext here conflicts with the native session
+    // causing silent TTS playback and STT stalls.  Only use the GainNode
+    // path on the regular mobile-web surface where there is no native session.
+    const isNativeApp = typeof window !== 'undefined'
+      && typeof window.ReactNativeWebView?.postMessage === 'function'
+    if (!isNativeApp) {
+      try {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        if (AudioCtx) {
+          const ctx = new AudioCtx()
+          const source = ctx.createMediaElementSource(audio)
+          const gain = ctx.createGain()
+          gain.gain.value = 1.0
+          source.connect(gain)
+          gain.connect(ctx.destination)
+          ttsAudioContextRef.current = ctx
+          ttsGainNodeRef.current = gain
+        }
+      } catch { /* fallback: audio plays without gain control */ }
+    }
     return audio
   }, [])
 
