@@ -68,6 +68,12 @@ pnpm db:generate
 pnpm db:migrate:create
 ```
 
+Production build runs `prisma generate` first:
+
+```bash
+pnpm build
+```
+
 If you apply SQL manually to remote, use:
 
 - `prisma/migrations/20260216173000_init_app_schema/migration.sql`
