@@ -15,7 +15,7 @@ const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABA
 const TTS_ORDER_WAIT_TIMEOUT_MS = 2000
 // Boost factor applied to TTS playback while STT is active.
 // iOS .playAndRecord reduces speaker output; this compensates in software.
-const TTS_STT_GAIN = 2.0
+const TTS_STT_GAIN = 1.0
 const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 const NATIVE_TTS_EVENT = 'mingle:native-tts'
 
