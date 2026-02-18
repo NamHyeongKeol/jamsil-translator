@@ -506,21 +506,52 @@ export async function POST(request: NextRequest) {
 
   try {
     let selectedResult: TranslationEngineResult | null = null
-    const translators = [translateWithGemini, translateWithOpenAI, translateWithClaude]
+    const translators: Array<{
+      provider: TranslationEngineResult['provider']
+      run: (context: TranslateContext) => Promise<TranslationEngineResult | null>
+    }> = [
+      { provider: 'gemini', run: translateWithGemini },
+      { provider: 'openai', run: translateWithOpenAI },
+      { provider: 'claude', run: translateWithClaude },
+    ]
 
     for (const translator of translators) {
       try {
-        const translated = await translator(ctx)
+        const translated = await translator.run(ctx)
         if (translated && Object.keys(translated.translations).length > 0) {
           selectedResult = translated
           break
         }
-      } catch {
+        console.warn('[translate/finalize] provider_empty_response', {
+          provider: translator.provider,
+          sourceLanguage,
+          targetLanguages,
+        })
+      } catch (error) {
         // Continue to next provider.
+        const errorPayload = error instanceof Error
+          ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          }
+          : { raw: String(error) }
+        console.error('[translate/finalize] provider_error', {
+          provider: translator.provider,
+          sourceLanguage,
+          targetLanguages,
+          error: errorPayload,
+        })
       }
     }
 
     if (!selectedResult) {
+      console.error('[translate/finalize] all_providers_failed', {
+        sourceLanguage,
+        targetLanguages,
+        textPreview: text.slice(0, 120),
+        recentTurnsCount: recentTurns.length,
+      })
       const response = NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
       ensureTrackingContext(request, response, { sessionKeyHint })
       return response
