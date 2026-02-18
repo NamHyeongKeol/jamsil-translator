@@ -1,24 +1,30 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 
 const LANGUAGES = [
-  { code: 'en', flag: '🇺🇸', name: 'English' },
-  { code: 'ko', flag: '🇰🇷', name: '한국어' },
-  { code: 'ja', flag: '🇯🇵', name: '日本語' },
-  { code: 'zh', flag: '🇨🇳', name: '中文' },
-  { code: 'es', flag: '🇪🇸', name: 'Español' },
-  { code: 'fr', flag: '🇫🇷', name: 'Français' },
-  { code: 'de', flag: '🇩🇪', name: 'Deutsch' },
-  { code: 'ru', flag: '🇷🇺', name: 'Русский' },
-  { code: 'pt', flag: '🇧🇷', name: 'Português' },
-  { code: 'ar', flag: '🇸🇦', name: 'العربية' },
-  { code: 'hi', flag: '🇮🇳', name: 'हिन्दी' },
-  { code: 'th', flag: '🇹🇭', name: 'ไทย' },
-  { code: 'vi', flag: '🇻🇳', name: 'Tiếng Việt' },
-  { code: 'it', flag: '🇮🇹', name: 'Italiano' },
-  { code: 'id', flag: '🇮🇩', name: 'Bahasa' },
+  { code: 'en', flag: '🇺🇸', englishName: 'English' },
+  { code: 'ko', flag: '🇰🇷', englishName: 'Korean' },
+  { code: 'ja', flag: '🇯🇵', englishName: 'Japanese' },
+  { code: 'zh', flag: '🇨🇳', englishName: 'Chinese' },
+  { code: 'es', flag: '🇪🇸', englishName: 'Spanish' },
+  { code: 'fr', flag: '🇫🇷', englishName: 'French' },
+  { code: 'de', flag: '🇩🇪', englishName: 'German' },
+  { code: 'ru', flag: '🇷🇺', englishName: 'Russian' },
+  { code: 'pt', flag: '🇧🇷', englishName: 'Portuguese' },
+  { code: 'ar', flag: '🇸🇦', englishName: 'Arabic' },
+  { code: 'hi', flag: '🇮🇳', englishName: 'Hindi' },
+  { code: 'th', flag: '🇹🇭', englishName: 'Thai' },
+  { code: 'vi', flag: '🇻🇳', englishName: 'Vietnamese' },
+  { code: 'it', flag: '🇮🇹', englishName: 'Italian' },
+  { code: 'id', flag: '🇮🇩', englishName: 'Indonesian' },
 ]
+
+const SORTED_LANGUAGES = [...LANGUAGES].sort((a, b) => {
+  if (a.code === 'en') return -1
+  if (b.code === 'en') return 1
+  return a.englishName.localeCompare(b.englishName, 'en', { sensitivity: 'base' })
+})
 
 const MAX_LANGS = 5
 const MIN_LANGS = 2
@@ -39,6 +45,28 @@ export default function LanguageSelector({
   disabled,
 }: LanguageSelectorProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const userLocale = useMemo(() => {
+    if (typeof window === 'undefined') return 'en'
+    const browserLocale = (
+      window.navigator.languages?.find(Boolean)
+      || window.navigator.language
+      || document.documentElement.lang
+      || 'en'
+    ).trim()
+    return browserLocale || 'en'
+  }, [])
+
+  const languageNameFormatter = useMemo(() => {
+    try {
+      return new Intl.DisplayNames([userLocale], { type: 'language' })
+    } catch {
+      try {
+        return new Intl.DisplayNames(['en'], { type: 'language' })
+      } catch {
+        return null
+      }
+    }
+  }, [userLocale])
 
   useEffect(() => {
     if (!isOpen) return
@@ -61,9 +89,10 @@ export default function LanguageSelector({
       ref={ref}
       className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-xl py-1.5 w-44 max-h-[280px] overflow-y-auto"
     >
-      {LANGUAGES.map((lang) => {
+      {SORTED_LANGUAGES.map((lang) => {
         const isSelected = selectedLanguages.includes(lang.code)
         const isDisabled = disabled || (!isSelected && atMax) || (isSelected && atMin)
+        const localizedName = languageNameFormatter?.of(lang.code)?.trim() || lang.englishName
         return (
           <button
             key={lang.code}
@@ -83,7 +112,7 @@ export default function LanguageSelector({
               {isSelected && '✓'}
             </span>
             <span>{lang.flag}</span>
-            <span className="text-gray-700 truncate">{lang.name}</span>
+            <span className="text-gray-700 truncate">{localizedName}</span>
           </button>
         )
       })}
