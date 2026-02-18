@@ -56,6 +56,22 @@ type TranslateContext = {
   recentTurns: RecentTurnContext[]
 }
 
+type GeminiUsageMetadata = {
+  promptTokenCount?: unknown
+  candidatesTokenCount?: unknown
+  totalTokenCount?: unknown
+}
+
+type GeminiResponseLike = {
+  text: () => string
+  usageMetadata?: GeminiUsageMetadata
+  promptFeedback?: unknown
+  candidates?: Array<{
+    finishReason?: unknown
+    safetyRatings?: unknown
+  }>
+}
+
 const voiceCache = new Map<string, { voiceId: string, expiresAt: number }>()
 
 function normalizeLang(input: string): string {
@@ -210,28 +226,65 @@ async function translateWithGemini(ctx: TranslateContext): Promise<TranslationEn
   })
 
   const result = await model.generateContent(userPrompt)
-  const content = result.response.text()?.trim() || ''
-  if (!content) return null
+  const response = result.response as unknown as GeminiResponseLike
+  const content = response.text()?.trim() || ''
+  const usageMetadata = response.usageMetadata
+  const promptTokens = sanitizeNonNegativeInt(usageMetadata?.promptTokenCount)
+  const completionTokens = sanitizeNonNegativeInt(usageMetadata?.candidatesTokenCount)
+  const totalTokens = sanitizeNonNegativeInt(usageMetadata?.totalTokenCount)
+  const candidateMeta = Array.isArray(response.candidates)
+    ? response.candidates.map((candidate, index) => ({
+      index,
+      finishReason: candidate.finishReason ?? null,
+      safetyRatings: candidate.safetyRatings ?? null,
+    }))
+    : []
+
+  if (!content) {
+    console.error('[translate/finalize] gemini_empty_text', {
+      sourceLanguage: ctx.sourceLanguage,
+      targetLanguages: ctx.targetLanguages,
+      textPreview: ctx.text.slice(0, 120),
+      recentTurnsCount: ctx.recentTurns.length,
+      promptFeedback: response.promptFeedback ?? null,
+      candidates: candidateMeta,
+      usage: {
+        input_tokens: promptTokens,
+        output_tokens: completionTokens,
+        total_tokens: totalTokens,
+      },
+    })
+    return null
+  }
 
   const translations = parseTranslations(content)
-  if (Object.keys(translations).length === 0) return null
-
-  const usageMetadata = (result.response as unknown as {
-    usageMetadata?: {
-      promptTokenCount?: unknown
-      candidatesTokenCount?: unknown
-      totalTokenCount?: unknown
-    }
-  }).usageMetadata
+  if (Object.keys(translations).length === 0) {
+    console.error('[translate/finalize] gemini_unparseable_json', {
+      sourceLanguage: ctx.sourceLanguage,
+      targetLanguages: ctx.targetLanguages,
+      textPreview: ctx.text.slice(0, 120),
+      recentTurnsCount: ctx.recentTurns.length,
+      promptFeedback: response.promptFeedback ?? null,
+      candidates: candidateMeta,
+      responseTextLength: content.length,
+      responseTextPreview: content.slice(0, 2000),
+      usage: {
+        input_tokens: promptTokens,
+        output_tokens: completionTokens,
+        total_tokens: totalTokens,
+      },
+    })
+    return null
+  }
 
   return {
     translations,
     provider: 'gemini',
     model: DEFAULT_MODEL,
     usage: normalizeUsage({
-      prompt: usageMetadata?.promptTokenCount,
-      completion: usageMetadata?.candidatesTokenCount,
-      total: usageMetadata?.totalTokenCount,
+      prompt: promptTokens,
+      completion: completionTokens,
+      total: totalTokens,
     }),
   }
 }
@@ -382,6 +435,7 @@ export async function POST(request: NextRequest) {
   const ttsPayload = (typeof body.tts === 'object' && body.tts !== null) ? body.tts as Record<string, unknown> : null
   const ttsLanguage = normalizeLang(typeof ttsPayload?.language === 'string' ? ttsPayload.language : '')
   const ttsVoiceId = typeof ttsPayload?.voiceId === 'string' ? ttsPayload.voiceId.trim() : ''
+  const enableTts = ttsPayload?.enabled === true
   const sessionKeyHint = typeof body.sessionKey === 'string' ? body.sessionKey.trim() : null
 
   if (!GEMINI_API_KEY) {
@@ -479,6 +533,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (Object.keys(translations).length === 0) {
+      console.error('[translate/finalize] target_language_miss', {
+        provider: selectedResult.provider,
+        sourceLanguage,
+        targetLanguages,
+        returnedLanguages: Object.keys(selectedResult.translations),
+        textPreview: text.slice(0, 120),
+      })
       const response = NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
       ensureTrackingContext(request, response, { sessionKeyHint })
       return response
@@ -490,7 +551,7 @@ export async function POST(request: NextRequest) {
       model: selectedResult.model,
     }
 
-    if (ttsLanguage && targetLanguages.includes(ttsLanguage)) {
+    if (enableTts && ttsLanguage && targetLanguages.includes(ttsLanguage)) {
       const ttsText = (translations[ttsLanguage] || '').trim()
       if (ttsText) {
         const ttsResult = await synthesizeTtsInline({

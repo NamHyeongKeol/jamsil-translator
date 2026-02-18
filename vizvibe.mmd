@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_finalize_gemini_only_single_attempt
+    %% @lastActive: mingle_app_gemini_empty_response_deep_logging
 
     %% === START ===
     %% @project_start [start, closed]
@@ -490,6 +490,9 @@ flowchart TD
     %% @mingle_app_finalize_gemini_only_single_attempt [ai-task, closed, 2026-02-18, ai]
     mingle_app_finalize_gemini_only_single_attempt("Finalize 번역 엔진 Gemini 단일화<br/><sub>OpenAI/Claude 호출 코드와 환경키 분기를 제거하고<br/>Gemini 2.5 Flash Lite 1회 요청만 수행하도록 단순화,<br/>재시도/다중 provider 폴백 없이 실패 시 즉시 502로 종료해<br/>원인 추적 범위를 단일 경로로 고정</sub>")
 
+    %% @mingle_app_gemini_empty_response_deep_logging [ai-task, closed, 2026-02-18, ai]
+    mingle_app_gemini_empty_response_deep_logging("Gemini 빈응답 원인 추적 로그 확장<br/><sub>gemini_empty_text / gemini_unparseable_json 로그를 추가해<br/>promptFeedback·candidates·response preview·token usage를<br/>빈 응답/파싱 실패 시점에 구조화해 기록하고<br/>타깃 언어 누락 케이스도 별도 target_language_miss로 분리</sub>")
+
     %% @mingle_app_partial_translation_threshold_tune [ai-task, closed, 2026-02-18, ai]
     mingle_app_partial_translation_threshold_tune("STT 부분번역 트리거 10자 단위 조정<br/><sub>중간 번역 호출 기준을 5자 단위에서<br/>10자 단위(10/20/30...)로 상향 조정하고<br/>첫 partial 수신 시 길이와 무관하게 1회<br/>선호출 후 final 확정 번역 호출은 유지</sub>")
 
@@ -664,7 +667,8 @@ flowchart TD
     mingle_app_bottom_bar_usage_left_alignment --> mingle_app_finalize_prompt_context_tone_and_token_logs
     mingle_app_finalize_prompt_context_tone_and_token_logs --> mingle_app_finalize_provider_error_logging
     mingle_app_finalize_provider_error_logging --> mingle_app_finalize_gemini_only_single_attempt
-    mingle_app_finalize_gemini_only_single_attempt --> demo_limit_server_db_migration
+    mingle_app_finalize_gemini_only_single_attempt --> mingle_app_gemini_empty_response_deep_logging
+    mingle_app_gemini_empty_response_deep_logging --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
@@ -681,11 +685,12 @@ flowchart TD
     mingle_app_finalize_prompt_context_tone_and_token_logs -.-> ultimate_goal
     mingle_app_finalize_provider_error_logging -.-> ultimate_goal
     mingle_app_finalize_gemini_only_single_attempt -.-> ultimate_goal
+    mingle_app_gemini_empty_response_deep_logging -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_finalize_gemini_only_single_attempt
+        mingle_app_gemini_empty_response_deep_logging
     end
 
     %% === STYLES ===
@@ -905,7 +910,8 @@ flowchart TD
     style mingle_app_bottom_bar_usage_left_alignment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_finalize_prompt_context_tone_and_token_logs fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_finalize_provider_error_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_finalize_gemini_only_single_attempt fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_finalize_gemini_only_single_attempt fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_gemini_empty_response_deep_logging fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
