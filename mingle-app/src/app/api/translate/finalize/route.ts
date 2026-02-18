@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import OpenAI from 'openai'
-import Anthropic from '@anthropic-ai/sdk'
 import {
   ensureTrackingContext,
   sanitizeNonNegativeInt,
@@ -10,8 +8,6 @@ import {
 export const runtime = 'nodejs'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
-const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || ''
 const DEFAULT_MODEL = process.env.DEMO_TRANSLATE_MODEL || 'gemini-2.5-flash-lite'
 const INWORLD_API_BASE = 'https://api.inworld.ai'
 const DEFAULT_TTS_MODEL_ID = process.env.INWORLD_TTS_MODEL_ID || 'inworld-tts-1.5-mini'
@@ -41,7 +37,7 @@ type TranslationUsage = {
 
 type TranslationEngineResult = {
   translations: Record<string, string>
-  provider: 'gemini' | 'openai' | 'claude'
+  provider: 'gemini'
   model: string
   usage?: TranslationUsage
 }
@@ -240,77 +236,6 @@ async function translateWithGemini(ctx: TranslateContext): Promise<TranslationEn
   }
 }
 
-async function translateWithOpenAI(ctx: TranslateContext): Promise<TranslationEngineResult | null> {
-  if (!OPENAI_API_KEY) return null
-
-  const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
-  const { systemPrompt, userPrompt } = buildPrompt(ctx)
-
-  const response = await openai.chat.completions.create({
-    model: 'gpt-5-nano',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.1,
-  })
-
-  const content = response.choices[0]?.message?.content?.trim() || ''
-  if (!content) return null
-
-  const translations = parseTranslations(content)
-  if (Object.keys(translations).length === 0) return null
-
-  return {
-    translations,
-    provider: 'openai',
-    model: 'gpt-5-nano',
-    usage: normalizeUsage({
-      prompt: response.usage?.prompt_tokens,
-      completion: response.usage?.completion_tokens,
-      total: response.usage?.total_tokens,
-    }),
-  }
-}
-
-async function translateWithClaude(ctx: TranslateContext): Promise<TranslationEngineResult | null> {
-  if (!CLAUDE_API_KEY) return null
-
-  const anthropic = new Anthropic({ apiKey: CLAUDE_API_KEY })
-  const { systemPrompt, userPrompt } = buildPrompt(ctx)
-
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
-  })
-
-  const block = response.content[0]
-  if (!block || block.type !== 'text') return null
-
-  const content = block.text.trim()
-  if (!content) return null
-
-  const translations = parseTranslations(content)
-  if (Object.keys(translations).length === 0) return null
-
-  return {
-    translations,
-    provider: 'claude',
-    model: 'claude-haiku-4-5-20251001',
-    usage: normalizeUsage({
-      prompt: response.usage?.input_tokens,
-      completion: response.usage?.output_tokens,
-      total: (
-        sanitizeNonNegativeInt(response.usage?.input_tokens) ?? 0
-      ) + (
-        sanitizeNonNegativeInt(response.usage?.output_tokens) ?? 0
-      ),
-    }),
-  }
-}
-
 function getAuthHeaderValue(): string | null {
   const jwtToken = process.env.INWORLD_JWT?.trim()
   if (jwtToken) {
@@ -459,7 +384,7 @@ export async function POST(request: NextRequest) {
   const ttsVoiceId = typeof ttsPayload?.voiceId === 'string' ? ttsPayload.voiceId.trim() : ''
   const sessionKeyHint = typeof body.sessionKey === 'string' ? body.sessionKey.trim() : null
 
-  if (!GEMINI_API_KEY && !OPENAI_API_KEY && !CLAUDE_API_KEY) {
+  if (!GEMINI_API_KEY) {
     const response = NextResponse.json({ error: 'No translation API key configured' }, { status: 500 })
     ensureTrackingContext(request, response, { sessionKeyHint })
     return response
@@ -506,47 +431,27 @@ export async function POST(request: NextRequest) {
 
   try {
     let selectedResult: TranslationEngineResult | null = null
-    const translators: Array<{
-      provider: TranslationEngineResult['provider']
-      run: (context: TranslateContext) => Promise<TranslationEngineResult | null>
-    }> = [
-      { provider: 'gemini', run: translateWithGemini },
-      { provider: 'openai', run: translateWithOpenAI },
-      { provider: 'claude', run: translateWithClaude },
-    ]
-
-    for (const translator of translators) {
-      try {
-        const translated = await translator.run(ctx)
-        if (translated && Object.keys(translated.translations).length > 0) {
-          selectedResult = translated
-          break
+    try {
+      selectedResult = await translateWithGemini(ctx)
+    } catch (error) {
+      const errorPayload = error instanceof Error
+        ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
         }
-        console.warn('[translate/finalize] provider_empty_response', {
-          provider: translator.provider,
-          sourceLanguage,
-          targetLanguages,
-        })
-      } catch (error) {
-        // Continue to next provider.
-        const errorPayload = error instanceof Error
-          ? {
-            name: error.name,
-            message: error.message,
-            stack: error.stack,
-          }
-          : { raw: String(error) }
-        console.error('[translate/finalize] provider_error', {
-          provider: translator.provider,
-          sourceLanguage,
-          targetLanguages,
-          error: errorPayload,
-        })
-      }
+        : { raw: String(error) }
+      console.error('[translate/finalize] provider_error', {
+        provider: 'gemini',
+        sourceLanguage,
+        targetLanguages,
+        error: errorPayload,
+      })
     }
 
-    if (!selectedResult) {
-      console.error('[translate/finalize] all_providers_failed', {
+    if (!selectedResult || Object.keys(selectedResult.translations).length === 0) {
+      console.error('[translate/finalize] provider_empty_response', {
+        provider: 'gemini',
         sourceLanguage,
         targetLanguages,
         textPreview: text.slice(0, 120),
