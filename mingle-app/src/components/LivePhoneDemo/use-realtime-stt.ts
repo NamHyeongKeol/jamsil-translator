@@ -113,11 +113,11 @@ function normalizeStoredUtterance(utterance: Utterance): Utterance {
 }
 
 function normalizeSttTurnText(rawText: string): string {
-  // Drop Soniox end markers, then strip leading "." / whitespace noise.
-  // If the turn is only dots/spaces, this returns an empty string.
+  // Drop Soniox end markers, then strip leading punctuation/whitespace noise.
+  // If the turn is only these characters, this returns an empty string.
   return rawText
     .replace(/<\/?end>/gi, '')
-    .replace(/^[.\s]+/, '')
+    .replace(/^[.\s。—]+/, '')
     .trim()
 }
 
