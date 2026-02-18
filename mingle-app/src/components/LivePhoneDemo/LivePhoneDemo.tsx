@@ -157,6 +157,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const processTtsQueueRef = useRef<() => void>(() => {})
   const initialUtteranceIdsRef = useRef<string[] | null>(null)
   const stopClickResumeTimerIdsRef = useRef<number[]>([])
+  const langSelectorButtonRef = useRef<HTMLButtonElement | null>(null)
 
 
   // Persist selected languages
@@ -786,6 +787,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           </span>
           <div className="relative flex items-center gap-1.5">
             <button
+              ref={langSelectorButtonRef}
               onClick={() => !isActive && setLangSelectorOpen(o => !o)}
               disabled={isActive}
               className="flex items-center gap-1 disabled:opacity-60"
@@ -806,6 +808,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               selectedLanguages={selectedLanguages}
               onToggleLanguage={handleToggleLanguage}
               disabled={isActive}
+              triggerRef={langSelectorButtonRef}
             />
           </div>
         </div>

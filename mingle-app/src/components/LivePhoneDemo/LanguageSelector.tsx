@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, type RefObject } from 'react'
 
 const LANGUAGES = [
   { code: 'en', flag: '🇺🇸', englishName: 'English' },
@@ -35,6 +35,7 @@ interface LanguageSelectorProps {
   selectedLanguages: string[]
   onToggleLanguage: (code: string) => void
   disabled?: boolean
+  triggerRef?: RefObject<HTMLElement | null>
 }
 
 export default function LanguageSelector({
@@ -43,6 +44,7 @@ export default function LanguageSelector({
   selectedLanguages,
   onToggleLanguage,
   disabled,
+  triggerRef,
 }: LanguageSelectorProps) {
   const ref = useRef<HTMLDivElement>(null)
   const userLocale = useMemo(() => {
@@ -71,13 +73,15 @@ export default function LanguageSelector({
   useEffect(() => {
     if (!isOpen) return
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose()
-      }
+      const target = e.target as Node | null
+      if (!target) return
+      if (ref.current?.contains(target)) return
+      if (triggerRef?.current?.contains(target)) return
+      onClose()
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [isOpen, onClose])
+  }, [isOpen, onClose, triggerRef])
 
   if (!isOpen) return null
 
