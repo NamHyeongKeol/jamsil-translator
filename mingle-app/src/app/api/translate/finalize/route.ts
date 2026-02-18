@@ -245,7 +245,12 @@ async function translateWithGemini(ctx: TranslateContext): Promise<TranslationEn
 
   const result = await model.generateContent(userPrompt)
   const response = result.response as unknown as GeminiResponseLike
-  const content = response.text()?.trim() || ''
+  const rawContent = response.text() || ''
+  console.info([
+    '[translate/finalize] gemini_raw_response',
+    rawContent,
+  ].join('\n'))
+  const content = rawContent.trim()
   const usageMetadata = response.usageMetadata
   const promptTokens = sanitizeNonNegativeInt(usageMetadata?.promptTokenCount)
   const completionTokens = sanitizeNonNegativeInt(usageMetadata?.candidatesTokenCount)
