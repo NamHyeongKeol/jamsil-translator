@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { AuthSessionProvider } from "@/components/auth-session-provider";
 import MobileCanvasShell from "@/components/mobile-canvas-shell";
+import { TtsSettingsProvider } from "@/context/tts-settings";
 import { DEFAULT_LOCALE } from "@/i18n";
 import "./globals.css";
 
@@ -68,9 +69,11 @@ export default function RootLayout({
   return (
     <html lang={DEFAULT_LOCALE}>
       <body className="antialiased">
-        <AuthSessionProvider>
-          <MobileCanvasShell>{children}</MobileCanvasShell>
-        </AuthSessionProvider>
+        <TtsSettingsProvider>
+          <AuthSessionProvider>
+            <MobileCanvasShell>{children}</MobileCanvasShell>
+          </AuthSessionProvider>
+        </TtsSettingsProvider>
       </body>
     </html>
   );

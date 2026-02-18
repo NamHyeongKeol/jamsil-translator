@@ -8,6 +8,7 @@ import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
+import { useTtsSettings } from '@/context/tts-settings'
 
 const VOLUME_THRESHOLD = 0.05
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
@@ -139,7 +140,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { return ['en', 'ko', 'ja'] }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
-  const [isSoundEnabled, setIsSoundEnabled] = useState(true)
+  const { ttsEnabled: isSoundEnabled, setTtsEnabled: setIsSoundEnabled } = useTtsSettings()
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const utterancesRef = useRef<Utterance[]>([])
   const playerAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -1019,13 +1020,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 {enableAutoTTS && (
                   <button
                     onClick={() => {
-                      setIsSoundEnabled(prev => {
-                        const next = !prev
-                        if (!next) {
-                          setSpeakingItem(null)
-                        }
-                        return next
-                      })
+                      const next = !isSoundEnabled
+                      setIsSoundEnabled(next)
+                      if (!next) {
+                        setSpeakingItem(null)
+                      }
                     }}
                      className="ml-2 p-2 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
                       aria-label={isSoundEnabled ? muteTtsLabel : unmuteTtsLabel}
