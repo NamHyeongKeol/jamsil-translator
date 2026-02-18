@@ -16,12 +16,12 @@ const TtsSettingsContext = createContext<TtsSettingsContextValue | null>(null)
 
 export function TtsSettingsProvider({ children }: { children: ReactNode }) {
   const [ttsEnabled, setTtsEnabledState] = useState(() => {
-    if (typeof window === 'undefined') return true
+    if (typeof window === 'undefined') return false
     try {
       const stored = window.localStorage.getItem(LS_KEY_TTS_ENABLED)
-      if (stored === 'false') return false
+      if (stored === 'true') return true
     } catch { /* ignore */ }
-    return true
+    return false
   })
 
   const [aecEnabled, setAecEnabledState] = useState(() => {
