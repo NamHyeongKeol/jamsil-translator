@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
 
 const LS_KEY_TTS_ENABLED = 'mingle_tts_enabled'
 const LS_KEY_AEC_ENABLED = 'mingle_aec_enabled'
@@ -47,8 +47,13 @@ export function TtsSettingsProvider({ children }: { children: ReactNode }) {
     } catch { /* ignore */ }
   }, [])
 
+  const value = useMemo(
+    () => ({ ttsEnabled, setTtsEnabled, aecEnabled, setAecEnabled }),
+    [ttsEnabled, setTtsEnabled, aecEnabled, setAecEnabled],
+  )
+
   return (
-    <TtsSettingsContext.Provider value={{ ttsEnabled, setTtsEnabled, aecEnabled, setAecEnabled }}>
+    <TtsSettingsContext.Provider value={value}>
       {children}
     </TtsSettingsContext.Provider>
   )
