@@ -545,6 +545,7 @@ export default function useRealtimeSTT({
     options?: {
       signal?: AbortSignal
       ttsLanguage?: string
+      enableTts?: boolean
       isFinal?: boolean
       clientMessageId?: string
       excludeUtteranceId?: string
@@ -582,7 +583,7 @@ export default function useRealtimeSTT({
       }
       const normalizedTtsLang = (options?.ttsLanguage || '').trim()
       if (normalizedTtsLang) {
-        body.tts = { language: normalizedTtsLang }
+        body.tts = { language: normalizedTtsLang, enabled: options?.enableTts === true }
       }
       const res = await fetch('/api/translate/finalize', {
         method: 'POST',
@@ -832,12 +833,13 @@ export default function useRealtimeSTT({
     },
   ) => {
     const { utteranceId, text, lang } = localFinalizeResult
-    const ttsTargetLang = enableTtsRef.current ? (languages.filter(l => l !== lang)[0] || '') : ''
+    const ttsTargetLang = languages.filter(l => l !== lang)[0] || ''
     const seq = ++translateSeqRef.current
     const requestStartedAt = Date.now()
 
     void translateViaApi(text, lang, languages, {
       ttsLanguage: ttsTargetLang,
+      enableTts: enableTtsRef.current,
       isFinal: true,
       clientMessageId: utteranceId,
       excludeUtteranceId: utteranceId,
