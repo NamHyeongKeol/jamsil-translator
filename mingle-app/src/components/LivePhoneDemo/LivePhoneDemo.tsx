@@ -980,7 +980,30 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             paddingRight: "max(calc(env(safe-area-inset-right) + 10px), 14px)",
           }}
         >
-          <div />
+          <div className="justify-self-start">
+            {/* Usage progress bar */}
+            {usageSec > 0 && (
+              <div className="flex items-center gap-1.5">
+                {isUsageLimited ? (
+                  <>
+                    <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${usageSec >= 25 ? 'bg-red-400' : 'bg-amber-400'}`}
+                        style={{ width: `${usagePercent}%` }}
+                      />
+                    </div>
+                    <span className={`text-sm tabular-nums ${isLimitReached ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
+                      {remainingSec}s
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-sm tabular-nums text-gray-400">
+                    {usageSec}s
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
            <div className="flex justify-center">
             <button
               onPointerDown={handleMicPointerDown}
@@ -1019,26 +1042,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
              </button>
           </div>
           <div className="justify-self-end">
-            {/* Usage progress bar */}
             {usageSec > 0 && (
-              <div className="flex items-center gap-1.5">
-                {isUsageLimited ? (
-                  <>
-                    <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${usageSec >= 25 ? 'bg-red-400' : 'bg-amber-400'}`}
-                        style={{ width: `${usagePercent}%` }}
-                      />
-                    </div>
-                    <span className={`text-sm tabular-nums ${isLimitReached ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
-                      {remainingSec}s
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-sm tabular-nums text-gray-400">
-                    {usageSec}s
-                  </span>
-                )}
+              <div className="flex items-center gap-1">
                 {enableAutoTTS && (
                   <button
                     onClick={() => {
@@ -1048,7 +1053,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                         setSpeakingItem(null)
                       }
                     }}
-                     className="ml-2 p-2 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
+                     className="p-2 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
                       aria-label={isSoundEnabled ? muteTtsLabel : unmuteTtsLabel}
                     >
                     {isSoundEnabled ? (
@@ -1060,7 +1065,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 )}
                 <button
                   onClick={() => setAecEnabled(!aecEnabled)}
-                  className="ml-1 p-2 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
+                  className="p-2 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
                   aria-label={aecEnabled ? 'Echo off (AEC on)' : 'Echo on (AEC off)'}
                   title={aecEnabled ? 'Echo off (AEC on)' : 'Echo on (AEC off)'}
                 >

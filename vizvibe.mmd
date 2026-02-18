@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_echo_icon_and_canvas_400_restore
+    %% @lastActive: mingle_app_bottom_bar_usage_left_alignment
 
     %% === START ===
     %% @project_start [start, closed]
@@ -478,6 +478,9 @@ flowchart TD
     %% @mingle_app_echo_icon_and_canvas_400_restore [ai-task, closed, 2026-02-18, ai]
     mingle_app_echo_icon_and_canvas_400_restore("에코 아이콘/캔버스 폭 복구<br/><sub>에코 토글 아이콘을 스피커→마이크 흐름으로<br/>더 직관적인 형태로 재교체하고 크기를 키워<br/>버튼만 보고도 용도를 파악하기 쉽게 보정,<br/>모바일 캔버스를 화면 중앙 400px 고정으로 복원</sub>")
 
+    %% @mingle_app_bottom_bar_usage_left_alignment [ai-task, closed, 2026-02-18, ai]
+    mingle_app_bottom_bar_usage_left_alignment("하단바 사용시간 표시 좌측 이동<br/><sub>재생 버튼 우측에 몰려 있던 요소를 완화하기 위해<br/>사용시간/제한 프로그레스 영역을 좌측 칸으로 분리하고<br/>우측 칸에는 오디오 토글 버튼만 유지해<br/>하단바 시인성과 터치 여유를 함께 개선</sub>")
+
     %% @mingle_app_partial_translation_threshold_tune [ai-task, closed, 2026-02-18, ai]
     mingle_app_partial_translation_threshold_tune("STT 부분번역 트리거 10자 단위 조정<br/><sub>중간 번역 호출 기준을 5자 단위에서<br/>10자 단위(10/20/30...)로 상향 조정하고<br/>첫 partial 수신 시 길이와 무관하게 1회<br/>선호출 후 final 확정 번역 호출은 유지</sub>")
 
@@ -648,7 +651,8 @@ flowchart TD
     mingle_app_partial_translation_threshold_tune --> mingle_app_tts_global_state
     mingle_app_tts_global_state --> mingle_app_aec_toggle
     mingle_app_aec_toggle --> mingle_app_echo_icon_and_canvas_400_restore
-    mingle_app_echo_icon_and_canvas_400_restore --> demo_limit_server_db_migration
+    mingle_app_echo_icon_and_canvas_400_restore --> mingle_app_bottom_bar_usage_left_alignment
+    mingle_app_bottom_bar_usage_left_alignment --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
@@ -661,11 +665,12 @@ flowchart TD
     mingle_app_ios_splash_cleanup -.-> ultimate_goal
     mingle_app_aec_toggle -.-> ultimate_goal
     mingle_app_echo_icon_and_canvas_400_restore -.-> ultimate_goal
+    mingle_app_bottom_bar_usage_left_alignment -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_echo_icon_and_canvas_400_restore
+        mingle_app_bottom_bar_usage_left_alignment
     end
 
     %% === STYLES ===
@@ -881,7 +886,8 @@ flowchart TD
     style mingle_app_partial_translation_threshold_tune fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tts_global_state fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_aec_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_echo_icon_and_canvas_400_restore fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_echo_icon_and_canvas_400_restore fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_bottom_bar_usage_left_alignment fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
