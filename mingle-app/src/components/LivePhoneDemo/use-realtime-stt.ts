@@ -106,6 +106,15 @@ function normalizeStoredUtterance(utterance: Utterance): Utterance {
   return { ...utterance, createdAtMs }
 }
 
+function normalizeSttTurnText(rawText: string): string {
+  // Drop Soniox end markers, then strip leading "." / whitespace noise.
+  // If the turn is only dots/spaces, this returns an empty string.
+  return rawText
+    .replace(/<\/?end>/gi, '')
+    .replace(/^[.\s]+/, '')
+    .trim()
+}
+
 interface UseRealtimeSTTOptions {
   languages: string[]
   onLimitReached?: () => void
@@ -751,7 +760,7 @@ export default function useRealtimeSTT({
   }, [])
 
   const finalizePendingLocally = useCallback((rawText: string, rawLang: string): LocalFinalizeResult | null => {
-    const text = rawText.replace(/<\/?end>/gi, '').trim()
+    const text = normalizeSttTurnText(rawText)
     const lang = (rawLang || 'unknown').trim() || 'unknown'
     if (!text) return null
 
@@ -1084,7 +1093,7 @@ export default function useRealtimeSTT({
       if (!utterance) return
 
       const rawText = typeof utterance.text === 'string' ? utterance.text : ''
-      const text = rawText.replace(/<\/?end>/gi, '').trim()
+      const text = normalizeSttTurnText(rawText)
       const lang = typeof utterance.language === 'string' ? utterance.language : 'unknown'
       const isFinal = data.is_final === true
 
@@ -1093,6 +1102,12 @@ export default function useRealtimeSTT({
       }
 
       if (isFinal) {
+        // Ignore non-meaningful turns (only "." / spaces) entirely.
+        // No bubble, translation, or TTS should be produced.
+        if (!text) {
+          clearPartialBuffers()
+          return
+        }
         const sig = `${lang}::${text}`
         const now = Date.now()
         const sttDurationMs = turnStartedAtRef.current ? Math.max(0, now - turnStartedAtRef.current) : undefined
