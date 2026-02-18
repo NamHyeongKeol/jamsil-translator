@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Loader2, Volume2, VolumeX, Waves } from 'lucide-react'
+import { Play, Loader2, Volume2, VolumeX } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
@@ -83,6 +83,30 @@ type TtsQueueItem = {
   utteranceId: string
   audioBlob: Blob
   language: string
+}
+
+function EchoLoopIcon({ echoAllowed }: { echoAllowed: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      aria-hidden="true"
+      className={echoAllowed ? 'text-amber-500' : 'text-gray-400'}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 10h2.8l3.2-2.8v9.6L6.8 14H4z" />
+      <path d="M15 9.3v5.2a2.6 2.6 0 0 0 5.2 0V9.3" />
+      <path d="M17.6 7.1v7.4" />
+      <path d="M10.8 12.1c1.2 0 2.2.4 3.2 1.4" />
+      <path d="M12.2 9.4c2.6 0 4.7 1 6.4 2.8" />
+      {!echoAllowed && <path d="M4.1 4.1 19.9 19.9" />}
+    </svg>
+  )
 }
 
 function getFirstTranslationToSpeak(utterance: Utterance, selectedLanguages: string[]) {
@@ -1045,7 +1069,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   className="ml-1 p-2 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
                   aria-label={aecEnabled ? 'Echo off (AEC on)' : 'Echo on (AEC off)'}
                 >
-                  <Waves size={18} className={aecEnabled ? 'text-gray-400' : 'text-amber-500'} />
+                  <EchoLoopIcon echoAllowed={!aecEnabled} />
                 </button>
               </div>
             )}
