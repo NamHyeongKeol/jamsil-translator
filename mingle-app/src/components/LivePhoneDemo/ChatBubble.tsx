@@ -15,6 +15,7 @@ export interface Utterance {
   originalLang: string
   translations: Record<string, string>
   translationFinalized?: Record<string, boolean>
+  createdAtMs?: number
 }
 
 interface ChatBubbleProps {

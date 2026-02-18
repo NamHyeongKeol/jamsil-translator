@@ -46,9 +46,18 @@ type TranslationEngineResult = {
   usage?: TranslationUsage
 }
 
+type RecentTurnContext = {
+  sourceLanguage: string
+  sourceText: string
+  translations: Record<string, string>
+  ageMs?: number
+}
+
 type TranslateContext = {
   text: string
+  sourceLanguage: string
   targetLanguages: string[]
+  recentTurns: RecentTurnContext[]
 }
 
 const voiceCache = new Map<string, { voiceId: string, expiresAt: number }>()
@@ -88,11 +97,92 @@ function parseTranslations(raw: string): Record<string, string> {
   return output
 }
 
+function parseRecentTurns(raw: unknown): RecentTurnContext[] {
+  if (!Array.isArray(raw)) return []
+  const items = raw.slice(-12)
+  const turns: RecentTurnContext[] = []
+
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue
+    const payload = item as Record<string, unknown>
+    const sourceText = typeof payload.sourceText === 'string'
+      ? payload.sourceText.replace(/<\/?end>/gi, '').trim()
+      : ''
+    if (!sourceText) continue
+    const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '') || 'unknown'
+
+    const translationsPayload = (
+      typeof payload.translations === 'object'
+      && payload.translations !== null
+    ) ? payload.translations as Record<string, unknown> : {}
+    const translations: Record<string, string> = {}
+    for (const [language, translatedText] of Object.entries(translationsPayload)) {
+      if (typeof translatedText !== 'string') continue
+      const normalizedLanguage = normalizeLang(language)
+      if (!normalizedLanguage) continue
+      const cleaned = translatedText.replace(/<\/?end>/gi, '').trim()
+      if (!cleaned) continue
+      translations[normalizedLanguage] = cleaned
+    }
+
+    const ageMs = sanitizeNonNegativeInt(payload.ageMs)
+    turns.push({
+      sourceLanguage,
+      sourceText,
+      translations,
+      ...(ageMs !== null ? { ageMs } : {}),
+    })
+  }
+
+  return turns
+}
+
+function formatRecentTurnsForPrompt(turns: RecentTurnContext[]): string {
+  if (turns.length === 0) return 'None'
+
+  return turns.map((turn, index) => {
+    const translationLines = Object.entries(turn.translations)
+      .map(([language, translatedText]) => `    - ${language}: "${translatedText}"`)
+      .join('\n')
+    const ageSuffix = typeof turn.ageMs === 'number'
+      ? ` (~${Math.round(turn.ageMs / 1000)}s ago)`
+      : ''
+
+    return [
+      `Turn ${index + 1}${ageSuffix}`,
+      `  Original [${turn.sourceLanguage}]: "${turn.sourceText}"`,
+      '  Prior translations:',
+      translationLines || '    - (no translation captured)',
+    ].join('\n')
+  }).join('\n\n')
+}
+
 function buildPrompt(ctx: TranslateContext): { systemPrompt: string, userPrompt: string } {
   const langList = ctx.targetLanguages.map((lang) => `${lang} (${LANG_NAMES[lang] || lang})`).join(', ')
+  const recentTurns = formatRecentTurnsForPrompt(ctx.recentTurns)
   return {
-    systemPrompt: 'You are a translator. Respond ONLY with JSON mapping language codes to translations. No extra text.',
-    userPrompt: `Translate to ${langList}:\n"${ctx.text}"`,
+    systemPrompt: [
+      'You are a professional live conversation translator.',
+      'Your highest priority is translating ONLY the current turn accurately.',
+      'Use recent turns and their prior translations only as context for ambiguity resolution and natural phrasing.',
+      'If context conflicts with the current turn, always trust the current turn.',
+      'Respond ONLY with strict JSON mapping language codes to translated strings. No markdown, no explanations.',
+    ].join(' '),
+    userPrompt: [
+      'Current turn (translate THIS turn now):',
+      `- Source language: ${ctx.sourceLanguage}`,
+      `- Target languages: ${langList}`,
+      `- Text: "${ctx.text}"`,
+      '',
+      'Recent turns from the last 10 seconds (context only; do NOT re-translate these turns):',
+      recentTurns,
+      '',
+      'Instructions:',
+      '1) Prioritize a precise translation of only the current turn.',
+      '2) Use recent turns + their translations only to keep context natural.',
+      '3) Do not add, omit, or alter facts from the current turn.',
+      '4) Return JSON object only, with language codes as keys.',
+    ].join('\n'),
   }
 }
 
@@ -402,7 +492,13 @@ export async function POST(request: NextRequest) {
     return response
   }
 
-  const ctx: TranslateContext = { text, targetLanguages }
+  const recentTurns = parseRecentTurns(body.recentTurns)
+  const ctx: TranslateContext = {
+    text,
+    sourceLanguage,
+    targetLanguages,
+    recentTurns,
+  }
   const { systemPrompt, userPrompt } = buildPrompt(ctx)
   console.info([
     '[translate/finalize] input_prompt',

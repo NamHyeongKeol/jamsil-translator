@@ -20,6 +20,7 @@ const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 const LS_KEY_STT_DEBUG = 'mingle_stt_debug'
 const NATIVE_STT_QUERY_KEY = 'nativeStt'
 const NATIVE_STT_EVENT = 'mingle:native-stt'
+const RECENT_TURN_CONTEXT_WINDOW_MS = 10_000
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
@@ -87,6 +88,24 @@ function toBase64(data: Int16Array): string {
   return btoa(binary)
 }
 
+function inferUtteranceCreatedAtMs(utterance: Pick<Utterance, 'id' | 'createdAtMs'>): number | null {
+  if (typeof utterance.createdAtMs === 'number' && Number.isFinite(utterance.createdAtMs) && utterance.createdAtMs > 0) {
+    return Math.floor(utterance.createdAtMs)
+  }
+  const match = /^u-(\d+)-/.exec(utterance.id)
+  if (!match) return null
+  const parsed = Number(match[1])
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+  return Math.floor(parsed)
+}
+
+function normalizeStoredUtterance(utterance: Utterance): Utterance {
+  const createdAtMs = inferUtteranceCreatedAtMs(utterance)
+  if (createdAtMs === null) return utterance
+  if (utterance.createdAtMs === createdAtMs) return utterance
+  return { ...utterance, createdAtMs }
+}
+
 interface UseRealtimeSTTOptions {
   languages: string[]
   onLimitReached?: () => void
@@ -108,6 +127,14 @@ interface TranslateApiResult {
   ttsAudioMime?: string
   provider?: string
   model?: string
+}
+
+interface RecentTurnContextPayload {
+  sourceLanguage: string
+  sourceText: string
+  translations: Record<string, string>
+  occurredAtMs: number
+  ageMs: number
 }
 
 interface ClientEventLogPayload {
@@ -249,7 +276,7 @@ export default function useRealtimeSTT({
         if (seen.has(u.id)) return false
         seen.add(u.id)
         return true
-      })
+      }).map(normalizeStoredUtterance)
     } catch { return [] }
   })
   const [partialTranscript, setPartialTranscript] = useState('')
@@ -264,6 +291,7 @@ export default function useRealtimeSTT({
   })
 
   const audioContextRef = useRef<AudioContext | null>(null)
+  const utterancesRef = useRef<Utterance[]>(utterances)
   const streamRef = useRef<MediaStream | null>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
@@ -338,6 +366,10 @@ export default function useRealtimeSTT({
       localStorage.setItem(LS_KEY_USAGE, String(usageSec))
     } catch { /* ignore */ }
   }, [usageSec])
+
+  useEffect(() => {
+    utterancesRef.current = utterances
+  }, [utterances])
 
   useEffect(() => {
     partialTranscriptRef.current = partialTranscript
@@ -446,6 +478,39 @@ export default function useRealtimeSTT({
     turnStartedAtRef.current = null
   }, [])
 
+  const buildRecentTurnContextPayload = useCallback((excludeUtteranceId?: string): RecentTurnContextPayload[] => {
+    const now = Date.now()
+    const windowStart = now - RECENT_TURN_CONTEXT_WINDOW_MS
+    const recentTurns: RecentTurnContextPayload[] = []
+
+    for (const utterance of utterancesRef.current) {
+      if (excludeUtteranceId && utterance.id === excludeUtteranceId) continue
+      const occurredAtMs = inferUtteranceCreatedAtMs(utterance)
+      if (occurredAtMs === null || occurredAtMs < windowStart || occurredAtMs > now) continue
+
+      const sourceText = utterance.originalText.trim()
+      if (!sourceText) continue
+
+      const translations: Record<string, string> = {}
+      for (const [lang, text] of Object.entries(utterance.translations || {})) {
+        const cleaned = text.trim()
+        if (!cleaned) continue
+        translations[lang] = cleaned
+      }
+
+      recentTurns.push({
+        sourceLanguage: utterance.originalLang || 'unknown',
+        sourceText,
+        translations,
+        occurredAtMs,
+        ageMs: Math.max(0, now - occurredAtMs),
+      })
+    }
+
+    recentTurns.sort((a, b) => a.occurredAtMs - b.occurredAtMs)
+    return recentTurns
+  }, [])
+
   // ===== HTTP Translation via /api/translate/finalize =====
   const translateViaApi = useCallback(async (
     text: string,
@@ -456,6 +521,7 @@ export default function useRealtimeSTT({
       ttsLanguage?: string
       isFinal?: boolean
       clientMessageId?: string
+      excludeUtteranceId?: string
       sttDurationMs?: number
       totalDurationMs?: number
     },
@@ -472,6 +538,10 @@ export default function useRealtimeSTT({
     })
     try {
       const body: Record<string, unknown> = { text, sourceLanguage, targetLanguages: langs }
+      const recentTurns = buildRecentTurnContextPayload(options?.excludeUtteranceId)
+      if (recentTurns.length > 0) {
+        body.recentTurns = recentTurns
+      }
       body.isFinal = options?.isFinal === true
       body.sessionKey = ensureSessionKey()
       body.clientContext = buildClientContextPayload(usageSec)
@@ -519,7 +589,7 @@ export default function useRealtimeSTT({
       logTtsDebug('translate.error', { requestId })
       return { translations: {} }
     }
-  }, [ensureSessionKey, usageSec])
+  }, [buildRecentTurnContextPayload, ensureSessionKey, usageSec])
 
   const logClientEvent = useCallback(async (payload: ClientEventLogPayload) => {
     try {
@@ -716,6 +786,7 @@ export default function useRealtimeSTT({
       originalLang: lang,
       translations: seedTranslations,
       translationFinalized: seedFinalized,
+      createdAtMs: now,
     }])
     setPartialTranslations({})
     partialTranslationsRef.current = {}
@@ -743,6 +814,7 @@ export default function useRealtimeSTT({
       ttsLanguage: ttsTargetLang,
       isFinal: true,
       clientMessageId: utteranceId,
+      excludeUtteranceId: utteranceId,
       sttDurationMs: options?.sttDurationMs,
     }).then(result => {
       if (Object.keys(result.translations).length > 0) {
@@ -1073,6 +1145,7 @@ export default function useRealtimeSTT({
           originalLang: lang,
           translations: seedTranslations,
           translationFinalized: seedFinalized,
+          createdAtMs: now,
         }
         setUtterances(u => [...u, newUtterance])
         clearPartialBuffers()
