@@ -82,7 +82,7 @@ function App(): React.JSX.Element {
   const isPageReadyRef = useRef(false);
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [nativeStatus, setNativeStatus] = useState('idle');
+  const nativeStatusRef = useRef('idle');
   const currentTtsUtteranceIdRef = useRef<string | null>(null);
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
@@ -133,7 +133,7 @@ function App(): React.JSX.Element {
     const aecEnabled = payload?.aecEnabled !== false;
 
     try {
-      setNativeStatus('starting');
+      nativeStatusRef.current = 'starting';
       await startNativeStt({
         wsUrl,
         languages,
@@ -141,10 +141,10 @@ function App(): React.JSX.Element {
         langHintsStrict,
         aecEnabled,
       });
-      setNativeStatus('running');
+      nativeStatusRef.current = 'running';
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      setNativeStatus('failed');
+      nativeStatusRef.current = 'failed';
       emitToWeb({ type: 'error', message });
     }
   }, [emitToWeb, nativeAvailable]);
@@ -155,7 +155,7 @@ function App(): React.JSX.Element {
         pendingText: typeof payload?.pendingText === 'string' ? payload.pendingText : '',
         pendingLanguage: typeof payload?.pendingLanguage === 'string' ? payload.pendingLanguage : 'unknown',
       });
-      setNativeStatus('stopped');
+      nativeStatusRef.current = 'stopped';
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       emitToWeb({ type: 'error', message });
@@ -216,7 +216,7 @@ function App(): React.JSX.Element {
   useEffect(() => {
     const statusSub = addNativeSttListener('status', event => {
       if (__DEV__) console.log(`[NativeSTT] status: ${event.status}`);
-      setNativeStatus(event.status);
+      nativeStatusRef.current = event.status;
       emitToWeb({ type: 'status', status: event.status });
     });
 
@@ -226,13 +226,13 @@ function App(): React.JSX.Element {
 
     const errorSub = addNativeSttListener('error', event => {
       if (__DEV__) console.log(`[NativeSTT] error: ${event.message}`);
-      setNativeStatus('error');
+      nativeStatusRef.current = 'error';
       emitToWeb({ type: 'error', message: event.message });
     });
 
     const closeSub = addNativeSttListener('close', event => {
       if (__DEV__) console.log(`[NativeSTT] close: ${event.reason}`);
-      setNativeStatus('closed');
+      nativeStatusRef.current = 'closed';
       emitToWeb({ type: 'close', reason: event.reason });
     });
 
@@ -276,6 +276,16 @@ function App(): React.JSX.Element {
     };
   }, [emitTtsToWeb]);
 
+  const handleLoadEnd = useCallback(() => {
+    isPageReadyRef.current = true;
+    emitToWeb({ type: 'status', status: nativeStatusRef.current });
+  }, [emitToWeb]);
+
+  const handleLoadError = useCallback((event: { nativeEvent: { description?: string } }) => {
+    const description = event.nativeEvent.description || 'webview_load_failed';
+    setLoadError(description);
+  }, []);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
@@ -288,15 +298,10 @@ function App(): React.JSX.Element {
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
         setSupportMultipleWindows={false}
+        allowsBackForwardNavigationGestures={false}
         onMessage={handleWebMessage}
-        onLoadEnd={() => {
-          isPageReadyRef.current = true;
-          emitToWeb({ type: 'status', status: nativeStatus });
-        }}
-        onError={(event) => {
-          const description = event.nativeEvent.description || 'webview_load_failed';
-          setLoadError(description);
-        }}
+        onLoadEnd={handleLoadEnd}
+        onError={handleLoadError}
         style={styles.webView}
       />
       {loadError ? (
