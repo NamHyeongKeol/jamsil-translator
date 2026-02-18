@@ -42,7 +42,11 @@ export default function ChatBubble({ utterance, selectedLanguages, isSpeaking = 
   const targetLangs = selectedLanguages.filter(lang => lang !== utterance.originalLang)
   const translationEntries = targetLangs
     .filter(lang => utterance.translations[lang])
-    .map(lang => [lang, utterance.translations[lang]] as const)
+    .map(lang => ({
+      lang,
+      text: utterance.translations[lang],
+      isFinalized: utterance.translationFinalized?.[lang] === true,
+    }))
   const pendingLangs = targetLangs
     .filter(lang => !utterance.translations[lang])
 
@@ -65,19 +69,30 @@ export default function ChatBubble({ utterance, selectedLanguages, isSpeaking = 
       </div>
 
       {/* Translation bubbles */}
-      {translationEntries.map(([lang, text]) => (
+      {translationEntries.map(({ lang, text, isFinalized }) => (
         <div
           key={lang}
-          className="ml-2.5 max-w-[80%] bg-amber-50 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
+          className={`ml-2.5 max-w-[80%] rounded-2xl rounded-tl-sm px-3.5 py-2 transition-colors ${
+            isFinalized
+              ? 'bg-amber-50 border border-amber-100'
+              : 'bg-gray-100/80 border border-gray-200'
+          }`}
         >
           <div className="flex items-center justify-between mb-0.5">
             <div className="flex items-center gap-1.5">
               <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
-              <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
+              <span className={`text-xs font-semibold uppercase ${
+                isFinalized ? 'text-amber-500' : 'text-gray-400'
+              }`}>{lang}</span>
+              {!isFinalized && (
+                <span className="inline-block w-1 h-1 rounded-full bg-gray-400 animate-pulse" />
+              )}
             </div>
             {isSpeaking && speakingLanguage === lang && <SpeakingIndicator />}
           </div>
-          <p className="text-sm text-gray-700 leading-relaxed">{text}</p>
+          <p className={`text-sm leading-relaxed ${
+            isFinalized ? 'text-gray-700' : 'text-gray-500'
+          }`}>{text}</p>
         </div>
       ))}
       {/* Bouncing dots for pending translations */}
