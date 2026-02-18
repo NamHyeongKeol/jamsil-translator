@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tts_global_state
+    %% @lastActive: mingle_app_aec_toggle
 
     %% === START ===
     %% @project_start [start, closed]
@@ -472,6 +472,9 @@ flowchart TD
     %% @mingle_app_tts_global_state [ai-task, closed, 2026-02-18, ai]
     mingle_app_tts_global_state("TTS 전역 상태 Context 도입<br/><sub>isSoundEnabled 로컬 state를 TtsSettingsContext로 격상해<br/>음소거 시 Inworld TTS API 요청을 서버에서 완전 차단하고<br/>localStorage 기반 persist로 설정 유지<br/>다른 컴포넌트에서도 useTtsSettings()로 읽기/쓰기 가능</sub>")
 
+    %% @mingle_app_aec_toggle [ai-task, closed, 2026-02-18, ai]
+    mingle_app_aec_toggle("AEC 토글 버튼 추가<br/><sub>음소거 버튼 우측에 Waves 아이콘으로 에코 제거 on/off 추가<br/>기본 AEC ON(에코 꺼짐), 끄면 출력이 입력으로 피드백 가능<br/>웹은 getUserMedia echoCancellation, iOS는<br/>setVoiceProcessingEnabled로 세션별 적용</sub>")
+
     %% @mingle_app_partial_translation_threshold_tune [ai-task, closed, 2026-02-18, ai]
     mingle_app_partial_translation_threshold_tune("STT 부분번역 트리거 10자 단위 조정<br/><sub>중간 번역 호출 기준을 5자 단위에서<br/>10자 단위(10/20/30...)로 상향 조정하고<br/>첫 partial 수신 시 길이와 무관하게 1회<br/>선호출 후 final 확정 번역 호출은 유지</sub>")
 
@@ -640,7 +643,8 @@ flowchart TD
     mingle_app_ios_stt_tts_resilience_diagnostics --> mingle_app_ios_splash_cleanup
     mingle_app_ios_splash_cleanup --> mingle_app_partial_translation_threshold_tune
     mingle_app_partial_translation_threshold_tune --> mingle_app_tts_global_state
-    mingle_app_tts_global_state --> demo_limit_server_db_migration
+    mingle_app_tts_global_state --> mingle_app_aec_toggle
+    mingle_app_aec_toggle --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
@@ -651,12 +655,12 @@ flowchart TD
     mingle_app_web_client_event_logging_fix -.-> ultimate_goal
     mingle_app_og_image_locale_redirect_fix -.-> ultimate_goal
     mingle_app_ios_splash_cleanup -.-> ultimate_goal
-    mingle_app_tts_global_state -.-> ultimate_goal
+    mingle_app_aec_toggle -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_tts_global_state
+        mingle_app_aec_toggle
     end
 
     %% === STYLES ===
@@ -870,7 +874,8 @@ flowchart TD
     style mingle_app_ios_stt_tts_resilience_diagnostics fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_ios_splash_cleanup fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_partial_translation_threshold_tune fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tts_global_state fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tts_global_state fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_aec_toggle fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
