@@ -980,7 +980,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             paddingRight: "max(calc(env(safe-area-inset-right) + 10px), 14px)",
           }}
         >
-          <div className="justify-self-start">
+          <div className="justify-self-start pl-2">
             {/* Usage progress bar */}
             {usageSec > 0 && (
               <div className="flex items-center gap-1.5">
