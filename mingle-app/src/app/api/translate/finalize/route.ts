@@ -163,25 +163,19 @@ function buildPrompt(ctx: TranslateContext): { systemPrompt: string, userPrompt:
   return {
     systemPrompt: [
       'You are a professional live conversation translator.',
-      'Your highest priority is translating ONLY the current turn accurately.',
-      'Use recent turns and their prior translations only as context for ambiguity resolution and natural phrasing.',
-      'If context conflicts with the current turn, always trust the current turn.',
+      'Translate the current turn naturally and accurately.',
+      'Use recent turns and their prior translations as context to improve phrasing, tone, and disambiguation.',
+      'Keep the translation grounded in the current turn while reflecting conversation flow naturally.',
       'Respond ONLY with strict JSON mapping language codes to translated strings. No markdown, no explanations.',
     ].join(' '),
     userPrompt: [
-      'Current turn (translate THIS turn now):',
+      'Current turn to translate:',
       `- Source language: ${ctx.sourceLanguage}`,
       `- Target languages: ${langList}`,
       `- Text: "${ctx.text}"`,
       '',
-      'Recent turns from the last 10 seconds (context only; do NOT re-translate these turns):',
+      'Recent turns from the last 10 seconds (use these to make the current-turn translation more natural):',
       recentTurns,
-      '',
-      'Instructions:',
-      '1) Prioritize a precise translation of only the current turn.',
-      '2) Use recent turns + their translations only to keep context natural.',
-      '3) Do not add, omit, or alter facts from the current turn.',
-      '4) Return JSON object only, with language codes as keys.',
     ].join('\n'),
   }
 }
@@ -531,6 +525,15 @@ export async function POST(request: NextRequest) {
       ensureTrackingContext(request, response, { sessionKeyHint })
       return response
     }
+
+    console.info([
+      '[translate/finalize] response_usage',
+      `provider=${selectedResult.provider}`,
+      `model=${selectedResult.model}`,
+      `input_tokens=${selectedResult.usage?.promptTokens ?? 'unknown'}`,
+      `output_tokens=${selectedResult.usage?.completionTokens ?? 'unknown'}`,
+      `total_tokens=${selectedResult.usage?.totalTokens ?? 'unknown'}`,
+    ].join(' '))
 
     const translations: Record<string, string> = {}
     for (const lang of targetLanguages) {
