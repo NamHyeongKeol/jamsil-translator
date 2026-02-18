@@ -297,8 +297,10 @@ export default function useRealtimeSTT({
   // preventing old (slow) translations from overwriting newer ones.
   const translateSeqRef = useRef(0)
   const lastAppliedSeqRef = useRef<Map<string, number>>(new Map()) // utteranceId -> last applied seq
-  // Track the partial transcript length at which we last fired a partial translation.
-  // We fire a new partial translation every time the length crosses the next 5-char threshold.
+  // Track the partial transcript 10-char threshold last used for partial translation.
+  // A first partial translation fires immediately when the first transcript arrives,
+  // then subsequent calls fire when 10/20/30... thresholds are crossed.
+  const hasFiredInitialPartialTranslateRef = useRef(false)
   const lastPartialTranslateLenRef = useRef(0)
   const partialTranslateControllerRef = useRef<AbortController | null>(null)
   const sessionKeyRef = useRef('')
@@ -435,6 +437,7 @@ export default function useRealtimeSTT({
     partialTranscriptRef.current = ''
     setPartialLang(null)
     partialLangRef.current = null
+    hasFiredInitialPartialTranslateRef.current = false
     lastPartialTranslateLenRef.current = 0
     if (partialTranslateControllerRef.current) {
       partialTranslateControllerRef.current.abort()
@@ -1304,23 +1307,28 @@ export default function useRealtimeSTT({
     }
   }, [connectionStatus, startRecording, stopRecordingGracefully])
 
-  // ===== Partial translation: fire every 5-char threshold =====
-  const PARTIAL_TRANSLATE_STEP = 5
+  // ===== Partial translation: fire once immediately, then every 10-char threshold =====
+  const PARTIAL_TRANSLATE_STEP = 10
   useEffect(() => {
-    const len = partialTranscript.trim().length
+    const trimmed = partialTranscript.trim()
+    const len = trimmed.length
     if (len === 0 || languages.length === 0 || connectionStatus !== 'ready') return
-    // Determine the next threshold the length must reach to fire a translation.
-    const nextThreshold = lastPartialTranslateLenRef.current + PARTIAL_TRANSLATE_STEP
-    if (len < nextThreshold) return
-
-    // We crossed a threshold — fire partial translation.
-    lastPartialTranslateLenRef.current = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
+    if (!hasFiredInitialPartialTranslateRef.current) {
+      hasFiredInitialPartialTranslateRef.current = true
+      // Prime the threshold tracker based on the first partial length so
+      // the next request is triggered at the next 10-char boundary.
+      lastPartialTranslateLenRef.current = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
+    } else {
+      const nextThreshold = lastPartialTranslateLenRef.current + PARTIAL_TRANSLATE_STEP
+      if (len < nextThreshold) return
+      lastPartialTranslateLenRef.current = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
+    }
 
     // Capture the utterance counter at request time so we can discard stale responses
     // that arrive after a new utterance has started (prevents cross-utterance contamination).
     const requestUtteranceId = utteranceIdRef.current
     const currentLang = partialLangRef.current || 'unknown'
-    translateViaApi(partialTranscript.trim(), currentLang, languages)
+    translateViaApi(trimmed, currentLang, languages)
       .then(result => {
         // Discard if a new utterance has started since this request was fired.
         if (utteranceIdRef.current !== requestUtteranceId) return
