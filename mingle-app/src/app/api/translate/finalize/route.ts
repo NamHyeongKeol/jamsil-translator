@@ -403,6 +403,16 @@ export async function POST(request: NextRequest) {
   }
 
   const ctx: TranslateContext = { text, targetLanguages }
+  const { systemPrompt, userPrompt } = buildPrompt(ctx)
+  console.info([
+    '[translate/finalize] input_prompt',
+    `sourceLanguage=${sourceLanguage}`,
+    `targetLanguages=${targetLanguages.join(',')}`,
+    '--- systemPrompt ---',
+    systemPrompt,
+    '--- userPrompt ---',
+    userPrompt,
+  ].join('\n'))
 
   try {
     let selectedResult: TranslationEngineResult | null = null
