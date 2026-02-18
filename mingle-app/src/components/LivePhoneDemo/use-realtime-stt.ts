@@ -31,6 +31,7 @@ type NativeSttStartCommand = {
     languages: string[]
     sttModel: string
     langHintsStrict: boolean
+    aecEnabled: boolean
   }
 }
 
@@ -120,6 +121,7 @@ interface UseRealtimeSTTOptions {
   onLimitReached?: () => void
   onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string) => void
   enableTts?: boolean
+  enableAec?: boolean
   usageLimitSec?: number | null
 }
 
@@ -269,6 +271,7 @@ export default function useRealtimeSTT({
   onLimitReached,
   onTtsAudio,
   enableTts,
+  enableAec = true,
   usageLimitSec = DEFAULT_USAGE_LIMIT_SEC,
 }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
@@ -1237,6 +1240,7 @@ export default function useRealtimeSTT({
             languages,
             sttModel: 'soniox',
             langHintsStrict: true,
+            aecEnabled: enableAec,
           },
         })
         if (!posted) {
@@ -1248,7 +1252,7 @@ export default function useRealtimeSTT({
       logSttDebug('web.start.begin')
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true,
+          echoCancellation: enableAec,
           noiseSuppression: true,
           autoGainControl: true,
           channelCount: 1,

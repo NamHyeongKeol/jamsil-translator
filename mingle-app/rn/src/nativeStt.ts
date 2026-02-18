@@ -5,6 +5,7 @@ type NativeSttStartOptions = {
   languages: string[];
   sttModel?: string;
   langHintsStrict?: boolean;
+  aecEnabled?: boolean;
 };
 
 type NativeSttStopOptions = {

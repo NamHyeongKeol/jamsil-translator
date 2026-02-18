@@ -35,6 +35,7 @@ type NativeSttCommand =
         languages?: string[];
         sttModel?: string;
         langHintsStrict?: boolean;
+        aecEnabled?: boolean;
       };
     }
   | {
@@ -129,6 +130,7 @@ function App(): React.JSX.Element {
       ? payload.sttModel.trim()
       : 'soniox';
     const langHintsStrict = payload?.langHintsStrict !== false;
+    const aecEnabled = payload?.aecEnabled !== false;
 
     try {
       setNativeStatus('starting');
@@ -137,6 +139,7 @@ function App(): React.JSX.Element {
         languages,
         sttModel,
         langHintsStrict,
+        aecEnabled,
       });
       setNativeStatus('running');
     } catch (error: unknown) {

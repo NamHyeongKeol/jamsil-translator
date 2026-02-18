@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Loader2, Volume2, VolumeX } from 'lucide-react'
+import { Play, Loader2, Volume2, VolumeX, Waves } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
@@ -140,7 +140,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { return ['en', 'ko', 'ja'] }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
-  const { ttsEnabled: isSoundEnabled, setTtsEnabled: setIsSoundEnabled } = useTtsSettings()
+  const { ttsEnabled: isSoundEnabled, setTtsEnabled: setIsSoundEnabled, aecEnabled, setAecEnabled } = useTtsSettings()
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const utterancesRef = useRef<Utterance[]>([])
   const playerAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -458,6 +458,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     onLimitReached,
     onTtsAudio: handleTtsAudio,
     enableTts: enableAutoTTS && isSoundEnabled,
+    enableAec: aecEnabled,
   })
 
   // Boost TTS volume while STT is active to compensate for iOS
@@ -1036,6 +1037,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                     )}
                   </button>
                 )}
+                <button
+                  onClick={() => setAecEnabled(!aecEnabled)}
+                  className="ml-1 p-2 rounded-full transition-colors hover:bg-gray-100 active:scale-90"
+                  aria-label={aecEnabled ? 'Echo off (AEC on)' : 'Echo on (AEC off)'}
+                >
+                  <Waves size={18} className={aecEnabled ? 'text-gray-400' : 'text-amber-500'} />
+                </button>
               </div>
             )}
           </div>

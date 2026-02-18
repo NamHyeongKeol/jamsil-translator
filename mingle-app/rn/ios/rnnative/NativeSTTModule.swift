@@ -11,6 +11,7 @@ class NativeSTTModule: RCTEventEmitter {
     private var socketTask: URLSessionWebSocketTask?
     private var hasInputTap = false
     private var isRunning = false
+    private var isAecEnabled = true
     private var hasListeners = false
     private var audioObserversInstalled = false
     private var isRestartingAudio = false
@@ -169,7 +170,7 @@ class NativeSTTModule: RCTEventEmitter {
             self.removeTapIfNeeded()
 
             let inputNode = self.audioEngine.inputNode
-            if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(true) }
+            if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(self.isAecEnabled) }
             let inputFormat = inputNode.inputFormat(forBus: 0)
             self.installInputTap(format: inputFormat)
 
@@ -405,13 +406,15 @@ class NativeSTTModule: RCTEventEmitter {
         languages: [String],
         sttModel: String,
         langHintsStrict: Bool,
+        aecEnabled: Bool,
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
+        isAecEnabled = aecEnabled
         audioChunkCount = 0
         wsMessageCount = 0
-        NSLog("[NativeSTTModule] startSession ws=%@ languages=%@ model=%@",
-              wsUrlString, languages.joined(separator: ","), sttModel)
+        NSLog("[NativeSTTModule] startSession ws=%@ languages=%@ model=%@ aec=%d",
+              wsUrlString, languages.joined(separator: ","), sttModel, aecEnabled ? 1 : 0)
 
         do {
             try configureAudioSession()
@@ -433,9 +436,10 @@ class NativeSTTModule: RCTEventEmitter {
         }
 
         let inputNode = audioEngine.inputNode
-        // AEC (voice processing) enabled to cancel TTS echo from mic input.
-        // Volume reduction side-effect is compensated in NativeTTSModule.
-        if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(true) }
+        // AEC (voice processing): toggled by user via aecEnabled flag.
+        // When enabled, cancels TTS echo from mic input (volume reduction compensated in NativeTTSModule).
+        // When disabled, allows echo feedback (intentional use case for echo effect).
+        if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(isAecEnabled) }
         let inputFormat = inputNode.inputFormat(forBus: 0)
         let sampleRate = Int(inputFormat.sampleRate.rounded())
         NSLog("[NativeSTTModule] inputFormat=%@ sampleRate=%d", inputFormat.description, sampleRate)
@@ -503,6 +507,7 @@ class NativeSTTModule: RCTEventEmitter {
         let languages = options["languages"] as? [String] ?? []
         let sttModel = options["sttModel"] as? String ?? "soniox"
         let langHintsStrict = options["langHintsStrict"] as? Bool ?? true
+        let aecEnabled = options["aecEnabled"] as? Bool ?? true
 
         let audioSession = AVAudioSession.sharedInstance()
         switch audioSession.recordPermission {
@@ -513,6 +518,7 @@ class NativeSTTModule: RCTEventEmitter {
                 languages: languages,
                 sttModel: sttModel,
                 langHintsStrict: langHintsStrict,
+                aecEnabled: aecEnabled,
                 resolve: resolve,
                 reject: reject
             )
@@ -530,6 +536,7 @@ class NativeSTTModule: RCTEventEmitter {
                             languages: languages,
                             sttModel: sttModel,
                             langHintsStrict: langHintsStrict,
+                            aecEnabled: aecEnabled,
                             resolve: resolve,
                             reject: reject
                         )
