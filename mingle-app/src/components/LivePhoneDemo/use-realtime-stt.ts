@@ -121,9 +121,34 @@ function normalizeSttTurnText(rawText: string): string {
     .trim()
 }
 
+function buildCurrentTurnPreviousStatePayload(
+  sourceLanguageRaw: string,
+  sourceTextRaw: string,
+  translationsRaw: Record<string, string>,
+): CurrentTurnPreviousStatePayload | null {
+  const sourceLanguage = (sourceLanguageRaw || 'unknown').trim() || 'unknown'
+  const sourceText = normalizeSttTurnText(sourceTextRaw)
+  if (!sourceText) return null
+
+  const translations: Record<string, string> = {}
+  for (const [language, translatedText] of Object.entries(translationsRaw)) {
+    const normalizedLanguage = (language || '').trim()
+    const cleaned = translatedText.trim()
+    if (!normalizedLanguage || !cleaned) continue
+    translations[normalizedLanguage] = cleaned
+  }
+
+  return {
+    sourceLanguage,
+    sourceText,
+    translations,
+  }
+}
+
 interface UseRealtimeSTTOptions {
   languages: string[]
   onLimitReached?: () => void
+  onTtsRequested?: (utteranceId: string, language: string) => void
   onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string) => void
   enableTts?: boolean
   enableAec?: boolean
@@ -134,6 +159,7 @@ interface LocalFinalizeResult {
   utteranceId: string
   text: string
   lang: string
+  currentTurnPreviousState: CurrentTurnPreviousStatePayload | null
 }
 
 interface TranslateApiResult {
@@ -151,6 +177,12 @@ interface RecentTurnContextPayload {
   translations: Record<string, string>
   occurredAtMs: number
   ageMs: number
+}
+
+interface CurrentTurnPreviousStatePayload {
+  sourceLanguage: string
+  sourceText: string
+  translations: Record<string, string>
 }
 
 interface ClientEventLogPayload {
@@ -274,6 +306,7 @@ function logSttDebug(event: string, payload?: Record<string, unknown>) {
 export default function useRealtimeSTT({
   languages,
   onLimitReached,
+  onTtsRequested,
   onTtsAudio,
   enableTts,
   enableAec = true,
@@ -330,6 +363,8 @@ export default function useRealtimeSTT({
   const partialTranscriptRef = useRef('')
   const partialLangRef = useRef<string | null>(null)
   const isStoppingRef = useRef(false)
+  const onTtsRequestedRef = useRef(onTtsRequested)
+  onTtsRequestedRef.current = onTtsRequested
   const onTtsAudioRef = useRef(onTtsAudio)
   onTtsAudioRef.current = onTtsAudio
   const enableTtsRef = useRef(enableTts)
@@ -548,6 +583,7 @@ export default function useRealtimeSTT({
       enableTts?: boolean
       isFinal?: boolean
       clientMessageId?: string
+      currentTurnPreviousState?: CurrentTurnPreviousStatePayload | null
       excludeUtteranceId?: string
       sttDurationMs?: number
       totalDurationMs?: number
@@ -562,6 +598,7 @@ export default function useRealtimeSTT({
       targetLanguages: langs,
       ttsLanguage: options?.ttsLanguage || null,
       textLen: text.trim().length,
+      hasCurrentTurnPreviousState: Boolean(options?.currentTurnPreviousState),
     })
     try {
       const body: Record<string, unknown> = { text, sourceLanguage, targetLanguages: langs }
@@ -580,6 +617,9 @@ export default function useRealtimeSTT({
       }
       if (typeof options?.totalDurationMs === 'number' && Number.isFinite(options.totalDurationMs) && options.totalDurationMs >= 0) {
         body.totalDurationMs = Math.floor(options.totalDurationMs)
+      }
+      if (options?.currentTurnPreviousState) {
+        body.currentTurnPreviousState = options.currentTurnPreviousState
       }
       const normalizedTtsLang = (options?.ttsLanguage || '').trim()
       if (normalizedTtsLang) {
@@ -805,6 +845,11 @@ export default function useRealtimeSTT({
     for (const key of Object.keys(seedTranslations)) {
       seedFinalized[key] = false
     }
+    const currentTurnPreviousState = buildCurrentTurnPreviousStatePayload(
+      rawLang,
+      rawText,
+      seedTranslations,
+    )
 
     const utteranceId = `u-${Date.now()}-${utteranceIdRef.current}`
     setUtterances(prev => [...prev, {
@@ -822,7 +867,7 @@ export default function useRealtimeSTT({
     setPartialLang(null)
     partialLangRef.current = null
     pendingLocalFinalizeRef.current = { utteranceId, text, lang, expiresAt: now + 15000 }
-    return { utteranceId, text, lang }
+    return { utteranceId, text, lang, currentTurnPreviousState }
   }, [])
 
   const finalizeTurnWithTranslation = useCallback((
@@ -832,16 +877,22 @@ export default function useRealtimeSTT({
       reason?: string
     },
   ) => {
-    const { utteranceId, text, lang } = localFinalizeResult
+    const { utteranceId, text, lang, currentTurnPreviousState } = localFinalizeResult
     const ttsTargetLang = languages.filter(l => l !== lang)[0] || ''
     const seq = ++translateSeqRef.current
     const requestStartedAt = Date.now()
+
+    // Reserve a TTS queue slot before the API call so playback order matches utterance order
+    if (enableTtsRef.current && ttsTargetLang) {
+      onTtsRequestedRef.current?.(utteranceId, ttsTargetLang)
+    }
 
     void translateViaApi(text, lang, languages, {
       ttsLanguage: ttsTargetLang,
       enableTts: enableTtsRef.current,
       isFinal: true,
       clientMessageId: utteranceId,
+      currentTurnPreviousState,
       excludeUtteranceId: utteranceId,
       sttDurationMs: options?.sttDurationMs,
     }).then(result => {
@@ -1172,6 +1223,11 @@ export default function useRealtimeSTT({
         for (const key of Object.keys(seedTranslations)) {
           seedFinalized[key] = false
         }
+        const currentTurnPreviousState = buildCurrentTurnPreviousStatePayload(
+          partialLangRef.current || lang,
+          partialTranscriptRef.current || text,
+          seedTranslations,
+        )
         const newUtteranceId = `u-${Date.now()}-${utteranceIdRef.current}`
         const newUtterance: Utterance = {
           id: newUtteranceId,
@@ -1190,6 +1246,7 @@ export default function useRealtimeSTT({
             utteranceId: newUtteranceId,
             text,
             lang,
+            currentTurnPreviousState,
           },
           {
             sttDurationMs,

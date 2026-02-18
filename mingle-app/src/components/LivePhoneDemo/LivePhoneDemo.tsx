@@ -78,9 +78,11 @@ interface LivePhoneDemoProps {
   unmuteTtsLabel: string
 }
 
+const TTS_AUDIO_WAIT_TIMEOUT_MS = 3000
+
 type TtsQueueItem = {
   utteranceId: string
-  audioBlob: Blob
+  audioBlob: Blob | null
   language: string
 }
 
@@ -151,6 +153,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const currentAudioUrlRef = useRef<string | null>(null)
   const ttsQueueRef = useRef<TtsQueueItem[]>([])
   const isTtsProcessingRef = useRef(false)
+  const ttsWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isAudioPrimedRef = useRef(false)
   const ttsAudioContextRef = useRef<AudioContext | null>(null)
   const ttsGainNodeRef = useRef<GainNode | null>(null)
@@ -210,17 +213,49 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
   }, [])
 
+  const clearTtsWaitTimer = useCallback(() => {
+    if (ttsWaitTimerRef.current) {
+      clearTimeout(ttsWaitTimerRef.current)
+      ttsWaitTimerRef.current = null
+    }
+  }, [])
+
   const processTtsQueue = useCallback(() => {
     if (isTtsProcessingRef.current) return
-    if (!enableAutoTTS || !isSoundEnabled) return
+    if (!enableAutoTTS || !isSoundEnabled) {
+      clearTtsWaitTimer()
+      return
+    }
 
     const queue = ttsQueueRef.current
     if (queue.length === 0) {
+      clearTtsWaitTimer()
       setSpeakingItem(null)
       return
     }
 
+    const front = queue[0]
+
+    // Front item is waiting for audio — set a timeout to skip if it never arrives
+    if (!front.audioBlob) {
+      if (!ttsWaitTimerRef.current) {
+        ttsWaitTimerRef.current = setTimeout(() => {
+          ttsWaitTimerRef.current = null
+          const q = ttsQueueRef.current
+          if (q.length > 0 && !q[0].audioBlob) {
+            logTtsQueue('queue.wait_timeout', { utteranceId: q[0].utteranceId })
+            q.shift()
+          }
+          processTtsQueueRef.current()
+        }, TTS_AUDIO_WAIT_TIMEOUT_MS)
+      }
+      return
+    }
+
+    // Front item has audio — play it
+    clearTtsWaitTimer()
     const next = queue.shift()!
+    const audioBlob = next.audioBlob!
     isTtsProcessingRef.current = true
     cleanupCurrentAudio()
     setSpeakingItem({ utteranceId: next.utteranceId, language: next.language })
@@ -233,11 +268,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
     const playViaNativeBridge = async () => {
       try {
-        const audioBase64 = await blobToBase64(next.audioBlob)
+        const audioBase64 = await blobToBase64(audioBlob)
         logTtsQueue('native.play.start', {
           utteranceId: next.utteranceId,
           language: next.language,
-          audioBytes: next.audioBlob.size,
+          audioBytes: audioBlob.size,
           base64Len: audioBase64.length,
         })
         window.ReactNativeWebView!.postMessage(JSON.stringify({
@@ -245,7 +280,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           payload: {
             utteranceId: next.utteranceId,
             audioBase64,
-            contentType: next.audioBlob.type || 'audio/mpeg',
+            contentType: audioBlob.type || 'audio/mpeg',
           },
         }))
       } catch (error) {
@@ -266,13 +301,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         try { await ctx.resume() } catch { /* best-effort */ }
       }
 
-      const objectUrl = URL.createObjectURL(next.audioBlob)
+      const objectUrl = URL.createObjectURL(audioBlob)
       currentAudioUrlRef.current = objectUrl
       audio.src = objectUrl
       logTtsQueue('play.start', {
         utteranceId: next.utteranceId,
         language: next.language,
-        audioBytes: next.audioBlob.size,
+        audioBytes: audioBlob.size,
         ctxState: ctx?.state ?? 'none',
       })
 
@@ -323,7 +358,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } else {
       void playViaHtmlAudio()
     }
-  }, [cleanupCurrentAudio, enableAutoTTS, ensureAudioPlayer, isSoundEnabled])
+  }, [cleanupCurrentAudio, clearTtsWaitTimer, enableAutoTTS, ensureAudioPlayer, isSoundEnabled])
 
   useEffect(() => {
     processTtsQueueRef.current = processTtsQueue
@@ -365,31 +400,31 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
   }, [])
 
+  // Reserve a slot in the TTS queue when a TTS request is about to be made.
+  // This ensures playback order matches utterance order regardless of response arrival order.
+  const handleTtsRequested = useCallback((utteranceId: string, language: string) => {
+    if (!enableAutoTTS || !isSoundEnabled) return
+    const queue = ttsQueueRef.current
+    if (queue.some(item => item.utteranceId === utteranceId)) return
+    queue.push({ utteranceId, audioBlob: null, language })
+    logTtsQueue('queue.reserve', { utteranceId, language, queueLen: queue.length })
+  }, [enableAutoTTS, isSoundEnabled])
+
   // Handle TTS audio received inline with translation response.
   const handleTtsAudio = useCallback((utteranceId: string, audioBlob: Blob, language: string) => {
     if (!enableAutoTTS || !isSoundEnabled) return
     const queue = ttsQueueRef.current
-    // Don't add duplicates
-    if (queue.some(item => item.utteranceId === utteranceId)) return
-
-    const newItem: TtsQueueItem = { utteranceId, audioBlob, language }
-    // Insert in utterance order (priority queue)
-    const utterances = utterancesRef.current
-    const newIndex = utterances.findIndex(u => u.id === utteranceId)
-    if (newIndex === -1) {
-      queue.push(newItem)
+    // Fill in existing placeholder
+    const existing = queue.find(item => item.utteranceId === utteranceId)
+    if (existing) {
+      existing.audioBlob = audioBlob
+      existing.language = language
+      logTtsQueue('queue.fill', { utteranceId, language, audioBytes: audioBlob.size, queueLen: queue.length })
     } else {
-      const insertAt = queue.findIndex(item => {
-        const existingIndex = utterances.findIndex(u => u.id === item.utteranceId)
-        return existingIndex > newIndex
-      })
-      if (insertAt === -1) {
-        queue.push(newItem)
-      } else {
-        queue.splice(insertAt, 0, newItem)
-      }
+      // No placeholder (edge case) — append to end
+      queue.push({ utteranceId, audioBlob, language })
+      logTtsQueue('queue.add', { utteranceId, language, audioBytes: audioBlob.size, queueLen: queue.length })
     }
-    logTtsQueue('queue.add', { utteranceId, language, audioBytes: audioBlob.size, queueLen: queue.length })
     processTtsQueue()
   }, [enableAutoTTS, isSoundEnabled, processTtsQueue])
 
@@ -415,6 +450,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   } = useRealtimeSTT({
     languages: selectedLanguages,
     onLimitReached,
+    onTtsRequested: handleTtsRequested,
     onTtsAudio: handleTtsAudio,
     enableTts: enableAutoTTS && isSoundEnabled,
     enableAec: aecEnabled,
@@ -562,6 +598,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   // Stop current playback when sound is disabled.
   useEffect(() => {
     if (isSoundEnabled) return
+    clearTtsWaitTimer()
     ttsQueueRef.current = []
     isTtsProcessingRef.current = false
     ttsNeedsUnlockRef.current = false
@@ -569,7 +606,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     if (isNativeApp()) {
       window.ReactNativeWebView!.postMessage(JSON.stringify({ type: 'native_tts_stop' }))
     }
-  }, [isSoundEnabled, cleanupCurrentAudio])
+  }, [clearTtsWaitTimer, isSoundEnabled, cleanupCurrentAudio])
 
   useEffect(() => {
     if (!enableAutoTTS) return
@@ -625,6 +662,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   useEffect(() => {
     return () => {
       clearStopClickResumeTimers()
+      clearTtsWaitTimer()
       ttsQueueRef.current = []
       isTtsProcessingRef.current = false
       ttsNeedsUnlockRef.current = false
@@ -633,7 +671,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       ttsAudioContextRef.current = null
       ttsGainNodeRef.current = null
     }
-  }, [clearStopClickResumeTimers, cleanupCurrentAudio])
+  }, [clearStopClickResumeTimers, clearTtsWaitTimer, cleanupCurrentAudio])
 
   const handleToggleLanguage = useCallback((code: string) => {
     setSelectedLanguages(prev => {
