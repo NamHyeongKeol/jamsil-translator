@@ -43,7 +43,12 @@ type NativeSttStopCommand = {
   }
 }
 
-type NativeSttBridgeCommand = NativeSttStartCommand | NativeSttStopCommand
+type NativeSttSetAecCommand = {
+  type: 'native_stt_set_aec'
+  payload: { enabled: boolean }
+}
+
+type NativeSttBridgeCommand = NativeSttStartCommand | NativeSttStopCommand | NativeSttSetAecCommand
 
 type NativeSttBridgeEvent =
   | { type: 'status', status: string }
@@ -364,6 +369,15 @@ export default function useRealtimeSTT({
   useEffect(() => {
     useNativeSttRef.current = shouldUseNativeSttBridge()
   }, [])
+
+  // Forward AEC toggle to native module in real-time (hot-swap mid-session).
+  const prevEnableAecRef = useRef(enableAec)
+  useEffect(() => {
+    if (prevEnableAecRef.current === enableAec) return
+    prevEnableAecRef.current = enableAec
+    if (!useNativeSttRef.current) return
+    sendNativeSttCommand({ type: 'native_stt_set_aec', payload: { enabled: enableAec } })
+  }, [enableAec, sendNativeSttCommand])
 
   // Persist utterances to localStorage
   useEffect(() => {

@@ -11,6 +11,7 @@ import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import {
   addNativeSttListener,
   isNativeSttAvailable,
+  setNativeSttAec,
   startNativeStt,
   stopNativeStt,
 } from './src/nativeStt';
@@ -59,7 +60,12 @@ type NativeTtsCommand =
       type: 'native_tts_stop';
     };
 
-type WebViewCommand = NativeSttCommand | NativeTtsCommand;
+type NativeSttAecCommand = {
+  type: 'native_stt_set_aec';
+  payload: { enabled: boolean };
+};
+
+type WebViewCommand = NativeSttCommand | NativeTtsCommand | NativeSttAecCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -201,6 +207,15 @@ function App(): React.JSX.Element {
         emitTtsToWeb({ type: 'tts_error', utteranceId, message });
         currentTtsUtteranceIdRef.current = null;
       });
+      return;
+    }
+
+    if (parsed.type === 'native_stt_set_aec') {
+      const enabled = parsed.payload?.enabled !== false;
+      if (__DEV__) {
+        console.log(`[Web→NativeSTT] setAec enabled=${enabled}`);
+      }
+      void setNativeSttAec(enabled);
       return;
     }
 

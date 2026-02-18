@@ -16,6 +16,7 @@ type NativeSttStopOptions = {
 type NativeSttModuleType = {
   start(options: NativeSttStartOptions): Promise<{ sampleRate: number }>;
   stop(options?: NativeSttStopOptions): Promise<void>;
+  setAec(enabled: boolean): Promise<{ ok: boolean }>;
 };
 
 type NativeSttEventMap = {
@@ -44,6 +45,13 @@ export async function stopNativeStt(options?: NativeSttStopOptions): Promise<voi
     return;
   }
   await nativeModule.stop(options || {});
+}
+
+export async function setNativeSttAec(enabled: boolean): Promise<void> {
+  if (!nativeModule) {
+    return;
+  }
+  await nativeModule.setAec(enabled);
 }
 
 export function addNativeSttListener<T extends keyof NativeSttEventMap>(

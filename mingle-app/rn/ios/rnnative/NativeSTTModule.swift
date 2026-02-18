@@ -434,6 +434,9 @@ class NativeSTTModule: RCTEventEmitter {
         if audioEngine.isRunning {
             audioEngine.stop()
         }
+        // Fully reset the engine so the input node drops any cached voice-processing
+        // pipeline state from a previous session (prevents AEC from "sticking" off).
+        audioEngine.reset()
 
         let inputNode = audioEngine.inputNode
         // AEC (voice processing): toggled by user via aecEnabled flag.
@@ -576,5 +579,43 @@ class NativeSTTModule: RCTEventEmitter {
         emitStatus("stopped")
         NSLog("[NativeSTTModule] stopped")
         resolve(["ok": true])
+    }
+
+    @objc(setAec:resolver:rejecter:)
+    func setAec(
+        _ enabled: Bool,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        let prev = isAecEnabled
+        isAecEnabled = enabled
+        NSLog("[NativeSTTModule] setAec %d→%d isRunning=%d", prev ? 1 : 0, enabled ? 1 : 0, isRunning ? 1 : 0)
+
+        guard isRunning else {
+            resolve(["ok": true])
+            return
+        }
+
+        // Hot-swap voice processing on the live audio engine.
+        // Stop engine → reset voice processing → re-install tap → restart engine.
+        removeTapIfNeeded()
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+
+        let inputNode = audioEngine.inputNode
+        if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(enabled) }
+        let inputFormat = inputNode.inputFormat(forBus: 0)
+        installInputTap(format: inputFormat)
+
+        do {
+            audioEngine.prepare()
+            try audioEngine.start()
+            NSLog("[NativeSTTModule] audioEngine restarted after AEC toggle, isRunning=%d", audioEngine.isRunning ? 1 : 0)
+            resolve(["ok": true])
+        } catch {
+            NSLog("[NativeSTTModule] audioEngine restart after AEC toggle FAILED: %@", error.localizedDescription)
+            reject("audio_engine", "Failed to restart after AEC toggle", error)
+        }
     }
 }
