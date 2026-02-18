@@ -54,6 +54,13 @@ type TranslateContext = {
   sourceLanguage: string
   targetLanguages: string[]
   recentTurns: RecentTurnContext[]
+  currentTurnPreviousState: CurrentTurnPreviousState | null
+}
+
+type CurrentTurnPreviousState = {
+  sourceLanguage: string
+  sourceText: string
+  translations: Record<string, string>
 }
 
 type GeminiUsageMetadata = {
@@ -149,6 +156,37 @@ function parseRecentTurns(raw: unknown): RecentTurnContext[] {
   return turns
 }
 
+function parseCurrentTurnPreviousState(raw: unknown): CurrentTurnPreviousState | null {
+  if (!raw || typeof raw !== 'object') return null
+  const payload = raw as Record<string, unknown>
+
+  const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '')
+  const sourceText = typeof payload.sourceText === 'string'
+    ? payload.sourceText.replace(/<\/?end>/gi, '').trim()
+    : ''
+  if (!sourceLanguage || !sourceText) return null
+
+  const translationsPayload = (
+    typeof payload.translations === 'object'
+    && payload.translations !== null
+  ) ? payload.translations as Record<string, unknown> : {}
+  const translations: Record<string, string> = {}
+  for (const [language, translatedText] of Object.entries(translationsPayload)) {
+    if (typeof translatedText !== 'string') continue
+    const normalizedLanguage = normalizeLang(language)
+    if (!normalizedLanguage) continue
+    const cleaned = translatedText.replace(/<\/?end>/gi, '').trim()
+    if (!cleaned) continue
+    translations[normalizedLanguage] = cleaned
+  }
+
+  return {
+    sourceLanguage,
+    sourceText,
+    translations,
+  }
+}
+
 function formatRecentTurnsForPrompt(turns: RecentTurnContext[]): string {
   if (turns.length === 0) return 'None'
 
@@ -169,25 +207,47 @@ function formatRecentTurnsForPrompt(turns: RecentTurnContext[]): string {
   }).join('\n\n')
 }
 
+function formatCurrentTurnPreviousStateForPrompt(state: CurrentTurnPreviousState | null): string {
+  if (!state) return 'None'
+  const translationLines = Object.entries(state.translations)
+    .map(([language, translatedText]) => `    - ${language}: "${translatedText}"`)
+    .join('\n')
+
+  return [
+    `  Source [${state.sourceLanguage}]: "${state.sourceText}"`,
+    '  Prior translations from same turn:',
+    translationLines || '    - (none)',
+  ].join('\n')
+}
+
 function buildPrompt(ctx: TranslateContext): { systemPrompt: string, userPrompt: string } {
   const langList = ctx.targetLanguages.map((lang) => `${lang} (${LANG_NAMES[lang] || lang})`).join(', ')
   const recentTurns = formatRecentTurnsForPrompt(ctx.recentTurns)
+  const currentTurnPreviousState = formatCurrentTurnPreviousStateForPrompt(ctx.currentTurnPreviousState)
+  const targetLangCodes = ctx.targetLanguages.join(', ')
   return {
     systemPrompt: [
       'You are a professional live conversation translator.',
       'Translate the current turn naturally and accurately.',
       'Use recent turns and their prior translations as context to improve phrasing, tone, and disambiguation.',
+      'Use the previous state of the same current turn for continuity when helpful.',
       'Keep the translation grounded in the current turn while reflecting conversation flow naturally.',
+      'Carefully verify the requested target language codes before answering.',
+      'Return all requested target language codes exactly once, and do not return any extra language codes.',
       'Respond ONLY with strict JSON mapping language codes to translated strings. No markdown, no explanations.',
     ].join(' '),
     userPrompt: [
       'Current turn to translate:',
       `- Source language: ${ctx.sourceLanguage}`,
       `- Target languages: ${langList}`,
+      `- Required output language codes: ${targetLangCodes}`,
       `- Text: "${ctx.text}"`,
       '',
       'Recent turns from the last 10 seconds (use these to make the current-turn translation more natural):',
       recentTurns,
+      '',
+      'Previous state of this SAME current turn right before finalization (use for continuity; this is not a separate turn):',
+      currentTurnPreviousState,
     ].join('\n'),
   }
 }
@@ -210,6 +270,20 @@ function normalizeUsage(raw: {
   if (completionTokens !== null) usage.completionTokens = completionTokens
   if (totalTokens !== null) usage.totalTokens = totalTokens
   return usage
+}
+
+function buildFallbackTranslationsFromCurrentTurnPreviousState(
+  state: CurrentTurnPreviousState | null,
+  targetLanguages: string[],
+): Record<string, string> {
+  if (!state) return {}
+  const output: Record<string, string> = {}
+  for (const language of targetLanguages) {
+    const candidate = state.translations[language]?.trim()
+    if (!candidate) continue
+    output[language] = candidate
+  }
+  return output
 }
 
 function buildGeminiResponseSchema(targetLanguages: string[]): ResponseSchema {
@@ -459,6 +533,7 @@ export async function POST(request: NextRequest) {
   const ttsLanguage = normalizeLang(typeof ttsPayload?.language === 'string' ? ttsPayload.language : '')
   const ttsVoiceId = typeof ttsPayload?.voiceId === 'string' ? ttsPayload.voiceId.trim() : ''
   const enableTts = ttsPayload?.enabled === true
+  const currentTurnPreviousState = parseCurrentTurnPreviousState(body.currentTurnPreviousState)
   const sessionKeyHint = typeof body.sessionKey === 'string' ? body.sessionKey.trim() : null
 
   if (!GEMINI_API_KEY) {
@@ -494,6 +569,7 @@ export async function POST(request: NextRequest) {
     sourceLanguage,
     targetLanguages,
     recentTurns,
+    currentTurnPreviousState,
   }
   const { systemPrompt, userPrompt } = buildPrompt(ctx)
   console.info([
@@ -507,10 +583,52 @@ export async function POST(request: NextRequest) {
   ].join('\n'))
 
   try {
+    const fallbackTranslations = buildFallbackTranslationsFromCurrentTurnPreviousState(
+      currentTurnPreviousState,
+      targetLanguages,
+    )
+    const buildResponseWithOptionalTts = async (
+      translations: Record<string, string>,
+      meta: { provider: string, model: string, usedFallbackFromPreviousState?: boolean },
+    ): Promise<NextResponse> => {
+      const responsePayload: Record<string, unknown> = {
+        translations,
+        provider: meta.provider,
+        model: meta.model,
+      }
+      if (meta.usedFallbackFromPreviousState) {
+        responsePayload.usedFallbackFromPreviousState = true
+      }
+
+      if (enableTts && ttsLanguage && targetLanguages.includes(ttsLanguage)) {
+        const ttsText = (translations[ttsLanguage] || '').trim()
+        if (ttsText) {
+          const ttsResult = await synthesizeTtsInline({
+            text: ttsText,
+            language: ttsLanguage,
+            requestedVoiceId: ttsVoiceId,
+          })
+
+          if (ttsResult) {
+            responsePayload.ttsLanguage = ttsLanguage
+            responsePayload.ttsAudioBase64 = ttsResult.audioBase64
+            responsePayload.ttsAudioMime = ttsResult.audioMime
+            responsePayload.ttsVoiceId = ttsResult.voiceId
+          }
+        }
+      }
+
+      const response = NextResponse.json(responsePayload)
+      ensureTrackingContext(request, response, { sessionKeyHint })
+      return response
+    }
+
     let selectedResult: TranslationEngineResult | null = null
+    let geminiRequestFailed = false
     try {
       selectedResult = await translateWithGemini(ctx)
     } catch (error) {
+      geminiRequestFailed = true
       const errorPayload = error instanceof Error
         ? {
           name: error.name,
@@ -534,6 +652,19 @@ export async function POST(request: NextRequest) {
         textPreview: text.slice(0, 120),
         recentTurnsCount: recentTurns.length,
       })
+      if (!geminiRequestFailed && Object.keys(fallbackTranslations).length > 0) {
+        console.warn('[translate/finalize] fallback_from_current_turn_previous_state', {
+          sourceLanguage,
+          targetLanguages,
+          fallbackLanguages: Object.keys(fallbackTranslations),
+          reason: 'provider_empty_response',
+        })
+        return await buildResponseWithOptionalTts(fallbackTranslations, {
+          provider: 'gemini',
+          model: DEFAULT_MODEL,
+          usedFallbackFromPreviousState: true,
+        })
+      }
       const response = NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
       ensureTrackingContext(request, response, { sessionKeyHint })
       return response
@@ -563,38 +694,28 @@ export async function POST(request: NextRequest) {
         returnedLanguages: Object.keys(selectedResult.translations),
         textPreview: text.slice(0, 120),
       })
+      if (Object.keys(fallbackTranslations).length > 0) {
+        console.warn('[translate/finalize] fallback_from_current_turn_previous_state', {
+          sourceLanguage,
+          targetLanguages,
+          fallbackLanguages: Object.keys(fallbackTranslations),
+          reason: 'target_language_miss',
+        })
+        return await buildResponseWithOptionalTts(fallbackTranslations, {
+          provider: selectedResult.provider,
+          model: selectedResult.model,
+          usedFallbackFromPreviousState: true,
+        })
+      }
       const response = NextResponse.json({ error: 'empty_translation_response' }, { status: 502 })
       ensureTrackingContext(request, response, { sessionKeyHint })
       return response
     }
 
-    const responsePayload: Record<string, unknown> = {
-      translations,
+    return await buildResponseWithOptionalTts(translations, {
       provider: selectedResult.provider,
       model: selectedResult.model,
-    }
-
-    if (enableTts && ttsLanguage && targetLanguages.includes(ttsLanguage)) {
-      const ttsText = (translations[ttsLanguage] || '').trim()
-      if (ttsText) {
-        const ttsResult = await synthesizeTtsInline({
-          text: ttsText,
-          language: ttsLanguage,
-          requestedVoiceId: ttsVoiceId,
-        })
-
-        if (ttsResult) {
-          responsePayload.ttsLanguage = ttsLanguage
-          responsePayload.ttsAudioBase64 = ttsResult.audioBase64
-          responsePayload.ttsAudioMime = ttsResult.audioMime
-          responsePayload.ttsVoiceId = ttsResult.voiceId
-        }
-      }
-    }
-
-    const response = NextResponse.json(responsePayload)
-    ensureTrackingContext(request, response, { sessionKeyHint })
-    return response
+    })
   } catch (error) {
     console.error('Finalize translation route error:', error)
     const response = NextResponse.json({ error: 'finalize_translation_failed' }, { status: 500 })
