@@ -12,6 +12,7 @@ class NativeSTTModule: RCTEventEmitter {
     private var hasInputTap = false
     private var isRunning = false
     private var isAecEnabled = true
+    private var lastAppliedAec: Bool? = nil
     private var hasListeners = false
     private var audioObserversInstalled = false
     private var isRestartingAudio = false
@@ -434,9 +435,15 @@ class NativeSTTModule: RCTEventEmitter {
         if audioEngine.isRunning {
             audioEngine.stop()
         }
-        // Fully reset the engine so the input node drops any cached voice-processing
-        // pipeline state from a previous session (prevents AEC from "sticking" off).
-        audioEngine.reset()
+        // Only reset the engine when the voice-processing state actually changes.
+        // A full reset wipes AEC calibration data, forcing re-convergence (= initial echo).
+        // When the state hasn't changed we skip the reset to preserve the learned echo path.
+        if lastAppliedAec != nil && lastAppliedAec != isAecEnabled {
+            audioEngine.reset()
+            NSLog("[NativeSTTModule] audioEngine reset for VP state change %d→%d",
+                  (lastAppliedAec ?? true) ? 1 : 0, isAecEnabled ? 1 : 0)
+        }
+        lastAppliedAec = isAecEnabled
 
         let inputNode = audioEngine.inputNode
         // AEC (voice processing): toggled by user via aecEnabled flag.
@@ -589,6 +596,7 @@ class NativeSTTModule: RCTEventEmitter {
     ) {
         let prev = isAecEnabled
         isAecEnabled = enabled
+        lastAppliedAec = enabled
         NSLog("[NativeSTTModule] setAec %d→%d isRunning=%d", prev ? 1 : 0, enabled ? 1 : 0, isRunning ? 1 : 0)
 
         guard isRunning else {
@@ -597,11 +605,12 @@ class NativeSTTModule: RCTEventEmitter {
         }
 
         // Hot-swap voice processing on the live audio engine.
-        // Stop engine → reset voice processing → re-install tap → restart engine.
+        // Stop engine → reset engine (VP state change) → re-install tap → restart.
         removeTapIfNeeded()
         if audioEngine.isRunning {
             audioEngine.stop()
         }
+        audioEngine.reset()
 
         let inputNode = audioEngine.inputNode
         if #available(iOS 17.0, *) { try? inputNode.setVoiceProcessingEnabled(enabled) }
