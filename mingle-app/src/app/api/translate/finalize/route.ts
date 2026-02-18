@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from '@google/generative-ai'
 import {
   ensureTrackingContext,
   sanitizeNonNegativeInt,
@@ -212,16 +212,34 @@ function normalizeUsage(raw: {
   return usage
 }
 
+function buildGeminiResponseSchema(targetLanguages: string[]): ResponseSchema {
+  const properties: Record<string, ResponseSchema> = {}
+  for (const language of targetLanguages) {
+    properties[language] = {
+      type: SchemaType.STRING,
+      description: `Translated text in ${LANG_NAMES[language] || language}.`,
+    }
+  }
+
+  return {
+    type: SchemaType.OBJECT,
+    properties,
+    required: [...targetLanguages],
+  }
+}
+
 async function translateWithGemini(ctx: TranslateContext): Promise<TranslationEngineResult | null> {
   if (!GEMINI_API_KEY) return null
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
   const { systemPrompt, userPrompt } = buildPrompt(ctx)
+  const responseSchema = buildGeminiResponseSchema(ctx.targetLanguages)
   const model = genAI.getGenerativeModel({
     model: DEFAULT_MODEL,
     systemInstruction: systemPrompt,
     generationConfig: {
       responseMimeType: 'application/json',
+      responseSchema,
     },
   })
 
