@@ -121,6 +121,27 @@ function normalizeSttTurnText(rawText: string): string {
     .trim()
 }
 
+function normalizeLangForCompare(rawLanguage: string): string {
+  return (rawLanguage || '').trim().replace('_', '-').toLowerCase().split('-')[0] || ''
+}
+
+function stripSourceLanguageFromTranslations(
+  translationsRaw: Record<string, string>,
+  sourceLanguageRaw: string,
+): Record<string, string> {
+  const sourceLanguage = normalizeLangForCompare(sourceLanguageRaw)
+  const translations: Record<string, string> = {}
+  for (const [language, translatedText] of Object.entries(translationsRaw)) {
+    const normalizedLanguage = (language || '').trim()
+    const normalizedLanguageForCompare = normalizeLangForCompare(normalizedLanguage)
+    const cleaned = translatedText.trim()
+    if (!normalizedLanguage || !cleaned) continue
+    if (sourceLanguage && normalizedLanguageForCompare === sourceLanguage) continue
+    translations[normalizedLanguage] = cleaned
+  }
+  return translations
+}
+
 function buildCurrentTurnPreviousStatePayload(
   sourceLanguageRaw: string,
   sourceTextRaw: string,
@@ -130,13 +151,7 @@ function buildCurrentTurnPreviousStatePayload(
   const sourceText = normalizeSttTurnText(sourceTextRaw)
   if (!sourceText) return null
 
-  const translations: Record<string, string> = {}
-  for (const [language, translatedText] of Object.entries(translationsRaw)) {
-    const normalizedLanguage = (language || '').trim()
-    const cleaned = translatedText.trim()
-    if (!normalizedLanguage || !cleaned) continue
-    translations[normalizedLanguage] = cleaned
-  }
+  const translations = stripSourceLanguageFromTranslations(translationsRaw, sourceLanguage)
 
   return {
     sourceLanguage,
@@ -573,15 +588,11 @@ export default function useRealtimeSTT({
       const sourceText = utterance.originalText.trim()
       if (!sourceText) continue
 
-      const translations: Record<string, string> = {}
-      for (const [lang, text] of Object.entries(utterance.translations || {})) {
-        const cleaned = text.trim()
-        if (!cleaned) continue
-        translations[lang] = cleaned
-      }
+      const sourceLanguage = (utterance.originalLang || 'unknown').trim() || 'unknown'
+      const translations = stripSourceLanguageFromTranslations(utterance.translations || {}, sourceLanguage)
 
       recentTurns.push({
-        sourceLanguage: utterance.originalLang || 'unknown',
+        sourceLanguage,
         sourceText,
         translations,
         occurredAtMs,
@@ -861,7 +872,7 @@ export default function useRealtimeSTT({
     stopFinalizeDedupRef.current = { sig, expiresAt: now + 5000 }
 
     utteranceIdRef.current += 1
-    const seedTranslations = { ...partialTranslationsRef.current }
+    const seedTranslations = stripSourceLanguageFromTranslations(partialTranslationsRef.current, lang)
     const seedFinalized: Record<string, boolean> = {}
     for (const key of Object.keys(seedTranslations)) {
       seedFinalized[key] = false
@@ -1239,7 +1250,7 @@ export default function useRealtimeSTT({
         }
 
         utteranceIdRef.current += 1
-        const seedTranslations = { ...partialTranslationsRef.current }
+        const seedTranslations = stripSourceLanguageFromTranslations(partialTranslationsRef.current, lang)
         const seedFinalized: Record<string, boolean> = {}
         for (const key of Object.keys(seedTranslations)) {
           seedFinalized[key] = false
@@ -1518,11 +1529,11 @@ export default function useRealtimeSTT({
       .then(result => {
         // Discard if a new utterance has started since this request was fired.
         if (utteranceIdRef.current !== requestUtteranceId) return
-        const newTranslations = result.translations
-        if (Object.keys(newTranslations).length > 0) {
-          partialTranslationsRef.current = { ...partialTranslationsRef.current, ...newTranslations }
-          setPartialTranslations(prev => ({ ...prev, ...newTranslations }))
-        }
+        const filteredExisting = stripSourceLanguageFromTranslations(partialTranslationsRef.current, currentLang)
+        const filteredNew = stripSourceLanguageFromTranslations(result.translations, currentLang)
+        const nextTranslations = { ...filteredExisting, ...filteredNew }
+        partialTranslationsRef.current = nextTranslations
+        setPartialTranslations(nextTranslations)
       })
   }, [partialTranscript, languages, connectionStatus, translateViaApi])
 

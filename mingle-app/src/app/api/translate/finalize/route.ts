@@ -139,6 +139,7 @@ function parseRecentTurns(raw: unknown): RecentTurnContext[] {
       if (typeof translatedText !== 'string') continue
       const normalizedLanguage = normalizeLang(language)
       if (!normalizedLanguage) continue
+      if (normalizedLanguage === sourceLanguage) continue
       const cleaned = translatedText.replace(/<\/?end>/gi, '').trim()
       if (!cleaned) continue
       translations[normalizedLanguage] = cleaned
@@ -175,6 +176,7 @@ function parseCurrentTurnPreviousState(raw: unknown): CurrentTurnPreviousState |
     if (typeof translatedText !== 'string') continue
     const normalizedLanguage = normalizeLang(language)
     if (!normalizedLanguage) continue
+    if (normalizedLanguage === sourceLanguage) continue
     const cleaned = translatedText.replace(/<\/?end>/gi, '').trim()
     if (!cleaned) continue
     translations[normalizedLanguage] = cleaned
