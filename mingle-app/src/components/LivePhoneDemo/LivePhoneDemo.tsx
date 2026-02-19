@@ -154,6 +154,8 @@ type TtsQueueItem = {
   language: string
 }
 
+type NativeTtsStopReason = 'mute_or_sound_disabled' | 'component_unmount' | 'force_reset'
+
 function EchoInputRouteIcon({ echoAllowed }: { echoAllowed: boolean }) {
   return (
     <span
@@ -298,6 +300,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       window.clearTimeout(nativeTtsEventTimerRef.current)
       nativeTtsEventTimerRef.current = null
     }
+  }, [])
+
+  const sendNativeTtsStopCommand = useCallback((reason: NativeTtsStopReason) => {
+    if (!isNativeApp()) return
+    window.ReactNativeWebView!.postMessage(JSON.stringify({
+      type: 'native_tts_stop',
+      payload: { reason },
+    }))
   }, [])
 
   const allocateNativeTtsPlaybackId = useCallback((utteranceId: string) => {
@@ -753,9 +763,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
   }, [enableAutoTTS, isSoundEnabled, resumeTtsPlayback])
 
-  // Stop current playback when sound is disabled.
-  useEffect(() => {
-    if (isSoundEnabled) return
+  // TTS stop policy:
+  // - STT stop path must NOT stop TTS.
+  // - native_tts_stop is allowed only for mute/off, force reset, and unmount.
+  const forceStopTtsPlayback = useCallback((
+    reason: NativeTtsStopReason,
+    options?: { clearSpeakingItem?: boolean },
+  ) => {
+    clearStopClickResumeTimers()
     clearTtsWaitTimer()
     clearNativeTtsEventTimer()
     activeNativeTtsPlaybackIdRef.current = null
@@ -764,10 +779,26 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     isTtsProcessingRef.current = false
     ttsNeedsUnlockRef.current = false
     cleanupCurrentAudio()
-    if (isNativeApp()) {
-      window.ReactNativeWebView!.postMessage(JSON.stringify({ type: 'native_tts_stop' }))
+    if (options?.clearSpeakingItem) {
+      setSpeakingItem(null)
     }
-  }, [clearNativeTtsEventTimer, clearTtsWaitTimer, isSoundEnabled, cleanupCurrentAudio])
+    logTtsQueue('policy.tts_stop', { reason })
+    sendNativeTtsStopCommand(reason)
+  }, [cleanupCurrentAudio, clearNativeTtsEventTimer, clearStopClickResumeTimers, clearTtsWaitTimer, sendNativeTtsStopCommand])
+
+  // Stop current playback when sound is disabled.
+  useEffect(() => {
+    if (isSoundEnabled) return
+    forceStopTtsPlayback('mute_or_sound_disabled', { clearSpeakingItem: true })
+  }, [forceStopTtsPlayback, isSoundEnabled])
+
+  const prevEnableAutoTTSRef = useRef(enableAutoTTS)
+  useEffect(() => {
+    const wasEnabled = prevEnableAutoTTSRef.current
+    prevEnableAutoTTSRef.current = enableAutoTTS
+    if (enableAutoTTS || !wasEnabled) return
+    forceStopTtsPlayback('force_reset', { clearSpeakingItem: true })
+  }, [enableAutoTTS, forceStopTtsPlayback])
 
   useEffect(() => {
     if (!enableAutoTTS) return
@@ -822,20 +853,12 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   useEffect(() => {
     return () => {
-      clearStopClickResumeTimers()
-      clearTtsWaitTimer()
-      clearNativeTtsEventTimer()
-      activeNativeTtsPlaybackIdRef.current = null
-      activeNativeTtsUtteranceIdRef.current = null
-      ttsQueueRef.current = []
-      isTtsProcessingRef.current = false
-      ttsNeedsUnlockRef.current = false
-      cleanupCurrentAudio()
+      forceStopTtsPlayback('component_unmount')
       ttsAudioContextRef.current?.close()
       ttsAudioContextRef.current = null
       ttsGainNodeRef.current = null
     }
-  }, [clearNativeTtsEventTimer, clearStopClickResumeTimers, clearTtsWaitTimer, cleanupCurrentAudio])
+  }, [forceStopTtsPlayback])
 
   const handleToggleLanguage = useCallback((code: string) => {
     setSelectedLanguages(prev => {

@@ -59,6 +59,9 @@ type NativeTtsCommand =
     }
   | {
       type: 'native_tts_stop';
+      payload?: {
+        reason?: string;
+      };
     };
 
 type NativeSttAecCommand = {
@@ -246,8 +249,11 @@ function App(): React.JSX.Element {
     }
 
     if (parsed.type === 'native_tts_stop') {
+      const reason = typeof parsed.payload?.reason === 'string' && parsed.payload.reason.trim()
+        ? parsed.payload.reason.trim()
+        : 'unspecified';
       if (__DEV__) {
-        console.log('[Web→NativeTTS] stop');
+        console.log(`[Web→NativeTTS] stop reason=${reason}`);
       }
       currentTtsPlaybackRef.current = null;
       void stopNativeTts();
