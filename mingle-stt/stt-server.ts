@@ -570,7 +570,9 @@ wss.on('connection', (clientWs) => {
             sonioxStopRequested = false;
 
             const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
-                const cleanedText = text.replace(/<\/?(?:end|fin)>/gi, '').trim();
+                // DEBUG: keep Soniox marker tokens (<end>/<fin>) visible in final transcript payloads.
+                // const cleanedText = text.replace(/<\/?(?:end|fin)>/gi, '').trim();
+                const cleanedText = (text || '').trim();
                 const cleanedLang = (language || '').trim() || 'unknown';
                 if (!cleanedText) return null;
 
@@ -691,7 +693,9 @@ wss.on('connection', (clientWs) => {
                         clientWs.send(JSON.stringify(partialMsg));
                     }
 
-                    sonioxHasPendingTranscript = `${finalizedText}${latestNonFinalText}`.replace(/<\/?(?:end|fin)>/gi, '').trim().length > 0;
+                    // DEBUG: keep marker tokens in pending transcript visibility path.
+                    // sonioxHasPendingTranscript = `${finalizedText}${latestNonFinalText}`.replace(/<\/?(?:end|fin)>/gi, '').trim().length > 0;
+                    sonioxHasPendingTranscript = `${finalizedText}${latestNonFinalText}`.trim().length > 0;
 
                     // 발화 완료 판단:
                     // Soniox endpoint(<end>) 토큰이 포함된 경우에만 완료 처리
@@ -732,7 +736,9 @@ wss.on('connection', (clientWs) => {
     };
 
     const sendForcedFinalTurn = (rawText: string, rawLanguage: string): FinalTurnPayload | null => {
-        const text = (rawText || '').replace(/<\/?(?:end|fin)>/gi, '').trim();
+        // DEBUG: keep Soniox marker tokens (<end>/<fin>) visible in forced final payloads.
+        // const text = (rawText || '').replace(/<\/?(?:end|fin)>/gi, '').trim();
+        const text = (rawText || '').trim();
         const language = (rawLanguage || '').trim() || 'unknown';
         if (!text) return null;
 
@@ -765,7 +771,9 @@ wss.on('connection', (clientWs) => {
         if (data?.type === 'stop_recording') {
             const pendingText = (data?.data?.pending_text || '').toString();
             const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
-            const cleanedPendingText = pendingText.replace(/<\/?(?:end|fin)>/gi, '').trim();
+            // DEBUG: keep marker tokens visible in stop fallback path.
+            // const cleanedPendingText = pendingText.replace(/<\/?(?:end|fin)>/gi, '').trim();
+            const cleanedPendingText = pendingText.trim();
             sonioxStopRequested = currentModel === 'soniox';
 
             let finalizedTurn: FinalTurnPayload | null = null;
