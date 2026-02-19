@@ -22,10 +22,18 @@ const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 200
 const SCROLL_TO_BOTTOM_BUTTON_THRESHOLD_PX = 400
 const SCROLL_UI_HIDE_DELAY_MS = 1000
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 28
+const USER_SCROLL_INTENT_WINDOW_MS = 1400
 
 function isNativeApp(): boolean {
   return typeof window !== 'undefined'
     && typeof window.ReactNativeWebView?.postMessage === 'function'
+}
+
+function isLikelyIOSPlatform(): boolean {
+  if (typeof window === 'undefined') return false
+  const ua = window.navigator.userAgent || ''
+  const platform = window.navigator.platform || ''
+  return /iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -220,6 +228,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const processTtsQueueRef = useRef<() => void>(() => {})
   const stopClickResumeTimerIdsRef = useRef<number[]>([])
   const langSelectorButtonRef = useRef<HTMLButtonElement | null>(null)
+  const [isIosTopTapEnabled] = useState(() => isLikelyIOSPlatform())
 
 
   // Persist selected languages
@@ -774,6 +783,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   const chatRef = useRef<HTMLDivElement>(null)
   const shouldAutoScroll = useRef(true)
+  const suppressAutoScrollRef = useRef(false)
+  const userScrollIntentUntilRef = useRef(0)
   const isPaginatingRef = useRef(false)
   const prevScrollHeightRef = useRef<number | null>(null)
   const isLoadingOlderRef = useRef(false)
@@ -791,10 +802,19 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const handleLoadOlder = useCallback(() => {
     if (isLoadingOlderRef.current || !hasOlderUtterances || !chatRef.current) return
     isLoadingOlderRef.current = true
+    suppressAutoScrollRef.current = true
     isPaginatingRef.current = true
     prevScrollHeightRef.current = chatRef.current.scrollHeight
     loadOlderUtterances()
   }, [hasOlderUtterances, loadOlderUtterances])
+
+  const markUserScrollIntent = useCallback(() => {
+    userScrollIntentUntilRef.current = Date.now() + USER_SCROLL_INTENT_WINDOW_MS
+  }, [])
+
+  const isUserScrollIntentActive = useCallback(() => {
+    return Date.now() <= userScrollIntentUntilRef.current
+  }, [])
 
   const clearScrollUiHideTimer = useCallback(() => {
     if (scrollUiHideTimerRef.current) {
@@ -803,11 +823,21 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
   }, [])
 
-  const updateScrollDerivedState = useCallback(() => {
+  const updateScrollDerivedState = useCallback((options?: { fromUserScroll?: boolean }) => {
     if (!chatRef.current) return
+    const fromUserScroll = options?.fromUserScroll === true
     const { scrollTop, scrollHeight, clientHeight } = chatRef.current
     const distanceToBottom = Math.max(0, scrollHeight - scrollTop - clientHeight)
-    shouldAutoScroll.current = distanceToBottom <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX
+    const isNearBottom = distanceToBottom <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX
+    if (fromUserScroll && isNearBottom) {
+      suppressAutoScrollRef.current = false
+    }
+    shouldAutoScroll.current = (
+      isNearBottom
+      && !suppressAutoScrollRef.current
+      && !isPaginatingRef.current
+      && !isLoadingOlderRef.current
+    )
 
     if (scrollHeight > clientHeight + 1) {
       const thumbHeight = Math.max(
@@ -843,20 +873,39 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [hasOlderUtterances, handleLoadOlder])
 
   const handleScroll = useCallback(() => {
-    updateScrollDerivedState()
+    const fromUserScroll = isUserScrollIntentActive()
+    updateScrollDerivedState({ fromUserScroll })
+
+    if (!fromUserScroll) {
+      clearScrollUiHideTimer()
+      setScrollUiVisible(false)
+      return
+    }
+
     setScrollUiVisible(true)
     clearScrollUiHideTimer()
     scrollUiHideTimerRef.current = setTimeout(() => {
       setScrollUiVisible(false)
     }, SCROLL_UI_HIDE_DELAY_MS)
-  }, [clearScrollUiHideTimer, updateScrollDerivedState])
+  }, [clearScrollUiHideTimer, isUserScrollIntentActive, updateScrollDerivedState])
 
   const handleScrollToBottom = useCallback(() => {
     if (!chatRef.current) return
+    markUserScrollIntent()
+    suppressAutoScrollRef.current = false
     shouldAutoScroll.current = true
     chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' })
-    updateScrollDerivedState()
-  }, [updateScrollDerivedState])
+    updateScrollDerivedState({ fromUserScroll: true })
+  }, [markUserScrollIntent, updateScrollDerivedState])
+
+  const handleTopSafeAreaTap = useCallback(() => {
+    if (!chatRef.current) return
+    markUserScrollIntent()
+    suppressAutoScrollRef.current = true
+    shouldAutoScroll.current = false
+    chatRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    updateScrollDerivedState({ fromUserScroll: true })
+  }, [markUserScrollIntent, updateScrollDerivedState])
 
   // Preserve scroll position after prepending older utterances
   useLayoutEffect(() => {
@@ -871,7 +920,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   useEffect(() => {
     if (chatRef.current && shouldAutoScroll.current) {
-      chatRef.current.scrollTop = chatRef.current.scrollHeight
+      const targetTop = chatRef.current.scrollHeight
+      if (Math.abs(targetTop - chatRef.current.scrollTop) > 1) {
+        chatRef.current.scrollTo({ top: targetTop, behavior: 'smooth' })
+      }
     }
     updateScrollDerivedState()
   }, [demoTypingText, isConnecting, partialTranscript, updateScrollDerivedState, utterances])
@@ -919,7 +971,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Header */}
         <div
-          className="shrink-0 flex items-center justify-between border-b border-gray-100"
+          className="relative shrink-0 flex items-center justify-between border-b border-gray-100"
           style={{
             paddingTop: "max(calc(env(safe-area-inset-top) + 20px), 24px)",
             paddingBottom: "10px",
@@ -927,6 +979,15 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             paddingRight: "max(calc(env(safe-area-inset-right) + 14px), 18px)",
           }}
         >
+          {isIosTopTapEnabled && (
+            <button
+              type="button"
+              aria-label="Scroll to top"
+              onClick={handleTopSafeAreaTap}
+              className="absolute inset-x-0 top-0 z-10 bg-transparent"
+              style={{ height: "max(calc(env(safe-area-inset-top) + 20px), 24px)" }}
+            />
+          )}
           <span className="text-[2.05rem] font-extrabold leading-[1.08] bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
             Mingle
           </span>
@@ -963,6 +1024,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           <div
             ref={chatRef}
             onScroll={handleScroll}
+            onWheel={markUserScrollIntent}
+            onTouchMove={markUserScrollIntent}
+            onPointerDown={markUserScrollIntent}
             className="min-h-0 h-full overflow-y-auto no-scrollbar py-2.5 space-y-3"
             style={{
               paddingLeft: "max(calc(env(safe-area-inset-left) + 6px), 10px)",
@@ -1124,7 +1188,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               >
                 {scrollDateLabel && (
                   <div
-                    className="absolute right-2.5 -translate-y-1/2 whitespace-nowrap rounded-full border border-black/10 bg-black/[0.18] px-3 py-1 text-[11px] font-semibold tracking-tight text-black/50 shadow-sm backdrop-blur-[1px]"
+                    className="absolute right-2.5 -translate-y-1/2 whitespace-nowrap rounded-full border border-black/10 bg-white/70 px-3 py-1 text-[11px] font-semibold tracking-tight text-black/75 shadow-sm backdrop-blur-[1px]"
                     style={{ top: scrollDateTop }}
                   >
                     {scrollDateLabel}
