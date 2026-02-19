@@ -31,24 +31,66 @@ function formatSecondsAgo(sec: number, lang: string): string {
   }
 }
 
+function formatAmPm(lang: string): { am: string, pm: string } {
+  switch (lang) {
+    case 'ko': return { am: '오전', pm: '오후' }
+    case 'ja': return { am: '午前', pm: '午後' }
+    case 'zh': return { am: '上午', pm: '下午' }
+    default: return { am: 'AM', pm: 'PM' }
+  }
+}
+
+function format12Hour(date: Date, lang: string): string {
+  const h24 = date.getHours()
+  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24
+  const min = date.getMinutes().toString().padStart(2, '0')
+  const { am, pm } = formatAmPm(lang)
+  const period = h24 < 12 ? am : pm
+  return `${period} ${h12}:${min}`
+}
+
 function formatTimestamp(createdAtMs: number | undefined): string {
   if (!createdAtMs) return ''
   const now = Date.now()
   const created = new Date(createdAtMs)
   const current = new Date(now)
+  const lang = getBaseLang()
 
-  if (
-    created.getFullYear() === current.getFullYear() &&
-    created.getMonth() === current.getMonth() &&
-    created.getDate() === current.getDate() &&
-    created.getHours() === current.getHours() &&
-    created.getMinutes() === current.getMinutes()
-  ) {
+  const sameYear = created.getFullYear() === current.getFullYear()
+  const sameMonth = sameYear && created.getMonth() === current.getMonth()
+  const sameDay = sameMonth && created.getDate() === current.getDate()
+  const sameMinute = sameDay && created.getHours() === current.getHours() && created.getMinutes() === current.getMinutes()
+
+  // Same minute → relative
+  if (sameMinute) {
     const sec = Math.max(0, Math.floor((now - createdAtMs) / 1000))
-    return formatSecondsAgo(sec, getBaseLang())
+    return formatSecondsAgo(sec, lang)
   }
 
-  return `${created.getHours().toString().padStart(2, '0')}:${created.getMinutes().toString().padStart(2, '0')}`
+  const time = format12Hour(created, lang)
+
+  // Today → time only
+  if (sameDay) return time
+
+  // This month → day + time
+  if (sameMonth) return `${created.getDate()}${lang === 'ko' ? '일' : lang === 'ja' ? '日' : ''} ${time}`
+
+  // This year → month/day + time
+  if (sameYear) {
+    const m = created.getMonth() + 1
+    const d = created.getDate()
+    if (lang === 'ko') return `${m}월 ${d}일 ${time}`
+    if (lang === 'ja') return `${m}月${d}日 ${time}`
+    return `${m}/${d} ${time}`
+  }
+
+  // Different year → year/month/day + time
+  const y = created.getFullYear()
+  const m = created.getMonth() + 1
+  const d = created.getDate()
+  if (lang === 'ko') return `${y}년 ${m}월 ${d}일 ${time}`
+  if (lang === 'ja') return `${y}年${m}月${d}日 ${time}`
+  return `${y}/${m}/${d} ${time}`
 }
 
 export interface Utterance {

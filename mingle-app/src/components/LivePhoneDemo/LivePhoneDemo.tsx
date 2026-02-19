@@ -731,7 +731,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     if (!chatRef.current) return
     const { scrollTop, scrollHeight, clientHeight } = chatRef.current
     shouldAutoScroll.current = scrollHeight - scrollTop - clientHeight < 80
-    if (scrollTop < 50 && hasOlderUtterances) {
+    if (scrollTop < 100 && hasOlderUtterances && !isLoadingOlderRef.current) {
       handleLoadOlder()
     }
   }, [hasOlderUtterances, handleLoadOlder])
@@ -826,6 +826,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             paddingRight: "max(calc(env(safe-area-inset-right) + 6px), 10px)",
           }}
         >
+          {hasOlderUtterances && (
+            <button
+              onClick={handleLoadOlder}
+              className="w-full py-2 text-xs text-gray-400 hover:text-gray-500 active:text-gray-600 transition-colors"
+            >
+              ···
+            </button>
+          )}
           <AnimatePresence mode="popLayout">
             {utterances.map((u) => (
               <ChatBubble
