@@ -2,6 +2,54 @@ import AVFoundation
 import Foundation
 import React
 
+final class MingleAudioSessionCoordinator {
+    static let shared = MingleAudioSessionCoordinator()
+
+    private let lock = NSLock()
+    private var sttOwners: Int = 0
+    private var ttsOwners: Int = 0
+
+    private init() {}
+
+    private func withLock<T>(_ block: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return block()
+    }
+
+    func acquireSTT() {
+        withLock { sttOwners += 1 }
+    }
+
+    func releaseSTT() {
+        withLock {
+            if sttOwners > 0 {
+                sttOwners -= 1
+            }
+        }
+    }
+
+    func acquireTTS() {
+        withLock { ttsOwners += 1 }
+    }
+
+    func releaseTTS() {
+        withLock {
+            if ttsOwners > 0 {
+                ttsOwners -= 1
+            }
+        }
+    }
+
+    func shouldDeactivateAudioSession() -> Bool {
+        return withLock { sttOwners == 0 && ttsOwners == 0 }
+    }
+
+    func snapshot() -> (stt: Int, tts: Int) {
+        return withLock { (stt: sttOwners, tts: ttsOwners) }
+    }
+}
+
 @objc(NativeSTTModule)
 class NativeSTTModule: RCTEventEmitter {
     private let audioEngine = AVAudioEngine()
@@ -11,6 +59,7 @@ class NativeSTTModule: RCTEventEmitter {
     private var socketTask: URLSessionWebSocketTask?
     private var hasInputTap = false
     private var isRunning = false
+    private var sttSessionTokenAcquired = false
     private var isAecEnabled = false
     private var lastAppliedAec: Bool? = nil
     private var hasListeners = false
@@ -251,10 +300,20 @@ class NativeSTTModule: RCTEventEmitter {
         if audioEngine.isRunning {
             audioEngine.stop()
         }
-        do {
-            try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
-        } catch {
-            // Keep shutdown resilient even if AVAudioSession deactivation fails.
+        if sttSessionTokenAcquired {
+            MingleAudioSessionCoordinator.shared.releaseSTT()
+            sttSessionTokenAcquired = false
+        }
+        if MingleAudioSessionCoordinator.shared.shouldDeactivateAudioSession() {
+            do {
+                try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+            } catch {
+                // Keep shutdown resilient even if AVAudioSession deactivation fails.
+            }
+        } else {
+            let owners = MingleAudioSessionCoordinator.shared.snapshot()
+            NSLog("[NativeSTTModule] keep audio session active (owners stt=%d tts=%d)",
+                  owners.stt, owners.tts)
         }
 
         socketTask?.cancel(with: .goingAway, reason: nil)
@@ -428,6 +487,10 @@ class NativeSTTModule: RCTEventEmitter {
         } catch {
             reject("audio_session", "Failed to configure AVAudioSession", error)
             return
+        }
+        if !sttSessionTokenAcquired {
+            MingleAudioSessionCoordinator.shared.acquireSTT()
+            sttSessionTokenAcquired = true
         }
 
         installAudioObserversIfNeeded()
