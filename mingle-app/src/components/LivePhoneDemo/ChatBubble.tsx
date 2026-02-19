@@ -10,6 +10,47 @@ const FLAG_MAP: Record<string, string> = {
   tr: '🇹🇷', pl: '🇵🇱', nl: '🇳🇱', sv: '🇸🇪', ms: '🇲🇾',
 }
 
+const RECENT_THRESHOLD_MS = 90_000
+
+function getBaseLang(): string {
+  if (typeof navigator === 'undefined') return 'en'
+  return (navigator.language || 'en').split('-')[0].toLowerCase()
+}
+
+function formatSecondsAgo(sec: number, lang: string): string {
+  switch (lang) {
+    case 'ko': return `${sec}초 전`
+    case 'ja': return `${sec}秒前`
+    case 'zh': return `${sec}秒前`
+    case 'es': return `hace ${sec}s`
+    case 'fr': return `il y a ${sec}s`
+    case 'de': return `vor ${sec}s`
+    case 'pt': return `há ${sec}s`
+    case 'it': return `${sec}s fa`
+    default: return `${sec}s ago`
+  }
+}
+
+function formatTimestamp(createdAtMs: number | undefined): string {
+  if (!createdAtMs) return ''
+  const now = Date.now()
+  const created = new Date(createdAtMs)
+  const current = new Date(now)
+
+  if (
+    created.getFullYear() === current.getFullYear() &&
+    created.getMonth() === current.getMonth() &&
+    created.getDate() === current.getDate() &&
+    created.getHours() === current.getHours() &&
+    created.getMinutes() === current.getMinutes()
+  ) {
+    const sec = Math.max(0, Math.floor((now - createdAtMs) / 1000))
+    return formatSecondsAgo(sec, getBaseLang())
+  }
+
+  return `${created.getHours().toString().padStart(2, '0')}:${created.getMinutes().toString().padStart(2, '0')}`
+}
+
 export interface Utterance {
   id: string
   originalText: string
@@ -51,6 +92,8 @@ function ChatBubble({ utterance, selectedLanguages, isSpeaking = false, speaking
   const pendingLangs = targetLangs
     .filter(lang => !utterance.translations[lang])
 
+  const timestamp = formatTimestamp(utterance.createdAtMs)
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -60,11 +103,16 @@ function ChatBubble({ utterance, selectedLanguages, isSpeaking = false, speaking
     >
       {/* Original bubble */}
         <div className="max-w-[85%] bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-3.5 py-2 shadow-sm">
-        <div className="flex items-center gap-1.5 mb-0.5">
-          <span className="text-base">{flag}</span>
-          <span className="text-xs font-semibold text-gray-400 uppercase">
-            {utterance.originalLang}
-          </span>
+        <div className="flex items-center justify-between mb-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-base">{flag}</span>
+            <span className="text-xs font-semibold text-gray-400 uppercase">
+              {utterance.originalLang}
+            </span>
+          </div>
+          {timestamp && (
+            <span className="text-[10px] text-gray-300 tabular-nums whitespace-nowrap">{timestamp}</span>
+          )}
         </div>
         <p className="text-sm text-gray-900 leading-relaxed">{utterance.originalText}</p>
       </div>
@@ -118,6 +166,10 @@ function ChatBubble({ utterance, selectedLanguages, isSpeaking = false, speaking
 }
 
 function chatBubbleAreEqual(prev: ChatBubbleProps, next: ChatBubbleProps): boolean {
+  // Always re-render recent utterances so relative timestamp stays fresh
+  const createdAtMs = next.utterance.createdAtMs
+  if (createdAtMs && (Date.now() - createdAtMs) < RECENT_THRESHOLD_MS) return false
+
   if (prev.isSpeaking !== next.isSpeaking) return false
   if (prev.speakingLanguage !== next.speakingLanguage) return false
 
