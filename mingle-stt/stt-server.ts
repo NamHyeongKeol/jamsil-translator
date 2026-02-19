@@ -497,7 +497,6 @@ wss.on('connection', (clientWs) => {
             let finalizedText = '';
             let latestNonFinalText = '';
             let detectedLang = config.languages[0] || 'en';
-            let hadNonFinal = false;
             sonioxStopRequested = false;
 
             const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
@@ -508,7 +507,6 @@ wss.on('connection', (clientWs) => {
                 // Clear turn accumulators immediately.
                 finalizedText = '';
                 latestNonFinalText = '';
-                hadNonFinal = false;
 
                 if (clientWs.readyState === WebSocket.OPEN) {
                     clientWs.send(JSON.stringify({
@@ -606,7 +604,6 @@ wss.on('connection', (clientWs) => {
                     const hasEndpointToken = /<\/?end>/i.test(newFinalText) || /<\/?end>/i.test(nonFinalText);
 
                     if (nonFinalText) {
-                        hadNonFinal = true;
                         latestNonFinalText = nonFinalText;
                         // 부분 결과: 확정된 텍스트 + 미확정 텍스트
                         const fullText = finalizedText + nonFinalText;
@@ -625,7 +622,6 @@ wss.on('connection', (clientWs) => {
 
                     // 발화 완료 판단:
                     // Soniox endpoint(<end>) 토큰이 포함된 경우에만 완료 처리
-                    // NOTE: 임시로 서버 휴리스틱 finalization 조건은 비활성화함.
                     if (hasEndpointToken) {
                         latestNonFinalText = '';
                         emitFinalTurn(finalizedText, detectedLang);
