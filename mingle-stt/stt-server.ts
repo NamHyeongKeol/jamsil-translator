@@ -8,6 +8,16 @@ const GLADIA_API_URL = 'https://api.gladia.io/v2/live';
 const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen';
 const FIREWORKS_WS_URL = 'wss://audio-streaming.api.fireworks.ai/v1/audio/transcriptions/streaming';
 const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
+const SONIOX_MANUAL_FINALIZE_SILENCE_MS = (() => {
+    const raw = Number(process.env.SONIOX_MANUAL_FINALIZE_SILENCE_MS || '200');
+    if (!Number.isFinite(raw)) return 200;
+    return Math.max(100, Math.min(1000, Math.floor(raw)));
+})();
+const SONIOX_SILENCE_RMS_THRESHOLD = (() => {
+    const raw = Number(process.env.SONIOX_SILENCE_RMS_THRESHOLD || '0.008');
+    if (!Number.isFinite(raw)) return 0.008;
+    return Math.max(0.001, Math.min(0.05, raw));
+})();
 
 const server = createServer();
 const wss = new WebSocketServer({ server });
@@ -38,6 +48,11 @@ wss.on('connection', (clientWs) => {
     let selectedLanguages: string[] = [];
     let finalizePendingTurnFromProvider: (() => Promise<FinalTurnPayload | null>) | null = null;
     let sonioxStopRequested = false;
+    let sonioxSampleRate = 16_000;
+    let sonioxHasPendingTranscript = false;
+    let sonioxSawSpeechInCurrentSegment = false;
+    let sonioxTrailingSilenceMs = 0;
+    let sonioxManualFinalizeSent = false;
 
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
@@ -59,6 +74,57 @@ wss.on('connection', (clientWs) => {
                 sttWs.close();
             }
             sttWs = null;
+        }
+        sonioxHasPendingTranscript = false;
+        sonioxSawSpeechInCurrentSegment = false;
+        sonioxTrailingSilenceMs = 0;
+        sonioxManualFinalizeSent = false;
+    };
+
+    const resetSonioxSegmentState = () => {
+        sonioxHasPendingTranscript = false;
+        sonioxSawSpeechInCurrentSegment = false;
+        sonioxTrailingSilenceMs = 0;
+        sonioxManualFinalizeSent = false;
+    };
+
+    const maybeTriggerSonioxManualFinalize = (pcmData: Buffer) => {
+        if (currentModel !== 'soniox') return;
+        if (!sttWs || sttWs.readyState !== WebSocket.OPEN) return;
+        if (sonioxStopRequested) return;
+
+        const sampleCount = Math.floor(pcmData.length / 2);
+        if (sampleCount <= 0 || sonioxSampleRate <= 0) return;
+
+        let sumSquares = 0;
+        for (let i = 0; i + 1 < pcmData.length; i += 2) {
+            const sample = pcmData.readInt16LE(i) / 32768;
+            sumSquares += sample * sample;
+        }
+        const rms = Math.sqrt(sumSquares / sampleCount);
+        const chunkDurationMs = (sampleCount / sonioxSampleRate) * 1000;
+        if (!Number.isFinite(chunkDurationMs) || chunkDurationMs <= 0) return;
+
+        if (rms >= SONIOX_SILENCE_RMS_THRESHOLD) {
+            sonioxSawSpeechInCurrentSegment = true;
+            sonioxTrailingSilenceMs = 0;
+            sonioxManualFinalizeSent = false;
+            return;
+        }
+
+        if (!sonioxSawSpeechInCurrentSegment) return;
+        if (sonioxManualFinalizeSent) return;
+
+        sonioxTrailingSilenceMs += chunkDurationMs;
+        if (sonioxTrailingSilenceMs < SONIOX_MANUAL_FINALIZE_SILENCE_MS) return;
+        if (!sonioxHasPendingTranscript) return;
+
+        try {
+            sttWs.send(JSON.stringify({ type: 'finalize' }));
+            sonioxManualFinalizeSent = true;
+            sonioxTrailingSilenceMs = 0;
+        } catch (error) {
+            console.error('Soniox manual finalize send failed:', error);
         }
     };
 
@@ -492,6 +558,10 @@ wss.on('connection', (clientWs) => {
 
         try {
             sttWs = new WebSocket(SONIOX_WS_URL);
+            sonioxSampleRate = Number.isFinite(config.sample_rate) && config.sample_rate > 0
+                ? Math.floor(config.sample_rate)
+                : 16_000;
+            resetSonioxSegmentState();
 
             // 토큰 누적 상태 (Soniox는 토큰 단위로 반환)
             let finalizedText = '';
@@ -500,13 +570,14 @@ wss.on('connection', (clientWs) => {
             sonioxStopRequested = false;
 
             const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
-                const cleanedText = text.replace(/<\/?end>/gi, '').trim();
+                const cleanedText = text.replace(/<\/?(?:end|fin)>/gi, '').trim();
                 const cleanedLang = (language || '').trim() || 'unknown';
                 if (!cleanedText) return null;
 
                 // Clear turn accumulators immediately.
                 finalizedText = '';
                 latestNonFinalText = '';
+                resetSonioxSegmentState();
 
                 if (clientWs.readyState === WebSocket.OPEN) {
                     clientWs.send(JSON.stringify({
@@ -601,7 +672,7 @@ wss.on('connection', (clientWs) => {
                     }
 
                     finalizedText += newFinalText;
-                    const hasEndpointToken = /<\/?end>/i.test(newFinalText) || /<\/?end>/i.test(nonFinalText);
+                    const hasEndpointToken = /<\/?(?:end|fin)>/i.test(newFinalText) || /<\/?(?:end|fin)>/i.test(nonFinalText);
 
                     if (nonFinalText) {
                         latestNonFinalText = nonFinalText;
@@ -619,6 +690,8 @@ wss.on('connection', (clientWs) => {
                         };
                         clientWs.send(JSON.stringify(partialMsg));
                     }
+
+                    sonioxHasPendingTranscript = `${finalizedText}${latestNonFinalText}`.replace(/<\/?(?:end|fin)>/gi, '').trim().length > 0;
 
                     // 발화 완료 판단:
                     // Soniox endpoint(<end>) 토큰이 포함된 경우에만 완료 처리
@@ -659,7 +732,7 @@ wss.on('connection', (clientWs) => {
     };
 
     const sendForcedFinalTurn = (rawText: string, rawLanguage: string): FinalTurnPayload | null => {
-        const text = (rawText || '').replace(/<\/?end>/gi, '').trim();
+        const text = (rawText || '').replace(/<\/?(?:end|fin)>/gi, '').trim();
         const language = (rawLanguage || '').trim() || 'unknown';
         if (!text) return null;
 
@@ -692,7 +765,7 @@ wss.on('connection', (clientWs) => {
         if (data?.type === 'stop_recording') {
             const pendingText = (data?.data?.pending_text || '').toString();
             const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
-            const cleanedPendingText = pendingText.replace(/<\/?end>/gi, '').trim();
+            const cleanedPendingText = pendingText.replace(/<\/?(?:end|fin)>/gi, '').trim();
             sonioxStopRequested = currentModel === 'soniox';
 
             let finalizedTurn: FinalTurnPayload | null = null;
@@ -755,6 +828,9 @@ wss.on('connection', (clientWs) => {
                 if (data.type === 'audio_chunk' && data.data?.chunk) {
                     const pcmData = Buffer.from(data.data.chunk, 'base64');
                     sttWs.send(pcmData);
+                    if (currentModel === 'soniox') {
+                        maybeTriggerSonioxManualFinalize(pcmData);
+                    }
                 }
             } else {
                 // Gladia는 JSON 형식 그대로 전송
