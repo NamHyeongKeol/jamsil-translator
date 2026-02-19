@@ -2,6 +2,8 @@ import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 
 type NativeTtsPlayOptions = {
   audioBase64: string;
+  playbackId: string;
+  utteranceId?: string;
 };
 
 type NativeTtsModuleType = {
@@ -10,9 +12,20 @@ type NativeTtsModuleType = {
 };
 
 type NativeTtsEventMap = {
-  ttsPlaybackFinished: { success: boolean };
-  ttsPlaybackStopped: Record<string, never>;
-  ttsError: { message: string };
+  ttsPlaybackFinished: {
+    success: boolean;
+    playbackId?: string;
+    utteranceId?: string;
+  };
+  ttsPlaybackStopped: {
+    playbackId?: string;
+    utteranceId?: string;
+  };
+  ttsError: {
+    message: string;
+    playbackId?: string;
+    utteranceId?: string;
+  };
 };
 
 const nativeModule = NativeModules.NativeTTSModule as NativeTtsModuleType | undefined;

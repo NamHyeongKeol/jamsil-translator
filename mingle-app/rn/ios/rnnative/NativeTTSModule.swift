@@ -7,6 +7,8 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
     private var audioPlayer: AVAudioPlayer?
     private var hasListeners = false
     private var ttsSessionTokenAcquired = false
+    private var currentPlaybackId: String?
+    private var currentUtteranceId: String?
 
     override static func requiresMainQueueSetup() -> Bool {
         false
@@ -41,6 +43,22 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
         ttsSessionTokenAcquired = true
     }
 
+    private func clearCurrentPlaybackIdentity() {
+        currentPlaybackId = nil
+        currentUtteranceId = nil
+    }
+
+    private func playbackPayload(base: [String: Any] = [:]) -> [String: Any] {
+        var payload = base
+        if let playbackId = currentPlaybackId, !playbackId.isEmpty {
+            payload["playbackId"] = playbackId
+        }
+        if let utteranceId = currentUtteranceId, !utteranceId.isEmpty {
+            payload["utteranceId"] = utteranceId
+        }
+        return payload
+    }
+
     private func releaseTtsSessionTokenIfNeeded() {
         if !ttsSessionTokenAcquired { return }
         MingleAudioSessionCoordinator.shared.releaseTTS()
@@ -66,8 +84,15 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
             reject("decode_error", "Failed to decode base64 audio data", nil)
             return
         }
+        let rawPlaybackId = (options["playbackId"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let rawUtteranceId = (options["utteranceId"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let playbackId = rawPlaybackId.isEmpty
+            ? (rawUtteranceId.isEmpty ? UUID().uuidString : rawUtteranceId)
+            : rawPlaybackId
 
-        NSLog("[NativeTTSModule] play audioBytes=%d", audioData.count)
+        NSLog("[NativeTTSModule] play playbackId=%@ utteranceId=%@ audioBytes=%d", playbackId, rawUtteranceId, audioData.count)
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
@@ -75,6 +100,9 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
             self.audioPlayer?.stop()
             self.audioPlayer = nil
             self.releaseTtsSessionTokenIfNeeded()
+            self.clearCurrentPlaybackIdentity()
+            self.currentPlaybackId = playbackId
+            self.currentUtteranceId = rawUtteranceId.isEmpty ? nil : rawUtteranceId
 
             // Ensure audio session is active for playback.
             // NativeSTTModule normally keeps it active, but if STT stopped
@@ -111,10 +139,11 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
                 }
                 self.audioPlayer = player
                 self.acquireTtsSessionTokenIfNeeded()
-                NSLog("[NativeTTSModule] playing duration=%.2f", player.duration)
+                NSLog("[NativeTTSModule] playing playbackId=%@ duration=%.2f", playbackId, player.duration)
                 resolve(["ok": true])
             } catch {
                 NSLog("[NativeTTSModule] play failed: %@", error.localizedDescription)
+                self.clearCurrentPlaybackIdentity()
                 self.releaseTtsSessionTokenIfNeeded()
                 reject("playback_error", "Failed to play audio: \(error.localizedDescription)", error)
             }
@@ -129,14 +158,16 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             let wasPlaying = self.audioPlayer?.isPlaying == true
+            let stoppedPayload = self.playbackPayload()
             if let player = self.audioPlayer, player.isPlaying {
                 player.stop()
             }
             self.audioPlayer = nil
+            self.clearCurrentPlaybackIdentity()
             self.releaseTtsSessionTokenIfNeeded()
             if wasPlaying {
-                NSLog("[NativeTTSModule] stopped")
-                self.emit("ttsPlaybackStopped", payload: [:])
+                NSLog("[NativeTTSModule] stopped playbackId=%@", stoppedPayload["playbackId"] as? String ?? "")
+                self.emit("ttsPlaybackStopped", payload: stoppedPayload)
             }
             resolve(["ok": true])
         }
@@ -145,16 +176,28 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
     // MARK: - AVAudioPlayerDelegate
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        NSLog("[NativeTTSModule] didFinishPlaying success=%d", flag ? 1 : 0)
+        let payload = playbackPayload(base: ["success": flag])
+        NSLog(
+            "[NativeTTSModule] didFinishPlaying playbackId=%@ success=%d",
+            payload["playbackId"] as? String ?? "",
+            flag ? 1 : 0
+        )
         audioPlayer = nil
+        clearCurrentPlaybackIdentity()
         releaseTtsSessionTokenIfNeeded()
-        emit("ttsPlaybackFinished", payload: ["success": flag])
+        emit("ttsPlaybackFinished", payload: payload)
     }
 
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        NSLog("[NativeTTSModule] decodeError: %@", error?.localizedDescription ?? "unknown")
+        let payload = playbackPayload(base: ["message": error?.localizedDescription ?? "decode_error"])
+        NSLog(
+            "[NativeTTSModule] decodeError playbackId=%@ message=%@",
+            payload["playbackId"] as? String ?? "",
+            error?.localizedDescription ?? "unknown"
+        )
         audioPlayer = nil
+        clearCurrentPlaybackIdentity()
         releaseTtsSessionTokenIfNeeded()
-        emit("ttsError", payload: ["message": error?.localizedDescription ?? "decode_error"])
+        emit("ttsError", payload: payload)
     }
 }

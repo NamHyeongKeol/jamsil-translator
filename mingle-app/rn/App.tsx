@@ -52,6 +52,7 @@ type NativeTtsCommand =
       type: 'native_tts_play';
       payload: {
         utteranceId: string;
+        playbackId?: string;
         audioBase64: string;
         contentType?: string;
       };
@@ -89,7 +90,7 @@ function App(): React.JSX.Element {
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(null);
   const nativeStatusRef = useRef('idle');
-  const currentTtsUtteranceIdRef = useRef<string | null>(null);
+  const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
@@ -118,6 +119,26 @@ function App(): React.JSX.Element {
     }
     const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_TTS_EVENT)}, { detail: ${serialized} })); true;`;
     webViewRef.current?.injectJavaScript(script);
+  }, []);
+
+  const resolveCurrentTtsIdentity = useCallback((event?: { utteranceId?: string; playbackId?: string }) => {
+    const active = currentTtsPlaybackRef.current;
+    const eventPlaybackId = typeof event?.playbackId === 'string' ? event.playbackId : '';
+    const eventUtteranceId = typeof event?.utteranceId === 'string' ? event.utteranceId : '';
+    const playbackId = eventPlaybackId || active?.playbackId || '';
+    const utteranceId = eventUtteranceId || active?.utteranceId || '';
+
+    if (active) {
+      if (playbackId && playbackId === active.playbackId) {
+        currentTtsPlaybackRef.current = null;
+      } else if (!playbackId && utteranceId && utteranceId === active.utteranceId) {
+        currentTtsPlaybackRef.current = null;
+      } else if (!playbackId && !utteranceId) {
+        currentTtsPlaybackRef.current = null;
+      }
+    }
+
+    return { utteranceId, playbackId };
   }, []);
 
   const handleNativeStart = useCallback(async (payload?: NativeSttCommand['payload']) => {
@@ -195,17 +216,22 @@ function App(): React.JSX.Element {
 
     if (parsed.type === 'native_tts_play') {
       const { utteranceId, audioBase64, contentType } = parsed.payload;
-      currentTtsUtteranceIdRef.current = utteranceId;
+      const playbackId = typeof parsed.payload.playbackId === 'string' && parsed.payload.playbackId.trim()
+        ? parsed.payload.playbackId.trim()
+        : utteranceId;
+      currentTtsPlaybackRef.current = { utteranceId, playbackId };
       if (__DEV__) {
-        console.log(`[Web→NativeTTS] play utteranceId=${utteranceId} base64Len=${audioBase64.length}`);
+        console.log(`[Web→NativeTTS] play utteranceId=${utteranceId} playbackId=${playbackId} base64Len=${audioBase64.length}`);
       }
-      void playNativeTts({ audioBase64 }).catch((error: unknown) => {
+      void playNativeTts({ audioBase64, utteranceId, playbackId }).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         if (__DEV__) {
-          console.log(`[NativeTTS] play error: ${message}`);
+          console.log(`[NativeTTS] play error playbackId=${playbackId}: ${message}`);
         }
-        emitTtsToWeb({ type: 'tts_error', utteranceId, message });
-        currentTtsUtteranceIdRef.current = null;
+        if (currentTtsPlaybackRef.current?.playbackId === playbackId) {
+          currentTtsPlaybackRef.current = null;
+        }
+        emitTtsToWeb({ type: 'tts_error', utteranceId, playbackId, message });
       });
       return;
     }
@@ -223,7 +249,7 @@ function App(): React.JSX.Element {
       if (__DEV__) {
         console.log('[Web→NativeTTS] stop');
       }
-      currentTtsUtteranceIdRef.current = null;
+      currentTtsPlaybackRef.current = null;
       void stopNativeTts();
     }
   }, [emitTtsToWeb, handleNativeStart, handleNativeStop]);
@@ -261,27 +287,24 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     const finishedSub = addNativeTtsListener('ttsPlaybackFinished', (event) => {
-      const utteranceId = currentTtsUtteranceIdRef.current;
-      currentTtsUtteranceIdRef.current = null;
+      const { utteranceId, playbackId } = resolveCurrentTtsIdentity(event);
       if (__DEV__) {
-        console.log(`[NativeTTS] finished utteranceId=${utteranceId} success=${event.success}`);
+        console.log(`[NativeTTS] finished utteranceId=${utteranceId} playbackId=${playbackId} success=${event.success}`);
       }
-      emitTtsToWeb({ type: 'tts_ended', utteranceId: utteranceId || '' });
+      emitTtsToWeb({ type: 'tts_ended', utteranceId: utteranceId || '', playbackId: playbackId || '' });
     });
 
-    const stoppedSub = addNativeTtsListener('ttsPlaybackStopped', () => {
-      const utteranceId = currentTtsUtteranceIdRef.current;
-      currentTtsUtteranceIdRef.current = null;
-      emitTtsToWeb({ type: 'tts_stopped', utteranceId: utteranceId || '' });
+    const stoppedSub = addNativeTtsListener('ttsPlaybackStopped', (event) => {
+      const { utteranceId, playbackId } = resolveCurrentTtsIdentity(event);
+      emitTtsToWeb({ type: 'tts_stopped', utteranceId: utteranceId || '', playbackId: playbackId || '' });
     });
 
     const errorSub = addNativeTtsListener('ttsError', (event) => {
-      const utteranceId = currentTtsUtteranceIdRef.current;
-      currentTtsUtteranceIdRef.current = null;
+      const { utteranceId, playbackId } = resolveCurrentTtsIdentity(event);
       if (__DEV__) {
-        console.log(`[NativeTTS] error: ${event.message}`);
+        console.log(`[NativeTTS] error playbackId=${playbackId}: ${event.message}`);
       }
-      emitTtsToWeb({ type: 'tts_error', utteranceId: utteranceId || '', message: event.message });
+      emitTtsToWeb({ type: 'tts_error', utteranceId: utteranceId || '', playbackId: playbackId || '', message: event.message });
     });
 
     return () => {
@@ -289,7 +312,7 @@ function App(): React.JSX.Element {
       stoppedSub.remove();
       errorSub.remove();
     };
-  }, [emitTtsToWeb]);
+  }, [emitTtsToWeb, resolveCurrentTtsIdentity]);
 
   const handleLoadEnd = useCallback(() => {
     isPageReadyRef.current = true;
