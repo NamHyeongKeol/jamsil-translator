@@ -624,9 +624,9 @@ wss.on('connection', (clientWs) => {
                     }
 
                     // 발화 완료 판단:
-                    // 1) Soniox <end> 토큰이 포함된 경우 즉시 완료 처리
-                    // 2) 기존 휴리스틱(부분 토큰이 있었고 이번에 final 토큰이 들어온 경우)
-                    if (hasEndpointToken || (newFinalText && hadNonFinal && !nonFinalText)) {
+                    // Soniox endpoint(<end>) 토큰이 포함된 경우에만 완료 처리
+                    // NOTE: 임시로 서버 휴리스틱 finalization 조건은 비활성화함.
+                    if (hasEndpointToken) {
                         latestNonFinalText = '';
                         emitFinalTurn(finalizedText, detectedLang);
                     }

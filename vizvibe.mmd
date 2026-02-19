@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tts_playback_id_event_alignment_milestone3
+    %% @lastActive: mingle_stt_endpoint_only_finalize_mode
 
     %% === START ===
     %% @project_start [start, closed]
@@ -535,6 +535,9 @@ flowchart TD
     %% @mingle_app_tts_playback_id_event_alignment_milestone3 [ai-task, closed, 2026-02-19, ai]
     mingle_app_tts_playback_id_event_alignment_milestone3("TTS 재생ID 정합성 3차 마일스톤<br/><sub>웹↔RN↔iOS Native TTS 이벤트에 playbackId를<br/>동일하게 전달하도록 재생 식별 체인을 통일하고<br/>종료/중단/오류 이벤트를 playbackId 우선 매칭으로 처리해<br/>stale 이벤트 오매칭으로 인한 큐 상태 꼬임을 차단</sub>")
 
+    %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
+    mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
+
     %% @mingle_app_usage_truth_policy [human-task, opened, 2026-02-16, user]
     mingle_app_usage_truth_policy("사용시간 Source of Truth 정책 확정 필요<br/><sub>현재 클라 localStorage usage와 DB 집계를 병행하므로<br/>제한/과금/분석 기준을 서버 우선으로 둘지 결정하고<br/>초기 부트스트랩/동기화 시점(앱 시작·턴 종료)을<br/>정책으로 고정해야 일관된 사용량이 보장됨</sub>")
 
@@ -666,6 +669,7 @@ flowchart TD
     mingle_app_tts_fallback_recovery_path --> mingle_app_tts_diagnostics_logging
     mingle_app_tts_diagnostics_logging --> mingle_app_tts_initial_history_queue_race_fix
     mingle_app_tts_initial_history_queue_race_fix --> mingle_stt_service_split_from_landing
+    mingle_stt_service_split_from_landing --> mingle_stt_endpoint_only_finalize_mode
     mingle_stt_service_split_from_landing --> mingle_app_ios_native_tts_background_experiment
     mingle_app_ios_native_tts_background_experiment --> mingle_app_ios_icon_from_favicon_apply
     mingle_app_ios_icon_from_favicon_apply --> mingle_app_ios_native_tts_html_fallback_fix
@@ -751,11 +755,12 @@ flowchart TD
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
     mingle_app_tts_playback_id_event_alignment_milestone3 -.-> ultimate_goal
+    mingle_stt_endpoint_only_finalize_mode -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_tts_playback_id_event_alignment_milestone3
+        mingle_stt_endpoint_only_finalize_mode
     end
 
     %% === STYLES ===
@@ -989,7 +994,8 @@ flowchart TD
     style mingle_app_aec_default_echo_on_alignment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tts_native_event_watchdog_milestone1 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_audio_session_owner_coordinator_milestone2 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tts_playback_id_event_alignment_milestone3 fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tts_playback_id_event_alignment_milestone3 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_endpoint_only_finalize_mode fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
