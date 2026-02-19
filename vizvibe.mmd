@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_aec_default_echo_on_alignment
+    %% @lastActive: mingle_app_tts_native_event_watchdog_milestone1
 
     %% === START ===
     %% @project_start [start, closed]
@@ -526,6 +526,9 @@ flowchart TD
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
 
+    %% @mingle_app_tts_native_event_watchdog_milestone1 [ai-task, closed, 2026-02-19, ai]
+    mingle_app_tts_native_event_watchdog_milestone1("TTS 고착 방지 1차 마일스톤<br/><sub>네이티브 종료 이벤트 유실 시에도<br/>재생 상태가 영구 고착되지 않도록<br/>watchdog 타임아웃과 stopped 경로 큐 재개를<br/>LivePhoneDemo 상태머신에 먼저 보강</sub>")
+
     %% @mingle_app_usage_truth_policy [human-task, opened, 2026-02-16, user]
     mingle_app_usage_truth_policy("사용시간 Source of Truth 정책 확정 필요<br/><sub>현재 클라 localStorage usage와 DB 집계를 병행하므로<br/>제한/과금/분석 기준을 서버 우선으로 둘지 결정하고<br/>초기 부트스트랩/동기화 시점(앱 시작·턴 종료)을<br/>정책으로 고정해야 일관된 사용량이 보장됨</sub>")
 
@@ -708,7 +711,8 @@ flowchart TD
     mingle_app_translation_bubble_target_snapshot_policy --> mingle_app_turbopack_root_tailwind_resolution_fix
     mingle_app_turbopack_root_tailwind_resolution_fix --> mingle_app_chat_scroll_overlay_and_threshold_tuning
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
-    mingle_app_aec_default_echo_on_alignment --> demo_limit_server_db_migration
+    mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
+    mingle_app_tts_native_event_watchdog_milestone1 --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
@@ -736,11 +740,12 @@ flowchart TD
     mingle_app_turbopack_root_tailwind_resolution_fix -.-> ultimate_goal
     mingle_app_chat_scroll_overlay_and_threshold_tuning -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
+    mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_aec_default_echo_on_alignment
+        mingle_app_tts_native_event_watchdog_milestone1
     end
 
     %% === STYLES ===
@@ -971,7 +976,8 @@ flowchart TD
     style mingle_app_translation_bubble_target_snapshot_policy fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_turbopack_root_tailwind_resolution_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_chat_scroll_overlay_and_threshold_tuning fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_aec_default_echo_on_alignment fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_aec_default_echo_on_alignment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_native_event_watchdog_milestone1 fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
