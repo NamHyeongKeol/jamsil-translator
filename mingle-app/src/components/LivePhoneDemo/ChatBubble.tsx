@@ -181,7 +181,7 @@ function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: 
             </span>
           </div>
           {timestamp && (
-            <span className="text-[11px] text-gray-300 tabular-nums whitespace-nowrap">{timestamp}</span>
+            <span className="text-[11px] text-black/[0.34] tabular-nums whitespace-nowrap">{timestamp}</span>
           )}
         </div>
         <p className="text-sm text-gray-900 leading-relaxed">{utterance.originalText}</p>

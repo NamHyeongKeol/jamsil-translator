@@ -521,7 +521,7 @@ flowchart TD
     mingle_app_turbopack_root_tailwind_resolution_fix("Turbopack 루트-테일윈드 해석 오류 수정<br/><sub>next.config.ts에서 Turbopack root와<br/>outputFileTracingRoot가 상위 경로를 가리켜<br/>localhost 진입 시 tailwindcss 모듈을 못 찾던<br/>해석 충돌을 앱 루트 기준으로 정렬해 해결</sub>")
 
     %% @mingle_app_chat_scroll_overlay_and_threshold_tuning [ai-task, closed, 2026-02-19, ai]
-    mingle_app_chat_scroll_overlay_and_threshold_tuning("채팅 스크롤 UX 오버레이/임계값 조정<br/><sub>자동 스크롤 바닥 판정을 80px에서 200px로 완화하고<br/>바닥에서 400px 이상 이탈 시 하단 중앙 점프 버튼을 표시,<br/>오버레이를 뷰포트 래퍼 기준으로 고정하고 사용자 의도 스크롤일 때만<br/>배지/스크롤바를 노출하며 iOS 헤더 safe-area 탭 상단 이동도 추가</sub>")
+    mingle_app_chat_scroll_overlay_and_threshold_tuning("채팅 스크롤 UX 오버레이/임계값 조정<br/><sub>자동 스크롤 바닥 판정을 80px에서 200px로 완화하고<br/>바닥에서 400px 이상 이탈 시 하단 중앙 점프 버튼을 표시,<br/>오버레이를 뷰포트 래퍼 기준으로 고정하고 사용자 의도 스크롤일 때만<br/>배지/스크롤바를 노출하며 톤·투명도·시간 텍스트 대비도 같은 계열로 정리</sub>")
 
     %% @mingle_app_usage_truth_policy [human-task, opened, 2026-02-16, user]
     mingle_app_usage_truth_policy("사용시간 Source of Truth 정책 확정 필요<br/><sub>현재 클라 localStorage usage와 DB 집계를 병행하므로<br/>제한/과금/분석 기준을 서버 우선으로 둘지 결정하고<br/>초기 부트스트랩/동기화 시점(앱 시작·턴 종료)을<br/>정책으로 고정해야 일관된 사용량이 보장됨</sub>")
