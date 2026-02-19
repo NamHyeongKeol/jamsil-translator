@@ -959,15 +959,16 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         </div>
 
         {/* Chat Area */}
-        <div
-          ref={chatRef}
-          onScroll={handleScroll}
-          className="relative min-h-0 flex-1 overflow-y-auto no-scrollbar py-2.5 space-y-3 bg-gray-50/50"
-          style={{
-            paddingLeft: "max(calc(env(safe-area-inset-left) + 6px), 10px)",
-            paddingRight: "max(calc(env(safe-area-inset-right) + 6px), 10px)",
-          }}
-        >
+        <div className="relative min-h-0 flex-1 bg-gray-50/50">
+          <div
+            ref={chatRef}
+            onScroll={handleScroll}
+            className="min-h-0 h-full overflow-y-auto no-scrollbar py-2.5 space-y-3"
+            style={{
+              paddingLeft: "max(calc(env(safe-area-inset-left) + 6px), 10px)",
+              paddingRight: "max(calc(env(safe-area-inset-right) + 6px), 10px)",
+            }}
+          >
           {hasOlderUtterances && (
             <button
               onClick={handleLoadOlder}
@@ -993,55 +994,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 />
               </div>
             ))}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {scrollUiVisible && scrollMetrics.scrollable && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="pointer-events-none absolute inset-y-0 right-1 z-20"
-              >
-                {scrollDateLabel && (
-                  <div
-                    className="absolute right-2.5 -translate-y-1/2 rounded-full border border-white/20 bg-black/70 px-2.5 py-1 text-[11px] font-semibold tracking-tight text-white shadow-sm backdrop-blur-[1px]"
-                    style={{ top: scrollDateTop }}
-                  >
-                    {scrollDateLabel}
-                  </div>
-                )}
-                <div
-                  className="absolute right-0 w-[3px] rounded-full bg-black/28"
-                  style={{
-                    top: scrollMetrics.thumbTop,
-                    height: scrollMetrics.thumbHeight,
-                  }}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {showScrollToBottom && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center"
-              >
-                <button
-                  type="button"
-                  onClick={handleScrollToBottom}
-                  className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-black shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
-                  aria-label="Scroll to latest"
-                >
-                  <ChevronDown size={16} strokeWidth={1.85} />
-                </button>
-              </motion.div>
-            )}
           </AnimatePresence>
 
           {partialTranscript && (
@@ -1159,6 +1111,56 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 <p className="text-sm">{connectionFailedLabel}</p>
              </div>
           )}
+          </div>
+
+          <AnimatePresence>
+            {scrollUiVisible && scrollMetrics.scrollable && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="pointer-events-none absolute inset-y-0 right-1 z-20"
+              >
+                {scrollDateLabel && (
+                  <div
+                    className="absolute right-2.5 -translate-y-1/2 whitespace-nowrap rounded-full border border-black/10 bg-black/[0.18] px-3 py-1 text-[11px] font-semibold tracking-tight text-black/50 shadow-sm backdrop-blur-[1px]"
+                    style={{ top: scrollDateTop }}
+                  >
+                    {scrollDateLabel}
+                  </div>
+                )}
+                <div
+                  className="absolute right-0 w-[3px] rounded-full bg-black/28"
+                  style={{
+                    top: scrollMetrics.thumbTop,
+                    height: scrollMetrics.thumbHeight,
+                  }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showScrollToBottom && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center"
+              >
+                <button
+                  type="button"
+                  onClick={handleScrollToBottom}
+                  className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-black shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
+                  aria-label="Scroll to latest"
+                >
+                  <ChevronDown size={16} strokeWidth={1.85} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Bottom Bar with Mic Button */}
