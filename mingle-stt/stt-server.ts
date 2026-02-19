@@ -617,7 +617,6 @@ wss.on('connection', (clientWs) => {
                     enable_endpoint_detection: false,
                     enable_language_identification: true,
                     enable_speaker_diarization: true,
-                    max_endpoint_delay_ms: 500,
                 };
                 sttWs!.send(JSON.stringify(sonioxConfig));
 
