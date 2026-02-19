@@ -24,7 +24,13 @@ interface FinalTurnPayload {
     language: string;
 }
 
+let connectionCounter = 0;
+
 wss.on('connection', (clientWs) => {
+    const connId = ++connectionCounter;
+    const connectedAt = Date.now();
+    console.log(`[conn:${connId}] client connected`);
+
     let sttWs: WebSocket | null = null;
     let isClientConnected = true;
     let abortController: AbortController | null = null;
@@ -731,6 +737,7 @@ wss.on('connection', (clientWs) => {
             selectedLanguages = data.languages;
             finalizePendingTurnFromProvider = null;
             sonioxStopRequested = false;
+            console.log(`[conn:${connId}] config model=${currentModel} langs=${selectedLanguages.join(',')}`);
             
             if (currentModel === 'deepgram') {
                 startDeepgramConnection(data as ClientConfig);
@@ -760,7 +767,9 @@ wss.on('connection', (clientWs) => {
         }
     };
 
-    clientWs.onclose = () => {
+    clientWs.onclose = (event) => {
+        const durationSec = ((Date.now() - connectedAt) / 1000).toFixed(1);
+        console.log(`[conn:${connId}] client disconnected code=${event.code} duration=${durationSec}s model=${currentModel} langs=${selectedLanguages.join(',')}`);
         cleanup();
     };
 });

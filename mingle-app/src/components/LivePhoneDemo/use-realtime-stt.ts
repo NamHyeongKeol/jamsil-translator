@@ -414,12 +414,33 @@ export default function useRealtimeSTT({
     sendNativeSttCommand({ type: 'native_stt_set_aec', payload: { enabled: enableAec } })
   }, [enableAec, sendNativeSttCommand])
 
-  // Persist utterances to localStorage
+  // Persist utterances to localStorage (debounced to avoid stringify on every update)
+  const utterancePersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    try {
-      localStorage.setItem(LS_KEY_UTTERANCES, JSON.stringify(utterances))
-    } catch { /* ignore */ }
+    if (utterancePersistTimerRef.current) clearTimeout(utterancePersistTimerRef.current)
+    utterancePersistTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(LS_KEY_UTTERANCES, JSON.stringify(utterances))
+      } catch { /* ignore */ }
+    }, 2000)
+    return () => {
+      if (utterancePersistTimerRef.current) clearTimeout(utterancePersistTimerRef.current)
+    }
   }, [utterances])
+
+  // Flush pending localStorage write when app goes to background
+  useEffect(() => {
+    const flushUtterances = () => {
+      if (!utterancePersistTimerRef.current) return
+      clearTimeout(utterancePersistTimerRef.current)
+      utterancePersistTimerRef.current = null
+      try {
+        localStorage.setItem(LS_KEY_UTTERANCES, JSON.stringify(utterancesRef.current))
+      } catch { /* ignore */ }
+    }
+    document.addEventListener('visibilitychange', flushUtterances)
+    return () => document.removeEventListener('visibilitychange', flushUtterances)
+  }, [])
 
   // Persist usage to localStorage
   useEffect(() => {
