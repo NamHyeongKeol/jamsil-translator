@@ -221,32 +221,21 @@ function formatCurrentTurnPreviousStateForPrompt(state: CurrentTurnPreviousState
 }
 
 function buildPrompt(ctx: TranslateContext): { systemPrompt: string, userPrompt: string } {
-  const langList = ctx.targetLanguages.map((lang) => `${lang} (${LANG_NAMES[lang] || lang})`).join(', ')
   const recentTurns = formatRecentTurnsForPrompt(ctx.recentTurns)
   const currentTurnPreviousState = formatCurrentTurnPreviousStateForPrompt(ctx.currentTurnPreviousState)
   const targetLangCodes = ctx.targetLanguages.join(', ')
   return {
-    systemPrompt: [
-      'You are a professional live conversation translator.',
-      'Translate the current turn naturally and accurately.',
-      'Use recent turns and their prior translations as context to improve phrasing, tone, and disambiguation.',
-      'Use the previous state of the same current turn for continuity when helpful.',
-      'Keep the translation grounded in the current turn while reflecting conversation flow naturally.',
-      'Carefully verify the requested target language codes before answering.',
-      'Return all requested target language codes exactly once, and do not return any extra language codes.',
-      'Respond ONLY with strict JSON mapping language codes to translated strings. No markdown, no explanations.',
-    ].join(' '),
+    systemPrompt: 'You are a translator. Translate the current turn into each requested target language.',
     userPrompt: [
-      'Current turn to translate:',
-      `- Source language: ${ctx.sourceLanguage}`,
-      `- Target languages: ${langList}`,
-      `- Required output language codes: ${targetLangCodes}`,
-      `- Text: "${ctx.text}"`,
+      'Current turn:',
+      `source=${ctx.sourceLanguage}`,
+      `targets=${targetLangCodes}`,
+      `text="${ctx.text}"`,
       '',
-      'Recent turns from the last 10 seconds (use these to make the current-turn translation more natural):',
+      'Recent turns (last 10s):',
       recentTurns,
       '',
-      'Previous state of this SAME current turn right before finalization (use for continuity; this is not a separate turn):',
+      'Previous state of current turn:',
       currentTurnPreviousState,
     ].join('\n'),
   }

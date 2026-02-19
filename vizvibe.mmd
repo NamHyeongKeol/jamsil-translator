@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_stt_leading_noise_chars_expand
+    %% @lastActive: mingle_app_finalize_prompt_minify_for_structured_output
 
     %% === START ===
     %% @project_start [start, closed]
@@ -508,6 +508,9 @@ flowchart TD
     %% @mingle_app_stt_leading_noise_chars_expand [ai-task, closed, 2026-02-18, ai]
     mingle_app_stt_leading_noise_chars_expand("STT 선두 노이즈 문자 처리 확대<br/><sub>턴 시작부 노이즈 필터를 점/공백 중심에서<br/>쉼표·마침표·대시 등 핵심 구두점으로 확장하고<br/>괄호/인용부호 시작 발화는 보존해 의미 손실을 줄이며<br/>무의미 발화는 말풍선·번역·TTS 없이 건너뛰도록 보정</sub>")
 
+    %% @mingle_app_finalize_prompt_minify_for_structured_output [ai-task, closed, 2026-02-19, ai]
+    mingle_app_finalize_prompt_minify_for_structured_output("Finalize 번역 프롬프트 고정문구 축약<br/><sub>systemPrompt를 '번역기+타깃언어별 번역' 한 줄로 단순화하고<br/>JSON/코드검증 등 중복 지시를 제거해 토큰을 절감,<br/>userPrompt 헤더도 source/targets/text 중심의 짧은 포맷으로 압축해<br/>recent/context 본문은 유지하면서 프롬프트 길이를 줄임</sub>")
+
     %% @mingle_app_usage_truth_policy [human-task, opened, 2026-02-16, user]
     mingle_app_usage_truth_policy("사용시간 Source of Truth 정책 확정 필요<br/><sub>현재 클라 localStorage usage와 DB 집계를 병행하므로<br/>제한/과금/분석 기준을 서버 우선으로 둘지 결정하고<br/>초기 부트스트랩/동기화 시점(앱 시작·턴 종료)을<br/>정책으로 고정해야 일관된 사용량이 보장됨</sub>")
 
@@ -684,7 +687,8 @@ flowchart TD
     mingle_app_gemini_response_schema_structured_output --> mingle_app_gemini_raw_response_logging
     mingle_app_gemini_raw_response_logging --> mingle_app_finalize_current_state_fallback_and_target_guard
     mingle_app_finalize_current_state_fallback_and_target_guard --> mingle_app_stt_leading_noise_chars_expand
-    mingle_app_stt_leading_noise_chars_expand --> demo_limit_server_db_migration
+    mingle_app_stt_leading_noise_chars_expand --> mingle_app_finalize_prompt_minify_for_structured_output
+    mingle_app_finalize_prompt_minify_for_structured_output --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
     seed_data_population --> mobile_app_development
     capacitor_app_build -.-> ultimate_goal
@@ -706,11 +710,12 @@ flowchart TD
     mingle_app_gemini_raw_response_logging -.-> ultimate_goal
     mingle_app_finalize_current_state_fallback_and_target_guard -.-> ultimate_goal
     mingle_app_stt_leading_noise_chars_expand -.-> ultimate_goal
+    mingle_app_finalize_prompt_minify_for_structured_output -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_stt_leading_noise_chars_expand
+        mingle_app_finalize_prompt_minify_for_structured_output
     end
 
     %% === STYLES ===
@@ -935,7 +940,8 @@ flowchart TD
     style mingle_app_gemini_response_schema_structured_output fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_gemini_raw_response_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_finalize_current_state_fallback_and_target_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_stt_leading_noise_chars_expand fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_stt_leading_noise_chars_expand fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_finalize_prompt_minify_for_structured_output fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
