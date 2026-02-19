@@ -3,6 +3,7 @@
 ## Goal
 - Ensure STT stop and TTS stop remain separate policies.
 - Prevent TTS state lock after STT stop while playback is active.
+- Reduce end-of-playback pop noise after STT is already stopped.
 
 ## Stop Policy
 - STT stop must not call `native_tts_stop`.
@@ -10,6 +11,7 @@
   - mute/sound-off action
   - force reset path
   - component unmount/app exit
+- STT restart is user-action only. Audio session logic must not auto-start STT.
 
 ## Manual Scenarios
 1. Start STT, trigger TTS, then stop STT while TTS is playing.
@@ -27,3 +29,8 @@
 ## Native Event Validation
 - Confirm `tts_ended`, `tts_stopped`, `tts_error` events resolve active playback by `playbackId` first.
 - Confirm stale events do not reset the current playback state.
+
+## M5 Audio Session Validation
+- Confirm iOS native audio session deactivation uses a short grace delay.
+- Confirm new STT/TTS activity during grace cancels deactivation.
+- Confirm this cancellation does not trigger any automatic STT start.

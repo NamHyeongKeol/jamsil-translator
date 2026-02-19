@@ -8,6 +8,8 @@ final class MingleAudioSessionCoordinator {
     private let lock = NSLock()
     private var sttOwners: Int = 0
     private var ttsOwners: Int = 0
+    private var pendingDeactivationWorkItem: DispatchWorkItem?
+    private let deactivationGraceMs: Int = 280
 
     private init() {}
 
@@ -17,8 +19,16 @@ final class MingleAudioSessionCoordinator {
         return block()
     }
 
+    private func cancelPendingDeactivationLocked() {
+        pendingDeactivationWorkItem?.cancel()
+        pendingDeactivationWorkItem = nil
+    }
+
     func acquireSTT() {
-        withLock { sttOwners += 1 }
+        withLock {
+            cancelPendingDeactivationLocked()
+            sttOwners += 1
+        }
     }
 
     func releaseSTT() {
@@ -30,7 +40,10 @@ final class MingleAudioSessionCoordinator {
     }
 
     func acquireTTS() {
-        withLock { ttsOwners += 1 }
+        withLock {
+            cancelPendingDeactivationLocked()
+            ttsOwners += 1
+        }
     }
 
     func releaseTTS() {
@@ -41,8 +54,45 @@ final class MingleAudioSessionCoordinator {
         }
     }
 
-    func shouldDeactivateAudioSession() -> Bool {
-        return withLock { sttOwners == 0 && ttsOwners == 0 }
+    func scheduleDeactivateAudioSessionIfIdle(trigger: String, delayMs: Int? = nil) {
+        var workItemToSchedule: DispatchWorkItem?
+        let appliedDelayMs = delayMs ?? deactivationGraceMs
+
+        withLock {
+            cancelPendingDeactivationLocked()
+            if sttOwners != 0 || ttsOwners != 0 {
+                return
+            }
+
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                let shouldDeactivate = self.withLock {
+                    self.pendingDeactivationWorkItem = nil
+                    return self.sttOwners == 0 && self.ttsOwners == 0
+                }
+                guard shouldDeactivate else { return }
+                do {
+                    // M5: Avoid abrupt immediate session teardown to reduce
+                    // end-of-playback click/pop after STT already stopped.
+                    try AVAudioSession.sharedInstance().setActive(false, options: [])
+                    NSLog("[MingleAudioSessionCoordinator] deactivated audio session trigger=%@", trigger)
+                } catch {
+                    NSLog(
+                        "[MingleAudioSessionCoordinator] deactivate failed trigger=%@ error=%@",
+                        trigger,
+                        error.localizedDescription
+                    )
+                }
+            }
+            pendingDeactivationWorkItem = workItem
+            workItemToSchedule = workItem
+        }
+
+        guard let workItemToSchedule else { return }
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + .milliseconds(appliedDelayMs),
+            execute: workItemToSchedule
+        )
     }
 
     func snapshot() -> (stt: Int, tts: Int) {
@@ -304,14 +354,11 @@ class NativeSTTModule: RCTEventEmitter {
             MingleAudioSessionCoordinator.shared.releaseSTT()
             sttSessionTokenAcquired = false
         }
-        if MingleAudioSessionCoordinator.shared.shouldDeactivateAudioSession() {
-            do {
-                try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
-            } catch {
-                // Keep shutdown resilient even if AVAudioSession deactivation fails.
-            }
-        } else {
-            let owners = MingleAudioSessionCoordinator.shared.snapshot()
+        MingleAudioSessionCoordinator.shared.scheduleDeactivateAudioSessionIfIdle(
+            trigger: "stt_stop_cleanup"
+        )
+        let owners = MingleAudioSessionCoordinator.shared.snapshot()
+        if owners.stt != 0 || owners.tts != 0 {
             NSLog("[NativeSTTModule] keep audio session active (owners stt=%d tts=%d)",
                   owners.stt, owners.tts)
         }

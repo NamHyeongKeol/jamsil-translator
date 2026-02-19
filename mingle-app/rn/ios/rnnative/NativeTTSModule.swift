@@ -63,13 +63,9 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
         if !ttsSessionTokenAcquired { return }
         MingleAudioSessionCoordinator.shared.releaseTTS()
         ttsSessionTokenAcquired = false
-        if MingleAudioSessionCoordinator.shared.shouldDeactivateAudioSession() {
-            do {
-                try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
-            } catch {
-                // Keep shutdown resilient even if AVAudioSession deactivation fails.
-            }
-        }
+        MingleAudioSessionCoordinator.shared.scheduleDeactivateAudioSessionIfIdle(
+            trigger: "tts_release"
+        )
     }
 
     @objc(play:resolver:rejecter:)
