@@ -341,7 +341,7 @@ export default function useRealtimeSTT({
         if (seen.has(u.id)) return false
         seen.add(u.id)
         return true
-      }).map(normalizeStoredUtterance)
+      }).map(normalizeStoredUtterance).slice(-100)
     } catch { return [] }
   })
   const [partialTranscript, setPartialTranscript] = useState('')
