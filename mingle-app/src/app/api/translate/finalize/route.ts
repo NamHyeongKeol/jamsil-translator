@@ -109,7 +109,7 @@ function parseTranslations(raw: string): Record<string, string> {
 
   for (const [key, value] of Object.entries(parsed)) {
     if (typeof value !== 'string') continue
-    const cleaned = value.replace(/<\/?end>/gi, '').trim()
+    const cleaned = value.replace(/<\/?(?:end|fin)>/gi, '').trim()
     if (!cleaned) continue
     output[key] = cleaned
   }
@@ -125,7 +125,7 @@ function parseRecentTurns(raw: unknown): RecentTurnContext[] {
     if (!item || typeof item !== 'object') continue
     const payload = item as Record<string, unknown>
     const sourceText = typeof payload.sourceText === 'string'
-      ? payload.sourceText.replace(/<\/?end>/gi, '').trim()
+      ? payload.sourceText.replace(/<\/?(?:end|fin)>/gi, '').trim()
       : ''
     if (!sourceText) continue
     const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '') || 'unknown'
@@ -140,7 +140,7 @@ function parseRecentTurns(raw: unknown): RecentTurnContext[] {
       const normalizedLanguage = normalizeLang(language)
       if (!normalizedLanguage) continue
       if (normalizedLanguage === sourceLanguage) continue
-      const cleaned = translatedText.replace(/<\/?end>/gi, '').trim()
+      const cleaned = translatedText.replace(/<\/?(?:end|fin)>/gi, '').trim()
       if (!cleaned) continue
       translations[normalizedLanguage] = cleaned
     }
@@ -163,7 +163,7 @@ function parseCurrentTurnPreviousState(raw: unknown): CurrentTurnPreviousState |
 
   const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '')
   const sourceText = typeof payload.sourceText === 'string'
-    ? payload.sourceText.replace(/<\/?end>/gi, '').trim()
+    ? payload.sourceText.replace(/<\/?(?:end|fin)>/gi, '').trim()
     : ''
   if (!sourceLanguage || !sourceText) return null
 
@@ -177,7 +177,7 @@ function parseCurrentTurnPreviousState(raw: unknown): CurrentTurnPreviousState |
     const normalizedLanguage = normalizeLang(language)
     if (!normalizedLanguage) continue
     if (normalizedLanguage === sourceLanguage) continue
-    const cleaned = translatedText.replace(/<\/?end>/gi, '').trim()
+    const cleaned = translatedText.replace(/<\/?(?:end|fin)>/gi, '').trim()
     if (!cleaned) continue
     translations[normalizedLanguage] = cleaned
   }
