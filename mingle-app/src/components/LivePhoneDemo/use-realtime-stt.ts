@@ -142,6 +142,26 @@ function stripSourceLanguageFromTranslations(
   return translations
 }
 
+function buildTurnTargetLanguagesSnapshot(
+  languagesRaw: string[],
+  sourceLanguageRaw: string,
+): string[] {
+  const sourceLanguage = normalizeLangForCompare(sourceLanguageRaw)
+  const targetLanguages: string[] = []
+  const seen = new Set<string>()
+  for (const languageRaw of languagesRaw) {
+    const language = (languageRaw || '').trim()
+    if (!language) continue
+    const normalizedLanguage = normalizeLangForCompare(language)
+    if (sourceLanguage && normalizedLanguage === sourceLanguage) continue
+    const key = normalizedLanguage || language.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    targetLanguages.push(language)
+  }
+  return targetLanguages
+}
+
 function buildCurrentTurnPreviousStatePayload(
   sourceLanguageRaw: string,
   sourceTextRaw: string,
@@ -914,6 +934,7 @@ export default function useRealtimeSTT({
 
     utteranceIdRef.current += 1
     const seedTranslations = stripSourceLanguageFromTranslations(partialTranslationsRef.current, lang)
+    const targetLanguages = buildTurnTargetLanguagesSnapshot(languages, lang)
     const seedFinalized: Record<string, boolean> = {}
     for (const key of Object.keys(seedTranslations)) {
       seedFinalized[key] = false
@@ -929,6 +950,7 @@ export default function useRealtimeSTT({
       id: utteranceId,
       originalText: text,
       originalLang: lang,
+      targetLanguages,
       translations: seedTranslations,
       translationFinalized: seedFinalized,
       createdAtMs: now,
@@ -941,7 +963,7 @@ export default function useRealtimeSTT({
     partialLangRef.current = null
     pendingLocalFinalizeRef.current = { utteranceId, text, lang, expiresAt: now + 15000 }
     return { utteranceId, text, lang, currentTurnPreviousState }
-  }, [])
+  }, [languages])
 
   const finalizeTurnWithTranslation = useCallback((
     localFinalizeResult: LocalFinalizeResult,
@@ -1292,6 +1314,7 @@ export default function useRealtimeSTT({
 
         utteranceIdRef.current += 1
         const seedTranslations = stripSourceLanguageFromTranslations(partialTranslationsRef.current, lang)
+        const targetLanguages = buildTurnTargetLanguagesSnapshot(languages, lang)
         const seedFinalized: Record<string, boolean> = {}
         for (const key of Object.keys(seedTranslations)) {
           seedFinalized[key] = false
@@ -1306,6 +1329,7 @@ export default function useRealtimeSTT({
           id: newUtteranceId,
           originalText: text,
           originalLang: lang,
+          targetLanguages,
           translations: seedTranslations,
           translationFinalized: seedFinalized,
           createdAtMs: now,
@@ -1341,7 +1365,7 @@ export default function useRealtimeSTT({
         partialLangRef.current = lang
       }
     }
-  }, [clearPartialBuffers, finalizeTurnWithTranslation, logClientEvent, normalizedUsageLimitSec, startAudioProcessing, stopRecordingGracefully])
+  }, [clearPartialBuffers, finalizeTurnWithTranslation, languages, logClientEvent, normalizedUsageLimitSec, startAudioProcessing, stopRecordingGracefully])
 
   const startRecording = useCallback(async () => {
     if (isStoppingRef.current) return

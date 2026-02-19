@@ -55,6 +55,7 @@ export interface Utterance {
   id: string
   originalText: string
   originalLang: string
+  targetLanguages?: string[]
   translations: Record<string, string>
   translationFinalized?: Record<string, boolean>
   createdAtMs?: number
@@ -62,9 +63,35 @@ export interface Utterance {
 
 interface ChatBubbleProps {
   utterance: Utterance
-  selectedLanguages: string[]
   isSpeaking?: boolean
   speakingLanguage?: string | null
+}
+
+function normalizeLanguageCode(rawLanguage: string): string {
+  return (rawLanguage || '').trim().replace('_', '-').toLowerCase().split('-')[0] || ''
+}
+
+function buildTargetLanguagesForUtterance(utterance: Utterance): string[] {
+  const sourceLanguage = normalizeLanguageCode(utterance.originalLang)
+  const targetLanguages: string[] = []
+  const seen = new Set<string>()
+
+  const pushLanguage = (rawLanguage: string) => {
+    const language = (rawLanguage || '').trim()
+    if (!language) return
+    const normalized = normalizeLanguageCode(language)
+    if (sourceLanguage && normalized === sourceLanguage) return
+    const key = normalized || language.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    targetLanguages.push(language)
+  }
+
+  for (const language of utterance.targetLanguages || []) pushLanguage(language)
+  for (const language of Object.keys(utterance.translations || {})) pushLanguage(language)
+  for (const language of Object.keys(utterance.translationFinalized || {})) pushLanguage(language)
+
+  return targetLanguages
 }
 
 function SpeakingIndicator() {
@@ -78,10 +105,11 @@ function SpeakingIndicator() {
   )
 }
 
-function ChatBubble({ utterance, selectedLanguages, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
+function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
   const flag = FLAG_MAP[utterance.originalLang] || '🌐'
-  // Use selectedLanguages order (= language list order) for consistent display ordering.
-  const targetLangs = selectedLanguages.filter(lang => lang !== utterance.originalLang)
+  // Keep target language list fixed per utterance so language toggles
+  // do not retroactively add/remove bubbles on old messages.
+  const targetLangs = buildTargetLanguagesForUtterance(utterance)
   const translationEntries = targetLangs
     .filter(lang => utterance.translations[lang])
     .map(lang => ({
@@ -173,19 +201,20 @@ function chatBubbleAreEqual(prev: ChatBubbleProps, next: ChatBubbleProps): boole
   if (prev.isSpeaking !== next.isSpeaking) return false
   if (prev.speakingLanguage !== next.speakingLanguage) return false
 
-  if (prev.selectedLanguages !== next.selectedLanguages) {
-    if (prev.selectedLanguages.length !== next.selectedLanguages.length) return false
-    for (let i = 0; i < prev.selectedLanguages.length; i++) {
-      if (prev.selectedLanguages[i] !== next.selectedLanguages[i]) return false
-    }
-  }
-
   if (prev.utterance !== next.utterance) {
     const pu = prev.utterance
     const nu = next.utterance
     if (pu.id !== nu.id) return false
     if (pu.originalText !== nu.originalText) return false
     if (pu.originalLang !== nu.originalLang) return false
+    if (pu.targetLanguages !== nu.targetLanguages) {
+      const pt = pu.targetLanguages || []
+      const nt = nu.targetLanguages || []
+      if (pt.length !== nt.length) return false
+      for (let i = 0; i < pt.length; i++) {
+        if (pt[i] !== nt[i]) return false
+      }
+    }
     if (pu.translations !== nu.translations) {
       const pk = Object.keys(pu.translations)
       const nk = Object.keys(nu.translations)

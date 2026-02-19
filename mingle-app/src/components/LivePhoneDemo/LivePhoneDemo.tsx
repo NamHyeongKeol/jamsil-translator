@@ -831,7 +831,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               <ChatBubble
                 key={u.id}
                 utterance={u}
-                selectedLanguages={selectedLanguages}
                 isSpeaking={speakingItem?.utteranceId === u.id}
                 speakingLanguage={speakingItem?.language ?? null}
               />
