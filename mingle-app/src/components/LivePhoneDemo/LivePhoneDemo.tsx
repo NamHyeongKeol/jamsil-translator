@@ -785,6 +785,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const shouldAutoScroll = useRef(true)
   const suppressAutoScrollRef = useRef(false)
   const userScrollIntentUntilRef = useRef(0)
+  const hasInitialBottomAnchorRef = useRef(false)
+  const allowAutoTopPaginationRef = useRef(false)
   const isPaginatingRef = useRef(false)
   const prevScrollHeightRef = useRef<number | null>(null)
   const isLoadingOlderRef = useRef(false)
@@ -867,7 +869,12 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
     setScrollDateLabel(findTopVisibleUtteranceDateLabel(chatRef.current, getUiLocale()))
 
-    if (scrollTop < 100 && hasOlderUtterances && !isLoadingOlderRef.current) {
+    if (
+      allowAutoTopPaginationRef.current
+      && scrollTop < 100
+      && hasOlderUtterances
+      && !isLoadingOlderRef.current
+    ) {
       handleLoadOlder()
     }
   }, [hasOlderUtterances, handleLoadOlder])
@@ -906,6 +913,24 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     chatRef.current.scrollTo({ top: 0, behavior: 'smooth' })
     updateScrollDerivedState({ fromUserScroll: true })
   }, [markUserScrollIntent, updateScrollDerivedState])
+
+  // On fresh mount/re-entry, pin to the latest messages first.
+  // This prevents initial top-pagination from running before we settle at bottom.
+  useLayoutEffect(() => {
+    if (!chatRef.current || hasInitialBottomAnchorRef.current) return
+    const node = chatRef.current
+    node.scrollTop = node.scrollHeight
+    shouldAutoScroll.current = true
+    suppressAutoScrollRef.current = false
+    hasInitialBottomAnchorRef.current = true
+
+    const rafId = window.requestAnimationFrame(() => {
+      allowAutoTopPaginationRef.current = true
+      updateScrollDerivedState()
+    })
+
+    return () => window.cancelAnimationFrame(rafId)
+  }, [updateScrollDerivedState, utterances.length])
 
   // Preserve scroll position after prepending older utterances
   useLayoutEffect(() => {

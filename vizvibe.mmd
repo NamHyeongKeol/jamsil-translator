@@ -521,7 +521,7 @@ flowchart TD
     mingle_app_turbopack_root_tailwind_resolution_fix("Turbopack 루트-테일윈드 해석 오류 수정<br/><sub>next.config.ts에서 Turbopack root와<br/>outputFileTracingRoot가 상위 경로를 가리켜<br/>localhost 진입 시 tailwindcss 모듈을 못 찾던<br/>해석 충돌을 앱 루트 기준으로 정렬해 해결</sub>")
 
     %% @mingle_app_chat_scroll_overlay_and_threshold_tuning [ai-task, closed, 2026-02-19, ai]
-    mingle_app_chat_scroll_overlay_and_threshold_tuning("채팅 스크롤 UX 오버레이/임계값 조정<br/><sub>자동 스크롤 바닥 판정을 80px에서 200px로 완화하고<br/>바닥에서 400px 이상 이탈 시 하단 중앙 점프 버튼을 표시,<br/>오버레이를 뷰포트 래퍼 기준으로 고정하고 사용자 의도 스크롤일 때만<br/>배지/스크롤바를 노출하며 톤·투명도·시간 텍스트 대비를 반복 미세조정</sub>")
+    mingle_app_chat_scroll_overlay_and_threshold_tuning("채팅 스크롤 UX 오버레이/임계값 조정<br/><sub>자동 스크롤 바닥 판정을 80px에서 200px로 완화하고<br/>바닥에서 400px 이상 이탈 시 하단 중앙 점프 버튼을 표시,<br/>오버레이를 뷰포트 래퍼 기준으로 고정하고 사용자 의도 스크롤일 때만<br/>배지/스크롤바를 노출하며 초기 진입 시 먼저 하단 정착 후 페이지네이션 허용</sub>")
 
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
