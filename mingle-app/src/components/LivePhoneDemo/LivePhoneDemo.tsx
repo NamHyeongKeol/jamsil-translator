@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
@@ -442,6 +442,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     usageSec,
     isLimitReached,
     usageLimitSec,
+    loadOlderUtterances,
+    hasOlderUtterances,
     // Demo animation states
     isDemoAnimating,
     demoTypingText,
@@ -713,12 +715,36 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   const chatRef = useRef<HTMLDivElement>(null)
   const shouldAutoScroll = useRef(true)
+  const isPaginatingRef = useRef(false)
+  const prevScrollHeightRef = useRef<number | null>(null)
+  const isLoadingOlderRef = useRef(false)
 
-  const handleScroll = () => {
+  const handleLoadOlder = useCallback(() => {
+    if (isLoadingOlderRef.current || !hasOlderUtterances || !chatRef.current) return
+    isLoadingOlderRef.current = true
+    isPaginatingRef.current = true
+    prevScrollHeightRef.current = chatRef.current.scrollHeight
+    loadOlderUtterances()
+  }, [hasOlderUtterances, loadOlderUtterances])
+
+  const handleScroll = useCallback(() => {
     if (!chatRef.current) return
     const { scrollTop, scrollHeight, clientHeight } = chatRef.current
     shouldAutoScroll.current = scrollHeight - scrollTop - clientHeight < 80
-  }
+    if (scrollTop < 50 && hasOlderUtterances) {
+      handleLoadOlder()
+    }
+  }, [hasOlderUtterances, handleLoadOlder])
+
+  // Preserve scroll position after prepending older utterances
+  useLayoutEffect(() => {
+    if (!isPaginatingRef.current || prevScrollHeightRef.current === null || !chatRef.current) return
+    const delta = chatRef.current.scrollHeight - prevScrollHeightRef.current
+    chatRef.current.scrollTop += delta
+    prevScrollHeightRef.current = null
+    isPaginatingRef.current = false
+    isLoadingOlderRef.current = false
+  }, [utterances])
 
   useEffect(() => {
     if (chatRef.current && shouldAutoScroll.current) {

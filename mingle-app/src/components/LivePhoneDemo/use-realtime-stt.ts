@@ -318,6 +318,8 @@ function logSttDebug(event: string, payload?: Record<string, unknown>) {
   console.log('[MingleSTT]', event)
 }
 
+const LOAD_BATCH_SIZE = 100
+
 export default function useRealtimeSTT({
   languages,
   onLimitReached,
@@ -329,6 +331,11 @@ export default function useRealtimeSTT({
 }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
 
+  // All utterances from localStorage (used as pagination source + merge base for persist)
+  const storedUtterancesRef = useRef<Utterance[]>([])
+  const storageLoadedCountRef = useRef(0)
+  const [hasOlderUtterances, setHasOlderUtterances] = useState(false)
+
   const [utterances, setUtterances] = useState<Utterance[]>(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -337,11 +344,15 @@ export default function useRealtimeSTT({
       const parsed: Utterance[] = JSON.parse(stored)
       // Deduplicate by id (fix corrupted data from previous bug)
       const seen = new Set<string>()
-      return parsed.filter(u => {
+      const all = parsed.filter(u => {
         if (seen.has(u.id)) return false
         seen.add(u.id)
         return true
-      }).map(normalizeStoredUtterance).slice(-100)
+      }).map(normalizeStoredUtterance)
+      storedUtterancesRef.current = all
+      const initial = all.slice(-LOAD_BATCH_SIZE)
+      storageLoadedCountRef.current = initial.length
+      return initial
     } catch { return [] }
   })
   const [partialTranscript, setPartialTranscript] = useState('')
@@ -420,6 +431,26 @@ export default function useRealtimeSTT({
     useNativeSttRef.current = shouldUseNativeSttBridge()
   }, [])
 
+  // Initialize hasOlderUtterances after mount
+  useEffect(() => {
+    setHasOlderUtterances(storedUtterancesRef.current.length > storageLoadedCountRef.current)
+  }, [])
+
+  const loadOlderUtterances = useCallback(() => {
+    const stored = storedUtterancesRef.current
+    const alreadyLoaded = storageLoadedCountRef.current
+    if (alreadyLoaded >= stored.length) return
+
+    const nextCount = Math.min(alreadyLoaded + LOAD_BATCH_SIZE, stored.length)
+    const startIdx = stored.length - nextCount
+    const endIdx = stored.length - alreadyLoaded
+    const olderBatch = stored.slice(startIdx, endIdx)
+
+    storageLoadedCountRef.current = nextCount
+    setHasOlderUtterances(nextCount < stored.length)
+    setUtterances(prev => [...olderBatch, ...prev])
+  }, [])
+
   // Forward AEC toggle to native module in real-time (hot-swap mid-session).
   const prevEnableAecRef = useRef(enableAec)
   useEffect(() => {
@@ -429,19 +460,29 @@ export default function useRealtimeSTT({
     sendNativeSttCommand({ type: 'native_stt_set_aec', payload: { enabled: enableAec } })
   }, [enableAec, sendNativeSttCommand])
 
+  // Merge current state with stored utterances for persistence.
+  // Keeps older items not yet loaded via pagination + current state (loaded historical + new session).
+  const buildMergedUtterances = useCallback((current: Utterance[]) => {
+    const stored = storedUtterancesRef.current
+    if (stored.length === 0) return current
+    const visibleIds = new Set(current.map(u => u.id))
+    const olderNotLoaded = stored.filter(u => !visibleIds.has(u.id))
+    return [...olderNotLoaded, ...current]
+  }, [])
+
   // Persist utterances to localStorage (debounced to avoid stringify on every update)
   const utterancePersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (utterancePersistTimerRef.current) clearTimeout(utterancePersistTimerRef.current)
     utterancePersistTimerRef.current = setTimeout(() => {
       try {
-        localStorage.setItem(LS_KEY_UTTERANCES, JSON.stringify(utterances))
+        localStorage.setItem(LS_KEY_UTTERANCES, JSON.stringify(buildMergedUtterances(utterances)))
       } catch { /* ignore */ }
     }, 1000)
     return () => {
       if (utterancePersistTimerRef.current) clearTimeout(utterancePersistTimerRef.current)
     }
-  }, [utterances])
+  }, [utterances, buildMergedUtterances])
 
   // Flush pending localStorage write when app goes to background
   useEffect(() => {
@@ -450,12 +491,12 @@ export default function useRealtimeSTT({
       clearTimeout(utterancePersistTimerRef.current)
       utterancePersistTimerRef.current = null
       try {
-        localStorage.setItem(LS_KEY_UTTERANCES, JSON.stringify(utterancesRef.current))
+        localStorage.setItem(LS_KEY_UTTERANCES, JSON.stringify(buildMergedUtterances(utterancesRef.current)))
       } catch { /* ignore */ }
     }
     document.addEventListener('visibilitychange', flushUtterances)
     return () => document.removeEventListener('visibilitychange', flushUtterances)
-  }, [])
+  }, [buildMergedUtterances])
 
   // Persist usage to localStorage
   useEffect(() => {
@@ -1616,5 +1657,7 @@ export default function useRealtimeSTT({
     isLimitReached,
     usageLimitSec: normalizedUsageLimitSec,
     appendUtterances,
+    loadOlderUtterances,
+    hasOlderUtterances,
   }
 }
