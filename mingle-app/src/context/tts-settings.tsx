@@ -25,12 +25,12 @@ export function TtsSettingsProvider({ children }: { children: ReactNode }) {
   })
 
   const [aecEnabled, setAecEnabledState] = useState(() => {
-    if (typeof window === 'undefined') return true
+    if (typeof window === 'undefined') return false
     try {
       const stored = window.localStorage.getItem(LS_KEY_AEC_ENABLED)
-      if (stored === 'false') return false
+      if (stored === 'true') return true
     } catch { /* ignore */ }
-    return true
+    return false
   })
 
   const setTtsEnabled = useCallback((value: boolean) => {

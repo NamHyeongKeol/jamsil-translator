@@ -11,7 +11,7 @@ class NativeSTTModule: RCTEventEmitter {
     private var socketTask: URLSessionWebSocketTask?
     private var hasInputTap = false
     private var isRunning = false
-    private var isAecEnabled = true
+    private var isAecEnabled = false
     private var lastAppliedAec: Bool? = nil
     private var hasListeners = false
     private var audioObserversInstalled = false
@@ -517,7 +517,7 @@ class NativeSTTModule: RCTEventEmitter {
         let languages = options["languages"] as? [String] ?? []
         let sttModel = options["sttModel"] as? String ?? "soniox"
         let langHintsStrict = options["langHintsStrict"] as? Bool ?? true
-        let aecEnabled = options["aecEnabled"] as? Bool ?? true
+        let aecEnabled = options["aecEnabled"] as? Bool ?? false
 
         let audioSession = AVAudioSession.sharedInstance()
         switch audioSession.recordPermission {

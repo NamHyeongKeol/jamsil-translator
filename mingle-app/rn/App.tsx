@@ -136,7 +136,7 @@ function App(): React.JSX.Element {
       ? payload.sttModel.trim()
       : 'soniox';
     const langHintsStrict = payload?.langHintsStrict !== false;
-    const aecEnabled = payload?.aecEnabled !== false;
+    const aecEnabled = payload?.aecEnabled === true;
 
     try {
       nativeStatusRef.current = 'starting';
@@ -211,7 +211,7 @@ function App(): React.JSX.Element {
     }
 
     if (parsed.type === 'native_stt_set_aec') {
-      const enabled = parsed.payload?.enabled !== false;
+      const enabled = parsed.payload?.enabled === true;
       if (__DEV__) {
         console.log(`[Web→NativeSTT] setAec enabled=${enabled}`);
       }

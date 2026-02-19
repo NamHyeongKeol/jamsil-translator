@@ -346,7 +346,7 @@ export default function useRealtimeSTT({
   onTtsRequested,
   onTtsAudio,
   enableTts,
-  enableAec = true,
+  enableAec = false,
   usageLimitSec = DEFAULT_USAGE_LIMIT_SEC,
 }: UseRealtimeSTTOptions) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
