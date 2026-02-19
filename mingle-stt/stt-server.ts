@@ -614,7 +614,7 @@ wss.on('connection', (clientWs) => {
                     num_channels: 1,
                     language_hints: config.languages,
                     language_hints_strict: config.lang_hints_strict !== false,
-                    enable_endpoint_detection: true,
+                    enable_endpoint_detection: false,
                     enable_language_identification: true,
                     enable_speaker_diarization: true,
                     max_endpoint_delay_ms: 500,
