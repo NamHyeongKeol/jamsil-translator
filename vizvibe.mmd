@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_stt_endpoint_delay_param_guard_fix
+    %% @lastActive: mingle_marker_sanitization_restore_after_debug
 
     %% === START ===
     %% @project_start [start, closed]
@@ -571,6 +571,9 @@ flowchart TD
     %% @mingle_stt_endpoint_delay_param_guard_fix [ai-task, closed, 2026-02-20, ai]
     mingle_stt_endpoint_delay_param_guard_fix("Soniox endpoint 파라미터 호환성 수정<br/><sub>endpoint detection을 false로 둔 상태에서<br/>max_endpoint_delay_ms를 함께 보내면 400이 발생해<br/>해당 필드를 Soniox 초기 설정에서 제거해<br/>연결 직후 세션 종료(1005) 오류를 차단</sub>")
 
+    %% @mingle_marker_sanitization_restore_after_debug [ai-task, closed, 2026-02-20, ai]
+    mingle_marker_sanitization_restore_after_debug("마커 비노출 정책 원복 (디버그 종료)<br/><sub><end>/<fin> 토큰을 턴 경계 인식에는 유지하되<br/>STT 서버 final/forced/pending 정리와 앱 버블 정규화에서<br/>마커 제거 치환을 다시 활성화해 사용자 화면과<br/>번역 입력 경로에서 마커가 절대 보이지 않게 복구</sub>")
+
     %% @mingle_app_usage_truth_policy [human-task, opened, 2026-02-16, user]
     mingle_app_usage_truth_policy("사용시간 Source of Truth 정책 확정 필요<br/><sub>현재 클라 localStorage usage와 DB 집계를 병행하므로<br/>제한/과금/분석 기준을 서버 우선으로 둘지 결정하고<br/>초기 부트스트랩/동기화 시점(앱 시작·턴 종료)을<br/>정책으로 고정해야 일관된 사용량이 보장됨</sub>")
 
@@ -711,6 +714,7 @@ flowchart TD
     mingle_stt_endpoint_detection_disabled_experiment --> mingle_stt_endpoint_delay_param_guard_fix
     mingle_stt_marker_token_visibility_debug_toggle --> mingle_app_end_fin_marker_unification
     mingle_app_end_fin_marker_unification --> mingle_app_marker_visibility_debug_enable
+    mingle_app_marker_visibility_debug_enable --> mingle_marker_sanitization_restore_after_debug
     mingle_stt_service_split_from_landing --> mingle_app_ios_native_tts_background_experiment
     mingle_app_ios_native_tts_background_experiment --> mingle_app_ios_icon_from_favicon_apply
     mingle_app_ios_icon_from_favicon_apply --> mingle_app_ios_native_tts_html_fallback_fix
@@ -811,11 +815,12 @@ flowchart TD
     mingle_stt_endpoint_delay_param_guard_fix -.-> ultimate_goal
     mingle_app_end_fin_marker_unification -.-> ultimate_goal
     mingle_app_marker_visibility_debug_enable -.-> ultimate_goal
+    mingle_marker_sanitization_restore_after_debug -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_stt_endpoint_delay_param_guard_fix
+        mingle_marker_sanitization_restore_after_debug
     end
 
     %% === STYLES ===
@@ -1059,9 +1064,10 @@ flowchart TD
     style mingle_stt_silence_tuning_300ms_0006 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_stt_endpoint_delay_param_guard_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_end_fin_marker_unification fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_marker_visibility_debug_enable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_marker_sanitization_restore_after_debug fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
