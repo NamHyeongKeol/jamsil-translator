@@ -422,7 +422,7 @@ export default function useRealtimeSTT({
       try {
         localStorage.setItem(LS_KEY_UTTERANCES, JSON.stringify(utterances))
       } catch { /* ignore */ }
-    }, 2000)
+    }, 1000)
     return () => {
       if (utterancePersistTimerRef.current) clearTimeout(utterancePersistTimerRef.current)
     }
