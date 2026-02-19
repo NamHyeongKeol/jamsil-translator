@@ -506,7 +506,7 @@ flowchart TD
     mingle_app_partial_translation_threshold_tune("STT 부분번역 트리거 10자 단위 조정<br/><sub>중간 번역 호출 기준을 5자 단위에서<br/>10자 단위(10/20/30...)로 상향 조정하고<br/>첫 partial 수신 시 길이와 무관하게 1회<br/>선호출 후 final 확정 번역 호출은 유지</sub>")
 
     %% @mingle_app_stt_leading_noise_chars_expand [ai-task, closed, 2026-02-18, ai]
-    mingle_app_stt_leading_noise_chars_expand("STT 선두 노이즈 문자 처리 확대<br/><sub>턴 시작부 노이즈 필터를 점/공백 중심에서<br/>쉼표 포함 유니코드 문장부호 전반으로 확장해<br/>무의미 발화 시작은 partial/final 단계 모두<br/>말풍선·번역·TTS 생성 없이 건너뛰도록 보정</sub>")
+    mingle_app_stt_leading_noise_chars_expand("STT 선두 노이즈 문자 처리 확대<br/><sub>턴 시작부 노이즈 필터를 점/공백 중심에서<br/>쉼표·마침표·대시 등 핵심 구두점으로 확장하고<br/>괄호/인용부호 시작 발화는 보존해 의미 손실을 줄이며<br/>무의미 발화는 말풍선·번역·TTS 없이 건너뛰도록 보정</sub>")
 
     %% @mingle_app_usage_truth_policy [human-task, opened, 2026-02-16, user]
     mingle_app_usage_truth_policy("사용시간 Source of Truth 정책 확정 필요<br/><sub>현재 클라 localStorage usage와 DB 집계를 병행하므로<br/>제한/과금/분석 기준을 서버 우선으로 둘지 결정하고<br/>초기 부트스트랩/동기화 시점(앱 시작·턴 종료)을<br/>정책으로 고정해야 일관된 사용량이 보장됨</sub>")
