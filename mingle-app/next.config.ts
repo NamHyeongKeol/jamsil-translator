@@ -1,13 +1,11 @@
 import type { NextConfig } from "next";
-import path from "node:path";
-
-const monorepoRoot = path.resolve(__dirname, "..");
+const appRoot = __dirname;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  outputFileTracingRoot: monorepoRoot,
+  outputFileTracingRoot: appRoot,
   turbopack: {
-    root: monorepoRoot,
+    root: appRoot,
   },
 };
 
