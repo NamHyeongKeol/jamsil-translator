@@ -1497,9 +1497,10 @@ export default function useRealtimeSTT({
       .then(result => {
         // Discard if a new utterance has started since this request was fired.
         if (utteranceIdRef.current !== requestUtteranceId) return
-        for (const [lang, text] of Object.entries(result.translations)) {
-          partialTranslationsRef.current = { ...partialTranslationsRef.current, [lang]: text }
-          setPartialTranslations(prev => ({ ...prev, [lang]: text }))
+        const newTranslations = result.translations
+        if (Object.keys(newTranslations).length > 0) {
+          partialTranslationsRef.current = { ...partialTranslationsRef.current, ...newTranslations }
+          setPartialTranslations(prev => ({ ...prev, ...newTranslations }))
         }
       })
   }, [partialTranscript, languages, connectionStatus, translateViaApi])

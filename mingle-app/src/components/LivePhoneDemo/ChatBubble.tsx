@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 
 const FLAG_MAP: Record<string, string> = {
@@ -36,7 +37,7 @@ function SpeakingIndicator() {
   )
 }
 
-export default function ChatBubble({ utterance, selectedLanguages, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
+function ChatBubble({ utterance, selectedLanguages, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
   const flag = FLAG_MAP[utterance.originalLang] || '🌐'
   // Use selectedLanguages order (= language list order) for consistent display ordering.
   const targetLangs = selectedLanguages.filter(lang => lang !== utterance.originalLang)
@@ -115,3 +116,45 @@ export default function ChatBubble({ utterance, selectedLanguages, isSpeaking = 
     </motion.div>
   )
 }
+
+function chatBubbleAreEqual(prev: ChatBubbleProps, next: ChatBubbleProps): boolean {
+  if (prev.isSpeaking !== next.isSpeaking) return false
+  if (prev.speakingLanguage !== next.speakingLanguage) return false
+
+  if (prev.selectedLanguages !== next.selectedLanguages) {
+    if (prev.selectedLanguages.length !== next.selectedLanguages.length) return false
+    for (let i = 0; i < prev.selectedLanguages.length; i++) {
+      if (prev.selectedLanguages[i] !== next.selectedLanguages[i]) return false
+    }
+  }
+
+  if (prev.utterance !== next.utterance) {
+    const pu = prev.utterance
+    const nu = next.utterance
+    if (pu.id !== nu.id) return false
+    if (pu.originalText !== nu.originalText) return false
+    if (pu.originalLang !== nu.originalLang) return false
+    if (pu.translations !== nu.translations) {
+      const pk = Object.keys(pu.translations)
+      const nk = Object.keys(nu.translations)
+      if (pk.length !== nk.length) return false
+      for (const k of pk) {
+        if (pu.translations[k] !== nu.translations[k]) return false
+      }
+    }
+    if (pu.translationFinalized !== nu.translationFinalized) {
+      const pf = pu.translationFinalized || {}
+      const nf = nu.translationFinalized || {}
+      const pk = Object.keys(pf)
+      const nk = Object.keys(nf)
+      if (pk.length !== nk.length) return false
+      for (const k of pk) {
+        if (pf[k] !== nf[k]) return false
+      }
+    }
+  }
+
+  return true
+}
+
+export default memo(ChatBubble, chatBubbleAreEqual)
