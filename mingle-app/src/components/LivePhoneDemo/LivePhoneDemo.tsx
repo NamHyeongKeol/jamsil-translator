@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight } from 'lucide-react'
+import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight, ChevronDown } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
@@ -18,6 +18,10 @@ const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABA
 const TTS_STT_GAIN = 1.0
 const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 const NATIVE_TTS_EVENT = 'mingle:native-tts'
+const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 200
+const SCROLL_TO_BOTTOM_BUTTON_THRESHOLD_PX = 400
+const SCROLL_UI_HIDE_DELAY_MS = 1000
+const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 28
 
 function isNativeApp(): boolean {
   return typeof window !== 'undefined'
@@ -55,6 +59,61 @@ function logTtsQueue(event: string, payload?: Record<string, unknown>) {
   console.log('[MingleTTSQueue]', event)
 }
 
+function getUiLocale(): string {
+  if (typeof window === 'undefined') return 'en'
+  const docLocale = (document.documentElement.lang || '').trim()
+  if (docLocale) return docLocale
+  return (window.navigator.languages?.find(Boolean) || window.navigator.language || 'en').trim() || 'en'
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function formatScrollDateLabel(createdAtMs: number, locale: string): string {
+  const targetDate = new Date(createdAtMs)
+  if (Number.isNaN(targetDate.getTime())) return ''
+  const now = new Date()
+  const dayMs = 24 * 60 * 60 * 1000
+  const todayStart = startOfLocalDay(now).getTime()
+  const targetStart = startOfLocalDay(targetDate).getTime()
+  const dayDelta = Math.round((targetStart - todayStart) / dayMs)
+
+  if (dayDelta === 0 || dayDelta === -1) {
+    try {
+      return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(dayDelta, 'day')
+    } catch {
+      return dayDelta === 0 ? 'today' : 'yesterday'
+    }
+  }
+
+  const sameYear = targetDate.getFullYear() === now.getFullYear()
+  try {
+    return new Intl.DateTimeFormat(locale, sameYear
+      ? { month: 'numeric', day: 'numeric', weekday: 'short' }
+      : { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' })
+      .format(targetDate)
+  } catch {
+    return sameYear
+      ? `${targetDate.getMonth() + 1}/${targetDate.getDate()}`
+      : `${targetDate.getFullYear()}/${targetDate.getMonth() + 1}/${targetDate.getDate()}`
+  }
+}
+
+function findTopVisibleUtteranceDateLabel(container: HTMLDivElement, locale: string): string {
+  const containerRect = container.getBoundingClientRect()
+  const nodes = container.querySelectorAll<HTMLElement>('[data-utterance-created-at]')
+  for (const node of nodes) {
+    const rect = node.getBoundingClientRect()
+    if (rect.bottom <= containerRect.top + 1) continue
+    const raw = node.dataset.utteranceCreatedAt || ''
+    const createdAtMs = Number(raw)
+    if (!Number.isFinite(createdAtMs) || createdAtMs <= 0) continue
+    return formatScrollDateLabel(createdAtMs, locale)
+  }
+  return ''
+}
+
 const FLAG_MAP: Record<string, string> = {
   en: '🇺🇸', ko: '🇰🇷', ja: '🇯🇵', zh: '🇨🇳', es: '🇪🇸',
   fr: '🇫🇷', de: '🇩🇪', ru: '🇷🇺', pt: '🇧🇷', ar: '🇸🇦',
@@ -90,13 +149,13 @@ function EchoInputRouteIcon({ echoAllowed }: { echoAllowed: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className={`relative inline-flex items-center gap-1 ${
+      className={`relative inline-flex items-center ${
         echoAllowed ? 'text-amber-500' : 'text-gray-400'
       }`}
     >
-      <Volume2 size={14} strokeWidth={2.2} />
-      <ArrowRight size={12} strokeWidth={2.2} />
-      <Mic size={14} strokeWidth={2.2} />
+      <Volume2 size={12} strokeWidth={2} />
+      <ArrowRight size={12} strokeWidth={2} />
+      <Mic size={12} strokeWidth={2} />
       {!echoAllowed && (
         <span className="absolute left-0 top-1/2 h-[2px] w-full -translate-y-1/2 rotate-[-24deg] rounded bg-current" />
       )}
@@ -718,6 +777,16 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const isPaginatingRef = useRef(false)
   const prevScrollHeightRef = useRef<number | null>(null)
   const isLoadingOlderRef = useRef(false)
+  const scrollUiHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [scrollUiVisible, setScrollUiVisible] = useState(false)
+  const [scrollDateLabel, setScrollDateLabel] = useState('')
+  const [scrollMetrics, setScrollMetrics] = useState({
+    thumbTop: 0,
+    thumbHeight: 0,
+    clientHeight: 0,
+    scrollable: false,
+    distanceToBottom: 0,
+  })
 
   const handleLoadOlder = useCallback(() => {
     if (isLoadingOlderRef.current || !hasOlderUtterances || !chatRef.current) return
@@ -727,14 +796,67 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     loadOlderUtterances()
   }, [hasOlderUtterances, loadOlderUtterances])
 
-  const handleScroll = useCallback(() => {
+  const clearScrollUiHideTimer = useCallback(() => {
+    if (scrollUiHideTimerRef.current) {
+      clearTimeout(scrollUiHideTimerRef.current)
+      scrollUiHideTimerRef.current = null
+    }
+  }, [])
+
+  const updateScrollDerivedState = useCallback(() => {
     if (!chatRef.current) return
     const { scrollTop, scrollHeight, clientHeight } = chatRef.current
-    shouldAutoScroll.current = scrollHeight - scrollTop - clientHeight < 80
+    const distanceToBottom = Math.max(0, scrollHeight - scrollTop - clientHeight)
+    shouldAutoScroll.current = distanceToBottom <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX
+
+    if (scrollHeight > clientHeight + 1) {
+      const thumbHeight = Math.max(
+        SCROLLBAR_MIN_THUMB_HEIGHT_PX,
+        Math.round((clientHeight / scrollHeight) * clientHeight),
+      )
+      const maxThumbTop = Math.max(0, clientHeight - thumbHeight)
+      const denominator = scrollHeight - clientHeight
+      const ratio = denominator > 0 ? Math.min(1, Math.max(0, scrollTop / denominator)) : 0
+      const thumbTop = ratio * maxThumbTop
+      setScrollMetrics({
+        thumbTop,
+        thumbHeight,
+        clientHeight,
+        scrollable: true,
+        distanceToBottom,
+      })
+    } else {
+      setScrollMetrics({
+        thumbTop: 0,
+        thumbHeight: 0,
+        clientHeight,
+        scrollable: false,
+        distanceToBottom,
+      })
+    }
+
+    setScrollDateLabel(findTopVisibleUtteranceDateLabel(chatRef.current, getUiLocale()))
+
     if (scrollTop < 100 && hasOlderUtterances && !isLoadingOlderRef.current) {
       handleLoadOlder()
     }
   }, [hasOlderUtterances, handleLoadOlder])
+
+  const handleScroll = useCallback(() => {
+    updateScrollDerivedState()
+    setScrollUiVisible(true)
+    clearScrollUiHideTimer()
+    scrollUiHideTimerRef.current = setTimeout(() => {
+      setScrollUiVisible(false)
+    }, SCROLL_UI_HIDE_DELAY_MS)
+  }, [clearScrollUiHideTimer, updateScrollDerivedState])
+
+  const handleScrollToBottom = useCallback(() => {
+    if (!chatRef.current) return
+    shouldAutoScroll.current = true
+    chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' })
+    updateScrollDerivedState()
+  }, [updateScrollDerivedState])
 
   // Preserve scroll position after prepending older utterances
   useLayoutEffect(() => {
@@ -744,13 +866,25 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     prevScrollHeightRef.current = null
     isPaginatingRef.current = false
     isLoadingOlderRef.current = false
-  }, [utterances])
+    updateScrollDerivedState()
+  }, [updateScrollDerivedState, utterances])
 
   useEffect(() => {
     if (chatRef.current && shouldAutoScroll.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight
     }
-  }, [utterances, partialTranscript, isConnecting, demoTypingText])
+    updateScrollDerivedState()
+  }, [demoTypingText, isConnecting, partialTranscript, updateScrollDerivedState, utterances])
+
+  useEffect(() => {
+    updateScrollDerivedState()
+  }, [updateScrollDerivedState])
+
+  useEffect(() => {
+    return () => {
+      clearScrollUiHideTimer()
+    }
+  }, [clearScrollUiHideTimer])
 
   const showRipple = isReady && volume > VOLUME_THRESHOLD
   const rippleScale = showRipple ? 1 + (volume - VOLUME_THRESHOLD) * 5 : 1
@@ -771,6 +905,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const usagePercent = isUsageLimited
     ? Math.min(100, (usageSec / usageLimitSec) * 100)
     : null
+  const showScrollToBottom = scrollMetrics.distanceToBottom > SCROLL_TO_BOTTOM_BUTTON_THRESHOLD_PX
+  const scrollDateTop = Math.max(
+    16,
+    Math.min(
+      scrollMetrics.clientHeight - 16,
+      scrollMetrics.thumbTop + (scrollMetrics.thumbHeight / 2),
+    ),
+  )
 
   return (
     <PhoneFrame>
@@ -820,7 +962,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         <div
           ref={chatRef}
           onScroll={handleScroll}
-          className="min-h-0 flex-1 overflow-y-auto no-scrollbar py-2.5 space-y-3 bg-gray-50/50"
+          className="relative min-h-0 flex-1 overflow-y-auto no-scrollbar py-2.5 space-y-3 bg-gray-50/50"
           style={{
             paddingLeft: "max(calc(env(safe-area-inset-left) + 6px), 10px)",
             paddingRight: "max(calc(env(safe-area-inset-right) + 6px), 10px)",
@@ -836,13 +978,70 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           )}
           <AnimatePresence mode="popLayout">
             {utterances.map((u) => (
-              <ChatBubble
+              <div
                 key={u.id}
-                utterance={u}
-                isSpeaking={speakingItem?.utteranceId === u.id}
-                speakingLanguage={speakingItem?.language ?? null}
-              />
+                data-utterance-created-at={
+                  (typeof u.createdAtMs === 'number' && Number.isFinite(u.createdAtMs))
+                    ? String(Math.floor(u.createdAtMs))
+                    : ''
+                }
+              >
+                <ChatBubble
+                  utterance={u}
+                  isSpeaking={speakingItem?.utteranceId === u.id}
+                  speakingLanguage={speakingItem?.language ?? null}
+                />
+              </div>
             ))}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {scrollUiVisible && scrollMetrics.scrollable && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="pointer-events-none absolute inset-y-0 right-1 z-20"
+              >
+                {scrollDateLabel && (
+                  <div
+                    className="absolute right-2.5 -translate-y-1/2 rounded-full border border-white/20 bg-black/70 px-2.5 py-1 text-[11px] font-semibold tracking-tight text-white shadow-sm backdrop-blur-[1px]"
+                    style={{ top: scrollDateTop }}
+                  >
+                    {scrollDateLabel}
+                  </div>
+                )}
+                <div
+                  className="absolute right-0 w-[3px] rounded-full bg-black/28"
+                  style={{
+                    top: scrollMetrics.thumbTop,
+                    height: scrollMetrics.thumbHeight,
+                  }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showScrollToBottom && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center"
+              >
+                <button
+                  type="button"
+                  onClick={handleScrollToBottom}
+                  className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-black shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
+                  aria-label="Scroll to latest"
+                >
+                  <ChevronDown size={16} strokeWidth={1.85} />
+                </button>
+              </motion.div>
+            )}
           </AnimatePresence>
 
           {partialTranscript && (
