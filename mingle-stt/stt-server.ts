@@ -694,10 +694,10 @@ wss.on('connection', (clientWs) => {
                     sonioxHasPendingTranscript = `${finalizedText}${latestNonFinalText}`.replace(/<\/?end>/gi, '').trim().length > 0;
 
                     // 발화 완료 판단:
-                    // Soniox endpoint(<end>) 토큰이 포함된 경우에만 완료 처리
+                    // Soniox endpoint(<end>/<fin>) 토큰이 포함된 경우에만 완료 처리
                     if (hasEndpointToken) {
-                        latestNonFinalText = '';
-                        emitFinalTurn(finalizedText, detectedLang);
+                        const mergedAtEndpoint = `${finalizedText}${latestNonFinalText}`.trim();
+                        emitFinalTurn(mergedAtEndpoint, detectedLang);
                     }
                 } catch (parseError) {
                     console.error('Error parsing Soniox message:', parseError);
