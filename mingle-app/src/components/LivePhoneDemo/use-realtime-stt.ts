@@ -117,9 +117,10 @@ function normalizeStoredUtterance(utterance: Utterance): Utterance {
 }
 
 function normalizeSttTurnText(rawText: string): string {
-  // Temporary debug mode: keep <end>/<fin> marker tokens in transcript text.
-  // Only strip leading punctuation/whitespace noise.
+  // Strip endpoint markers at the client boundary so downstream paths
+  // (bubble/render/log/translate) all operate on marker-free text.
   return rawText
+    .replace(/<\/?(?:end|fin)>/giu, '')
     .replace(/^[\s.,!?;:，。、…—–-]+/u, '')
     .trim()
 }
@@ -1542,17 +1543,6 @@ export default function useRealtimeSTT({
         try {
           const rawMessage = typeof event.data === 'string' ? event.data : String(event.data)
           const message = JSON.parse(rawMessage) as Record<string, unknown>
-          if (message.type === 'transcript' && typeof message.data === 'object' && message.data !== null) {
-            const data = message.data as Record<string, unknown>
-            const utterance = (
-              typeof data.utterance === 'object' && data.utterance !== null
-                ? data.utterance as Record<string, unknown>
-                : null
-            )
-            const text = utterance && typeof utterance.text === 'string' ? utterance.text : ''
-            const isFinal = data.is_final === true
-            console.log({ is_final: isFinal, text })
-          }
           handleSttServerMessage(message)
         } catch {
           // ignore malformed payload
@@ -1610,17 +1600,6 @@ export default function useRealtimeSTT({
       if (detail.type === 'message') {
         try {
           const message = JSON.parse(detail.raw) as Record<string, unknown>
-          if (message.type === 'transcript' && typeof message.data === 'object' && message.data !== null) {
-            const data = message.data as Record<string, unknown>
-            const utterance = (
-              typeof data.utterance === 'object' && data.utterance !== null
-                ? data.utterance as Record<string, unknown>
-                : null
-            )
-            const text = utterance && typeof utterance.text === 'string' ? utterance.text : ''
-            const isFinal = data.is_final === true
-            console.log({ is_final: isFinal, text })
-          }
           handleSttServerMessage(message)
         } catch {
           // ignore malformed payload

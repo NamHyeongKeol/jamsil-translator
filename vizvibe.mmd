@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_stt_final_watermark_and_provisional_carry
+    %% @lastActive: mingle_stt_debug_log_cleanup_and_client_marker_boundary
 
     %% === START ===
     %% @project_start [start, closed]
@@ -583,6 +583,9 @@ flowchart TD
     %% @mingle_stt_final_watermark_and_provisional_carry [ai-task, closed, 2026-02-21, ai]
     mingle_stt_final_watermark_and_provisional_carry("Soniox final 워터마크 + provisional carry 적용<br/><sub>is_final 토큰은 end_ms 워터마크 이후 구간만 누적해<br/>중간 승격 시 앞부분 재누적/꼬리 중복을 차단하고<br/>endpoint 뒤 carry는 provisional 상태로 보존해<br/>진행 신호 전에는 재finalize되지 않도록 처리</sub>")
 
+    %% @mingle_stt_debug_log_cleanup_and_client_marker_boundary [ai-task, closed, 2026-02-21, ai]
+    mingle_stt_debug_log_cleanup_and_client_marker_boundary("STT 디버그 로그 제거 + 클라이언트 마커 경계 복구<br/><sub>Soniox token 요약/웹 transcript 디버그 로그를 정리해<br/>운영 콘솔 노이즈를 제거하고 조사 로그를 원복했으며<br/>클라이언트 normalize 경계에서 <end>/<fin>을 즉시 제거해<br/>후속 번역/저장/렌더 경로를 마커 비의존으로 단순화</sub>")
+
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
 
@@ -856,6 +859,7 @@ flowchart TD
     mingle_stt_stale_partial_carry_overlap_merge_fix --> mingle_stt_front_raw_stream_logging_probe
     mingle_stt_front_raw_stream_logging_probe --> mingle_stt_front_log_minimal_fields_only
     mingle_stt_front_log_minimal_fields_only --> mingle_stt_final_watermark_and_provisional_carry
+    mingle_stt_final_watermark_and_provisional_carry --> mingle_stt_debug_log_cleanup_and_client_marker_boundary
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -931,11 +935,12 @@ flowchart TD
     mingle_stt_front_raw_stream_logging_probe -.-> ultimate_goal
     mingle_stt_front_log_minimal_fields_only -.-> ultimate_goal
     mingle_stt_final_watermark_and_provisional_carry -.-> ultimate_goal
+    mingle_stt_debug_log_cleanup_and_client_marker_boundary -.-> ultimate_goal
     mingle_app_vercel_main_branch_only_deploy_guard -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_stt_final_watermark_and_provisional_carry
+        mingle_stt_debug_log_cleanup_and_client_marker_boundary
     end
 
     %% === STYLES ===
@@ -1195,7 +1200,8 @@ flowchart TD
     style mingle_stt_stale_partial_carry_overlap_merge_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_front_raw_stream_logging_probe fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_front_log_minimal_fields_only fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_stt_final_watermark_and_provisional_carry fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_stt_final_watermark_and_provisional_carry fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

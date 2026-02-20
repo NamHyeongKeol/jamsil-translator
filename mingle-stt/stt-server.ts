@@ -627,7 +627,7 @@ wss.on('connection', (clientWs) => {
             };
 
             const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
-                // Temporary debug mode: keep <end>/<fin> markers in emitted transcript text.
+                // Keep endpoint markers in server-emitted text; client normalizes them away.
                 const cleanedText = text.trim();
                 const cleanedLang = (language || '').trim() || 'unknown';
                 if (!cleanedText) return null;
@@ -693,21 +693,6 @@ wss.on('connection', (clientWs) => {
                 try {
                     const rawSonioxMessage = event.data.toString();
                     const msg = JSON.parse(rawSonioxMessage);
-                    if (Array.isArray(msg.tokens)) {
-                        const tokenTexts = msg.tokens
-                            .map((token: { text?: unknown }) => (typeof token.text === 'string' ? token.text : ''))
-                            .join('');
-                        const tokenCount = msg.tokens.length;
-                        const finalCount = msg.tokens.reduce(
-                            (count: number, token: { is_final?: unknown }) => count + (token.is_final === true ? 1 : 0),
-                            0,
-                        );
-                        console.log(JSON.stringify({
-                            text: tokenTexts,
-                            token_count: tokenCount,
-                            final_count: finalCount,
-                        }));
-                    }
 
                     if (msg.error_code) {
                         console.error(`[Soniox] Error: ${msg.error_code} - ${msg.error_message}`);
