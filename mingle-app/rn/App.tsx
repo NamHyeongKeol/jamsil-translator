@@ -130,9 +130,10 @@ const ENV_DIAGNOSTICS = [
   `resolvedWeb=${formatEnvDebugValue(WEB_APP_BASE_URL)}`,
   `resolvedWs=${formatEnvDebugValue(DEFAULT_WS_URL)}`,
 ].join(' | ');
+const BUILD_TAG = 'DIAG-fcc0087';
 
 const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
-  ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}\n${ENV_DIAGNOSTICS}`
+  ? `[${BUILD_TAG}] Missing or invalid env: ${missingRuntimeConfig.join(', ')}\n${ENV_DIAGNOSTICS}`
   : null;
 const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
@@ -480,7 +481,7 @@ function App(): React.JSX.Element {
       && rootWebUrl !== localeWebUrl
     ) {
       didFallbackToRootRef.current = true;
-      setLoadError(`primary_url_failed(code=${code ?? 'unknown'}), fallback_to_root`);
+      setLoadError(`[${BUILD_TAG}] primary_url_failed(code=${code ?? 'unknown'}), fallback_to_root\n${ENV_DIAGNOSTICS}`);
       setActiveWebUrl(rootWebUrl);
       return;
     }
@@ -488,7 +489,7 @@ function App(): React.JSX.Element {
     const details: string[] = [description || 'webview_load_failed'];
     if (typeof code === 'number') details.push(`code=${code}`);
     if (typeof url === 'string' && url.length > 0) details.push(url);
-    setLoadError(details.join(' | '));
+    setLoadError(`[${BUILD_TAG}] ${details.join(' | ')}\n${ENV_DIAGNOSTICS}`);
   }, [activeWebUrl, localeWebUrl, rootWebUrl]);
 
   const handleHttpError = useCallback((event: { nativeEvent: { statusCode?: number; description?: string; url?: string } }) => {
@@ -497,7 +498,7 @@ function App(): React.JSX.Element {
     if (typeof statusCode === 'number') details.push(`status=${statusCode}`);
     if (description) details.push(description);
     if (url) details.push(url);
-    setLoadError(details.join(' | '));
+    setLoadError(`[${BUILD_TAG}] ${details.join(' | ')}\n${ENV_DIAGNOSTICS}`);
   }, []);
 
   return (
@@ -522,7 +523,7 @@ function App(): React.JSX.Element {
       />
       {loadError ? (
         <View style={styles.errorOverlay}>
-          <Text style={styles.errorTitle}>WebView Load Failed</Text>
+          <Text style={styles.errorTitle}>WebView Load Failed ({BUILD_TAG})</Text>
           <Text style={styles.errorDescription}>{loadError}</Text>
           <Text style={styles.errorMeta}>url={activeWebUrl}</Text>
         </View>

@@ -581,7 +581,7 @@ flowchart TD
     mingle_app_rn_dotenv_absolute_path_fix("RN dotenv 경로 절대화 고정<br/><sub>Gradle/ADB 설치 빌드에서 cwd 차이로<br/>../.env.local 해석이 흔들리던 문제를 추적해<br/>babel.config.js의 dotenv path를 __dirname 기반<br/>절대경로로 고정해 WebView env 누락을 차단</sub>")
 
     %% @mingle_app_rn_env_runtime_diagnostics_overlay [ai-task, closed, 2026-02-20, ai]
-    mingle_app_rn_env_runtime_diagnostics_overlay("RN env 런타임 진단 오버레이 추가<br/><sub>여전히 Missing or invalid env가 재현돼<br/>App.tsx에서 injected/runtime/raw/resolved 값을<br/>에러 오버레이에 함께 출력하도록 확장하고<br/>정규화 이전/이후 WS 값까지 즉시 확인 가능화</sub>")
+    mingle_app_rn_env_runtime_diagnostics_overlay("RN env 런타임 진단 오버레이 확장<br/><sub>WebView 에러가 env 누락이 아닐 때도 추적되도록<br/>primary/load/http 모든 실패 경로에 동일 진단 문자열과<br/>빌드 태그(DIAG-fcc0087)를 강제로 붙여 노출하고<br/>실기기 화면만으로 원인 경로를 즉시 구분 가능화</sub>")
 
     %% @mingle_stt_server_crash_guard_for_android_stream [ai-task, closed, 2026-02-20, ai]
     mingle_stt_server_crash_guard_for_android_stream("STT 서버 프로세스 다운가드 적용<br/><sub>Android 녹음 시작 직후 서버 종료 재현 이슈 대응으로<br/>mingle-stt 송신 경로를 safe send 래퍼로 통일하고<br/>config payload 타입/값을 정규화해 예외 입력을 차단,<br/>uncaught/unhandled 런타임 훅으로 비정상 종료를 방어</sub>")
