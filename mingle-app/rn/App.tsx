@@ -84,17 +84,30 @@ function resolveConfiguredUrl(
   }
 }
 
+function formatEnvDebugValue(value: string): string {
+  if (!value) return '(empty)';
+  const trimmed = value.trim();
+  const truncated = trimmed.length > 90 ? `${trimmed.slice(0, 87)}...` : trimmed;
+  const quoted = trimmed.startsWith('"') || trimmed.endsWith('"') ? ' [quoted]' : '';
+  return `${truncated}${quoted}`;
+}
+
+const injectedWebBaseRaw = readInjectedEnvValue([RN_WEB_APP_BASE_URL, NEXT_PUBLIC_SITE_URL]);
+const runtimeWebBaseRaw = readRuntimeEnvValue(['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL']);
+const webBaseRaw = injectedWebBaseRaw || runtimeWebBaseRaw;
+
+const injectedWsRaw = readInjectedEnvValue([RN_DEFAULT_WS_URL, NEXT_PUBLIC_WS_URL]);
+const runtimeWsRaw = readRuntimeEnvValue(['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL']);
+const wsRaw = injectedWsRaw || runtimeWsRaw;
+const normalizedWsRaw = normalizeWsUrl(wsRaw);
+
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
-  readInjectedEnvValue([RN_WEB_APP_BASE_URL, NEXT_PUBLIC_SITE_URL])
-    || readRuntimeEnvValue(['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL']),
+  webBaseRaw,
   ['http:', 'https:'],
   { trimTrailingSlash: true },
 );
 const DEFAULT_WS_URL = resolveConfiguredUrl(
-  normalizeWsUrl(
-    readInjectedEnvValue([RN_DEFAULT_WS_URL, NEXT_PUBLIC_WS_URL])
-      || readRuntimeEnvValue(['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL']),
-  ),
+  normalizedWsRaw,
   ['ws:', 'wss:'],
 );
 
@@ -105,8 +118,21 @@ if (!WEB_APP_BASE_URL) {
 if (!DEFAULT_WS_URL) {
   missingRuntimeConfig.push('RN_DEFAULT_WS_URL (or NEXT_PUBLIC_WS_URL)');
 }
+
+const ENV_DIAGNOSTICS = [
+  `injWeb=${formatEnvDebugValue(injectedWebBaseRaw)}`,
+  `rtWeb=${formatEnvDebugValue(runtimeWebBaseRaw)}`,
+  `rawWeb=${formatEnvDebugValue(webBaseRaw)}`,
+  `injWs=${formatEnvDebugValue(injectedWsRaw)}`,
+  `rtWs=${formatEnvDebugValue(runtimeWsRaw)}`,
+  `rawWs=${formatEnvDebugValue(wsRaw)}`,
+  `normWs=${formatEnvDebugValue(normalizedWsRaw)}`,
+  `resolvedWeb=${formatEnvDebugValue(WEB_APP_BASE_URL)}`,
+  `resolvedWs=${formatEnvDebugValue(DEFAULT_WS_URL)}`,
+].join(' | ');
+
 const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
-  ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}`
+  ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}\n${ENV_DIAGNOSTICS}`
   : null;
 const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
@@ -196,6 +222,12 @@ function App(): React.JSX.Element {
     return `${WEB_APP_BASE_URL}/?nativeStt=1${debugParams}`;
   }, []);
   const [activeWebUrl, setActiveWebUrl] = useState(localeWebUrl);
+
+  useEffect(() => {
+    if (__DEV__) {
+      console.log(`[RN ENV] ${ENV_DIAGNOSTICS}`);
+    }
+  }, []);
 
   useEffect(() => {
     didFallbackToRootRef.current = false;
