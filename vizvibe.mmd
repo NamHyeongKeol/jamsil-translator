@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_pc_scroll_pagination_anchor_regression_fix
+    %% @lastActive: mingle_app_mobile_scroll_overlay_visibility_hold_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -526,6 +526,9 @@ flowchart TD
     %% @mingle_app_pc_scroll_pagination_anchor_regression_fix [ai-task, closed, 2026-02-20, ai]
     mingle_app_pc_scroll_pagination_anchor_regression_fix("PC 스크롤 페이지네이션 앵커 회귀 수정<br/><sub>천천히 위로 스크롤할 때 상단 페이지네이션 직후<br/>최신 메시지 하단으로 순간이동하던 회귀를 차단하기 위해<br/>loadOlder 시 auto-follow를 즉시 비활성화하고<br/>사용자 스크롤 업 의도 동안 자동 하단 이동을 억제</sub>")
 
+    %% @mingle_app_mobile_scroll_overlay_visibility_hold_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_app_mobile_scroll_overlay_visibility_hold_fix("모바일 스크롤바/날짜 오버레이 유지 수정<br/><sub>모바일 관성 스크롤 중에는 touch 의도 신호가 끝나도<br/>실제 scroll 이벤트가 계속 발생하는 특성을 반영해<br/>auto-follow 스크롤이 아닌 경우에는 스크롤 진행 중<br/>오버레이가 중간에 꺼지지 않도록 표시 정책을 보정</sub>")
+
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
 
@@ -772,6 +775,7 @@ flowchart TD
     mingle_app_translation_bubble_target_snapshot_policy --> mingle_app_turbopack_root_tailwind_resolution_fix
     mingle_app_turbopack_root_tailwind_resolution_fix --> mingle_app_chat_scroll_overlay_and_threshold_tuning
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_pc_scroll_pagination_anchor_regression_fix
+    mingle_app_pc_scroll_pagination_anchor_regression_fix --> mingle_app_mobile_scroll_overlay_visibility_hold_fix
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -808,6 +812,7 @@ flowchart TD
     mingle_app_turbopack_root_tailwind_resolution_fix -.-> ultimate_goal
     mingle_app_chat_scroll_overlay_and_threshold_tuning -.-> ultimate_goal
     mingle_app_pc_scroll_pagination_anchor_regression_fix -.-> ultimate_goal
+    mingle_app_mobile_scroll_overlay_visibility_hold_fix -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -830,7 +835,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_pc_scroll_pagination_anchor_regression_fix
+        mingle_app_mobile_scroll_overlay_visibility_hold_fix
     end
 
     %% === STYLES ===
@@ -1069,7 +1074,8 @@ flowchart TD
     style mingle_app_tts_tail_noise_graceful_deactivate_milestone5 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_audio_session_policy_polish_milestone6 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_audio_session_route_metrics_milestone7 fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
-    style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_mobile_scroll_overlay_visibility_hold_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

@@ -1003,7 +1003,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     const fromUserScroll = isUserScrollIntentActive()
     updateScrollDerivedState({ fromUserScroll })
 
-    if (!fromUserScroll) {
+    // Mobile momentum scroll can continue after touchend without additional
+    // pointer/touch intent events. Keep the overlay visible while scroll
+    // events are still arriving, unless this is a pure auto-follow scroll.
+    if (!fromUserScroll && shouldAutoScroll.current) {
       clearScrollUiHideTimer()
       setScrollUiVisible(false)
       return
