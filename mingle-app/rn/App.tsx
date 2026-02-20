@@ -36,6 +36,19 @@ import {
 
 type RuntimeEnvMap = Record<string, string | undefined>;
 
+function sanitizeEnvValue(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+
+  const hasDoubleQuotes = trimmed.startsWith('"') && trimmed.endsWith('"');
+  const hasSingleQuotes = trimmed.startsWith("'") && trimmed.endsWith("'");
+  if (hasDoubleQuotes || hasSingleQuotes) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
 function readRuntimeEnvValue(keys: string[]): string {
   const env = (globalThis as { process?: { env?: RuntimeEnvMap } }).process?.env;
   if (!env) return '';
@@ -43,7 +56,7 @@ function readRuntimeEnvValue(keys: string[]): string {
   for (const key of keys) {
     const value = env[key];
     if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim();
+      return sanitizeEnvValue(value);
     }
   }
 
@@ -53,7 +66,7 @@ function readRuntimeEnvValue(keys: string[]): string {
 function readInjectedEnvValue(values: Array<string | undefined>): string {
   for (const value of values) {
     if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim();
+      return sanitizeEnvValue(value);
     }
   }
   return '';
@@ -130,7 +143,7 @@ const ENV_DIAGNOSTICS = [
   `resolvedWeb=${formatEnvDebugValue(WEB_APP_BASE_URL)}`,
   `resolvedWs=${formatEnvDebugValue(DEFAULT_WS_URL)}`,
 ].join(' | ');
-const BUILD_TAG = 'DIAG-fcc0087';
+const BUILD_TAG = 'DIAG-quotefix-20260220';
 
 const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
   ? `[${BUILD_TAG}] Missing or invalid env: ${missingRuntimeConfig.join(', ')}\n${ENV_DIAGNOSTICS}`
@@ -521,6 +534,9 @@ function App(): React.JSX.Element {
         onError={handleLoadError}
         style={styles.webView}
       />
+      <View pointerEvents="none" style={styles.buildBadge}>
+        <Text style={styles.buildBadgeText}>{BUILD_TAG}</Text>
+      </View>
       {loadError ? (
         <View style={styles.errorOverlay}>
           <Text style={styles.errorTitle}>WebView Load Failed ({BUILD_TAG})</Text>
@@ -540,6 +556,20 @@ const styles = StyleSheet.create({
   webView: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  buildBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(17, 24, 39, 0.75)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  buildBadgeText: {
+    color: '#f9fafb',
+    fontSize: 11,
+    fontWeight: '700',
   },
   errorOverlay: {
     position: 'absolute',

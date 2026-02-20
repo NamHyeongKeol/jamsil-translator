@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_rn_env_runtime_diagnostics_overlay
+    %% @lastActive: mingle_app_rn_android_diag_label_and_env_quote_sanitize
 
     %% === START ===
     %% @project_start [start, closed]
@@ -583,6 +583,9 @@ flowchart TD
     %% @mingle_app_rn_env_runtime_diagnostics_overlay [ai-task, closed, 2026-02-20, ai]
     mingle_app_rn_env_runtime_diagnostics_overlay("RN env 런타임 진단 오버레이 확장<br/><sub>WebView 에러가 env 누락이 아닐 때도 추적되도록<br/>primary/load/http 모든 실패 경로에 동일 진단 문자열과<br/>빌드 태그(DIAG-fcc0087)를 강제로 붙여 노출하고<br/>실기기 화면만으로 원인 경로를 즉시 구분 가능화</sub>")
 
+    %% @mingle_app_rn_android_diag_label_and_env_quote_sanitize [ai-task, closed, 2026-02-20, ai]
+    mingle_app_rn_android_diag_label_and_env_quote_sanitize("Android env 따옴표 보정/식별 강화<br/><sub>.env.local 값이 따옴표로 감싸진 경우를 대비해<br/>RN App.tsx에서 주입/런타임 env 값을 정규화하고<br/>앱 라벨·버전·상단 배지에 DIAG0220 식별자를 넣어<br/>실기기 설치본과 오류 화면 혼선을 즉시 분리</sub>")
+
     %% @mingle_stt_server_crash_guard_for_android_stream [ai-task, closed, 2026-02-20, ai]
     mingle_stt_server_crash_guard_for_android_stream("STT 서버 프로세스 다운가드 적용<br/><sub>Android 녹음 시작 직후 서버 종료 재현 이슈 대응으로<br/>mingle-stt 송신 경로를 safe send 래퍼로 통일하고<br/>config payload 타입/값을 정규화해 예외 입력을 차단,<br/>uncaught/unhandled 런타임 훅으로 비정상 종료를 방어</sub>")
 
@@ -827,6 +830,7 @@ flowchart TD
     mingle_app_android_webview_cleartext_and_load_error_recovery --> mingle_app_android_webview_locale_fallback_and_http_error_diagnostics
     mingle_app_android_webview_locale_fallback_and_http_error_diagnostics --> mingle_app_rn_dotenv_absolute_path_fix
     mingle_app_rn_dotenv_absolute_path_fix --> mingle_app_rn_env_runtime_diagnostics_overlay
+    mingle_app_rn_env_runtime_diagnostics_overlay --> mingle_app_rn_android_diag_label_and_env_quote_sanitize
     mingle_app_rn_env_runtime_diagnostics_overlay --> mingle_stt_server_crash_guard_for_android_stream
     mingle_app_audio_session_policy_polish_milestone6 --> mingle_app_audio_session_route_metrics_milestone7
     mingle_app_audio_session_route_metrics_milestone7 --> demo_limit_server_db_migration
@@ -887,11 +891,12 @@ flowchart TD
     mingle_app_android_webview_locale_fallback_and_http_error_diagnostics -.-> ultimate_goal
     mingle_app_rn_dotenv_absolute_path_fix -.-> ultimate_goal
     mingle_app_rn_env_runtime_diagnostics_overlay -.-> ultimate_goal
+    mingle_app_rn_android_diag_label_and_env_quote_sanitize -.-> ultimate_goal
     mingle_stt_server_crash_guard_for_android_stream -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_rn_env_runtime_diagnostics_overlay
+        mingle_app_rn_android_diag_label_and_env_quote_sanitize
     end
 
     %% === STYLES ===
@@ -1142,7 +1147,8 @@ flowchart TD
     style mingle_app_android_webview_locale_fallback_and_http_error_diagnostics fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_server_crash_guard_for_android_stream fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_dotenv_absolute_path_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_rn_env_runtime_diagnostics_overlay fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_rn_env_runtime_diagnostics_overlay fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_android_diag_label_and_env_quote_sanitize fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
