@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tdd_test_harness_plan
+    %% @lastActive: mingle_app_rn_android_native_voice_parity
 
     %% === START ===
     %% @project_start [start, closed]
@@ -553,6 +553,9 @@ flowchart TD
     %% @mingle_app_audio_session_policy_polish_milestone6 [ai-task, closed, 2026-02-20, ai]
     mingle_app_audio_session_policy_polish_milestone6("오디오 세션 정책 추가 폴리시 6차 완료<br/><sub>deactivate 옵션/지연 시간을 출력 경로별로 분기해<br/>speaker/receiver·wired·bluetooth/airplay/car별<br/>정책 테이블과 상세 로그를 네이티브에 고정하고<br/>STT 의도 우선 규칙을 회귀 체크리스트에 명시</sub>")
 
+    %% @mingle_app_rn_android_native_voice_parity [ai-task, closed, 2026-02-20, ai]
+    mingle_app_rn_android_native_voice_parity("RN Android 네이티브 음성 패리티<br/><sub>Android에 NativeSTT/NativeTTS 모듈을 추가해<br/>iOS와 동일한 WebView 이벤트 계약을 맞추고<br/>마이크 권한·AEC·WS 오디오 청크·TTS 재생을 구현해<br/>compileDebugKotlin 통과로 빌드 경로를 검증</sub>")
+
     %% @mingle_app_audio_session_route_metrics_milestone7 [ai-task, opened, 2026-02-20, ai]
     mingle_app_audio_session_route_metrics_milestone7("오디오 경로 품질 계측 7차 (추후)<br/><sub>실기기에서 스피커/블루투스/유선 경로별로<br/>tail noise와 세션 전환 체감 품질을 계측해<br/>delay/옵션 기본값을 데이터 기반으로 미세 튜닝하고<br/>회귀 로그 포맷을 운영 문서로 표준화</sub>")
 
@@ -787,6 +790,7 @@ flowchart TD
     mingle_app_tts_playback_id_event_alignment_milestone3 --> mingle_app_tts_stop_policy_split_milestone4
     mingle_app_tts_stop_policy_split_milestone4 --> mingle_app_tts_tail_noise_graceful_deactivate_milestone5
     mingle_app_tts_tail_noise_graceful_deactivate_milestone5 --> mingle_app_audio_session_policy_polish_milestone6
+    mingle_app_audio_session_policy_polish_milestone6 --> mingle_app_rn_android_native_voice_parity
     mingle_app_audio_session_policy_polish_milestone6 --> mingle_app_audio_session_route_metrics_milestone7
     mingle_app_audio_session_route_metrics_milestone7 --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
@@ -825,6 +829,7 @@ flowchart TD
     mingle_app_tts_stop_policy_split_milestone4 -.-> ultimate_goal
     mingle_app_tts_tail_noise_graceful_deactivate_milestone5 -.-> ultimate_goal
     mingle_app_audio_session_policy_polish_milestone6 -.-> ultimate_goal
+    mingle_app_rn_android_native_voice_parity -.-> ultimate_goal
     mingle_app_audio_session_route_metrics_milestone7 -.-> ultimate_goal
     mingle_stt_endpoint_only_finalize_mode -.-> ultimate_goal
     mingle_stt_finalize_heuristic_removed -.-> ultimate_goal
@@ -840,7 +845,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_tdd_test_harness_plan
+        mingle_app_rn_android_native_voice_parity
     end
 
     %% === STYLES ===
@@ -1078,10 +1083,11 @@ flowchart TD
     style mingle_app_tts_stop_policy_split_milestone4 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tts_tail_noise_graceful_deactivate_milestone5 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_audio_session_policy_polish_milestone6 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_android_native_voice_parity fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_audio_session_route_metrics_milestone7 fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_mobile_scroll_overlay_visibility_hold_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tdd_test_harness_plan fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

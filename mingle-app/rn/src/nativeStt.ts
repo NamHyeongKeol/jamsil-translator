@@ -30,7 +30,7 @@ const nativeModule = NativeModules.NativeSTTModule as NativeSttModuleType | unde
 const nativeEmitter = nativeModule ? new NativeEventEmitter(NativeModules.NativeSTTModule) : null;
 
 export function isNativeSttAvailable(): boolean {
-  return Platform.OS === 'ios' && Boolean(nativeModule && nativeEmitter);
+  return (Platform.OS === 'ios' || Platform.OS === 'android') && Boolean(nativeModule && nativeEmitter);
 }
 
 export async function startNativeStt(options: NativeSttStartOptions): Promise<{ sampleRate: number }> {
