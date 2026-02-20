@@ -1,5 +1,7 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { afterAll, describe, expect, it } from 'vitest'
 
 type JsonObject = Record<string, unknown>
@@ -13,6 +15,9 @@ type Pcm16MonoWav = {
   sampleRate: number
   pcm: Buffer
 }
+
+type AudioFixtureType = 'wav' | 'transcode' | 'unsupported'
+type AudioTranscoder = 'ffmpeg' | 'afconvert'
 
 const LIVE_TEST_TIMEOUT_MS = readEnvInt('MINGLE_TEST_TIMEOUT_MS', 90_000)
 const WS_CONNECT_TIMEOUT_MS = readEnvInt('MINGLE_TEST_WS_CONNECT_TIMEOUT_MS', 10_000)
@@ -29,12 +34,26 @@ const SOURCE_LANGUAGE = readEnvString('MINGLE_TEST_SOURCE_LANGUAGE', 'en')
 const TARGET_LANGUAGE = readEnvString('MINGLE_TEST_TARGET_LANGUAGE', 'ko')
 const EXPECTED_PHRASE = readEnvString('MINGLE_TEST_EXPECTED_PHRASE', '')
 const FALLBACK_TRANSLATION = readEnvString('MINGLE_TEST_FALLBACK_TRANSLATION', '테스트 폴백 번역')
-const AUDIO_FIXTURE_DIR = readEnvString(
-  'MINGLE_TEST_AUDIO_FIXTURE_DIR',
-  path.resolve(process.cwd(), 'test-fixtures/audio/fixtures'),
-)
 const AUDIO_FIXTURE_OVERRIDE = readEnvOptionalString('MINGLE_TEST_AUDIO_FIXTURE')
+const AUDIO_FIXTURE_DIR_OVERRIDE = readEnvOptionalString('MINGLE_TEST_AUDIO_FIXTURE_DIR')
+const AUDIO_FIXTURE_SCAN_DIRS = [
+  path.resolve(process.cwd(), 'test-fixtures/audio/fixtures'),
+  path.resolve(process.cwd(), 'test-fixtures/audio/local'),
+]
 const AUDIO_FIXTURE_CANDIDATES = collectAudioFixtureCandidates()
+const AUDIO_TRANSCODER = detectAudioTranscoder()
+const TRANSCODE_EXTENSIONS = new Set([
+  '.m4a',
+  '.mp3',
+  '.aac',
+  '.flac',
+  '.ogg',
+  '.webm',
+  '.mp4',
+  '.caf',
+  '.aif',
+  '.aiff',
+])
 
 function readEnvString(name: string, fallback: string): string {
   const value = process.env[name]
@@ -58,24 +77,44 @@ function readEnvInt(name: string, fallback: number): number {
   return parsed
 }
 
+function commandExists(command: string): boolean {
+  const result = spawnSync('which', [command], { stdio: 'ignore' })
+  return result.status === 0
+}
+
+function detectAudioTranscoder(): AudioTranscoder | null {
+  if (commandExists('ffmpeg')) return 'ffmpeg'
+  if (process.platform === 'darwin' && commandExists('afconvert')) return 'afconvert'
+  return null
+}
+
 function collectAudioFixtureCandidates(): string[] {
   if (AUDIO_FIXTURE_OVERRIDE) {
     return [path.resolve(process.cwd(), AUDIO_FIXTURE_OVERRIDE)]
   }
-  if (!fs.existsSync(AUDIO_FIXTURE_DIR)) {
-    return []
+
+  const scanDirs = AUDIO_FIXTURE_DIR_OVERRIDE
+    ? [path.resolve(process.cwd(), AUDIO_FIXTURE_DIR_OVERRIDE)]
+    : AUDIO_FIXTURE_SCAN_DIRS
+
+  const files = new Set<string>()
+  for (const scanDir of scanDirs) {
+    if (!fs.existsSync(scanDir)) continue
+    for (const entry of fs.readdirSync(scanDir, { withFileTypes: true })) {
+      if (!entry.isFile()) continue
+      if (entry.name.startsWith('.')) continue
+      files.add(path.resolve(scanDir, entry.name))
+    }
   }
 
-  const entries = fs.readdirSync(AUDIO_FIXTURE_DIR, { withFileTypes: true })
-    .filter(entry => entry.isFile())
-    .map(entry => path.resolve(AUDIO_FIXTURE_DIR, entry.name))
-    .sort((a, b) => a.localeCompare(b))
-
-  return entries
+  return [...files].sort((a, b) => a.localeCompare(b))
 }
 
-function isWavFilename(filePath: string): boolean {
-  return path.extname(filePath).toLowerCase() === '.wav'
+function classifyAudioFixture(filePath: string): AudioFixtureType {
+  const ext = path.extname(filePath).toLowerCase()
+  if (ext === '.wav') return 'wav'
+  if (TRANSCODE_EXTENSIONS.has(ext)) return 'transcode'
+  return 'unsupported'
 }
 
 function formatError(error: unknown): string {
@@ -172,6 +211,65 @@ function parsePcm16MonoWav(filePath: string): Pcm16MonoWav {
   return {
     sampleRate: format.sampleRate,
     pcm: dataChunk,
+  }
+}
+
+function transcodeAudioToPcmWav(inputPath: string, outputPath: string): void {
+  if (!AUDIO_TRANSCODER) {
+    throw new Error([
+      '[live-test] no audio transcoder found for non-wav fixture.',
+      '- install ffmpeg (recommended), or use PCM16 mono WAV fixtures.',
+    ].join('\n'))
+  }
+
+  if (AUDIO_TRANSCODER === 'ffmpeg') {
+    const result = spawnSync(
+      'ffmpeg',
+      ['-v', 'error', '-y', '-i', inputPath, '-ar', '16000', '-ac', '1', '-sample_fmt', 's16', outputPath],
+      { encoding: 'utf8' },
+    )
+    if (result.status !== 0) {
+      throw new Error([
+        '[live-test] ffmpeg transcode failed',
+        `- input: ${inputPath}`,
+        `- stderr: ${(result.stderr || '').trim() || '(empty)'}`,
+      ].join('\n'))
+    }
+    return
+  }
+
+  const afconvert = spawnSync(
+    'afconvert',
+    ['-f', 'WAVE', '-d', 'LEI16@16000', '-c', '1', inputPath, outputPath],
+    { encoding: 'utf8' },
+  )
+  if (afconvert.status !== 0) {
+    throw new Error([
+      '[live-test] afconvert transcode failed',
+      `- input: ${inputPath}`,
+      `- stderr: ${(afconvert.stderr || '').trim() || '(empty)'}`,
+    ].join('\n'))
+  }
+}
+
+function loadFixtureAsPcm16MonoWav(filePath: string): Pcm16MonoWav {
+  const fixtureType = classifyAudioFixture(filePath)
+  if (fixtureType === 'unsupported') {
+    throw new Error(`[live-test] unsupported fixture extension: ${path.extname(filePath).toLowerCase() || '(none)'}`)
+  }
+
+  if (fixtureType === 'wav') {
+    return parsePcm16MonoWav(filePath)
+  }
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mingle-live-audio-'))
+  const convertedWavPath = path.join(tempDir, 'converted.wav')
+
+  try {
+    transcodeAudioToPcmWav(filePath, convertedWavPath)
+    return parsePcm16MonoWav(convertedWavPath)
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true })
   }
 }
 
@@ -480,33 +578,41 @@ async function runFinalizeApiCheck(finalTurn: FinalTurn): Promise<void> {
 
 describe.sequential('local live integration: stt websocket + finalize api', () => {
   let processedValidFixtureCount = 0
+  const scanDirs = AUDIO_FIXTURE_DIR_OVERRIDE
+    ? [path.resolve(process.cwd(), AUDIO_FIXTURE_DIR_OVERRIDE)]
+    : AUDIO_FIXTURE_SCAN_DIRS
 
   it('discovers audio fixtures from directory or override path', () => {
     if (AUDIO_FIXTURE_CANDIDATES.length > 0) return
     throw new Error([
       '[live-test] no fixture file found.',
-      `- fixture dir: ${AUDIO_FIXTURE_DIR}`,
-      '- add one or more .wav files or set MINGLE_TEST_AUDIO_FIXTURE.',
+      `- scanned dirs: ${scanDirs.join(', ')}`,
+      '- add fixture files or set MINGLE_TEST_AUDIO_FIXTURE.',
     ].join('\n'))
   })
 
   for (const fixturePath of AUDIO_FIXTURE_CANDIDATES) {
     const fixtureName = path.basename(fixturePath)
     it(`runs live flow for fixture: ${fixtureName}`, async () => {
-      if (!isWavFilename(fixturePath)) {
-        console.warn(`[live-test][skip] non-wav file: ${fixturePath}`)
+      const fixtureType = classifyAudioFixture(fixturePath)
+      if (fixtureType === 'unsupported') {
+        console.warn(`[live-test][skip] unsupported extension: ${fixturePath}`)
         return
       }
 
       let fixture: Pcm16MonoWav
       try {
-        fixture = parsePcm16MonoWav(fixturePath)
+        fixture = loadFixtureAsPcm16MonoWav(fixturePath)
       } catch (error) {
         console.warn([
-          `[live-test][skip] invalid wav fixture: ${fixturePath}`,
+          `[live-test][skip] invalid fixture: ${fixturePath}`,
           formatError(error),
         ].join('\n'))
         return
+      }
+
+      if (fixtureType === 'transcode') {
+        console.info(`[live-test] transcoded fixture via ${AUDIO_TRANSCODER}: ${fixturePath}`)
       }
 
       processedValidFixtureCount += 1
@@ -528,9 +634,9 @@ describe.sequential('local live integration: stt websocket + finalize api', () =
   afterAll(() => {
     if (processedValidFixtureCount > 0) return
     throw new Error([
-      '[live-test] no valid wav fixture was processed.',
-      `- fixture dir: ${AUDIO_FIXTURE_DIR}`,
-      '- unsupported/invalid files are skipped; add at least one valid PCM16 mono wav file.',
+      '[live-test] no valid audio fixture was processed.',
+      `- scanned dirs: ${scanDirs.join(', ')}`,
+      '- unsupported/invalid files are skipped; add at least one valid fixture.',
     ].join('\n'))
   })
 })

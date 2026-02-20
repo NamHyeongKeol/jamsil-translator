@@ -5,12 +5,14 @@
 Default fixture directory:
 
 - `test-fixtures/audio/fixtures/`
+- `test-fixtures/audio/local/` (local-only, git ignored)
 
 How fixture selection works:
 
-- All files under `test-fixtures/audio/fixtures/` are scanned.
-- Non-`.wav` files are skipped with a warning.
-- Invalid WAV format files are skipped with a warning.
+- All files under both fixture directories are scanned.
+- `.wav` files are parsed directly (PCM 16-bit mono required).
+- `.m4a` and other supported formats are transcoded via `ffmpeg` (fallback: macOS `afconvert`).
+- Unsupported extensions or failed transcodes are skipped with a warning.
 - At least one valid file must exist, or the live test fails.
 
 You can override fixture source with:
@@ -20,9 +22,8 @@ You can override fixture source with:
 
 Required fixture format:
 
-- WAV (RIFF/WAVE)
-- PCM 16-bit
-- mono (1 channel)
+- Direct WAV input: RIFF/WAVE, PCM 16-bit, mono (1 channel)
+- Transcoded inputs (e.g. `.m4a`) are converted to the same format during test
 
 ### Git policy (recommended)
 
