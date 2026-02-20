@@ -62,11 +62,11 @@ const WEB_APP_BASE_URL = resolveConfiguredUrl(
   ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
   ['http:', 'https:'],
   { trimTrailingSlash: true },
-);
+) || 'https://mingle-app-xi.vercel.app';
 const DEFAULT_WS_URL = resolveConfiguredUrl(
   ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
   ['ws:', 'wss:'],
-);
+) || 'wss://mingle.up.railway.app';
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {
@@ -156,7 +156,7 @@ function App(): React.JSX.Element {
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
-    if (!WEB_APP_BASE_URL) return 'about:blank';
+    if (!WEB_APP_BASE_URL) return '';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1${debugParams}`;
   }, [locale]);
@@ -401,7 +401,9 @@ function App(): React.JSX.Element {
       <StatusBar barStyle="dark-content" />
       <WebView
         ref={webViewRef}
-        source={{ uri: webUrl }}
+        source={webUrl
+          ? { uri: webUrl }
+          : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
         originWhitelist={['*']}
         javaScriptEnabled
         domStorageEnabled

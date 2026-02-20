@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tdd_live_stt_finalize_integration_automation
+    %% @lastActive: mingle_app_tdd_live_regression_e2e_matrix_expansion
 
     %% === START ===
     %% @project_start [start, closed]
@@ -376,6 +376,9 @@ flowchart TD
     %% @vercel_dashboard_deploy_filter_check [human-task, opened, 2026-02-15, ai]
     vercel_dashboard_deploy_filter_check("Vercel 대시보드 배포 필터 확인<br/><sub>ignoreCommand 코드 로직은 정상이나<br/>mingle-app만 수정해도 landing이 배포됨<br/>대시보드에서 Root Directory 및<br/>Ignored Build Step 설정 확인 필요</sub>")
 
+    %% @mingle_app_vercel_main_branch_only_deploy_guard [ai-task, closed, 2026-02-20, ai]
+    mingle_app_vercel_main_branch_only_deploy_guard("Vercel main 브랜치 전용 가드<br/><sub>mingle-app vercel.json ignoreCommand에<br/>VERCEL_GIT_COMMIT_REF 조건을 추가해<br/>main 외 브랜치는 즉시 빌드 스킵하고<br/>main + 앱 경로 변경일 때만 배포로 고정</sub>")
+
     %% @live_demo_core_full_decouple [ai-task, closed, 2026-02-15, ai]
     live_demo_core_full_decouple("live-demo-core 공통 패키지 완전 분리<br/><sub>landing/app이 참조하던 @mingle/live-demo-core를 제거하고<br/>ChatBubble/LanguageSelector/use-realtime-stt 코드를<br/>각 앱 디렉터리로 복제해 독립 소유 구조로 전환<br/>next.config, package, lockfile, vercel 필터까지 분리 기준으로 정리</sub>")
 
@@ -580,6 +583,9 @@ flowchart TD
     %% @mingle_app_rn_env_only_server_url_config [ai-task, closed, 2026-02-20, ai]
     mingle_app_rn_env_only_server_url_config("RN 서버 URL 하드코딩 제거<br/><sub>rn/App.tsx의 WEB_APP_BASE_URL과<br/>DEFAULT_WS_URL 상수를 제거하고<br/>RN_WEB_APP_BASE_URL/RN_DEFAULT_WS_URL<br/>환경변수 경로로만 URL을 결정하도록 고정</sub>")
 
+    %% @mingle_app_rn_release_about_blank_crash_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_app_rn_release_about_blank_crash_fix("RN Release 즉시 크래시 복구<br/><sub>실기기 Release 실행 시 env 미설정으로<br/>about:blank WebView URI가 들어가며<br/>NSInvalidArgumentException으로 종료되던<br/>경로를 prod URL fallback+html fallback으로 차단</sub>")
+
     %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
     mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
 
@@ -735,6 +741,7 @@ flowchart TD
     ios_safe_area_and_icon_sizing_fix --> ios_device_rebuild_and_run
     ios_device_rebuild_and_run --> ios_cli_build_install_run --> mingle_app_git_push --> mingle_app_gitignore_cleanup_for_deploy --> mingle_app_ios_rebuild_and_sync_retry --> mingle_app_ios_run_blocked_coredevice_service --> mingle_app_vercel_git_autodeploy_link_fix --> mingle_app_ui_scale_and_safearea_tune --> mingle_app_ios_build_sync_and_run_retry --> mingle_app_ios_launch_via_xctrace_workaround --> mingle_app_secret_boundary_diagnosis --> vercel_monorepo_autodeploy_split_and_alias_check --> vercel_ignore_command_scope_fix
     vercel_ignore_command_scope_fix --> vercel_dashboard_deploy_filter_check
+    vercel_dashboard_deploy_filter_check --> mingle_app_vercel_main_branch_only_deploy_guard
     vercel_dashboard_deploy_filter_check --> live_demo_core_full_decouple
     live_demo_core_full_decouple --> mingle_app_ios_tts_audio_route_stability_fix
     mingle_app_ios_tts_audio_route_stability_fix --> mingle_app_tts_fallback_recovery_path
@@ -769,6 +776,7 @@ flowchart TD
     mingle_app_capacitor_path_removal --> mingle_app_vercel_rn_typecheck_scope_fix
     mingle_app_vercel_rn_typecheck_scope_fix --> mingle_app_rn_webview_native_stt_bridge
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_env_only_server_url_config
+    mingle_app_rn_env_only_server_url_config --> mingle_app_rn_release_about_blank_crash_fix
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -877,6 +885,8 @@ flowchart TD
     mingle_marker_sanitization_restore_after_debug -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
     mingle_app_rn_env_only_server_url_config -.-> ultimate_goal
+    mingle_app_vercel_main_branch_only_deploy_guard -.-> ultimate_goal
+    mingle_app_rn_release_about_blank_crash_fix -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
@@ -1130,6 +1140,8 @@ flowchart TD
     style mingle_app_tdd_live_regression_e2e_matrix_expansion fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
