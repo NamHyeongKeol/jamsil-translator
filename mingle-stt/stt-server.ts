@@ -42,6 +42,75 @@ interface FinalTurnPayload {
     language: string;
 }
 
+function normalizeLanguageList(raw: unknown): string[] {
+    const normalizeTokens = (tokens: unknown[]): string[] => {
+        const seen = new Set<string>();
+        const normalized: string[] = [];
+        for (const token of tokens) {
+            const value = typeof token === 'string' ? token.trim() : '';
+            if (!value) continue;
+            const key = value.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            normalized.push(value);
+        }
+        return normalized;
+    };
+
+    if (Array.isArray(raw)) {
+        return normalizeTokens(raw);
+    }
+
+    if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        if (!trimmed) return [];
+
+        try {
+            const parsed = JSON.parse(trimmed);
+            const parsedLanguages = normalizeLanguageList(parsed);
+            if (parsedLanguages.length > 0) {
+                return parsedLanguages;
+            }
+        } catch {
+            // fallback to CSV/bracket parsing below
+        }
+
+        const unwrapped = trimmed.startsWith('[') && trimmed.endsWith(']')
+            ? trimmed.slice(1, -1)
+            : trimmed;
+        if (!unwrapped.trim()) return [];
+
+        return normalizeTokens(
+            unwrapped
+                .split(',')
+                .map(token => token.trim().replace(/^['"]|['"]$/g, '')),
+        );
+    }
+
+    if (raw && typeof raw === 'object') {
+        const record = raw as Record<string, unknown>;
+        const numericKeys = Object.keys(record)
+            .filter(key => /^\d+$/.test(key))
+            .sort((a, b) => Number(a) - Number(b));
+        if (numericKeys.length > 0) {
+            return normalizeTokens(numericKeys.map(key => record[key]));
+        }
+
+        const candidateValues = Object.values(record);
+        return normalizeTokens(candidateValues);
+    }
+
+    return [];
+}
+
+function previewForLog(value: unknown): string {
+    try {
+        return JSON.stringify(value);
+    } catch {
+        return String(value);
+    }
+}
+
 let connectionCounter = 0;
 
 wss.on('connection', (clientWs) => {
@@ -841,11 +910,7 @@ wss.on('connection', (clientWs) => {
         }
 
         const parsedSampleRate = Number(data?.sample_rate);
-        const parsedLanguages = Array.isArray(data?.languages)
-            ? data.languages
-                .map((lang: unknown) => (typeof lang === 'string' ? lang.trim() : ''))
-                .filter((lang: string) => lang.length > 0)
-            : [];
+        const parsedLanguages = normalizeLanguageList(data?.languages);
         const parsedModel = typeof data?.stt_model === 'string' ? data.stt_model : 'gladia';
         const normalizedModel: ClientConfig['stt_model'] =
             parsedModel === 'deepgram'
@@ -883,6 +948,14 @@ wss.on('connection', (clientWs) => {
             } else {
                 startGladiaConnection(normalizedConfig, true);
             }
+        } else if (Number.isFinite(parsedSampleRate) && parsedSampleRate > 0 && parsedLanguages.length === 0) {
+            console.warn(
+                `[conn:${connId}] invalid languages payload sample_rate=${parsedSampleRate} raw=${previewForLog(data?.languages)}`,
+            );
+            safeClientSendJson({
+                type: 'error',
+                data: { message: 'invalid_languages_payload' },
+            });
         } else if (sttWs && sttWs.readyState === WebSocket.OPEN) {
             // 오디오 프레임 전송
             if (currentModel === 'deepgram' || currentModel === 'deepgram-multi' || currentModel === 'fireworks' || currentModel === 'soniox') {

@@ -27,6 +27,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
@@ -240,9 +241,13 @@ class NativeSTTModule(private val reactContext: ReactApplicationContext) :
     }
 
     private fun sendStartConfig(config: StartConfig, sampleRate: Int): Boolean {
+        val languagesJson = JSONArray()
+        config.languages.forEach { language ->
+            languagesJson.put(language)
+        }
         val payload = JSONObject()
             .put("sample_rate", sampleRate)
-            .put("languages", config.languages)
+            .put("languages", languagesJson)
             .put("stt_model", config.sttModel)
             .put("lang_hints_strict", config.langHintsStrict)
         return sendJson(payload)
