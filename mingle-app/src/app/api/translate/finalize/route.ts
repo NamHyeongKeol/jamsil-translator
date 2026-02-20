@@ -186,10 +186,10 @@ async function translateWithGemini(ctx: TranslateContext): Promise<TranslationEn
   const result = await model.generateContent(userPrompt)
   const response = result.response as unknown as GeminiResponseLike
   const rawContent = response.text() || ''
-  console.info([
-    '[translate/finalize] gemini_raw_response',
-    rawContent,
-  ].join('\n'))
+  // console.info([
+  //   '[translate/finalize] gemini_raw_response',
+  //   rawContent,
+  // ].join('\n'))
   const content = rawContent.trim()
   const usageMetadata = response.usageMetadata
   const promptTokens = sanitizeNonNegativeInt(usageMetadata?.promptTokenCount)
@@ -430,16 +430,16 @@ export async function POST(request: NextRequest) {
     recentTurns,
     currentTurnPreviousState,
   }
-  const { systemPrompt, userPrompt } = buildPrompt(ctx)
-  console.info([
-    '[translate/finalize] input_prompt',
-    `sourceLanguage=${sourceLanguage}`,
-    `targetLanguages=${targetLanguages.join(',')}`,
-    '--- systemPrompt ---',
-    systemPrompt,
-    '--- userPrompt ---',
-    userPrompt,
-  ].join('\n'))
+  // const { systemPrompt, userPrompt } = buildPrompt(ctx)
+  // console.info([
+  //   '[translate/finalize] input_prompt',
+  //   `sourceLanguage=${sourceLanguage}`,
+  //   `targetLanguages=${targetLanguages.join(',')}`,
+  //   '--- systemPrompt ---',
+  //   systemPrompt,
+  //   '--- userPrompt ---',
+  //   userPrompt,
+  // ].join('\n'))
 
   try {
     const fallbackTranslations = buildFallbackTranslationsFromCurrentTurnPreviousState(
@@ -529,14 +529,14 @@ export async function POST(request: NextRequest) {
       return response
     }
 
-    console.info([
-      '[translate/finalize] response_usage',
-      `provider=${selectedResult.provider}`,
-      `model=${selectedResult.model}`,
-      `input_tokens=${selectedResult.usage?.promptTokens ?? 'unknown'}`,
-      `output_tokens=${selectedResult.usage?.completionTokens ?? 'unknown'}`,
-      `total_tokens=${selectedResult.usage?.totalTokens ?? 'unknown'}`,
-    ].join(' '))
+    // console.info([
+    //   '[translate/finalize] response_usage',
+    //   `provider=${selectedResult.provider}`,
+    //   `model=${selectedResult.model}`,
+    //   `input_tokens=${selectedResult.usage?.promptTokens ?? 'unknown'}`,
+    //   `output_tokens=${selectedResult.usage?.completionTokens ?? 'unknown'}`,
+    //   `total_tokens=${selectedResult.usage?.totalTokens ?? 'unknown'}`,
+    // ].join(' '))
 
     const translations: Record<string, string> = {}
     for (const lang of targetLanguages) {

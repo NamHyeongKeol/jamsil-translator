@@ -1,80 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { runTranslationPipeline } from '@/lib/translator'
-import {
-  createTrackedEventLog,
-  ensureTrackingContext,
-  fireAndForgetDbWrite,
-  parseClientContext,
-  upsertTrackedUser,
-} from '@/lib/app-analytics'
+// /api/translate/route.ts
+// 단순 번역 엔드포인트 — 현재 미사용 (번역은 /api/translate/finalize에서 처리).
+// OpenAI 기반 runTranslationPipeline 제거로 인해 이 라우트는 비활성화됩니다.
 
-type TranslateRequest = {
-  text?: string
-  sourceLanguage?: string
-  targetLanguage?: string
-  sessionKey?: string
-  clientContext?: Record<string, unknown>
-}
+import { NextResponse } from 'next/server'
 
-export async function POST(request: NextRequest) {
-  let payload: TranslateRequest
-
-  try {
-    payload = (await request.json()) as TranslateRequest
-  } catch {
-    const response = NextResponse.json(
-      { error: 'Invalid JSON body.' },
-      { status: 400 },
-    )
-    ensureTrackingContext(request, response)
-    return response
-  }
-
-  const text = payload.text?.trim() ?? ''
-  const sourceLanguage = payload.sourceLanguage?.trim() || 'auto'
-  const targetLanguage = payload.targetLanguage?.trim() || 'en'
-  const sessionKeyHint = payload.sessionKey?.trim() || null
-  const clientContext = parseClientContext(payload.clientContext)
-
-  if (!text) {
-    const response = NextResponse.json(
-      { error: 'Text is required.' },
-      { status: 400 },
-    )
-    ensureTrackingContext(request, response, { sessionKeyHint })
-    return response
-  }
-
-  const result = await runTranslationPipeline({
-    text,
-    sourceLanguage,
-    targetLanguage,
-  })
-
-  const response = NextResponse.json({
-    sourceLanguage: result.detectedLanguage,
-    targetLanguage,
-    translatedText: result.translatedText,
-    provider: result.provider,
-  })
-
-  const tracking = ensureTrackingContext(request, response, { sessionKeyHint })
-  fireAndForgetDbWrite('translate.single', async () => {
-    const userId = await upsertTrackedUser({ tracking, clientContext })
-    await createTrackedEventLog({
-      userId,
-      tracking,
-      clientContext,
-      sessionKey: tracking.sessionKey,
-      eventType: 'translate_single',
-      metadata: {
-        sourceLanguage: result.detectedLanguage,
-        targetLanguage,
-        provider: result.provider,
-        inputLength: text.length,
-      },
-    })
-  })
-
-  return response
+export async function POST() {
+  return NextResponse.json(
+    { error: 'This endpoint is deprecated. Use /api/translate/finalize instead.' },
+    { status: 410 },
+  )
 }
