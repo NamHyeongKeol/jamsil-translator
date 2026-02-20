@@ -605,7 +605,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     isError,
     partialTranslations,
     partialLang,
-    sttRawTokenTrace,
     usageSec,
     isLimitReached,
     usageLimitSec,
@@ -1188,11 +1187,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               paddingRight: "max(calc(env(safe-area-inset-right) + 6px), 10px)",
             }}
           >
-          {sttRawTokenTrace && (
-            <div className="mx-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 font-mono text-[10px] leading-4 text-amber-800 break-all">
-              {sttRawTokenTrace}
-            </div>
-          )}
           {hasOlderUtterances && (
             <button
               onClick={handleLoadOlder}

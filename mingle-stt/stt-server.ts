@@ -569,13 +569,9 @@ wss.on('connection', (clientWs) => {
             let detectedLang = config.languages[0] || 'en';
             sonioxStopRequested = false;
 
-            const emitFinalTurn = (
-                text: string,
-                language: string,
-                debugTokens?: Array<{ index: number; is_final: boolean; text: string }>,
-            ): FinalTurnPayload | null => {
-                // Temporary debug mode: keep <fin> markers in emitted transcript text.
-                const cleanedText = text.replace(/<\/?end>/gi, '').trim();
+            const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
+                // Temporary debug mode: keep <end>/<fin> markers in emitted transcript text.
+                const cleanedText = text.trim();
                 const cleanedLang = (language || '').trim() || 'unknown';
                 if (!cleanedText) return null;
 
@@ -585,19 +581,15 @@ wss.on('connection', (clientWs) => {
                 resetSonioxSegmentState();
 
                 if (clientWs.readyState === WebSocket.OPEN) {
-                    const payloadData: Record<string, unknown> = {
-                        is_final: true,
-                        utterance: {
-                            text: cleanedText,
-                            language: cleanedLang,
-                        },
-                    };
-                    if (debugTokens && debugTokens.length > 0) {
-                        payloadData.debug_tokens = debugTokens;
-                    }
                     clientWs.send(JSON.stringify({
                         type: 'transcript',
-                        data: payloadData,
+                        data: {
+                            is_final: true,
+                            utterance: {
+                                text: cleanedText,
+                                language: cleanedLang,
+                            },
+                        },
                     }));
                 }
 
@@ -667,24 +659,14 @@ wss.on('connection', (clientWs) => {
 
                     let newFinalText = '';
                     let nonFinalText = '';
-                    const debugTokens: Array<{ index: number; is_final: boolean; text: string }> = [];
-
-                    for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex += 1) {
-                        const token = tokens[tokenIndex];
-                        const tokenText = typeof token?.text === 'string' ? token.text : '';
-                        const tokenIsFinal = token?.is_final === true;
-                        debugTokens.push({
-                            index: tokenIndex,
-                            is_final: tokenIsFinal,
-                            text: tokenText,
-                        });
+                    for (const token of tokens) {
                         if (token.language) {
                             detectedLang = token.language;
                         }
-                        if (tokenIsFinal) {
-                            newFinalText += tokenText;
+                        if (token.is_final) {
+                            newFinalText += token.text;
                         } else {
-                            nonFinalText += tokenText;
+                            nonFinalText += token.text;
                         }
                     }
 
@@ -703,19 +685,18 @@ wss.on('connection', (clientWs) => {
                                     text: fullText.trim(),
                                     language: detectedLang,
                                 },
-                                debug_tokens: debugTokens,
                             },
                         };
                         clientWs.send(JSON.stringify(partialMsg));
                     }
 
-                    sonioxHasPendingTranscript = `${finalizedText}${latestNonFinalText}`.replace(/<\/?end>/gi, '').trim().length > 0;
+                    sonioxHasPendingTranscript = `${finalizedText}${latestNonFinalText}`.trim().length > 0;
 
                     // 발화 완료 판단:
                     // Soniox endpoint(<end>/<fin>) 토큰이 포함된 경우에만 완료 처리
                     if (hasEndpointToken) {
                         const mergedAtEndpoint = `${finalizedText}${latestNonFinalText}`.trim();
-                        emitFinalTurn(mergedAtEndpoint, detectedLang, debugTokens);
+                        emitFinalTurn(mergedAtEndpoint, detectedLang);
                     }
                 } catch (parseError) {
                     console.error('Error parsing Soniox message:', parseError);
@@ -750,7 +731,7 @@ wss.on('connection', (clientWs) => {
     };
 
     const sendForcedFinalTurn = (rawText: string, rawLanguage: string): FinalTurnPayload | null => {
-        const text = (rawText || '').replace(/<\/?end>/gi, '').trim();
+        const text = (rawText || '').trim();
         const language = (rawLanguage || '').trim() || 'unknown';
         if (!text) return null;
 
@@ -783,7 +764,7 @@ wss.on('connection', (clientWs) => {
         if (data?.type === 'stop_recording') {
             const pendingText = (data?.data?.pending_text || '').toString();
             const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
-            const cleanedPendingText = pendingText.replace(/<\/?end>/gi, '').trim();
+            const cleanedPendingText = pendingText.trim();
             sonioxStopRequested = currentModel === 'soniox';
 
             let finalizedTurn: FinalTurnPayload | null = null;

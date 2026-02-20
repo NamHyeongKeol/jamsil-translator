@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_raw_fin_token_trace_overlay
+    %% @lastActive: mingle_app_end_fin_marker_sanitize_full_disable
 
     %% === START ===
     %% @project_start [start, closed]
@@ -556,6 +556,9 @@ flowchart TD
     %% @mingle_app_raw_fin_token_trace_overlay [ai-task, closed, 2026-02-20, ai]
     mingle_app_raw_fin_token_trace_overlay("원본 토큰 트레이스 화면 오버레이 추가<br/><sub>Soniox 메시지의 raw token 배열을<br/>debug_tokens로 앱까지 전달하도록 확장하고<br/>isFinal·marker 위치·raw/normalized 비교를<br/>모바일 화면에서 즉시 보이도록 디버그 UI 추가</sub>")
 
+    %% @mingle_app_end_fin_marker_sanitize_full_disable [ai-task, closed, 2026-02-20, ai]
+    mingle_app_end_fin_marker_sanitize_full_disable("<end>/<fin> 제거 비활성화 범위 확장<br/><sub>사용자 요청에 맞춰 앱·STT 서버·finalize API·로그에서<br/>남아 있던 <end> 제거 정규화까지 잠시 끄고<br/>토큰이 원문 그대로 버블/파이프라인에 남도록 조정,<br/>추가로 토큰 트레이스 오버레이/디버그 로그는 정리</sub>")
+
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
 
@@ -820,6 +823,7 @@ flowchart TD
     mingle_app_final_dedupe_false_negative_fix --> mingle_app_fin_marker_sanitize_temp_disable
     mingle_app_fin_marker_sanitize_temp_disable --> mingle_stt_endpoint_final_merge_for_fin_visibility
     mingle_stt_endpoint_final_merge_for_fin_visibility --> mingle_app_raw_fin_token_trace_overlay
+    mingle_app_raw_fin_token_trace_overlay --> mingle_app_end_fin_marker_sanitize_full_disable
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -887,10 +891,11 @@ flowchart TD
     mingle_app_rn_env_only_server_url_config -.-> ultimate_goal
     mingle_stt_endpoint_final_merge_for_fin_visibility -.-> ultimate_goal
     mingle_app_raw_fin_token_trace_overlay -.-> ultimate_goal
+    mingle_app_end_fin_marker_sanitize_full_disable -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_raw_fin_token_trace_overlay
+        mingle_app_end_fin_marker_sanitize_full_disable
     end
 
     %% === STYLES ===
@@ -1141,7 +1146,8 @@ flowchart TD
     style mingle_app_final_dedupe_false_negative_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_fin_marker_sanitize_temp_disable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_final_merge_for_fin_visibility fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_raw_fin_token_trace_overlay fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_raw_fin_token_trace_overlay fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_end_fin_marker_sanitize_full_disable fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
