@@ -1178,6 +1178,7 @@ export default function useRealtimeSTT({
 
   const handleSttTransportError = useCallback((details?: Record<string, unknown>) => {
     logSttDebug('transport.error', details)
+    console.error('[MingleSTT] transport.error', details || {})
     const wasActiveSession = hasActiveSessionRef.current
     hasActiveSessionRef.current = false
 
@@ -1212,6 +1213,7 @@ export default function useRealtimeSTT({
 
   const handleSttTransportClose = useCallback((details?: Record<string, unknown>) => {
     logSttDebug('transport.close', details)
+    console.warn('[MingleSTT] transport.close', details || {})
     const wasActiveSession = hasActiveSessionRef.current
     hasActiveSessionRef.current = false
 
@@ -1467,6 +1469,12 @@ export default function useRealtimeSTT({
       }
 
       logSttDebug('web.start.begin')
+      if (typeof window !== 'undefined' && !window.isSecureContext) {
+        throw new Error('secure_context_required_for_microphone')
+      }
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        throw new Error('media_devices_api_unavailable')
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: enableAec,
@@ -1525,6 +1533,14 @@ export default function useRealtimeSTT({
         native: useNativeStt,
         message: error instanceof Error ? error.message : String(error),
         name: error instanceof Error ? error.name : 'unknown',
+      })
+      console.error('[MingleSTT] recording.start.failed', {
+        native: useNativeStt,
+        message: error instanceof Error ? error.message : String(error),
+        name: error instanceof Error ? error.name : 'unknown',
+        wsUrl: getWsUrl(),
+        origin: typeof window !== 'undefined' ? window.location.origin : null,
+        isSecureContext: typeof window !== 'undefined' ? window.isSecureContext : null,
       })
       cleanup()
       setConnectionStatus('error')
