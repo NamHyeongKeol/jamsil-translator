@@ -1,10 +1,8 @@
 package com.rnnative
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.media.AudioFormat
-import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
@@ -75,8 +73,6 @@ class NativeSTTModule(private val reactContext: ReactApplicationContext) :
     private var permissionListener: PermissionListener? = null
     private var pendingStartPromise: Promise? = null
     private var startConfig: StartConfig? = null
-    private var audioModeManagedByModule = false
-    private var previousAudioMode = AudioManager.MODE_NORMAL
 
     override fun getName(): String = "NativeSTTModule"
 
@@ -233,41 +229,6 @@ class NativeSTTModule(private val reactContext: ReactApplicationContext) :
         }
     }
 
-    private fun applyCommunicationAudioModeIfNeeded() {
-        val audioManager = reactContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-        if (!isAecEnabled) {
-            restoreCommunicationAudioModeIfNeeded()
-            return
-        }
-
-        if (audioManager.mode == AudioManager.MODE_IN_COMMUNICATION) {
-            return
-        }
-
-        if (!audioModeManagedByModule) {
-            previousAudioMode = audioManager.mode
-        }
-
-        try {
-            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-            audioModeManagedByModule = true
-        } catch (_: Throwable) {
-            audioModeManagedByModule = false
-        }
-    }
-
-    private fun restoreCommunicationAudioModeIfNeeded() {
-        if (!audioModeManagedByModule) return
-        val audioManager = reactContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        try {
-            audioManager?.mode = previousAudioMode
-        } catch (_: Throwable) {
-            // best effort
-        } finally {
-            audioModeManagedByModule = false
-        }
-    }
-
     private fun sendJson(payload: JSONObject): Boolean {
         val text = payload.toString()
         val ws = synchronized(stateLock) { webSocket }
@@ -331,7 +292,6 @@ class NativeSTTModule(private val reactContext: ReactApplicationContext) :
         }
 
         releaseAecIfNeeded()
-        restoreCommunicationAudioModeIfNeeded()
 
         if (localAudioThread != null && localAudioThread !== Thread.currentThread()) {
             try {
@@ -344,7 +304,6 @@ class NativeSTTModule(private val reactContext: ReactApplicationContext) :
 
     private fun startAudioCapture(): Boolean {
         stopAudioCapture()
-        applyCommunicationAudioModeIfNeeded()
 
         val sampleRate = resolveSampleRate()
         val minBufferSize = AudioRecord.getMinBufferSize(
@@ -395,14 +354,12 @@ class NativeSTTModule(private val reactContext: ReactApplicationContext) :
             }
         }
         if (recorder == null) {
-            restoreCommunicationAudioModeIfNeeded()
             emitError("audio_record_init_failed")
             return false
         }
 
         if (recorder.state != AudioRecord.STATE_INITIALIZED) {
             recorder.release()
-            restoreCommunicationAudioModeIfNeeded()
             emitError("audio_record_not_initialized")
             return false
         }
@@ -422,7 +379,6 @@ class NativeSTTModule(private val reactContext: ReactApplicationContext) :
             synchronized(stateLock) {
                 audioRecord = null
             }
-            restoreCommunicationAudioModeIfNeeded()
             emitError("audio_record_start_failed: ${error.message ?: "unknown"}")
             return false
         }
