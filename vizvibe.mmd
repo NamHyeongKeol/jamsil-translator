@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_stt_server_payload_guard_and_lang_array_fix
+    %% @lastActive: mingle_app_rn_env_only_server_url_config
 
     %% === START ===
     %% @project_start [start, closed]
@@ -562,9 +562,6 @@ flowchart TD
     %% @mingle_app_rn_env_only_server_url_config [ai-task, closed, 2026-02-20, ai]
     mingle_app_rn_env_only_server_url_config("RN 서버 URL 하드코딩 제거<br/><sub>rn/App.tsx의 WEB_APP_BASE_URL과<br/>DEFAULT_WS_URL 상수를 제거하고<br/>RN_WEB_APP_BASE_URL/RN_DEFAULT_WS_URL<br/>환경변수 경로로만 URL을 결정하도록 고정</sub>")
 
-    %% @mingle_stt_server_payload_guard_and_lang_array_fix [ai-task, closed, 2026-02-20, ai]
-    mingle_stt_server_payload_guard_and_lang_array_fix("STT payload 정규화/다운 방지 수정<br/><sub>Android STT 시작 시 languages 타입이 어긋나면<br/>selectedLanguages.join에서 프로세스가 종료되던 문제를<br/>sample_rate/languages/stt_model 정규화로 차단하고<br/>항상 배열만 저장하도록 서버 파서를 보강</sub>")
-
     %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
     mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
 
@@ -754,7 +751,6 @@ flowchart TD
     mingle_app_capacitor_path_removal --> mingle_app_vercel_rn_typecheck_scope_fix
     mingle_app_vercel_rn_typecheck_scope_fix --> mingle_app_rn_webview_native_stt_bridge
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_env_only_server_url_config
-    mingle_app_rn_env_only_server_url_config --> mingle_stt_server_payload_guard_and_lang_array_fix
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -851,11 +847,10 @@ flowchart TD
     mingle_marker_sanitization_restore_after_debug -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
     mingle_app_rn_env_only_server_url_config -.-> ultimate_goal
-    mingle_stt_server_payload_guard_and_lang_array_fix -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_stt_server_payload_guard_and_lang_array_fix
+        mingle_app_rn_env_only_server_url_config
     end
 
     %% === STYLES ===
@@ -1098,8 +1093,7 @@ flowchart TD
     style mingle_app_mobile_scroll_overlay_visibility_hold_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_stt_server_payload_guard_and_lang_array_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_rn_env_only_server_url_config fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
