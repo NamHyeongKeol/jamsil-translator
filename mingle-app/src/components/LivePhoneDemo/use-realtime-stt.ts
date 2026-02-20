@@ -1540,7 +1540,9 @@ export default function useRealtimeSTT({
       socket.onmessage = (event) => {
         if (socket !== socketRef.current) return
         try {
-          const message = JSON.parse(event.data) as Record<string, unknown>
+          const rawMessage = typeof event.data === 'string' ? event.data : String(event.data)
+          console.log('[MingleSTT][stt-server->web raw]', rawMessage)
+          const message = JSON.parse(rawMessage) as Record<string, unknown>
           handleSttServerMessage(message)
         } catch {
           // ignore malformed payload
@@ -1597,6 +1599,7 @@ export default function useRealtimeSTT({
 
       if (detail.type === 'message') {
         try {
+          console.log('[MingleSTT][stt-server->native raw]', detail.raw)
           const message = JSON.parse(detail.raw) as Record<string, unknown>
           handleSttServerMessage(message)
         } catch {

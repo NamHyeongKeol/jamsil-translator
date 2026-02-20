@@ -689,7 +689,9 @@ wss.on('connection', (clientWs) => {
                 if (!isClientConnected) return;
 
                 try {
-                    const msg = JSON.parse(event.data.toString());
+                    const rawSonioxMessage = event.data.toString();
+                    console.log(`[conn:${connId}] [soniox->stt raw] ${rawSonioxMessage}`);
+                    const msg = JSON.parse(rawSonioxMessage);
 
                     if (msg.error_code) {
                         console.error(`[Soniox] Error: ${msg.error_code} - ${msg.error_message}`);
