@@ -572,7 +572,7 @@ flowchart TD
     mingle_stt_manual_finalize_burst_guard_fix("Soniox finalize 중복호출 가드 강화<br/><sub>무음 구간 finalize 요청이 소음 피크로 반복돼<br/><fin> 단독 final 버블이 연속 생성되던 경로를 추적해<br/>수동 finalize 재요청에 cooldown/진행신호 가드를 추가하고<br/>marker-only endpoint final은 무시하도록 보정</sub>")
 
     %% @mingle_stt_stale_partial_carry_overlap_merge_fix [ai-task, closed, 2026-02-20, ai]
-    mingle_stt_stale_partial_carry_overlap_merge_fix("Soniox stale partial carry 보존형 보정<br/><sub>endpoint 직후 carry를 무조건 폐기하지 않고<br/>provisional carry로 유지해 partial 용도로 보존하되<br/>추가 진행 신호가 있을 때만 finalize 대상에 포함시켜<br/>직전 partial 잔존으로 생기던 2번째 가짜 턴을 차단</sub>")
+    mingle_stt_stale_partial_carry_overlap_merge_fix("Soniox stale partial carry 병합 보정<br/><sub>endpoint 시점 merged 텍스트를 단순 concat하면<br/>직전 partial(snapshot prefix)이 final 뒤에 다시 붙어<br/>carryText로 분리되어 2번째 가짜 턴이 생성되던 문제를<br/>final/non-final overlap 병합 규칙으로 중복 누적 차단</sub>")
 
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
