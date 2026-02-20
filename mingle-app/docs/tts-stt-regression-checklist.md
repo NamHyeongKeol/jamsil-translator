@@ -34,3 +34,18 @@
 - Confirm iOS native audio session deactivation uses a short grace delay.
 - Confirm new STT/TTS activity during grace cancels deactivation.
 - Confirm this cancellation does not trigger any automatic STT start.
+
+## M6 Route-Aware Policy Validation
+- Built-in speaker/receiver path:
+  - Expected deactivation delay: `320ms`
+  - Expected deactivation option: `none`
+- Wired headset/USB path:
+  - Expected deactivation delay: `180ms`
+  - Expected deactivation option: `none`
+- Bluetooth/AirPlay/Car path:
+  - Expected deactivation delay: `220ms`
+  - Expected deactivation option: `notifyOthersOnDeactivation`
+- Confirm native logs contain `schedule deactivate` and `deactivated` with
+  the same `trigger`, `routeProfile`, and `options` for each scenario.
+- Confirm STT remains stopped after any deactivation cancellation unless the
+  user explicitly presses the STT start control again.

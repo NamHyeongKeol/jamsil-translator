@@ -5,11 +5,27 @@ import React
 final class MingleAudioSessionCoordinator {
     static let shared = MingleAudioSessionCoordinator()
 
+    private enum OutputRouteProfile: String {
+        case speaker
+        case receiver
+        case wired
+        case bluetooth
+        case airplay
+        case car
+        case unknown
+    }
+
+    private struct DeactivationPolicy {
+        let delayMs: Int
+        let options: AVAudioSession.SetActiveOptions
+        let outputProfile: OutputRouteProfile
+        let optionsLabel: String
+    }
+
     private let lock = NSLock()
     private var sttOwners: Int = 0
     private var ttsOwners: Int = 0
     private var pendingDeactivationWorkItem: DispatchWorkItem?
-    private let deactivationGraceMs: Int = 280
 
     private init() {}
 
@@ -19,14 +35,87 @@ final class MingleAudioSessionCoordinator {
         return block()
     }
 
-    private func cancelPendingDeactivationLocked() {
+    private func cancelPendingDeactivationLocked(reason: String) {
+        if pendingDeactivationWorkItem != nil {
+            NSLog("[MingleAudioSessionCoordinator] cancel pending deactivate reason=%@", reason)
+        }
         pendingDeactivationWorkItem?.cancel()
         pendingDeactivationWorkItem = nil
     }
 
+    private func resolveOutputRouteProfile() -> OutputRouteProfile {
+        let route = AVAudioSession.sharedInstance().currentRoute
+        for output in route.outputs {
+            switch output.portType {
+            case .builtInSpeaker:
+                return .speaker
+            case .builtInReceiver:
+                return .receiver
+            case .bluetoothA2DP, .bluetoothHFP, .bluetoothLE:
+                return .bluetooth
+            case .headphones, .headsetMic, .lineOut, .usbAudio:
+                return .wired
+            case .airPlay:
+                return .airplay
+            case .carAudio:
+                return .car
+            default:
+                continue
+            }
+        }
+        return .unknown
+    }
+
+    private func resolveOutputRouteLabel() -> String {
+        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
+        if outputs.isEmpty {
+            return "none"
+        }
+        return outputs
+            .map { "\($0.portName)(\($0.portType.rawValue))" }
+            .joined(separator: ",")
+    }
+
+    private func resolveOptionsLabel(_ options: AVAudioSession.SetActiveOptions) -> String {
+        if options.contains(.notifyOthersOnDeactivation) {
+            return "notifyOthersOnDeactivation"
+        }
+        return "none"
+    }
+
+    private func resolveDeactivationPolicy(delayMsOverride: Int?) -> DeactivationPolicy {
+        let outputProfile = resolveOutputRouteProfile()
+        let defaultDelayMs: Int
+        let options: AVAudioSession.SetActiveOptions
+
+        switch outputProfile {
+        case .speaker, .receiver:
+            // Keep a slightly longer tail on built-in outputs to reduce click/pop.
+            defaultDelayMs = 320
+            options = []
+        case .wired:
+            defaultDelayMs = 180
+            options = []
+        case .bluetooth, .airplay, .car:
+            defaultDelayMs = 220
+            options = [.notifyOthersOnDeactivation]
+        case .unknown:
+            defaultDelayMs = 260
+            options = []
+        }
+
+        let delayMs = max(0, delayMsOverride ?? defaultDelayMs)
+        return DeactivationPolicy(
+            delayMs: delayMs,
+            options: options,
+            outputProfile: outputProfile,
+            optionsLabel: resolveOptionsLabel(options)
+        )
+    }
+
     func acquireSTT() {
         withLock {
-            cancelPendingDeactivationLocked()
+            cancelPendingDeactivationLocked(reason: "acquire_stt")
             sttOwners += 1
         }
     }
@@ -41,7 +130,7 @@ final class MingleAudioSessionCoordinator {
 
     func acquireTTS() {
         withLock {
-            cancelPendingDeactivationLocked()
+            cancelPendingDeactivationLocked(reason: "acquire_tts")
             ttsOwners += 1
         }
     }
@@ -56,11 +145,20 @@ final class MingleAudioSessionCoordinator {
 
     func scheduleDeactivateAudioSessionIfIdle(trigger: String, delayMs: Int? = nil) {
         var workItemToSchedule: DispatchWorkItem?
-        let appliedDelayMs = delayMs ?? deactivationGraceMs
+        let policy = resolveDeactivationPolicy(delayMsOverride: delayMs)
+        let routeLabel = resolveOutputRouteLabel()
 
         withLock {
-            cancelPendingDeactivationLocked()
+            cancelPendingDeactivationLocked(reason: "schedule_deactivate_\(trigger)")
             if sttOwners != 0 || ttsOwners != 0 {
+                NSLog(
+                    "[MingleAudioSessionCoordinator] skip deactivate trigger=%@ owners stt=%d tts=%d routeProfile=%@ outputs=[%@]",
+                    trigger,
+                    sttOwners,
+                    ttsOwners,
+                    policy.outputProfile.rawValue,
+                    routeLabel
+                )
                 return
             }
 
@@ -72,25 +170,41 @@ final class MingleAudioSessionCoordinator {
                 }
                 guard shouldDeactivate else { return }
                 do {
-                    // M5: Avoid abrupt immediate session teardown to reduce
-                    // end-of-playback click/pop after STT already stopped.
-                    try AVAudioSession.sharedInstance().setActive(false, options: [])
-                    NSLog("[MingleAudioSessionCoordinator] deactivated audio session trigger=%@", trigger)
+                    try AVAudioSession.sharedInstance().setActive(false, options: policy.options)
+                    NSLog(
+                        "[MingleAudioSessionCoordinator] deactivated trigger=%@ delayMs=%d routeProfile=%@ options=%@ outputs=[%@]",
+                        trigger,
+                        policy.delayMs,
+                        policy.outputProfile.rawValue,
+                        policy.optionsLabel,
+                        routeLabel
+                    )
                 } catch {
                     NSLog(
-                        "[MingleAudioSessionCoordinator] deactivate failed trigger=%@ error=%@",
+                        "[MingleAudioSessionCoordinator] deactivate failed trigger=%@ delayMs=%d routeProfile=%@ options=%@ error=%@",
                         trigger,
+                        policy.delayMs,
+                        policy.outputProfile.rawValue,
+                        policy.optionsLabel,
                         error.localizedDescription
                     )
                 }
             }
             pendingDeactivationWorkItem = workItem
             workItemToSchedule = workItem
+            NSLog(
+                "[MingleAudioSessionCoordinator] schedule deactivate trigger=%@ delayMs=%d routeProfile=%@ options=%@ outputs=[%@]",
+                trigger,
+                policy.delayMs,
+                policy.outputProfile.rawValue,
+                policy.optionsLabel,
+                routeLabel
+            )
         }
 
         guard let workItemToSchedule else { return }
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + .milliseconds(appliedDelayMs),
+            deadline: .now() + .milliseconds(policy.delayMs),
             execute: workItemToSchedule
         )
     }

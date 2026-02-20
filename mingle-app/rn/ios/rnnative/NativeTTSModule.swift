@@ -68,6 +68,16 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
         )
     }
 
+    private func resolveOutputRouteLabel() -> String {
+        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
+        if outputs.isEmpty {
+            return "none"
+        }
+        return outputs
+            .map { "\($0.portName)(\($0.portType.rawValue))" }
+            .joined(separator: ",")
+    }
+
     @objc(play:resolver:rejecter:)
     func play(
         _ options: NSDictionary,
@@ -104,12 +114,19 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
             // NativeSTTModule normally keeps it active, but if STT stopped
             // before all TTS items played we still need a valid session.
             let session = AVAudioSession.sharedInstance()
+            NSLog(
+                "[NativeTTSModule] prepare playbackId=%@ category=%@ mode=%@ outputs=[%@]",
+                playbackId,
+                session.category.rawValue,
+                session.mode.rawValue,
+                self.resolveOutputRouteLabel()
+            )
             if session.category != .playAndRecord {
                 do {
                     try session.setCategory(
                         .playAndRecord,
                         mode: .default,
-                        options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+                        options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
                     )
                     try session.setActive(true, options: [])
                 } catch {
@@ -118,6 +135,11 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
             }
             do {
                 try session.setActive(true, options: [])
+                NSLog(
+                    "[NativeTTSModule] session active playbackId=%@ outputs=[%@]",
+                    playbackId,
+                    self.resolveOutputRouteLabel()
+                )
             } catch {
                 NSLog("[NativeTTSModule] setActive(true) failed: %@", error.localizedDescription)
             }
