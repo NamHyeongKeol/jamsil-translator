@@ -592,6 +592,26 @@ wss.on('connection', (clientWs) => {
                 const match = /<\/?(?:end|fin)>/i.exec(text);
                 return match ? match[0] : '<fin>';
             };
+            const mergeFinalAndNonFinalText = (finalText: string, nonFinalText: string): string => {
+                const final = (finalText || '').trim();
+                const nonFinal = (nonFinalText || '').trim();
+                if (!final) return nonFinal;
+                if (!nonFinal) return final;
+
+                // STT snapshots often repeat prefix text across final/non-final boundaries.
+                // Merge with overlap/prefix rules so stale partial text does not duplicate.
+                if (nonFinal.startsWith(final)) return nonFinal;
+                if (final.startsWith(nonFinal)) return final;
+
+                const maxOverlap = Math.min(final.length, nonFinal.length);
+                for (let overlap = maxOverlap; overlap > 0; overlap--) {
+                    if (final.slice(-overlap) === nonFinal.slice(0, overlap)) {
+                        return `${final}${nonFinal.slice(overlap)}`.trim();
+                    }
+                }
+
+                return `${final} ${nonFinal}`.trim();
+            };
 
             const splitTurnAtFirstEndpointMarker = (text: string): { finalText: string; carryText: string } => {
                 const markerMatch = /<\/?(?:end|fin)>/i.exec(text);
@@ -639,7 +659,7 @@ wss.on('connection', (clientWs) => {
             };
 
             finalizePendingTurnFromProvider = async () => {
-                const merged = `${finalizedText}${latestNonFinalText}`.trim();
+                const merged = mergeFinalAndNonFinalText(finalizedText, latestNonFinalText);
                 return emitFinalTurn(merged, detectedLang) ?? null;
             };
 
@@ -709,14 +729,14 @@ wss.on('connection', (clientWs) => {
                         }
                     }
 
-                    const previousMerged = `${finalizedText}${latestNonFinalText}`.trim();
+                    const previousMerged = mergeFinalAndNonFinalText(finalizedText, latestNonFinalText);
                     finalizedText += newFinalText;
                     const hasEndpointToken = /<\/?(?:end|fin)>/i.test(newFinalText) || /<\/?(?:end|fin)>/i.test(nonFinalText);
 
                     if (nonFinalText) {
                         latestNonFinalText = nonFinalText;
                         // 부분 결과: 확정된 텍스트 + 미확정 텍스트
-                        const fullText = finalizedText + nonFinalText;
+                        const fullText = mergeFinalAndNonFinalText(finalizedText, nonFinalText);
                         const partialMsg = {
                             type: 'transcript',
                             data: {
@@ -730,7 +750,7 @@ wss.on('connection', (clientWs) => {
                         clientWs.send(JSON.stringify(partialMsg));
                     }
 
-                    const mergedSnapshot = `${finalizedText}${latestNonFinalText}`.trim();
+                    const mergedSnapshot = mergeFinalAndNonFinalText(finalizedText, latestNonFinalText);
                     sonioxHasPendingTranscript = mergedSnapshot.length > 0;
                     if (mergedSnapshot && mergedSnapshot !== previousMerged) {
                         // Allow another manual finalize only when transcript actually progressed.
@@ -740,7 +760,7 @@ wss.on('connection', (clientWs) => {
                     // 발화 완료 판단:
                     // Soniox endpoint(<end>/<fin>) 토큰이 포함된 경우에만 완료 처리
                     if (hasEndpointToken) {
-                        const mergedAtEndpoint = `${finalizedText}${latestNonFinalText}`.trim();
+                        const mergedAtEndpoint = mergeFinalAndNonFinalText(finalizedText, latestNonFinalText);
                         const { finalText, carryText } = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
                         let finalTextToEmit = finalText;
                         let carryTextToEmit = carryText;
