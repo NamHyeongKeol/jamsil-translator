@@ -3,6 +3,14 @@ import { WebSocket, WebSocketServer } from 'ws';
 import fetch from 'node-fetch';
 import 'dotenv/config';
 
+// Keep the STT relay alive in local/dev even when an async handler throws.
+process.on('uncaughtException', (error) => {
+    console.error('[stt-server] uncaughtException:', error);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('[stt-server] unhandledRejection:', reason);
+});
+
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const GLADIA_API_URL = 'https://api.gladia.io/v2/live';
 const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen';
@@ -81,6 +89,38 @@ wss.on('connection', (clientWs) => {
         sonioxManualFinalizeSent = false;
     };
 
+    const safeClientSendRaw = (payload: string): boolean => {
+        if (!isClientConnected) return false;
+        if (clientWs.readyState !== WebSocket.OPEN) return false;
+        try {
+            clientWs.send(payload);
+            return true;
+        } catch (error) {
+            console.error(`[conn:${connId}] client send failed:`, error);
+            return false;
+        }
+    };
+
+    const safeClientSendJson = (payload: unknown): boolean => {
+        try {
+            return safeClientSendRaw(JSON.stringify(payload));
+        } catch (error) {
+            console.error(`[conn:${connId}] client json encode failed:`, error);
+            return false;
+        }
+    };
+
+    const safeSttSend = (payload: string | Buffer): boolean => {
+        if (!sttWs || sttWs.readyState !== WebSocket.OPEN) return false;
+        try {
+            sttWs.send(payload);
+            return true;
+        } catch (error) {
+            console.error(`[conn:${connId}] provider send failed:`, error);
+            return false;
+        }
+    };
+
     const resetSonioxSegmentState = () => {
         sonioxHasPendingTranscript = false;
         sonioxSawSpeechInCurrentSegment = false;
@@ -120,7 +160,7 @@ wss.on('connection', (clientWs) => {
         if (!sonioxHasPendingTranscript) return;
 
         try {
-            sttWs.send(JSON.stringify({ type: 'finalize' }));
+            safeSttSend(JSON.stringify({ type: 'finalize' }));
             sonioxManualFinalizeSent = true;
             sonioxTrailingSilenceMs = 0;
         } catch (error) {
@@ -200,7 +240,7 @@ wss.on('connection', (clientWs) => {
 
             sttWs.onopen = () => {
                 if (isClientConnected) {
-                    clientWs.send(JSON.stringify({ status: 'ready' }));
+                    safeClientSendJson({ status: 'ready' });
                 } else {
                     sttWs?.close();
                 }
@@ -209,7 +249,7 @@ wss.on('connection', (clientWs) => {
             sttWs.onmessage = (event) => {
                 if (isClientConnected) {
                     const raw = event.data.toString();
-                    clientWs.send(raw);
+                    safeClientSendRaw(raw);
                 }
             };
 
@@ -294,7 +334,7 @@ wss.on('connection', (clientWs) => {
 
             sttWs.onopen = () => {
                 if (isClientConnected) {
-                    clientWs.send(JSON.stringify({ status: 'ready' }));
+                    safeClientSendJson({ status: 'ready' });
                 } else {
                     sttWs?.close();
                 }
@@ -327,7 +367,7 @@ wss.on('connection', (clientWs) => {
                                             },
                                         },
                                     };
-                                    clientWs.send(JSON.stringify(gladiaStyleMsg));
+                                    safeClientSendJson(gladiaStyleMsg);
                                 }
                             }
                         }
@@ -389,7 +429,7 @@ wss.on('connection', (clientWs) => {
 
             sttWs.onopen = () => {
                 if (isClientConnected) {
-                    clientWs.send(JSON.stringify({ status: 'ready' }));
+                    safeClientSendJson({ status: 'ready' });
                 } else {
                     sttWs?.close();
                 }
@@ -429,7 +469,7 @@ wss.on('connection', (clientWs) => {
                                             },
                                         },
                                     };
-                                    clientWs.send(JSON.stringify(gladiaStyleMsg));
+                                    safeClientSendJson(gladiaStyleMsg);
                                 }
                             }
                         }
@@ -495,7 +535,7 @@ wss.on('connection', (clientWs) => {
 
             sttWs.onopen = () => {
                 if (isClientConnected) {
-                    clientWs.send(JSON.stringify({ status: 'ready' }));
+                    safeClientSendJson({ status: 'ready' });
                 } else {
                     sttWs?.close();
                 }
@@ -519,7 +559,7 @@ wss.on('connection', (clientWs) => {
                                     },
                                 },
                             };
-                            clientWs.send(JSON.stringify(gladiaStyleMsg));
+                            safeClientSendJson(gladiaStyleMsg);
                         }
                     } catch (e) {
                         console.error('Error parsing Fireworks msg:', e);
@@ -580,7 +620,7 @@ wss.on('connection', (clientWs) => {
                 resetSonioxSegmentState();
 
                 if (clientWs.readyState === WebSocket.OPEN) {
-                    clientWs.send(JSON.stringify({
+                    safeClientSendJson({
                         type: 'transcript',
                         data: {
                             is_final: true,
@@ -589,7 +629,7 @@ wss.on('connection', (clientWs) => {
                                 language: cleanedLang,
                             },
                         },
-                    }));
+                    });
                 }
 
                 return {
@@ -616,10 +656,10 @@ wss.on('connection', (clientWs) => {
                     enable_language_identification: true,
                     enable_speaker_diarization: true,
                 };
-                sttWs!.send(JSON.stringify(sonioxConfig));
+                safeSttSend(JSON.stringify(sonioxConfig));
 
                 if (isClientConnected) {
-                    clientWs.send(JSON.stringify({ status: 'ready' }));
+                    safeClientSendJson({ status: 'ready' });
                 } else {
                     sttWs?.close();
                 }
@@ -646,7 +686,7 @@ wss.on('connection', (clientWs) => {
                                 finished: !!msg.finished,
                             },
                         };
-                        clientWs.send(JSON.stringify(usageMsg));
+                        safeClientSendJson(usageMsg);
                     }
 
                     if (msg.finished) {
@@ -687,7 +727,7 @@ wss.on('connection', (clientWs) => {
                                 },
                             },
                         };
-                        clientWs.send(JSON.stringify(partialMsg));
+                        safeClientSendJson(partialMsg);
                     }
 
                     sonioxHasPendingTranscript = `${finalizedText}${latestNonFinalText}`.replace(/<\/?(?:end|fin)>/gi, '').trim().length > 0;
@@ -736,7 +776,7 @@ wss.on('connection', (clientWs) => {
         if (!text) return null;
 
         if (clientWs.readyState === WebSocket.OPEN) {
-            clientWs.send(JSON.stringify({
+            safeClientSendJson({
                 type: 'transcript',
                 data: {
                     is_final: true,
@@ -745,7 +785,7 @@ wss.on('connection', (clientWs) => {
                         language,
                     },
                 },
-            }));
+            });
         }
 
         return { text, language };
@@ -782,13 +822,13 @@ wss.on('connection', (clientWs) => {
             }
 
             if (clientWs.readyState === WebSocket.OPEN) {
-                clientWs.send(JSON.stringify({
+                safeClientSendJson({
                     type: 'stop_recording_ack',
                     data: {
                         finalized: Boolean(finalizedTurn),
                         final_turn: finalizedTurn,
                     },
-                }));
+                });
                 // Close client socket after ack.
                 setTimeout(() => {
                     if (clientWs.readyState === WebSocket.OPEN) {
@@ -800,25 +840,48 @@ wss.on('connection', (clientWs) => {
             return;
         }
 
-        if (data.sample_rate && data.languages) {
-            currentModel = data.stt_model || 'gladia';
-            selectedLanguages = data.languages;
+        const parsedSampleRate = Number(data?.sample_rate);
+        const parsedLanguages = Array.isArray(data?.languages)
+            ? data.languages
+                .map((lang: unknown) => (typeof lang === 'string' ? lang.trim() : ''))
+                .filter((lang: string) => lang.length > 0)
+            : [];
+        const parsedModel = typeof data?.stt_model === 'string' ? data.stt_model : 'gladia';
+        const normalizedModel: ClientConfig['stt_model'] =
+            parsedModel === 'deepgram'
+                || parsedModel === 'deepgram-multi'
+                || parsedModel === 'fireworks'
+                || parsedModel === 'soniox'
+                || parsedModel === 'gladia-stt'
+                ? parsedModel
+                : 'gladia';
+
+        if (Number.isFinite(parsedSampleRate) && parsedSampleRate > 0 && parsedLanguages.length > 0) {
+            const normalizedConfig: ClientConfig = {
+                sample_rate: Math.floor(parsedSampleRate),
+                languages: parsedLanguages,
+                stt_model: normalizedModel,
+                lang_hints_strict: data?.lang_hints_strict !== false,
+            };
+
+            currentModel = normalizedConfig.stt_model;
+            selectedLanguages = normalizedConfig.languages;
             finalizePendingTurnFromProvider = null;
             sonioxStopRequested = false;
             console.log(`[conn:${connId}] config model=${currentModel} langs=${selectedLanguages.join(',')}`);
             
             if (currentModel === 'deepgram') {
-                startDeepgramConnection(data as ClientConfig);
+                startDeepgramConnection(normalizedConfig);
             } else if (currentModel === 'deepgram-multi') {
-                startDeepgramMultiConnection(data as ClientConfig);
+                startDeepgramMultiConnection(normalizedConfig);
             } else if (currentModel === 'fireworks') {
-                startFireworksConnection(data as ClientConfig);
+                startFireworksConnection(normalizedConfig);
             } else if (currentModel === 'soniox') {
-                startSonioxConnection(data as ClientConfig);
+                startSonioxConnection(normalizedConfig);
             } else if (currentModel === 'gladia-stt') {
-                startGladiaConnection(data as ClientConfig, false);
+                startGladiaConnection(normalizedConfig, false);
             } else {
-                startGladiaConnection(data as ClientConfig, true);
+                startGladiaConnection(normalizedConfig, true);
             }
         } else if (sttWs && sttWs.readyState === WebSocket.OPEN) {
             // 오디오 프레임 전송
@@ -826,14 +889,14 @@ wss.on('connection', (clientWs) => {
                 // Deepgram, Fireworks, Soniox는 바이너리 데이터를 직접 전송해야 함 (Gladia/Gladia-STT는 JSON 형식)
                 if (data.type === 'audio_chunk' && data.data?.chunk) {
                     const pcmData = Buffer.from(data.data.chunk, 'base64');
-                    sttWs.send(pcmData);
+                    safeSttSend(pcmData);
                     if (currentModel === 'soniox') {
                         maybeTriggerSonioxManualFinalize(pcmData);
                     }
                 }
             } else {
                 // Gladia는 JSON 형식 그대로 전송
-                sttWs.send(message);
+                safeSttSend(message);
             }
         }
     };
