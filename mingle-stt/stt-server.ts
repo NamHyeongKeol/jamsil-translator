@@ -569,7 +569,11 @@ wss.on('connection', (clientWs) => {
             let detectedLang = config.languages[0] || 'en';
             sonioxStopRequested = false;
 
-            const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
+            const emitFinalTurn = (
+                text: string,
+                language: string,
+                debugTokens?: Array<{ index: number; is_final: boolean; text: string }>,
+            ): FinalTurnPayload | null => {
                 // Temporary debug mode: keep <fin> markers in emitted transcript text.
                 const cleanedText = text.replace(/<\/?end>/gi, '').trim();
                 const cleanedLang = (language || '').trim() || 'unknown';
@@ -581,15 +585,19 @@ wss.on('connection', (clientWs) => {
                 resetSonioxSegmentState();
 
                 if (clientWs.readyState === WebSocket.OPEN) {
+                    const payloadData: Record<string, unknown> = {
+                        is_final: true,
+                        utterance: {
+                            text: cleanedText,
+                            language: cleanedLang,
+                        },
+                    };
+                    if (debugTokens && debugTokens.length > 0) {
+                        payloadData.debug_tokens = debugTokens;
+                    }
                     clientWs.send(JSON.stringify({
                         type: 'transcript',
-                        data: {
-                            is_final: true,
-                            utterance: {
-                                text: cleanedText,
-                                language: cleanedLang,
-                            },
-                        },
+                        data: payloadData,
                     }));
                 }
 
@@ -659,15 +667,24 @@ wss.on('connection', (clientWs) => {
 
                     let newFinalText = '';
                     let nonFinalText = '';
+                    const debugTokens: Array<{ index: number; is_final: boolean; text: string }> = [];
 
-                    for (const token of tokens) {
+                    for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex += 1) {
+                        const token = tokens[tokenIndex];
+                        const tokenText = typeof token?.text === 'string' ? token.text : '';
+                        const tokenIsFinal = token?.is_final === true;
+                        debugTokens.push({
+                            index: tokenIndex,
+                            is_final: tokenIsFinal,
+                            text: tokenText,
+                        });
                         if (token.language) {
                             detectedLang = token.language;
                         }
-                        if (token.is_final) {
-                            newFinalText += token.text;
+                        if (tokenIsFinal) {
+                            newFinalText += tokenText;
                         } else {
-                            nonFinalText += token.text;
+                            nonFinalText += tokenText;
                         }
                     }
 
@@ -686,6 +703,7 @@ wss.on('connection', (clientWs) => {
                                     text: fullText.trim(),
                                     language: detectedLang,
                                 },
+                                debug_tokens: debugTokens,
                             },
                         };
                         clientWs.send(JSON.stringify(partialMsg));
@@ -697,7 +715,7 @@ wss.on('connection', (clientWs) => {
                     // Soniox endpoint(<end>/<fin>) 토큰이 포함된 경우에만 완료 처리
                     if (hasEndpointToken) {
                         const mergedAtEndpoint = `${finalizedText}${latestNonFinalText}`.trim();
-                        emitFinalTurn(mergedAtEndpoint, detectedLang);
+                        emitFinalTurn(mergedAtEndpoint, detectedLang, debugTokens);
                     }
                 } catch (parseError) {
                     console.error('Error parsing Soniox message:', parseError);

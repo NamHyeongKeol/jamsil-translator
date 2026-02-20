@@ -126,6 +126,71 @@ function normalizeSttTurnText(rawText: string): string {
     .trim()
 }
 
+type SttDebugToken = {
+  index: number
+  isFinal: boolean
+  text: string
+}
+
+function parseSttDebugTokens(raw: unknown): SttDebugToken[] {
+  if (!Array.isArray(raw)) return []
+  const tokens: SttDebugToken[] = []
+  for (const item of raw.slice(0, 20)) {
+    if (!item || typeof item !== 'object') continue
+    const payload = item as Record<string, unknown>
+    const index = typeof payload.index === 'number' && Number.isFinite(payload.index)
+      ? Math.max(0, Math.floor(payload.index))
+      : tokens.length
+    const isFinal = payload.is_final === true
+    const text = typeof payload.text === 'string' ? payload.text : ''
+    tokens.push({ index, isFinal, text })
+  }
+  return tokens
+}
+
+function collectMarkerPositions(rawText: string): string[] {
+  const markers: string[] = []
+  const regex = /<\/?(fin|end)>/gi
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(rawText)) !== null) {
+    markers.push(`${match[1].toLowerCase()}@${match.index}`)
+  }
+  return markers
+}
+
+function collapseWhitespace(input: string): string {
+  return input.replace(/\s+/g, ' ').trim()
+}
+
+function clipText(input: string, max = 120): string {
+  if (input.length <= max) return input
+  return `${input.slice(0, max)}...`
+}
+
+function buildSttTokenTrace(
+  rawText: string,
+  normalizedText: string,
+  isFinal: boolean,
+  debugTokens: SttDebugToken[],
+): string {
+  const markerTrace = collectMarkerPositions(rawText)
+  const markerLabel = markerTrace.length > 0 ? markerTrace.join(', ') : 'none'
+  const tokenLabel = debugTokens.length > 0
+    ? debugTokens
+      .slice(0, 8)
+      .map(token => `${token.isFinal ? 'F' : 'N'}${token.index}:${clipText(collapseWhitespace(token.text), 32) || '[empty]'}`)
+      .join(' | ')
+    : 'none'
+  const tokenSuffix = debugTokens.length > 8 ? ' | ...' : ''
+  return [
+    `isFinal=${isFinal ? 1 : 0}`,
+    `markers=${markerLabel}`,
+    `raw="${clipText(collapseWhitespace(rawText), 120)}"`,
+    `normalized="${clipText(collapseWhitespace(normalizedText), 120)}"`,
+    `tokens=${tokenLabel}${tokenSuffix}`,
+  ].join('  ')
+}
+
 function normalizeLangForCompare(rawLanguage: string): string {
   return (rawLanguage || '').trim().replace('_', '-').toLowerCase().split('-')[0] || ''
 }
@@ -383,6 +448,7 @@ export default function useRealtimeSTT({
   const [partialTranscript, setPartialTranscript] = useState('')
   const [partialTranslations, setPartialTranslations] = useState<Record<string, string>>({})
   const [partialLang, setPartialLang] = useState<string | null>(null)
+  const [sttRawTokenTrace, setSttRawTokenTrace] = useState('')
   const [volume, setVolume] = useState(0)
   const [usageSec, setUsageSec] = useState(() => {
     if (typeof window === 'undefined') return 0
@@ -1325,6 +1391,17 @@ export default function useRealtimeSTT({
       const text = normalizeSttTurnText(rawText)
       const lang = typeof utterance.language === 'string' ? utterance.language : 'unknown'
       const isFinal = data.is_final === true
+      const debugTokens = parseSttDebugTokens(data.debug_tokens)
+      const tokenTrace = buildSttTokenTrace(rawText, text, isFinal, debugTokens)
+      setSttRawTokenTrace(tokenTrace)
+      logSttDebug('transcript.token_trace', {
+        isFinal,
+        lang,
+        rawText,
+        normalizedText: text,
+        markers: collectMarkerPositions(rawText),
+        debugTokens,
+      })
 
       if (isStoppingRef.current && !isFinal) {
         return
@@ -1777,6 +1854,7 @@ export default function useRealtimeSTT({
     isError: connectionStatus === 'error',
     partialTranslations,
     partialLang,
+    sttRawTokenTrace,
     usageSec,
     isLimitReached,
     usageLimitSec: normalizedUsageLimitSec,
