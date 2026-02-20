@@ -3,6 +3,7 @@ export type RecentTurnContext = {
   sourceText: string
   translations: Record<string, string>
   ageMs?: number
+  isFinalized: boolean
 }
 
 export type CurrentTurnPreviousState = {
@@ -99,25 +100,16 @@ export function parseRecentTurns(raw: unknown): RecentTurnContext[] {
   const turns: RecentTurnContext[] = []
 
   for (const item of items) {
-    if (!item || typeof item !== 'object') continue
-    const payload = item as Record<string, unknown>
-    const sourceText = typeof payload.sourceText === 'string'
-      ? sanitizeMarkerText(payload.sourceText)
-      : ''
-    if (!sourceText) continue
-    const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '') || 'unknown'
-    const translations = parseTranslationsPayload(payload.translations, sourceLanguage)
-    const ageMs = sanitizeNonNegativeInt(payload.ageMs)
-
-    turns.push({
-      sourceLanguage,
-      sourceText,
-      translations,
-      ...(ageMs !== null ? { ageMs } : {}),
-    })
+    const parsed = parseRecentTurnContextItem(item)
+    if (!parsed) continue
+    turns.push(parsed)
   }
 
   return turns
+}
+
+export function parseImmediatePreviousTurn(raw: unknown): RecentTurnContext | null {
+  return parseRecentTurnContextItem(raw)
 }
 
 export function parseCurrentTurnPreviousState(raw: unknown): CurrentTurnPreviousState | null {
@@ -151,4 +143,26 @@ export function buildFallbackTranslationsFromCurrentTurnPreviousState(
     output[language] = candidate
   }
   return output
+}
+
+function parseRecentTurnContextItem(raw: unknown): RecentTurnContext | null {
+  if (!raw || typeof raw !== 'object') return null
+  const payload = raw as Record<string, unknown>
+
+  const sourceText = typeof payload.sourceText === 'string'
+    ? sanitizeMarkerText(payload.sourceText)
+    : ''
+  if (!sourceText) return null
+  const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '') || 'unknown'
+  const translations = parseTranslationsPayload(payload.translations, sourceLanguage)
+  const ageMs = sanitizeNonNegativeInt(payload.ageMs)
+  const isFinalized = payload.isFinalized !== false
+
+  return {
+    sourceLanguage,
+    sourceText,
+    translations,
+    isFinalized,
+    ...(ageMs !== null ? { ageMs } : {}),
+  }
 }
