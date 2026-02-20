@@ -284,7 +284,7 @@ function App(): React.JSX.Element {
     }
 
     if (parsed.type === 'native_tts_play') {
-      const { utteranceId, audioBase64, contentType } = parsed.payload;
+      const { utteranceId, audioBase64 } = parsed.payload;
       const playbackId = typeof parsed.payload.playbackId === 'string' && parsed.payload.playbackId.trim()
         ? parsed.payload.playbackId.trim()
         : utteranceId;
