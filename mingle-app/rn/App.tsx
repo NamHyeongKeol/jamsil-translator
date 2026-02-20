@@ -6,7 +6,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import {
+  WebView,
+  type WebViewErrorEvent,
+  type WebViewMessageEvent,
+  type WebViewNavigationEvent,
+} from 'react-native-webview';
 import {
   RN_DEFAULT_WS_URL,
   RN_WEB_APP_BASE_URL,
@@ -414,9 +419,17 @@ function App(): React.JSX.Element {
     emitToWeb({ type: 'status', status: nativeStatusRef.current });
   }, [emitToWeb]);
 
-  const handleLoadError = useCallback((event: { nativeEvent: { description?: string } }) => {
-    const description = event.nativeEvent.description || 'webview_load_failed';
-    setLoadError(description);
+  const handleLoadSuccess = useCallback((_event: WebViewNavigationEvent) => {
+    if (REQUIRED_CONFIG_ERROR) return;
+    setLoadError(null);
+  }, []);
+
+  const handleLoadError = useCallback((event: WebViewErrorEvent) => {
+    const { code, description, url } = event.nativeEvent;
+    const details: string[] = [description || 'webview_load_failed'];
+    if (typeof code === 'number') details.push(`code=${code}`);
+    if (typeof url === 'string' && url.length > 0) details.push(url);
+    setLoadError(details.join(' | '));
   }, []);
 
   return (
@@ -433,6 +446,7 @@ function App(): React.JSX.Element {
         setSupportMultipleWindows={false}
         allowsBackForwardNavigationGestures={false}
         onMessage={handleWebMessage}
+        onLoad={handleLoadSuccess}
         onLoadEnd={handleLoadEnd}
         onError={handleLoadError}
         style={styles.webView}
