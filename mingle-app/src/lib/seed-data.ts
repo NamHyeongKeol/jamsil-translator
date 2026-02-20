@@ -43,7 +43,7 @@ export function getSeedDataset(args: {
   invites: InviteRecord[];
 } {
   const seed = rawSeed as RawSeed;
-  const origin = args.baseOrigin ?? "https://app.mingle.local";
+  const origin = args.baseOrigin ?? (process.env.NEXT_PUBLIC_SITE_URL ?? '').replace(/\/+$/, '');
 
   const conversations: SavedConversation[] = seed.conversations.map((conversation, index) => ({
     id: conversation.id,
