@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Utterance } from './ChatBubble'
 
 const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '3001'
-const getWsUrl = () => {
+export const getWsUrl = (): string => {
   if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL
   const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
   const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:'
@@ -112,7 +112,7 @@ function normalizeStoredUtterance(utterance: Utterance): Utterance {
   return { ...utterance, createdAtMs }
 }
 
-function normalizeSttTurnText(rawText: string): string {
+export function normalizeSttTurnText(rawText: string): string {
   // Drop Soniox marker tokens (<end>/<fin>), then strip leading punctuation/whitespace noise.
   // If the turn is only these characters, this returns an empty string.
   return rawText
@@ -121,11 +121,11 @@ function normalizeSttTurnText(rawText: string): string {
     .trim()
 }
 
-function normalizeLangForCompare(rawLanguage: string): string {
+export function normalizeLangForCompare(rawLanguage: string): string {
   return (rawLanguage || '').trim().replace('_', '-').toLowerCase().split('-')[0] || ''
 }
 
-function stripSourceLanguageFromTranslations(
+export function stripSourceLanguageFromTranslations(
   translationsRaw: Record<string, string>,
   sourceLanguageRaw: string,
 ): Record<string, string> {
@@ -142,7 +142,7 @@ function stripSourceLanguageFromTranslations(
   return translations
 }
 
-function buildTurnTargetLanguagesSnapshot(
+export function buildTurnTargetLanguagesSnapshot(
   languagesRaw: string[],
   sourceLanguageRaw: string,
 ): string[] {
@@ -162,7 +162,13 @@ function buildTurnTargetLanguagesSnapshot(
   return targetLanguages
 }
 
-function buildCurrentTurnPreviousStatePayload(
+export interface CurrentTurnPreviousStatePayload {
+  sourceLanguage: string
+  sourceText: string
+  translations: Record<string, string>
+}
+
+export function buildCurrentTurnPreviousStatePayload(
   sourceLanguageRaw: string,
   sourceTextRaw: string,
   translationsRaw: Record<string, string>,
@@ -177,6 +183,101 @@ function buildCurrentTurnPreviousStatePayload(
     sourceLanguage,
     sourceText,
     translations,
+  }
+}
+
+export interface ParsedSttTranscriptMessage {
+  rawText: string
+  text: string
+  language: string
+  isFinal: boolean
+}
+
+export function parseSttTranscriptMessage(
+  message: Record<string, unknown>,
+): ParsedSttTranscriptMessage | null {
+  if (message.type !== 'transcript') return null
+  if (typeof message.data !== 'object' || message.data === null) return null
+
+  const data = message.data as Record<string, unknown>
+  if (typeof data.utterance !== 'object' || data.utterance === null) return null
+
+  const utterance = data.utterance as Record<string, unknown>
+  const rawText = typeof utterance.text === 'string' ? utterance.text : ''
+  const text = normalizeSttTurnText(rawText)
+  const language = typeof utterance.language === 'string' ? utterance.language : 'unknown'
+  const isFinal = data.is_final === true
+
+  return {
+    rawText,
+    text,
+    language,
+    isFinal,
+  }
+}
+
+export interface BuildFinalizedUtterancePayloadInput {
+  rawText: string
+  rawLanguage: string
+  languages: string[]
+  partialTranslations: Record<string, string>
+  utteranceSerial: number
+  nowMs?: number
+  previousStateSourceLanguage?: string
+  previousStateSourceText?: string
+}
+
+export interface BuildFinalizedUtterancePayloadResult {
+  utteranceId: string
+  text: string
+  language: string
+  createdAtMs: number
+  utterance: Utterance
+  currentTurnPreviousState: CurrentTurnPreviousStatePayload | null
+}
+
+export function buildFinalizedUtterancePayload(
+  input: BuildFinalizedUtterancePayloadInput,
+): BuildFinalizedUtterancePayloadResult | null {
+  const text = normalizeSttTurnText(input.rawText)
+  const language = (input.rawLanguage || 'unknown').trim() || 'unknown'
+  if (!text) return null
+
+  const createdAtMs = typeof input.nowMs === 'number' && Number.isFinite(input.nowMs)
+    ? Math.floor(input.nowMs)
+    : Date.now()
+
+  const seedTranslations = stripSourceLanguageFromTranslations(input.partialTranslations, language)
+  const targetLanguages = buildTurnTargetLanguagesSnapshot(input.languages, language)
+  const translationFinalized: Record<string, boolean> = {}
+  for (const key of Object.keys(seedTranslations)) {
+    translationFinalized[key] = false
+  }
+
+  const currentTurnPreviousState = buildCurrentTurnPreviousStatePayload(
+    input.previousStateSourceLanguage ?? input.rawLanguage,
+    input.previousStateSourceText ?? input.rawText,
+    seedTranslations,
+  )
+
+  const utteranceId = `u-${createdAtMs}-${input.utteranceSerial}`
+  const utterance: Utterance = {
+    id: utteranceId,
+    originalText: text,
+    originalLang: language,
+    targetLanguages,
+    translations: seedTranslations,
+    translationFinalized,
+    createdAtMs,
+  }
+
+  return {
+    utteranceId,
+    text,
+    language,
+    createdAtMs,
+    utterance,
+    currentTurnPreviousState,
   }
 }
 
@@ -212,12 +313,6 @@ interface RecentTurnContextPayload {
   translations: Record<string, string>
   occurredAtMs: number
   ageMs: number
-}
-
-interface CurrentTurnPreviousStatePayload {
-  sourceLanguage: string
-  sourceText: string
-  translations: Record<string, string>
 }
 
 interface ClientEventLogPayload {
@@ -933,36 +1028,35 @@ export default function useRealtimeSTT({
     stopFinalizeDedupRef.current = { sig, expiresAt: now + 5000 }
 
     utteranceIdRef.current += 1
-    const seedTranslations = stripSourceLanguageFromTranslations(partialTranslationsRef.current, lang)
-    const targetLanguages = buildTurnTargetLanguagesSnapshot(languages, lang)
-    const seedFinalized: Record<string, boolean> = {}
-    for (const key of Object.keys(seedTranslations)) {
-      seedFinalized[key] = false
-    }
-    const currentTurnPreviousState = buildCurrentTurnPreviousStatePayload(
-      rawLang,
+    const localPayload = buildFinalizedUtterancePayload({
       rawText,
-      seedTranslations,
-    )
+      rawLanguage: rawLang,
+      languages,
+      partialTranslations: partialTranslationsRef.current,
+      utteranceSerial: utteranceIdRef.current,
+      nowMs: now,
+    })
+    if (!localPayload) return null
 
-    const utteranceId = `u-${Date.now()}-${utteranceIdRef.current}`
-    setUtterances(prev => [...prev, {
-      id: utteranceId,
-      originalText: text,
-      originalLang: lang,
-      targetLanguages,
-      translations: seedTranslations,
-      translationFinalized: seedFinalized,
-      createdAtMs: now,
-    }])
+    setUtterances(prev => [...prev, localPayload.utterance])
     setPartialTranslations({})
     partialTranslationsRef.current = {}
     setPartialTranscript('')
     partialTranscriptRef.current = ''
     setPartialLang(null)
     partialLangRef.current = null
-    pendingLocalFinalizeRef.current = { utteranceId, text, lang, expiresAt: now + 15000 }
-    return { utteranceId, text, lang, currentTurnPreviousState }
+    pendingLocalFinalizeRef.current = {
+      utteranceId: localPayload.utteranceId,
+      text: localPayload.text,
+      lang: localPayload.language,
+      expiresAt: localPayload.createdAtMs + 15000,
+    }
+    return {
+      utteranceId: localPayload.utteranceId,
+      text: localPayload.text,
+      lang: localPayload.language,
+      currentTurnPreviousState: localPayload.currentTurnPreviousState,
+    }
   }, [languages])
 
   const finalizeTurnWithTranslation = useCallback((
@@ -1250,17 +1344,9 @@ export default function useRealtimeSTT({
       return
     }
 
-    if (message.type === 'transcript' && typeof message.data === 'object' && message.data !== null) {
-      const data = message.data as Record<string, unknown>
-      const utterance = (typeof data.utterance === 'object' && data.utterance !== null)
-        ? data.utterance as Record<string, unknown>
-        : null
-      if (!utterance) return
-
-      const rawText = typeof utterance.text === 'string' ? utterance.text : ''
-      const text = normalizeSttTurnText(rawText)
-      const lang = typeof utterance.language === 'string' ? utterance.language : 'unknown'
-      const isFinal = data.is_final === true
+    const transcript = parseSttTranscriptMessage(message)
+    if (transcript) {
+      const { rawText, text, language: lang, isFinal } = transcript
 
       if (isStoppingRef.current && !isFinal) {
         return
@@ -1313,37 +1399,32 @@ export default function useRealtimeSTT({
         }
 
         utteranceIdRef.current += 1
-        const seedTranslations = stripSourceLanguageFromTranslations(partialTranslationsRef.current, lang)
-        const targetLanguages = buildTurnTargetLanguagesSnapshot(languages, lang)
-        const seedFinalized: Record<string, boolean> = {}
-        for (const key of Object.keys(seedTranslations)) {
-          seedFinalized[key] = false
+        const finalizedPayload = buildFinalizedUtterancePayload({
+          rawText,
+          rawLanguage: lang,
+          languages,
+          partialTranslations: partialTranslationsRef.current,
+          utteranceSerial: utteranceIdRef.current,
+          nowMs: now,
+          previousStateSourceLanguage: partialLangRef.current || lang,
+          previousStateSourceText: partialTranscriptRef.current || text,
+        })
+        if (!finalizedPayload) {
+          clearPartialBuffers()
+          pendingLocalFinalizeRef.current = null
+          return
         }
-        const currentTurnPreviousState = buildCurrentTurnPreviousStatePayload(
-          partialLangRef.current || lang,
-          partialTranscriptRef.current || text,
-          seedTranslations,
-        )
-        const newUtteranceId = `u-${Date.now()}-${utteranceIdRef.current}`
-        const newUtterance: Utterance = {
-          id: newUtteranceId,
-          originalText: text,
-          originalLang: lang,
-          targetLanguages,
-          translations: seedTranslations,
-          translationFinalized: seedFinalized,
-          createdAtMs: now,
-        }
-        setUtterances(u => [...u, newUtterance])
+
+        setUtterances(u => [...u, finalizedPayload.utterance])
         clearPartialBuffers()
         pendingLocalFinalizeRef.current = null
 
         finalizeTurnWithTranslation(
           {
-            utteranceId: newUtteranceId,
-            text,
-            lang,
-            currentTurnPreviousState,
+            utteranceId: finalizedPayload.utteranceId,
+            text: finalizedPayload.text,
+            lang: finalizedPayload.language,
+            currentTurnPreviousState: finalizedPayload.currentTurnPreviousState,
           },
           {
             sttDurationMs,
