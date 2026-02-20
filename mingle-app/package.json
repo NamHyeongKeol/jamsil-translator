@@ -16,6 +16,7 @@
     "db:generate": "prisma generate",
     "db:migrate:create": "prisma migrate dev --create-only",
     "db:migrate:dev": "prisma migrate dev",
+    "db:reset:local:psql": "psql -v ON_ERROR_STOP=1 -d postgres -f scripts/reset-local-app-schema.sql",
     "db:studio": "prisma studio",
     "seed:check": "node scripts/seed-data.mjs --check",
     "seed:populate": "node scripts/seed-data.mjs"

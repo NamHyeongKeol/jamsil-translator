@@ -68,6 +68,12 @@ pnpm db:generate
 pnpm db:migrate:create
 ```
 
+Reset local `app` schema via `psql` (drop + recreate + apply migrations):
+
+```bash
+pnpm db:reset:local:psql
+```
+
 Production build runs `prisma generate` first:
 
 ```bash
