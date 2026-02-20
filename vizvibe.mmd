@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_android_release_hermes_path_fix
+    %% @lastActive: mingle_app_android_env_stt_and_branding_parity
 
     %% === START ===
     %% @project_start [start, closed]
@@ -559,6 +559,9 @@ flowchart TD
     %% @mingle_app_android_release_hermes_path_fix [ai-task, closed, 2026-02-20, ai]
     mingle_app_android_release_hermes_path_fix("Android release 무메트로 실행 고정<br/><sub>release 빌드에서 Hermes compiler 경로를<br/>rootDir 기반 절대경로로 고정하고<br/>hermes-compiler를 devDependency로 추가해<br/>실기기 설치/실행을 Metro 없이 검증</sub>")
 
+    %% @mingle_app_android_env_stt_and_branding_parity [ai-task, closed, 2026-02-20, ai]
+    mingle_app_android_env_stt_and_branding_parity("Android STT env/브랜딩 iOS 정렬<br/><sub>RN App이 ../.env.local의 NEXT_PUBLIC_WS_URL·SITE_URL을<br/>읽어 기본 STT/WebView URL을 환경별로 전환하고<br/>Android 앱 이름을 Mingle로 교체했으며<br/>iOS AppIcon 원본으로 런처 아이콘을 재생성</sub>")
+
     %% @mingle_app_audio_session_route_metrics_milestone7 [ai-task, opened, 2026-02-20, ai]
     mingle_app_audio_session_route_metrics_milestone7("오디오 경로 품질 계측 7차 (추후)<br/><sub>실기기에서 스피커/블루투스/유선 경로별로<br/>tail noise와 세션 전환 체감 품질을 계측해<br/>delay/옵션 기본값을 데이터 기반으로 미세 튜닝하고<br/>회귀 로그 포맷을 운영 문서로 표준화</sub>")
 
@@ -795,6 +798,7 @@ flowchart TD
     mingle_app_tts_tail_noise_graceful_deactivate_milestone5 --> mingle_app_audio_session_policy_polish_milestone6
     mingle_app_audio_session_policy_polish_milestone6 --> mingle_app_rn_android_native_voice_parity
     mingle_app_rn_android_native_voice_parity --> mingle_app_android_release_hermes_path_fix
+    mingle_app_android_release_hermes_path_fix --> mingle_app_android_env_stt_and_branding_parity
     mingle_app_audio_session_policy_polish_milestone6 --> mingle_app_audio_session_route_metrics_milestone7
     mingle_app_audio_session_route_metrics_milestone7 --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
@@ -835,6 +839,7 @@ flowchart TD
     mingle_app_audio_session_policy_polish_milestone6 -.-> ultimate_goal
     mingle_app_rn_android_native_voice_parity -.-> ultimate_goal
     mingle_app_android_release_hermes_path_fix -.-> ultimate_goal
+    mingle_app_android_env_stt_and_branding_parity -.-> ultimate_goal
     mingle_app_audio_session_route_metrics_milestone7 -.-> ultimate_goal
     mingle_stt_endpoint_only_finalize_mode -.-> ultimate_goal
     mingle_stt_finalize_heuristic_removed -.-> ultimate_goal
@@ -850,7 +855,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_android_release_hermes_path_fix
+        mingle_app_android_env_stt_and_branding_parity
     end
 
     %% === STYLES ===
@@ -1089,7 +1094,8 @@ flowchart TD
     style mingle_app_tts_tail_noise_graceful_deactivate_milestone5 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_audio_session_policy_polish_milestone6 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_android_native_voice_parity fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_android_release_hermes_path_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_android_release_hermes_path_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_android_env_stt_and_branding_parity fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_audio_session_route_metrics_milestone7 fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_mobile_scroll_overlay_visibility_hold_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

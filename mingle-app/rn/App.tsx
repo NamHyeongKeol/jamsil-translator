@@ -7,6 +7,10 @@ import {
   View,
 } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import {
+  NEXT_PUBLIC_SITE_URL,
+  NEXT_PUBLIC_WS_URL,
+} from '@env';
 
 import {
   addNativeSttListener,
@@ -22,8 +26,21 @@ import {
   stopNativeTts,
 } from './src/nativeTts';
 
-const WEB_APP_BASE_URL = 'https://mingle-app-xi.vercel.app';
-const DEFAULT_WS_URL = 'wss://mingle.up.railway.app';
+function readEnvString(value: string | undefined, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+}
+
+function resolveDefaultWsUrl(): string {
+  const candidate = readEnvString(NEXT_PUBLIC_WS_URL, 'wss://mingle.up.railway.app');
+  if (candidate.startsWith('http://')) return `ws://${candidate.slice('http://'.length)}`;
+  if (candidate.startsWith('https://')) return `wss://${candidate.slice('https://'.length)}`;
+  return candidate;
+}
+
+const WEB_APP_BASE_URL = readEnvString(NEXT_PUBLIC_SITE_URL, 'https://mingle-app-xi.vercel.app').replace(/\/+$/, '');
+const DEFAULT_WS_URL = resolveDefaultWsUrl();
 const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
 const SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
