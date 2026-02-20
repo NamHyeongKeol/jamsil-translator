@@ -52,6 +52,8 @@ type TranslationEngineResult = {
   usage?: TranslationUsage
 }
 
+type FinalizeTestFaultMode = 'provider_empty' | 'target_miss' | 'provider_error'
+
 type TranslateContext = {
   text: string
   sourceLanguage: string
@@ -77,6 +79,16 @@ type GeminiResponseLike = {
 }
 
 const voiceCache = new Map<string, { voiceId: string, expiresAt: number }>()
+
+function parseFinalizeTestFaultMode(value: unknown): FinalizeTestFaultMode | null {
+  if (typeof value !== 'string') return null
+  const normalized = value.trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized === 'provider_empty') return normalized
+  if (normalized === 'target_miss') return normalized
+  if (normalized === 'provider_error') return normalized
+  return null
+}
 
 function formatRecentTurnsForPrompt(turns: RecentTurnContext[]): string {
   if (turns.length === 0) return 'None'
@@ -401,6 +413,8 @@ export async function POST(request: NextRequest) {
   const enableTts = ttsPayload?.enabled === true
   const currentTurnPreviousState = parseCurrentTurnPreviousState(body.currentTurnPreviousState)
   const sessionKeyHint = typeof body.sessionKey === 'string' ? body.sessionKey.trim() : null
+  const enableTestFaults = process.env.MINGLE_ENABLE_TEST_FAULTS === '1'
+  const testFaultMode = enableTestFaults ? parseFinalizeTestFaultMode(body.__testFaultMode) : null
 
   if (!GEMINI_API_KEY) {
     const response = NextResponse.json({ error: 'No translation API key configured' }, { status: 500 })
@@ -485,7 +499,21 @@ export async function POST(request: NextRequest) {
     let selectedResult: TranslationEngineResult | null = null
     let geminiRequestFailed = false
     try {
-      selectedResult = await translateWithGemini(ctx)
+      if (testFaultMode === 'provider_empty') {
+        selectedResult = null
+      } else if (testFaultMode === 'target_miss') {
+        selectedResult = {
+          provider: 'gemini',
+          model: DEFAULT_MODEL,
+          translations: {
+            zz: 'forced_target_miss',
+          },
+        }
+      } else if (testFaultMode === 'provider_error') {
+        throw new Error('forced_provider_error_for_e2e')
+      } else {
+        selectedResult = await translateWithGemini(ctx)
+      }
     } catch (error) {
       geminiRequestFailed = true
       const errorPayload = error instanceof Error

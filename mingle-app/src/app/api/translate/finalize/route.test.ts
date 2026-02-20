@@ -48,12 +48,13 @@ function buildBase64Audio(prefix: 'mpeg' | 'wav' = 'mpeg'): string {
   return bytes.toString('base64')
 }
 
-async function importRouteWithEnv() {
+async function importRouteWithEnv(options?: { enableTestFaults?: boolean }) {
   vi.resetModules()
   process.env.GEMINI_API_KEY = 'test-gemini-key'
   process.env.INWORLD_RUNTIME_BASE64_CREDENTIAL = 'ZmFrZTpmYWtl'
   process.env.INWORLD_TTS_DEFAULT_VOICE_ID = 'Ashley'
   process.env.INWORLD_TTS_MODEL_ID = 'inworld-tts-1.5-mini'
+  process.env.MINGLE_ENABLE_TEST_FAULTS = options?.enableTestFaults ? '1' : '0'
 
   const mod = await import('./route')
   return mod.POST
@@ -189,6 +190,76 @@ describe('/api/translate/finalize route', () => {
 
     expect(res.status).toBe(400)
     expect(json).toEqual({ error: 'text is required' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('supports provider_empty fault mode for e2e fallback checks', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => '{"ko":"정상 번역"}',
+        usageMetadata: {},
+      },
+    })
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const POST = await importRouteWithEnv({ enableTestFaults: true })
+
+    const res = await POST(makeJsonRequest({
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguages: ['ko'],
+      __testFaultMode: 'provider_empty',
+      currentTurnPreviousState: {
+        sourceLanguage: 'en',
+        sourceText: 'hello',
+        translations: {
+          ko: 'fallback-value',
+        },
+      },
+    }) as never)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.usedFallbackFromPreviousState).toBe(true)
+    expect(json.translations).toEqual({ ko: 'fallback-value' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('supports target_miss fault mode for e2e fallback checks', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => '{"ko":"정상 번역"}',
+        usageMetadata: {},
+      },
+    })
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const POST = await importRouteWithEnv({ enableTestFaults: true })
+
+    const res = await POST(makeJsonRequest({
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguages: ['ko', 'ja'],
+      __testFaultMode: 'target_miss',
+      currentTurnPreviousState: {
+        sourceLanguage: 'en',
+        sourceText: 'hello',
+        translations: {
+          ko: 'fallback-ko',
+          ja: 'fallback-ja',
+        },
+      },
+    }) as never)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.usedFallbackFromPreviousState).toBe(true)
+    expect(json.translations).toEqual({
+      ko: 'fallback-ko',
+      ja: 'fallback-ja',
+    })
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

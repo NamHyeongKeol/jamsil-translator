@@ -45,3 +45,7 @@ Required fixture format:
 - `MINGLE_TEST_WS_URL` (default: `ws://127.0.0.1:3001`)
 - `MINGLE_TEST_API_BASE_URL` (default: `http://127.0.0.1:3000`)
 - `MINGLE_TEST_EXPECTED_PHRASE` (asserts recognized text contains this phrase)
+- `MINGLE_TEST_E2E_FULL=1` (enables additional optional live regression suites)
+- `MINGLE_TEST_E2E_STOP_CHAIN=1` (stop chain integrity suite)
+- `MINGLE_TEST_E2E_ACK_FALLBACK=1` (early-stop ack fallback suite)
+- `MINGLE_TEST_E2E_FINALIZE_FAULTS=1` (finalize fault-injection suite; server also needs `MINGLE_ENABLE_TEST_FAULTS=1`)

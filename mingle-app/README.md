@@ -22,7 +22,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Live STT/API Integration Test (included in `pnpm test`)
 
-`pnpm test` runs both unit tests and a live integration test that:
+`pnpm test` runs both unit tests and live integration tests that:
 
 1. Streams an audio fixture to local STT WebSocket server
 2. Sends the finalized transcript to `/api/translate/finalize`
@@ -31,7 +31,7 @@ Useful commands:
 
 - `pnpm test` (unit + live integration)
 - `pnpm test:unit` (unit only, excludes live integration)
-- `pnpm test:live` (live integration only)
+- `pnpm test:live` (all live `.live.test.ts` only)
 
 Default local endpoints:
 
@@ -53,6 +53,7 @@ MINGLE_TEST_API_BASE_URL=http://127.0.0.1:3000
 MINGLE_TEST_EXPECTED_PHRASE="hello mingle"
 MINGLE_TEST_TARGET_LANGUAGES=ko,en
 MINGLE_TEST_TTS_LANGUAGE=ko
+MINGLE_TEST_TTS_OUTPUT_DIR=/absolute/path/to/tts-output
 ```
 
 Fixture scan behavior:
@@ -71,6 +72,36 @@ Translation/TTS behavior:
 - 그 외 source는 기본 target `ko,en`
 - 테스트 stdout에 Soniox 원문과 finalize 번역 결과를 출력합니다.
 - finalize 응답에 TTS가 오면 음성 파일을 `test-fixtures/audio/local/tts-output/`에 저장합니다(로컬 전용, git ignore).
+
+### Live E2E suites
+
+Always-on suites:
+
+- `src/integration/live/stt-finalize.live.test.ts`
+
+Optional suites (env flag required):
+
+- `MINGLE_TEST_E2E_ACK_FALLBACK=1` -> `e2e.stop-ack-fallback.live.test.ts`
+- `MINGLE_TEST_E2E_STOP_CHAIN=1` -> `e2e.stop-chain.live.test.ts`
+- `MINGLE_TEST_E2E_FINALIZE_FAULTS=1` -> `e2e.finalize-fallback.live.test.ts`
+- `MINGLE_TEST_E2E_LANGUAGE_MATRIX=1` -> `e2e.language-matrix.live.test.ts`
+- `MINGLE_TEST_E2E_SONIOX_ENDPOINT_COMPAT=1` -> `e2e.soniox-endpoint-compat.live.test.ts`
+- `MINGLE_TEST_E2E_SONIOX_SEGMENTATION=1` -> `e2e.soniox-segmentation.live.test.ts`
+- `MINGLE_TEST_E2E_TTS_ARTIFACT=1` -> `e2e.tts-artifact.live.test.ts`
+- `MINGLE_TEST_IOS_HEALTHCHECK=1` -> `e2e.ios-launch-healthcheck.live.test.ts`
+- `MINGLE_TEST_IOS_TTS_EVENT_E2E=1` -> `e2e.ios-tts-event-order.live.test.ts`
+- `MINGLE_TEST_E2E_FULL=1` -> optional suites 중 일부를 한 번에 활성화
+
+Finalize fault-injection E2E notes:
+
+- API 서버 환경에 `MINGLE_ENABLE_TEST_FAULTS=1`을 켜야 `provider_empty/target_miss/provider_error` 강제 모드를 사용할 수 있습니다.
+- 테스트 쪽에서는 `MINGLE_TEST_E2E_FINALIZE_FAULTS=1 pnpm test:live`로 실행합니다.
+
+iOS launch healthcheck notes:
+
+- 스크립트: `scripts/e2e-ios-launch-healthcheck.sh`
+- 필수 env: `MINGLE_TEST_IOS_UDID`
+- 선택 env: `MINGLE_TEST_IOS_BUNDLE_ID`, `MINGLE_TEST_IOS_INSTALL=1`, `MINGLE_TEST_IOS_APP_PATH`
 
 Fixture requirements:
 
