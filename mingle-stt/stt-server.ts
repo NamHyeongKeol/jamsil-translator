@@ -800,25 +800,48 @@ wss.on('connection', (clientWs) => {
             return;
         }
 
-        if (data.sample_rate && data.languages) {
-            currentModel = data.stt_model || 'gladia';
-            selectedLanguages = data.languages;
+        const parsedSampleRate = Number(data?.sample_rate);
+        const parsedLanguages = Array.isArray(data?.languages)
+            ? data.languages
+                .map((lang: unknown) => (typeof lang === 'string' ? lang.trim() : ''))
+                .filter((lang: string) => lang.length > 0)
+            : [];
+        const parsedModel = typeof data?.stt_model === 'string' ? data.stt_model : 'gladia';
+        const normalizedModel: ClientConfig['stt_model'] =
+            parsedModel === 'deepgram'
+                || parsedModel === 'deepgram-multi'
+                || parsedModel === 'fireworks'
+                || parsedModel === 'soniox'
+                || parsedModel === 'gladia-stt'
+                ? parsedModel
+                : 'gladia';
+
+        if (Number.isFinite(parsedSampleRate) && parsedSampleRate > 0 && parsedLanguages.length > 0) {
+            const normalizedConfig: ClientConfig = {
+                sample_rate: Math.floor(parsedSampleRate),
+                languages: parsedLanguages,
+                stt_model: normalizedModel,
+                lang_hints_strict: data?.lang_hints_strict !== false,
+            };
+
+            currentModel = normalizedConfig.stt_model;
+            selectedLanguages = normalizedConfig.languages;
             finalizePendingTurnFromProvider = null;
             sonioxStopRequested = false;
             console.log(`[conn:${connId}] config model=${currentModel} langs=${selectedLanguages.join(',')}`);
             
             if (currentModel === 'deepgram') {
-                startDeepgramConnection(data as ClientConfig);
+                startDeepgramConnection(normalizedConfig);
             } else if (currentModel === 'deepgram-multi') {
-                startDeepgramMultiConnection(data as ClientConfig);
+                startDeepgramMultiConnection(normalizedConfig);
             } else if (currentModel === 'fireworks') {
-                startFireworksConnection(data as ClientConfig);
+                startFireworksConnection(normalizedConfig);
             } else if (currentModel === 'soniox') {
-                startSonioxConnection(data as ClientConfig);
+                startSonioxConnection(normalizedConfig);
             } else if (currentModel === 'gladia-stt') {
-                startGladiaConnection(data as ClientConfig, false);
+                startGladiaConnection(normalizedConfig, false);
             } else {
-                startGladiaConnection(data as ClientConfig, true);
+                startGladiaConnection(normalizedConfig, true);
             }
         } else if (sttWs && sttWs.readyState === WebSocket.OPEN) {
             // 오디오 프레임 전송
@@ -840,7 +863,8 @@ wss.on('connection', (clientWs) => {
 
     clientWs.onclose = (event) => {
         const durationSec = ((Date.now() - connectedAt) / 1000).toFixed(1);
-        console.log(`[conn:${connId}] client disconnected code=${event.code} duration=${durationSec}s model=${currentModel} langs=${selectedLanguages.join(',')}`);
+        const langsLabel = Array.isArray(selectedLanguages) ? selectedLanguages.join(',') : '';
+        console.log(`[conn:${connId}] client disconnected code=${event.code} duration=${durationSec}s model=${currentModel} langs=${langsLabel}`);
         cleanup();
     };
 });
