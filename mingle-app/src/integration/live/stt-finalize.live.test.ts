@@ -25,13 +25,14 @@ const WS_READY_TIMEOUT_MS = readEnvInt('MINGLE_TEST_WS_READY_TIMEOUT_MS', 20_000
 const STT_FINAL_TIMEOUT_MS = readEnvInt('MINGLE_TEST_STT_FINAL_TIMEOUT_MS', 60_000)
 const API_TIMEOUT_MS = readEnvInt('MINGLE_TEST_API_TIMEOUT_MS', 30_000)
 const STREAM_CHUNK_MS = readEnvInt('MINGLE_TEST_STREAM_CHUNK_MS', 40)
-const STREAM_SEND_DELAY_MS = readEnvInt('MINGLE_TEST_STREAM_SEND_DELAY_MS', 15)
+const STREAM_SEND_DELAY_MS = readEnvInt('MINGLE_TEST_STREAM_SEND_DELAY_MS', STREAM_CHUNK_MS)
 
 const API_BASE_URL = readEnvString('MINGLE_TEST_API_BASE_URL', 'http://127.0.0.1:3000')
 const STT_WS_URL = readEnvString('MINGLE_TEST_WS_URL', 'ws://127.0.0.1:3001')
 const STT_MODEL = readEnvString('MINGLE_TEST_STT_MODEL', 'soniox')
-const SOURCE_LANGUAGE = readEnvString('MINGLE_TEST_SOURCE_LANGUAGE', 'en')
-const TARGET_LANGUAGE = readEnvString('MINGLE_TEST_TARGET_LANGUAGE', 'ko')
+const SOURCE_LANGUAGE_HINT = readEnvString('MINGLE_TEST_SOURCE_LANGUAGE', 'en')
+const TARGET_LANGUAGES_OVERRIDE = readEnvOptionalString('MINGLE_TEST_TARGET_LANGUAGES')
+const TTS_LANGUAGE_OVERRIDE = readEnvOptionalString('MINGLE_TEST_TTS_LANGUAGE')
 const EXPECTED_PHRASE = readEnvString('MINGLE_TEST_EXPECTED_PHRASE', '')
 const FALLBACK_TRANSLATION = readEnvString('MINGLE_TEST_FALLBACK_TRANSLATION', '테스트 폴백 번역')
 const AUDIO_FIXTURE_OVERRIDE = readEnvOptionalString('MINGLE_TEST_AUDIO_FIXTURE')
@@ -42,6 +43,10 @@ const AUDIO_FIXTURE_SCAN_DIRS = [
 ]
 const AUDIO_FIXTURE_CANDIDATES = collectAudioFixtureCandidates()
 const AUDIO_TRANSCODER = detectAudioTranscoder()
+const TTS_OUTPUT_DIR = readEnvString(
+  'MINGLE_TEST_TTS_OUTPUT_DIR',
+  path.resolve(process.cwd(), 'test-fixtures/audio/local/tts-output'),
+)
 const TRANSCODE_EXTENSIONS = new Set([
   '.m4a',
   '.mp3',
@@ -122,6 +127,89 @@ function formatError(error: unknown): string {
     return error.message
   }
   return String(error)
+}
+
+function normalizeLangCode(input: string): string {
+  return input.trim().replace('_', '-').toLowerCase().split('-')[0] || ''
+}
+
+function parseTargetLanguagesOverride(): string[] {
+  if (!TARGET_LANGUAGES_OVERRIDE) return []
+  const normalized = TARGET_LANGUAGES_OVERRIDE
+    .split(',')
+    .map(item => normalizeLangCode(item))
+    .filter(Boolean)
+  return [...new Set(normalized)]
+}
+
+function pickDefaultTargetLanguages(sourceLanguageRaw: string): string[] {
+  const source = normalizeLangCode(sourceLanguageRaw)
+  if (source === 'en') return ['ko']
+  if (source === 'ko') return ['en']
+  return ['ko', 'en']
+}
+
+const OVERRIDE_TARGET_LANGUAGES = parseTargetLanguagesOverride()
+
+function buildTranslationPlan(sourceLanguageRaw: string): { targetLanguages: string[], ttsLanguage: string | null } {
+  const sourceLanguage = normalizeLangCode(sourceLanguageRaw) || normalizeLangCode(SOURCE_LANGUAGE_HINT) || 'en'
+  const candidates = OVERRIDE_TARGET_LANGUAGES.length > 0
+    ? OVERRIDE_TARGET_LANGUAGES
+    : pickDefaultTargetLanguages(sourceLanguage)
+
+  const targetLanguages = candidates.filter(language => normalizeLangCode(language) !== sourceLanguage)
+  const uniqueTargets = [...new Set(targetLanguages)]
+
+  if (uniqueTargets.length === 0) {
+    return { targetLanguages: [], ttsLanguage: null }
+  }
+
+  const ttsOverride = TTS_LANGUAGE_OVERRIDE ? normalizeLangCode(TTS_LANGUAGE_OVERRIDE) : ''
+  const ttsLanguage = ttsOverride && uniqueTargets.includes(ttsOverride)
+    ? ttsOverride
+    : uniqueTargets[0]
+
+  return {
+    targetLanguages: uniqueTargets,
+    ttsLanguage,
+  }
+}
+
+function extensionFromMime(mime: string): string {
+  const normalized = mime.trim().toLowerCase()
+  if (normalized.includes('wav')) return 'wav'
+  if (normalized.includes('mpeg') || normalized.includes('mp3')) return 'mp3'
+  if (normalized.includes('ogg')) return 'ogg'
+  if (normalized.includes('aac')) return 'aac'
+  return 'bin'
+}
+
+function sanitizeFileToken(input: string): string {
+  const sanitized = input.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+  return sanitized || 'fixture'
+}
+
+function saveTtsAudioArtifact(args: {
+  fixtureName: string
+  ttsLanguage: string
+  ttsMime: string
+  ttsAudioBase64: string
+}): string {
+  const audioBuffer = Buffer.from(args.ttsAudioBase64, 'base64')
+  if (audioBuffer.length === 0) {
+    throw new Error('[live-test] empty TTS audio payload')
+  }
+
+  fs.mkdirSync(TTS_OUTPUT_DIR, { recursive: true })
+  const extension = extensionFromMime(args.ttsMime)
+  const fileName = [
+    new Date().toISOString().replace(/[:.]/g, '-'),
+    sanitizeFileToken(args.fixtureName),
+    sanitizeFileToken(args.ttsLanguage || 'unknown'),
+  ].join('__') + `.${extension}`
+  const outputPath = path.join(TTS_OUTPUT_DIR, fileName)
+  fs.writeFileSync(outputPath, audioBuffer)
+  return outputPath
 }
 
 function asRecord(value: unknown): JsonObject | null {
@@ -490,7 +578,7 @@ async function streamAudioFixtureToStt(fixture: Pcm16MonoWav): Promise<FinalTurn
   await waitForOpen(ws, WS_CONNECT_TIMEOUT_MS)
   ws.send(JSON.stringify({
     sample_rate: fixture.sampleRate,
-    languages: [SOURCE_LANGUAGE],
+    languages: [SOURCE_LANGUAGE_HINT],
     stt_model: STT_MODEL,
     lang_hints_strict: true,
   }))
@@ -511,7 +599,7 @@ async function streamAudioFixtureToStt(fixture: Pcm16MonoWav): Promise<FinalTurn
     type: 'stop_recording',
     data: {
       pending_text: '',
-      pending_language: SOURCE_LANGUAGE,
+      pending_language: SOURCE_LANGUAGE_HINT,
     },
   }))
 
@@ -528,18 +616,24 @@ async function streamAudioFixtureToStt(fixture: Pcm16MonoWav): Promise<FinalTurn
   }
 }
 
-async function runFinalizeApiCheck(finalTurn: FinalTurn): Promise<void> {
+async function runFinalizeApiCheck(finalTurn: FinalTurn, fixtureName: string): Promise<void> {
+    const plan = buildTranslationPlan(finalTurn.language)
+    if (plan.targetLanguages.length === 0) {
+      throw new Error('[live-test] target language plan is empty; check language settings.')
+    }
+
     const requestBody = {
       text: finalTurn.text,
       sourceLanguage: finalTurn.language,
-      targetLanguages: [TARGET_LANGUAGE],
+      targetLanguages: plan.targetLanguages,
       currentTurnPreviousState: {
         sourceLanguage: finalTurn.language,
         sourceText: finalTurn.text,
-        translations: {
-          [TARGET_LANGUAGE]: FALLBACK_TRANSLATION,
-        },
+        translations: Object.fromEntries(
+          plan.targetLanguages.map(language => [language, FALLBACK_TRANSLATION]),
+        ),
       },
+      ...(plan.ttsLanguage ? { tts: { enabled: true, language: plan.ttsLanguage } } : {}),
     }
 
     const { status, json, rawText } = await fetchJsonWithTimeout(
@@ -564,14 +658,60 @@ async function runFinalizeApiCheck(finalTurn: FinalTurn): Promise<void> {
     if (status === 200) {
       const translations = asRecord(json.translations)
       expect(translations).not.toBeNull()
-      const translatedText = typeof translations?.[TARGET_LANGUAGE] === 'string'
-        ? translations[TARGET_LANGUAGE] as string
-        : ''
-      expect(translatedText.trim().length).toBeGreaterThan(0)
+      const nonEmptyTranslations = plan.targetLanguages
+        .map(language => {
+          const value = translations?.[language]
+          return typeof value === 'string' ? value.trim() : ''
+        })
+        .filter(Boolean)
+      expect(nonEmptyTranslations.length).toBeGreaterThan(0)
+
+      console.info([
+        '[live-test][gemini]',
+        `fixture=${fixtureName}`,
+        `sourceLanguage=${finalTurn.language}`,
+        `targets=${plan.targetLanguages.join(',')}`,
+        `translations=${JSON.stringify(translations)}`,
+      ].join(' '))
+
+      const ttsAudioBase64 = typeof json.ttsAudioBase64 === 'string' ? json.ttsAudioBase64 : ''
+      const ttsAudioMime = typeof json.ttsAudioMime === 'string' ? json.ttsAudioMime : 'application/octet-stream'
+      const ttsLanguage = typeof json.ttsLanguage === 'string'
+        ? normalizeLangCode(json.ttsLanguage)
+        : (plan.ttsLanguage || 'unknown')
+
+      if (ttsAudioBase64) {
+        const savedPath = saveTtsAudioArtifact({
+          fixtureName,
+          ttsLanguage,
+          ttsMime: ttsAudioMime,
+          ttsAudioBase64,
+        })
+        console.info([
+          '[live-test][tts]',
+          `fixture=${fixtureName}`,
+          `language=${ttsLanguage}`,
+          `mime=${ttsAudioMime}`,
+          `saved=${savedPath}`,
+        ].join(' '))
+      } else {
+        console.info([
+          '[live-test][tts]',
+          `fixture=${fixtureName}`,
+          'not_returned',
+        ].join(' '))
+      }
       return
     }
 
     const error = typeof json.error === 'string' ? json.error : ''
+    console.warn([
+      '[live-test][gemini]',
+      `fixture=${fixtureName}`,
+      `status=${status}`,
+      `error=${error || 'unknown'}`,
+      `body=${rawText.slice(0, 500)}`,
+    ].join(' '))
     expect(error).toBe('empty_translation_response')
     expect(rawText.length).toBeGreaterThan(0)
 }
@@ -621,13 +761,20 @@ describe.sequential('local live integration: stt websocket + finalize api', () =
       expect(finalTurn.text.length).toBeGreaterThan(0)
       expect(finalTurn.language.length).toBeGreaterThan(0)
 
+      console.info([
+        '[live-test][soniox]',
+        `fixture=${fixtureName}`,
+        `language=${finalTurn.language}`,
+        `text=${JSON.stringify(finalTurn.text)}`,
+      ].join(' '))
+
       if (EXPECTED_PHRASE) {
         const actual = normalizeText(finalTurn.text)
         const expected = normalizeText(EXPECTED_PHRASE)
         expect(actual).toContain(expected)
       }
 
-      await runFinalizeApiCheck(finalTurn)
+      await runFinalizeApiCheck(finalTurn, fixtureName)
     }, LIVE_TEST_TIMEOUT_MS)
   }
 

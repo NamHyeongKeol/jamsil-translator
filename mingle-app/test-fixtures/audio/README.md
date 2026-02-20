@@ -14,16 +14,25 @@ How fixture selection works:
 - `.m4a` and other supported formats are transcoded via `ffmpeg` (fallback: macOS `afconvert`).
 - Unsupported extensions or failed transcodes are skipped with a warning.
 - At least one valid file must exist, or the live test fails.
+- Stream pacing default is real-time (`40ms chunk / 40ms send delay`).
 
 You can override fixture source with:
 
 - `MINGLE_TEST_AUDIO_FIXTURE=/absolute/path/to/fixture.wav`
 - `MINGLE_TEST_AUDIO_FIXTURE_DIR=/absolute/path/to/fixtures-dir`
+- `MINGLE_TEST_TARGET_LANGUAGES=ko,en` (optional override)
+- `MINGLE_TEST_TTS_LANGUAGE=ko` (optional override)
+- `MINGLE_TEST_TTS_OUTPUT_DIR=/absolute/path/to/tts-output`
 
 Required fixture format:
 
 - Direct WAV input: RIFF/WAVE, PCM 16-bit, mono (1 channel)
 - Transcoded inputs (e.g. `.m4a`) are converted to the same format during test
+
+### Runtime outputs
+
+- Soniox final transcript and finalize translations are printed to test stdout.
+- Returned TTS audio is saved under `test-fixtures/audio/local/tts-output/` by default.
 
 ### Git policy (recommended)
 

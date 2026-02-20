@@ -51,6 +51,8 @@ MINGLE_TEST_AUDIO_FIXTURE_DIR=/absolute/path/to/fixtures-dir
 MINGLE_TEST_WS_URL=ws://127.0.0.1:3001
 MINGLE_TEST_API_BASE_URL=http://127.0.0.1:3000
 MINGLE_TEST_EXPECTED_PHRASE="hello mingle"
+MINGLE_TEST_TARGET_LANGUAGES=ko,en
+MINGLE_TEST_TTS_LANGUAGE=ko
 ```
 
 Fixture scan behavior:
@@ -60,6 +62,15 @@ Fixture scan behavior:
 - `.m4a` 포함 일부 포맷은 ffmpeg(또는 macOS afconvert)로 변환 후 처리합니다.
 - 변환/파싱 실패 파일은 경고만 출력하고 skip 후 다음 파일로 진행합니다.
 - 유효한 fixture가 1개도 없으면 테스트는 실패합니다.
+- 기본 오디오 전송은 실시간 속도(`40ms chunk / 40ms delay`)로 동작합니다.
+
+Translation/TTS behavior:
+
+- source가 `en`이면 target은 기본 `ko`
+- source가 `ko`면 target은 기본 `en`
+- 그 외 source는 기본 target `ko,en`
+- 테스트 stdout에 Soniox 원문과 finalize 번역 결과를 출력합니다.
+- finalize 응답에 TTS가 오면 음성 파일을 `test-fixtures/audio/local/tts-output/`에 저장합니다(로컬 전용, git ignore).
 
 Fixture requirements:
 
