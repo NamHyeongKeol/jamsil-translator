@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   callFinalizeApi,
-  readEnvBool,
   readLiveE2EEnv,
 } from './support/live-e2e-utils'
 
-const ENABLED = readEnvBool('MINGLE_TEST_E2E_LANGUAGE_MATRIX', readEnvBool('MINGLE_TEST_E2E_FULL', false))
-const describeIfEnabled = ENABLED ? describe.sequential : describe.skip
 const env = readLiveE2EEnv()
 
-describeIfEnabled('e2e regression: language matrix targets', () => {
+describe.sequential('e2e regression: language matrix targets', () => {
   const cases = [
     {
       name: 'en -> ko',

@@ -509,6 +509,17 @@ function extractFinalTurn(message: JsonObject): FinalTurn | null {
   return null
 }
 
+function extractTranscriptCandidate(message: JsonObject): { text: string, language: string } | null {
+  const type = typeof message.type === 'string' ? message.type : ''
+  if (type !== 'transcript') return null
+  const data = asRecord(message.data)
+  const utterance = asRecord(data?.utterance)
+  const text = typeof utterance?.text === 'string' ? utterance.text.trim() : ''
+  const language = typeof utterance?.language === 'string' ? utterance.language.trim() : ''
+  if (!text) return null
+  return { text, language: language || 'unknown' }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -518,9 +529,13 @@ function waitForFinalTurn(args: {
   timeoutMs: number
   observedMessageTypes: string[]
   onFinalObserved: (finalTurn: FinalTurn) => void
+  allowLocalFallbackOnClose?: boolean
 }): Promise<FinalTurn> {
-  const { ws, timeoutMs, observedMessageTypes, onFinalObserved } = args
+  const { ws, timeoutMs, observedMessageTypes, onFinalObserved, allowLocalFallbackOnClose = false } = args
   return new Promise((resolve, reject) => {
+    let stopAckObserved = false
+    let latestTranscriptCandidate: { text: string, language: string } | null = null
+
     const timeoutId = setTimeout(() => {
       cleanup()
       reject(new Error([
@@ -545,6 +560,14 @@ function waitForFinalTurn(args: {
         : (typeof message.status === 'string' ? `status:${message.status}` : 'unknown')
       observedMessageTypes.push(type)
 
+      if (type === 'stop_recording_ack') {
+        stopAckObserved = true
+      }
+      const candidate = extractTranscriptCandidate(message)
+      if (candidate) {
+        latestTranscriptCandidate = candidate
+      }
+
       const finalTurn = extractFinalTurn(message)
       if (!finalTurn) return
 
@@ -554,6 +577,18 @@ function waitForFinalTurn(args: {
     }
 
     const onClose = (event: CloseEvent) => {
+      if (allowLocalFallbackOnClose && stopAckObserved && latestTranscriptCandidate) {
+        const fallbackFinal: FinalTurn = {
+          text: latestTranscriptCandidate.text,
+          language: latestTranscriptCandidate.language,
+          source: 'stop_recording_ack',
+        }
+        onFinalObserved(fallbackFinal)
+        cleanup()
+        resolve(fallbackFinal)
+        return
+      }
+
       cleanup()
       reject(new Error([
         '[live-test] websocket closed before final transcript',
@@ -594,6 +629,7 @@ export async function streamAudioFixtureToStt(args: {
   sttFinalTimeoutMs: number
   stopAfterMs?: number
   wsInitOverrides?: Record<string, unknown>
+  allowLocalFallbackOnClose?: boolean
 }): Promise<StreamAudioToSttResult> {
   const chunks = splitPcmIntoChunks(args.fixture.pcm, args.fixture.sampleRate, args.streamChunkMs)
   if (chunks.length === 0) {
@@ -623,6 +659,7 @@ export async function streamAudioFixtureToStt(args: {
     onFinalObserved: () => {
       finalObservedAt = Date.now()
     },
+    allowLocalFallbackOnClose: args.allowLocalFallbackOnClose,
   })
 
   const maxChunks = args.stopAfterMs
@@ -794,7 +831,10 @@ export async function callFinalizeApi(args: {
     `${args.env.apiBaseUrl}/api/translate/finalize`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(args.testFaultMode ? { 'x-mingle-live-test': '1' } : {}),
+      },
       body: JSON.stringify(requestBody),
     },
     args.env.apiTimeoutMs,

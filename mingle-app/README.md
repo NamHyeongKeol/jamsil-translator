@@ -78,24 +78,23 @@ Translation/TTS behavior:
 Always-on suites:
 
 - `src/integration/live/stt-finalize.live.test.ts`
+- `src/integration/live/e2e.stop-chain.live.test.ts`
+- `src/integration/live/e2e.stop-ack-fallback.live.test.ts`
+- `src/integration/live/e2e.finalize-fallback.live.test.ts`
+- `src/integration/live/e2e.language-matrix.live.test.ts`
+- `src/integration/live/e2e.soniox-endpoint-compat.live.test.ts`
+- `src/integration/live/e2e.soniox-segmentation.live.test.ts`
+- `src/integration/live/e2e.tts-artifact.live.test.ts`
 
-Optional suites (env flag required):
+Device-dependent optional suites (env flag required):
 
-- `MINGLE_TEST_E2E_ACK_FALLBACK=1` -> `e2e.stop-ack-fallback.live.test.ts`
-- `MINGLE_TEST_E2E_STOP_CHAIN=1` -> `e2e.stop-chain.live.test.ts`
-- `MINGLE_TEST_E2E_FINALIZE_FAULTS=1` -> `e2e.finalize-fallback.live.test.ts`
-- `MINGLE_TEST_E2E_LANGUAGE_MATRIX=1` -> `e2e.language-matrix.live.test.ts`
-- `MINGLE_TEST_E2E_SONIOX_ENDPOINT_COMPAT=1` -> `e2e.soniox-endpoint-compat.live.test.ts`
-- `MINGLE_TEST_E2E_SONIOX_SEGMENTATION=1` -> `e2e.soniox-segmentation.live.test.ts`
-- `MINGLE_TEST_E2E_TTS_ARTIFACT=1` -> `e2e.tts-artifact.live.test.ts`
 - `MINGLE_TEST_IOS_HEALTHCHECK=1` -> `e2e.ios-launch-healthcheck.live.test.ts`
 - `MINGLE_TEST_IOS_TTS_EVENT_E2E=1` -> `e2e.ios-tts-event-order.live.test.ts`
-- `MINGLE_TEST_E2E_FULL=1` -> optional suites 중 일부를 한 번에 활성화
 
 Finalize fault-injection E2E notes:
 
-- API 서버 환경에 `MINGLE_ENABLE_TEST_FAULTS=1`을 켜야 `provider_empty/target_miss/provider_error` 강제 모드를 사용할 수 있습니다.
-- 테스트 쪽에서는 `MINGLE_TEST_E2E_FINALIZE_FAULTS=1 pnpm test:live`로 실행합니다.
+- live 테스트는 finalize fault mode 요청 시 `x-mingle-live-test: 1` 헤더를 붙입니다.
+- API 서버는 non-production 환경에서만 `provider_empty/target_miss/provider_error` 강제 모드를 허용합니다.
 
 iOS launch healthcheck notes:
 

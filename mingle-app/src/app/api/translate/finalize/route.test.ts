@@ -48,22 +48,21 @@ function buildBase64Audio(prefix: 'mpeg' | 'wav' = 'mpeg'): string {
   return bytes.toString('base64')
 }
 
-async function importRouteWithEnv(options?: { enableTestFaults?: boolean }) {
+async function importRouteWithEnv() {
   vi.resetModules()
   process.env.GEMINI_API_KEY = 'test-gemini-key'
   process.env.INWORLD_RUNTIME_BASE64_CREDENTIAL = 'ZmFrZTpmYWtl'
   process.env.INWORLD_TTS_DEFAULT_VOICE_ID = 'Ashley'
   process.env.INWORLD_TTS_MODEL_ID = 'inworld-tts-1.5-mini'
-  process.env.MINGLE_ENABLE_TEST_FAULTS = options?.enableTestFaults ? '1' : '0'
 
   const mod = await import('./route')
   return mod.POST
 }
 
-function makeJsonRequest(body: unknown): Request {
+function makeJsonRequest(body: unknown, headers?: Record<string, string>): Request {
   return new Request('http://localhost:3000/api/translate/finalize', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(headers || {}) },
     body: JSON.stringify(body),
   })
 }
@@ -203,7 +202,7 @@ describe('/api/translate/finalize route', () => {
 
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    const POST = await importRouteWithEnv({ enableTestFaults: true })
+    const POST = await importRouteWithEnv()
 
     const res = await POST(makeJsonRequest({
       text: 'hello',
@@ -217,6 +216,8 @@ describe('/api/translate/finalize route', () => {
           ko: 'fallback-value',
         },
       },
+    }, {
+      'x-mingle-live-test': '1',
     }) as never)
     const json = await res.json()
 
@@ -236,7 +237,7 @@ describe('/api/translate/finalize route', () => {
 
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    const POST = await importRouteWithEnv({ enableTestFaults: true })
+    const POST = await importRouteWithEnv()
 
     const res = await POST(makeJsonRequest({
       text: 'hello',
@@ -251,6 +252,8 @@ describe('/api/translate/finalize route', () => {
           ja: 'fallback-ja',
         },
       },
+    }, {
+      'x-mingle-live-test': '1',
     }) as never)
     const json = await res.json()
 

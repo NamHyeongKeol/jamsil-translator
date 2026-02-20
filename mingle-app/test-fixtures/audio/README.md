@@ -45,7 +45,7 @@ Required fixture format:
 - `MINGLE_TEST_WS_URL` (default: `ws://127.0.0.1:3001`)
 - `MINGLE_TEST_API_BASE_URL` (default: `http://127.0.0.1:3000`)
 - `MINGLE_TEST_EXPECTED_PHRASE` (asserts recognized text contains this phrase)
-- `MINGLE_TEST_E2E_FULL=1` (enables additional optional live regression suites)
-- `MINGLE_TEST_E2E_STOP_CHAIN=1` (stop chain integrity suite)
-- `MINGLE_TEST_E2E_ACK_FALLBACK=1` (early-stop ack fallback suite)
-- `MINGLE_TEST_E2E_FINALIZE_FAULTS=1` (finalize fault-injection suite; server also needs `MINGLE_ENABLE_TEST_FAULTS=1`)
+- 오디오/서버 회귀 E2E는 기본으로 항상 실행됩니다.
+- iOS 디바이스 전용 테스트만 env로 활성화합니다:
+  - `MINGLE_TEST_IOS_HEALTHCHECK=1`
+  - `MINGLE_TEST_IOS_TTS_EVENT_E2E=1`

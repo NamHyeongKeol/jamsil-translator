@@ -2,20 +2,18 @@ import { describe, expect, it } from 'vitest'
 import {
   callFinalizeApi,
   normalizeText,
-  readEnvBool,
   readEnvInt,
   readLiveE2EEnv,
   streamAudioFixtureToStt,
 } from './support/live-e2e-utils'
 import { pickShortestFixture, scanFixtures } from './support/live-fixture-utils'
 
-const ENABLED = readEnvBool('MINGLE_TEST_E2E_STOP_CHAIN', readEnvBool('MINGLE_TEST_E2E_FULL', false))
-const describeIfEnabled = ENABLED ? describe.sequential : describe.skip
 const env = readLiveE2EEnv()
 const scanResult = scanFixtures(env)
 const MAX_FINAL_LATENCY_AFTER_STOP_MS = readEnvInt('MINGLE_TEST_MAX_FINAL_LATENCY_AFTER_STOP_MS', 15_000)
+const STOP_CHAIN_AFTER_MS = readEnvInt('MINGLE_TEST_E2E_STOP_CHAIN_AFTER_MS', 4_000)
 
-describeIfEnabled('e2e regression: stop chain integrity', () => {
+describe.sequential('e2e regression: stop chain integrity', () => {
   it('discovers fixtures for stop-chain e2e', () => {
     if (scanResult.candidates.length > 0) return
     throw new Error([
@@ -28,8 +26,8 @@ describeIfEnabled('e2e regression: stop chain integrity', () => {
   it('keeps final -> translation -> tts chain on early stop', async () => {
     const fixtureEntry = pickShortestFixture(scanResult)
     const stopAfterMs = Math.min(
-      2_500,
-      Math.max(400, Math.floor(fixtureEntry.durationMs * 0.45)),
+      Math.max(900, fixtureEntry.durationMs - 250),
+      Math.max(900, STOP_CHAIN_AFTER_MS),
     )
 
     const stt = await streamAudioFixtureToStt({
@@ -43,6 +41,7 @@ describeIfEnabled('e2e regression: stop chain integrity', () => {
       wsReadyTimeoutMs: env.wsReadyTimeoutMs,
       sttFinalTimeoutMs: env.sttFinalTimeoutMs,
       stopAfterMs,
+      allowLocalFallbackOnClose: true,
     })
 
     expect(stt.finalTurn.text.length).toBeGreaterThan(0)

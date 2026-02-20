@@ -551,7 +551,7 @@ flowchart TD
     mingle_app_tdd_live_stt_finalize_integration_automation("pnpm test 라이브 통합 자동화 구현<br/><sub>src/integration/live 테스트를 추가해<br/>fixtures/local 다중 파일을 실시간 속도로 스트리밍하고<br/>m4a 변환·언어별 타깃번역·TTS 저장 경로를 기본화해<br/>원문/번역 stdout 추적까지 한 번에 검증</sub>")
 
     %% @mingle_app_tdd_live_regression_e2e_matrix_expansion [ai-task, closed, 2026-02-20, ai]
-    mingle_app_tdd_live_regression_e2e_matrix_expansion("라이브 회귀 E2E 매트릭스 확장<br/><sub>stop 체인/ack/파이널 폴백 경로를<br/>재현 가능한 e2e 케이스로 분리하고<br/>언어 매트릭스·Soniox endpoint/segmentation·TTS 산출물과<br/>iOS launch/event 순서 점검 스위트를 추가</sub>")
+    mingle_app_tdd_live_regression_e2e_matrix_expansion("라이브 회귀 E2E 매트릭스 상시 실행화<br/><sub>오디오/서버 경로 e2e를 env 플래그 없이<br/>pnpm test:live 기본 실행에 포함하도록 전환하고<br/>조기 stop 시 ack close(1005)에서도 final 보강 경로로<br/>회귀 스위트 안정성을 유지하도록 테스트를 보정</sub>")
 
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")

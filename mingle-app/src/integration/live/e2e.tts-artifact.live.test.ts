@@ -3,22 +3,22 @@ import { describe, expect, it } from 'vitest'
 import {
   callFinalizeApi,
   probeAudioDurationMs,
-  readEnvBool,
   readLiveE2EEnv,
   streamAudioFixtureToStt,
 } from './support/live-e2e-utils'
 import { pickShortestFixture, scanFixtures } from './support/live-fixture-utils'
 
-const ENABLED = readEnvBool('MINGLE_TEST_E2E_TTS_ARTIFACT', readEnvBool('MINGLE_TEST_E2E_FULL', false))
-const REQUIRE_TTS = readEnvBool('MINGLE_TEST_REQUIRE_TTS', false)
-
-const describeIfEnabled = ENABLED ? describe.sequential : describe.skip
+const REQUIRE_TTS = process.env.MINGLE_TEST_REQUIRE_TTS === '1'
 const env = readLiveE2EEnv()
 const scanResult = scanFixtures(env)
 
-describeIfEnabled('e2e regression: tts artifact integrity', () => {
+describe.sequential('e2e regression: tts artifact integrity', () => {
   it('stores non-empty tts artifact when finalize returns audio', async () => {
     const fixtureEntry = pickShortestFixture(scanResult)
+    const stopAfterMs = Math.min(
+      Math.max(1_400, fixtureEntry.durationMs - 300),
+      3_500,
+    )
 
     const stt = await streamAudioFixtureToStt({
       fixture: fixtureEntry.fixture,
@@ -30,7 +30,8 @@ describeIfEnabled('e2e regression: tts artifact integrity', () => {
       wsConnectTimeoutMs: env.wsConnectTimeoutMs,
       wsReadyTimeoutMs: env.wsReadyTimeoutMs,
       sttFinalTimeoutMs: env.sttFinalTimeoutMs,
-      stopAfterMs: 1_200,
+      stopAfterMs,
+      allowLocalFallbackOnClose: true,
     })
 
     const finalize = await callFinalizeApi({

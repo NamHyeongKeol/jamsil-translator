@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
-  readEnvBool,
   readEnvInt,
   readLiveE2EEnv,
   streamAudioFixtureToStt,
 } from './support/live-e2e-utils'
 import { scanFixtures, type ValidFixture } from './support/live-fixture-utils'
 
-const ENABLED = readEnvBool('MINGLE_TEST_E2E_SONIOX_SEGMENTATION', readEnvBool('MINGLE_TEST_E2E_FULL', false))
-const describeIfEnabled = ENABLED ? describe.sequential : describe.skip
 const env = readLiveE2EEnv()
 const scanResult = scanFixtures(env)
 const MAX_FINAL_LATENCY_AFTER_STOP_MS = readEnvInt('MINGLE_TEST_MAX_FINAL_LATENCY_AFTER_STOP_MS', 15_000)
@@ -31,7 +28,7 @@ function pickCoverageFixtures(): ValidFixture[] {
   return [first, last]
 }
 
-describeIfEnabled('e2e regression: soniox segmentation latency', () => {
+describe.sequential('e2e regression: soniox segmentation latency', () => {
   for (const fixtureEntry of pickCoverageFixtures()) {
     it(`keeps finalize latency bounded for ${fixtureEntry.fixtureName}`, async () => {
       const stt = await streamAudioFixtureToStt({

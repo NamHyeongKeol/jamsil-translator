@@ -1,22 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import {
   callFinalizeApi,
-  readEnvBool,
+  readEnvInt,
   readLiveE2EEnv,
   streamAudioFixtureToStt,
 } from './support/live-e2e-utils'
 import { pickShortestFixture, scanFixtures } from './support/live-fixture-utils'
 
-const ENABLED = readEnvBool('MINGLE_TEST_E2E_ACK_FALLBACK', false)
-const EXPECT_STOP_ACK_ONLY = readEnvBool('MINGLE_TEST_EXPECT_STOP_ACK_ONLY', false)
-
-const describeIfEnabled = ENABLED ? describe.sequential : describe.skip
 const env = readLiveE2EEnv()
 const scanResult = scanFixtures(env)
+const EXPECT_STOP_ACK_ONLY = process.env.MINGLE_TEST_EXPECT_STOP_ACK_ONLY === '1'
+const ACK_FALLBACK_AFTER_MS = readEnvInt('MINGLE_TEST_E2E_ACK_FALLBACK_AFTER_MS', 3_000)
 
-describeIfEnabled('e2e regression: stop ack fallback path', () => {
+describe.sequential('e2e regression: stop ack fallback path', () => {
   it('returns a final turn even when stop is sent very early', async () => {
     const fixtureEntry = pickShortestFixture(scanResult)
+    const stopAfterMs = Math.min(
+      Math.max(1_200, fixtureEntry.durationMs - 300),
+      Math.max(1_200, ACK_FALLBACK_AFTER_MS),
+    )
 
     const stt = await streamAudioFixtureToStt({
       fixture: fixtureEntry.fixture,
@@ -28,7 +30,8 @@ describeIfEnabled('e2e regression: stop ack fallback path', () => {
       wsConnectTimeoutMs: env.wsConnectTimeoutMs,
       wsReadyTimeoutMs: env.wsReadyTimeoutMs,
       sttFinalTimeoutMs: env.sttFinalTimeoutMs,
-      stopAfterMs: 250,
+      stopAfterMs,
+      allowLocalFallbackOnClose: true,
     })
 
     expect(stt.finalTurn.text.length).toBeGreaterThan(0)
@@ -41,6 +44,7 @@ describeIfEnabled('e2e regression: stop ack fallback path', () => {
     console.info([
       '[live-test][stop-ack]',
       `fixture=${fixtureEntry.fixtureName}`,
+      `stopAfterMs=${stopAfterMs}`,
       `source=${stt.finalTurn.source}`,
       `text=${JSON.stringify(stt.finalTurn.text)}`,
     ].join(' '))

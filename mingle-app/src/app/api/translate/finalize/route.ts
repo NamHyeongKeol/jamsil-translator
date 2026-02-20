@@ -413,8 +413,9 @@ export async function POST(request: NextRequest) {
   const enableTts = ttsPayload?.enabled === true
   const currentTurnPreviousState = parseCurrentTurnPreviousState(body.currentTurnPreviousState)
   const sessionKeyHint = typeof body.sessionKey === 'string' ? body.sessionKey.trim() : null
-  const enableTestFaults = process.env.MINGLE_ENABLE_TEST_FAULTS === '1'
-  const testFaultMode = enableTestFaults ? parseFinalizeTestFaultMode(body.__testFaultMode) : null
+  const isLocalLiveTestRequest = request.headers.get('x-mingle-live-test') === '1'
+  const allowTestFaults = process.env.NODE_ENV !== 'production' && isLocalLiveTestRequest
+  const testFaultMode = allowTestFaults ? parseFinalizeTestFaultMode(body.__testFaultMode) : null
 
   if (!GEMINI_API_KEY) {
     const response = NextResponse.json({ error: 'No translation API key configured' }, { status: 500 })
