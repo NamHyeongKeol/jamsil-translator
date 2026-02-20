@@ -565,6 +565,12 @@ flowchart TD
     %% @mingle_app_audio_session_route_metrics_milestone7 [ai-task, opened, 2026-02-20, ai]
     mingle_app_audio_session_route_metrics_milestone7("오디오 경로 품질 계측 7차 (추후)<br/><sub>실기기에서 스피커/블루투스/유선 경로별로<br/>tail noise와 세션 전환 체감 품질을 계측해<br/>delay/옵션 기본값을 데이터 기반으로 미세 튜닝하고<br/>회귀 로그 포맷을 운영 문서로 표준화</sub>")
 
+    %% @mingle_app_local_db_psql_reset_path [ai-task, closed, 2026-02-20, ai]
+    mingle_app_local_db_psql_reset_path("로컬 DB psql 리셋 경로 추가<br/><sub>mingle-app scripts에 app 스키마를<br/>DROP CASCADE 후 Prisma SQL 두 개를<br/>순차 적용하는 reset SQL 파일을 추가해<br/>재셋업 절차를 한 줄 명령으로 고정</sub>")
+
+    %% @mingle_app_rn_env_only_server_url_config [ai-task, closed, 2026-02-20, ai]
+    mingle_app_rn_env_only_server_url_config("RN 서버 URL 하드코딩 제거<br/><sub>rn/App.tsx의 WEB_APP_BASE_URL과<br/>DEFAULT_WS_URL 상수를 제거하고<br/>RN_WEB_APP_BASE_URL/RN_DEFAULT_WS_URL<br/>환경변수 경로로만 URL을 결정하도록 고정</sub>")
+
     %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
     mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
 
@@ -748,10 +754,12 @@ flowchart TD
     backend_frontend_boundary_audit --> backend_vercel_change_scope
     backend_vercel_change_scope --> mingle_app_db_schema_prisma_init
     mingle_app_db_schema_prisma_init --> mingle_app_prisma_client_build_fix
+    mingle_app_prisma_client_build_fix --> mingle_app_local_db_psql_reset_path
     mingle_app_prisma_client_build_fix --> mingle_app_rn_workspace_alignment
     mingle_app_rn_workspace_alignment --> mingle_app_capacitor_path_removal
     mingle_app_capacitor_path_removal --> mingle_app_vercel_rn_typecheck_scope_fix
     mingle_app_vercel_rn_typecheck_scope_fix --> mingle_app_rn_webview_native_stt_bridge
+    mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_env_only_server_url_config
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -807,6 +815,7 @@ flowchart TD
     mobile_app_development -.-> ultimate_goal
     opencode_codex_oauth_pending -.-> ultimate_goal
     backend_vercel_change_scope -.-> ultimate_goal
+    mingle_app_local_db_psql_reset_path -.-> ultimate_goal
     mingle_app_async_nonblocking_db_write -.-> ultimate_goal
     mingle_app_web_client_event_logging_fix -.-> ultimate_goal
     mingle_app_og_image_locale_redirect_fix -.-> ultimate_goal
@@ -852,6 +861,7 @@ flowchart TD
     mingle_app_marker_visibility_debug_enable -.-> ultimate_goal
     mingle_marker_sanitization_restore_after_debug -.-> ultimate_goal
     mingle_app_usage_truth_policy -.-> ultimate_goal
+    mingle_app_rn_env_only_server_url_config -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
@@ -1097,6 +1107,8 @@ flowchart TD
     style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_mobile_scroll_overlay_visibility_hold_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_final_duplicate_guard_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_final_duplicate_guard_nonfinal_aware_refine fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_mobile_safari_stt_no_log_rootcause fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px

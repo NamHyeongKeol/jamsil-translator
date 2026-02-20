@@ -6,6 +6,11 @@ This is the `mingle-app/rn` React Native workspace.
   - `pnpm rn:start`
   - `pnpm rn:ios`
 
+RN 앱은 아래 env를 필요로 합니다.
+
+- `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
+- `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
+
 This project was bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started

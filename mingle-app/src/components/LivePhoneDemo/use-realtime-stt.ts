@@ -1005,16 +1005,49 @@ export default function useRealtimeSTT({
     },
   ) => {
     const { utteranceId, text, lang, currentTurnPreviousState } = localFinalizeResult
-    const ttsTargetLang = languages.filter(l => l !== lang)[0] || ''
     const seq = ++translateSeqRef.current
     const requestStartedAt = Date.now()
+
+    // 단일 언어 모드: 선택 언어가 1개인 경우
+    const isSingleLanguageMode = languages.length === 1
+    const detectedLangNorm = normalizeLangForCompare(lang)
+    const selectedLangNorm = normalizeLangForCompare(languages[0] || '')
+
+    if (isSingleLanguageMode && detectedLangNorm === selectedLangNorm) {
+      // 감지 언어 = 선택 언어 → 번역/TTS 없이 transcript만 (로깅만)
+      void logClientEvent({
+        eventType: 'stt_turn_finalized',
+        clientMessageId: utteranceId,
+        sourceLanguage: lang,
+        sourceText: text,
+        translations: {},
+        sttDurationMs: options?.sttDurationMs,
+        totalDurationMs: options?.sttDurationMs ?? 0,
+        metadata: {
+          reason: options?.reason || 'unknown',
+          singleLanguageMode: true,
+          skipTranslation: true,
+        },
+        keepalive: true,
+      })
+      return
+    }
+
+    // 단일 언어 모드이지만 다른 언어 감지: 선택 언어로 번역 + TTS
+    // 다중 언어 모드: 기존 동작 유지
+    const ttsTargetLang = isSingleLanguageMode
+      ? (languages[0] || '')
+      : (languages.filter(l => l !== lang)[0] || '')
+    const effectiveTargetLanguages = isSingleLanguageMode
+      ? languages                  // [selectedLang] — translateViaApi 내부에서 sourceLanguage(detected) 제거 후 번역
+      : languages
 
     // Reserve a TTS queue slot before the API call so playback order matches utterance order
     if (enableTtsRef.current && ttsTargetLang) {
       onTtsRequestedRef.current?.(utteranceId, ttsTargetLang)
     }
 
-    void translateViaApi(text, lang, languages, {
+    void translateViaApi(text, lang, effectiveTargetLanguages, {
       ttsLanguage: ttsTargetLang,
       enableTts: enableTtsRef.current,
       isFinal: true,
@@ -1043,6 +1076,7 @@ export default function useRealtimeSTT({
         metadata: {
           reason: options?.reason || 'unknown',
           hasInlineTts: Boolean(result.ttsAudioBase64),
+          singleLanguageMode: isSingleLanguageMode,
         },
         keepalive: true,
       })
@@ -1638,6 +1672,14 @@ export default function useRealtimeSTT({
     const trimmed = partialTranscript.trim()
     const len = trimmed.length
     if (len === 0 || languages.length === 0 || connectionStatus !== 'ready') return
+
+    // 단일 언어 모드: 감지 언어가 선택 언어와 동일하면 부분 번역 스킵
+    const currentLang = partialLangRef.current || 'unknown'
+    if (
+      languages.length === 1
+      && normalizeLangForCompare(currentLang) === normalizeLangForCompare(languages[0] || '')
+    ) return
+
     if (!hasFiredInitialPartialTranslateRef.current) {
       hasFiredInitialPartialTranslateRef.current = true
       // Prime the threshold tracker based on the first partial length so
@@ -1652,7 +1694,6 @@ export default function useRealtimeSTT({
     // Capture the utterance counter at request time so we can discard stale responses
     // that arrive after a new utterance has started (prevents cross-utterance contamination).
     const requestUtteranceId = utteranceIdRef.current
-    const currentLang = partialLangRef.current || 'unknown'
     translateViaApi(trimmed, currentLang, languages)
       .then(result => {
         // Discard if a new utterance has started since this request was fired.
