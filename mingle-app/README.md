@@ -20,6 +20,48 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Live STT/API Integration Test (included in `pnpm test`)
+
+`pnpm test` runs both unit tests and a live integration test that:
+
+1. Streams an audio fixture to local STT WebSocket server
+2. Sends the finalized transcript to `/api/translate/finalize`
+
+Useful commands:
+
+- `pnpm test` (unit + live integration)
+- `pnpm test:unit` (unit only, excludes live integration)
+- `pnpm test:live` (live integration only)
+
+Default local endpoints:
+
+- STT WS: `ws://127.0.0.1:3001`
+- API: `http://127.0.0.1:3000`
+
+Default audio fixture path:
+
+- `test-fixtures/audio/fixtures/stt-smoke.en.wav`
+
+You can override paths/endpoints with env vars:
+
+```bash
+MINGLE_TEST_AUDIO_FIXTURE=/absolute/path/to/file.wav
+MINGLE_TEST_WS_URL=ws://127.0.0.1:3001
+MINGLE_TEST_API_BASE_URL=http://127.0.0.1:3000
+MINGLE_TEST_EXPECTED_PHRASE="hello mingle"
+```
+
+Fixture requirements:
+
+- WAV (RIFF/WAVE)
+- PCM 16-bit
+- mono (1 channel)
+
+Audio fixture git policy:
+
+- 팀 공통 재현용 짧은 샘플 1개는 `test-fixtures/audio/fixtures/`에 커밋 권장
+- 개인/민감 음성은 `test-fixtures/audio/local/`에 두고 git ignore 처리
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

@@ -39,6 +39,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local-only audio recordings for live STT integration tests
+/test-fixtures/audio/local/*
+!/test-fixtures/audio/local/.gitkeep
+
 # vercel
 .vercel
 

@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tdd_stt_hook_logic_unit_tests
+    %% @lastActive: mingle_app_tdd_live_stt_finalize_integration_automation
 
     %% === START ===
     %% @project_start [start, closed]
@@ -541,8 +541,11 @@ flowchart TD
     %% @mingle_app_tdd_stt_hook_logic_unit_tests [ai-task, closed, 2026-02-20, ai]
     mingle_app_tdd_stt_hook_logic_unit_tests("STT 훅 핵심로직 단위테스트 1차 적용<br/><sub>use-realtime-stt의 WS URL 결정과<br/>transcript 파싱·final 발화 생성 경로를<br/>순수 함수 export로 분리해 회귀를 고정하고<br/>총 21개 Vitest 케이스를 녹색으로 유지</sub>")
 
-    %% @mingle_app_tdd_stt_hook_server_integration_plan [ai-task, opened, 2026-02-20, ai]
-    mingle_app_tdd_stt_hook_server_integration_plan("STT 훅/서버 통합 테스트 2차 계획<br/><sub>use-realtime-stt stop/finalize 흐름과<br/>mingle-stt stop_recording_ack 경계를 대상으로<br/>WebSocket 이벤트 시퀀스를 모의한 통합테스트를<br/>추가해 중단-확정 회귀를 방지할 예정</sub>")
+    %% @mingle_app_tdd_stt_hook_server_integration_plan [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_stt_hook_server_integration_plan("STT 훅/서버 통합 테스트 계획 확정<br/><sub>단위 테스트만으로는 로컬 실서버 연계 품질을<br/>판단하기 어려운 공백이 확인되어<br/>WS 스트리밍+finalize API를 함께 검증하는<br/>라이브 통합 테스트 방향을 명시하고 고정</sub>")
+
+    %% @mingle_app_tdd_live_stt_finalize_integration_automation [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_live_stt_finalize_integration_automation("pnpm test 라이브 통합 자동화 구현<br/><sub>src/integration/live 테스트를 추가해<br/>로컬 STT WS에 WAV fixture를 스트리밍하고<br/>final transcript를 /api/translate/finalize로<br/>연결 검증하는 실환경 회귀 경로를 구축</sub>")
 
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
@@ -804,6 +807,7 @@ flowchart TD
     mingle_app_tdd_finalize_clientevent_unit_tests --> mingle_app_tdd_finalize_route_mock_integration_tests
     mingle_app_tdd_finalize_route_mock_integration_tests --> mingle_app_tdd_stt_hook_logic_unit_tests
     mingle_app_tdd_stt_hook_logic_unit_tests --> mingle_app_tdd_stt_hook_server_integration_plan
+    mingle_app_tdd_stt_hook_server_integration_plan --> mingle_app_tdd_live_stt_finalize_integration_automation
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -847,6 +851,7 @@ flowchart TD
     mingle_app_tdd_finalize_route_mock_integration_tests -.-> ultimate_goal
     mingle_app_tdd_stt_hook_logic_unit_tests -.-> ultimate_goal
     mingle_app_tdd_stt_hook_server_integration_plan -.-> ultimate_goal
+    mingle_app_tdd_live_stt_finalize_integration_automation -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -870,7 +875,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_tdd_stt_hook_logic_unit_tests
+        mingle_app_tdd_live_stt_finalize_integration_automation
     end
 
     %% === STYLES ===
@@ -1114,8 +1119,9 @@ flowchart TD
     style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_finalize_clientevent_unit_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_finalize_route_mock_integration_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tdd_stt_hook_logic_unit_tests fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
-    style mingle_app_tdd_stt_hook_server_integration_plan fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_tdd_stt_hook_logic_unit_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_stt_hook_server_integration_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_stt_finalize_integration_automation fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
