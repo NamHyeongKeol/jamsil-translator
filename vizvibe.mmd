@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tdd_live_regression_e2e_matrix_expansion
+    %% @lastActive: mingle_app_tdd_vitest_node20_compat_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -553,6 +553,9 @@ flowchart TD
     %% @mingle_app_tdd_live_regression_e2e_matrix_expansion [ai-task, closed, 2026-02-20, ai]
     mingle_app_tdd_live_regression_e2e_matrix_expansion("라이브 회귀 E2E 매트릭스 상시 실행화<br/><sub>오디오/서버 경로 e2e를 env 플래그 없이<br/>pnpm test:live 기본 실행에 포함하도록 전환하고<br/>조기 stop 시 ack close(1005)에서도 final 보강 경로로<br/>회귀 스위트 안정성을 유지하도록 테스트를 보정</sub>")
 
+    %% @mingle_app_tdd_vitest_node20_compat_fix [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_vitest_node20_compat_fix("Vitest 런타임 호환 버전 고정<br/><sub>Node 20.18 환경에서 vitest@3 + vite@7 조합이<br/>ERR_REQUIRE_ESM으로 즉시 실패하던 경로를<br/>vitest 2.1 계열로 조정해 unit test 실행을 복구하고<br/>기존 TDD 스위트가 로컬에서 바로 동작하게 보정</sub>")
+
     %% @mingle_app_final_duplicate_guard_experiment [ai-task, closed, 2026-02-20, ai]
     mingle_app_final_duplicate_guard_experiment("final 중복 가드 실험 브랜치 적용<br/><sub>별도 worktree/브랜치에서 동일 언어·문장 final이<br/>짧은 시간 내 재유입될 때 최근 턴과 비교해 차단하고<br/>새 발화 시작 신호(turnStartedAt)가 없을 때만 적용해<br/>정상 반복 발화 오탐을 줄이는 보수적 dedupe를 도입</sub>")
 
@@ -892,6 +895,7 @@ flowchart TD
     mingle_app_tdd_stt_hook_logic_unit_tests --> mingle_app_tdd_stt_hook_server_integration_plan
     mingle_app_tdd_stt_hook_server_integration_plan --> mingle_app_tdd_live_stt_finalize_integration_automation
     mingle_app_tdd_live_stt_finalize_integration_automation --> mingle_app_tdd_live_regression_e2e_matrix_expansion
+    mingle_app_tdd_live_regression_e2e_matrix_expansion --> mingle_app_tdd_vitest_node20_compat_fix
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -943,6 +947,7 @@ flowchart TD
     mingle_app_tdd_stt_hook_server_integration_plan -.-> ultimate_goal
     mingle_app_tdd_live_stt_finalize_integration_automation -.-> ultimate_goal
     mingle_app_tdd_live_regression_e2e_matrix_expansion -.-> ultimate_goal
+    mingle_app_tdd_vitest_node20_compat_fix -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -980,7 +985,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_tdd_live_regression_e2e_matrix_expansion
+        mingle_app_tdd_vitest_node20_compat_fix
     end
 
     %% === STYLES ===
@@ -1227,7 +1232,8 @@ flowchart TD
     style mingle_app_tdd_stt_hook_logic_unit_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_stt_hook_server_integration_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_live_stt_finalize_integration_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tdd_live_regression_e2e_matrix_expansion fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tdd_live_regression_e2e_matrix_expansion fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_vitest_node20_compat_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
