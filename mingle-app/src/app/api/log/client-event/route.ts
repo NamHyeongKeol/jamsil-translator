@@ -40,7 +40,8 @@ function sanitizeTranslations(raw: unknown): Record<string, string> {
     const language = normalizeLang(rawLanguage)
     if (!language || language === 'unknown') continue
 
-    const text = rawText.replace(/<\/?(?:end|fin)>/gi, '').trim().slice(0, 20000)
+    // Temporary debug mode: keep <fin> marker visibility in logs.
+    const text = rawText.replace(/<\/?end>/gi, '').trim().slice(0, 20000)
     if (!text) continue
     output[language] = text
   }
