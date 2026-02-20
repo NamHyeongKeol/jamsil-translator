@@ -21,7 +21,10 @@ const LS_KEY_STT_DEBUG = 'mingle_stt_debug'
 const NATIVE_STT_QUERY_KEY = 'nativeStt'
 const NATIVE_STT_EVENT = 'mingle:native-stt'
 const RECENT_TURN_CONTEXT_WINDOW_MS = 10_000
-const FINAL_DUPLICATE_WINDOW_MS = 2_500
+// Keep this window intentionally short.
+// Soniox can emit true duplicate finals in a burst, but a long window
+// can swallow legitimate repeated short phrases when non-final signals are sparse.
+const FINAL_DUPLICATE_WINDOW_MS = 700
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
@@ -939,14 +942,6 @@ export default function useRealtimeSTT({
     if (!text) return null
 
     const now = Date.now()
-    if (isLikelyRecentDuplicateFinal(text, lang, now, {
-      requireNoTurnStart: true,
-      requireNoNonFinalSinceLastFinal: true,
-    })) {
-      clearPartialBuffers()
-      pendingLocalFinalizeRef.current = null
-      return null
-    }
     const sig = `${lang}::${text}`
     if (
       sig
@@ -995,7 +990,7 @@ export default function useRealtimeSTT({
     sawNonFinalSinceLastFinalRef.current = false
     pendingLocalFinalizeRef.current = { utteranceId, text, lang, expiresAt: now + 15000 }
     return { utteranceId, text, lang, currentTurnPreviousState }
-  }, [clearPartialBuffers, isLikelyRecentDuplicateFinal, languages])
+  }, [languages])
 
   const finalizeTurnWithTranslation = useCallback((
     localFinalizeResult: LocalFinalizeResult,
