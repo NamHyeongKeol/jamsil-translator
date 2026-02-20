@@ -690,8 +690,22 @@ wss.on('connection', (clientWs) => {
 
                 try {
                     const rawSonioxMessage = event.data.toString();
-                    console.log(`[conn:${connId}] [soniox->stt raw] ${rawSonioxMessage}`);
                     const msg = JSON.parse(rawSonioxMessage);
+                    if (Array.isArray(msg.tokens)) {
+                        const tokenTexts = msg.tokens
+                            .map((token: { text?: unknown }) => (typeof token.text === 'string' ? token.text : ''))
+                            .join('');
+                        const tokenCount = msg.tokens.length;
+                        const finalCount = msg.tokens.reduce(
+                            (count: number, token: { is_final?: unknown }) => count + (token.is_final === true ? 1 : 0),
+                            0,
+                        );
+                        console.log(JSON.stringify({
+                            text: tokenTexts,
+                            token_count: tokenCount,
+                            final_count: finalCount,
+                        }));
+                    }
 
                     if (msg.error_code) {
                         console.error(`[Soniox] Error: ${msg.error_code} - ${msg.error_message}`);

@@ -1541,8 +1541,18 @@ export default function useRealtimeSTT({
         if (socket !== socketRef.current) return
         try {
           const rawMessage = typeof event.data === 'string' ? event.data : String(event.data)
-          console.log('[MingleSTT][stt-server->web raw]', rawMessage)
           const message = JSON.parse(rawMessage) as Record<string, unknown>
+          if (message.type === 'transcript' && typeof message.data === 'object' && message.data !== null) {
+            const data = message.data as Record<string, unknown>
+            const utterance = (
+              typeof data.utterance === 'object' && data.utterance !== null
+                ? data.utterance as Record<string, unknown>
+                : null
+            )
+            const text = utterance && typeof utterance.text === 'string' ? utterance.text : ''
+            const isFinal = data.is_final === true
+            console.log({ is_final: isFinal, text })
+          }
           handleSttServerMessage(message)
         } catch {
           // ignore malformed payload
@@ -1599,8 +1609,18 @@ export default function useRealtimeSTT({
 
       if (detail.type === 'message') {
         try {
-          console.log('[MingleSTT][stt-server->native raw]', detail.raw)
           const message = JSON.parse(detail.raw) as Record<string, unknown>
+          if (message.type === 'transcript' && typeof message.data === 'object' && message.data !== null) {
+            const data = message.data as Record<string, unknown>
+            const utterance = (
+              typeof data.utterance === 'object' && data.utterance !== null
+                ? data.utterance as Record<string, unknown>
+                : null
+            )
+            const text = utterance && typeof utterance.text === 'string' ? utterance.text : ''
+            const isFinal = data.is_final === true
+            console.log({ is_final: isFinal, text })
+          }
           handleSttServerMessage(message)
         } catch {
           // ignore malformed payload
