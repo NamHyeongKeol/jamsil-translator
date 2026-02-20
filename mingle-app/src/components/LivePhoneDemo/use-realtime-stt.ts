@@ -21,6 +21,7 @@ const LS_KEY_STT_DEBUG = 'mingle_stt_debug'
 const NATIVE_STT_QUERY_KEY = 'nativeStt'
 const NATIVE_STT_EVENT = 'mingle:native-stt'
 const RECENT_TURN_CONTEXT_WINDOW_MS = 10_000
+const FINAL_DUPLICATE_WINDOW_MS = 2_500
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
@@ -910,13 +911,36 @@ export default function useRealtimeSTT({
     })
   }, [])
 
+  const isLikelyRecentDuplicateFinal = useCallback((
+    text: string,
+    lang: string,
+    now: number,
+    options?: { requireNoTurnStart?: boolean },
+  ): boolean => {
+    if (options?.requireNoTurnStart && turnStartedAtRef.current !== null) {
+      return false
+    }
+    const lastUtterance = utterancesRef.current[utterancesRef.current.length - 1]
+    if (!lastUtterance) return false
+    const lastCreatedAt = inferUtteranceCreatedAtMs(lastUtterance)
+    if (lastCreatedAt === null || (now - lastCreatedAt) > FINAL_DUPLICATE_WINDOW_MS) return false
+    if (normalizeLangForCompare(lastUtterance.originalLang) !== normalizeLangForCompare(lang)) return false
+    const normalizedLastText = normalizeSttTurnText(lastUtterance.originalText)
+    return normalizedLastText === text
+  }, [])
+
   const finalizePendingLocally = useCallback((rawText: string, rawLang: string): LocalFinalizeResult | null => {
     const text = normalizeSttTurnText(rawText)
     const lang = (rawLang || 'unknown').trim() || 'unknown'
     if (!text) return null
 
-    const sig = `${lang}::${text}`
     const now = Date.now()
+    if (isLikelyRecentDuplicateFinal(text, lang, now, { requireNoTurnStart: true })) {
+      clearPartialBuffers()
+      pendingLocalFinalizeRef.current = null
+      return null
+    }
+    const sig = `${lang}::${text}`
     if (
       sig
       && stopFinalizeDedupRef.current.sig === sig
@@ -963,7 +987,7 @@ export default function useRealtimeSTT({
     partialLangRef.current = null
     pendingLocalFinalizeRef.current = { utteranceId, text, lang, expiresAt: now + 15000 }
     return { utteranceId, text, lang, currentTurnPreviousState }
-  }, [languages])
+  }, [clearPartialBuffers, isLikelyRecentDuplicateFinal, languages])
 
   const finalizeTurnWithTranslation = useCallback((
     localFinalizeResult: LocalFinalizeResult,
@@ -1275,7 +1299,10 @@ export default function useRealtimeSTT({
         }
         const sig = `${lang}::${text}`
         const now = Date.now()
-        const sttDurationMs = turnStartedAtRef.current ? Math.max(0, now - turnStartedAtRef.current) : undefined
+        const hadTurnStart = turnStartedAtRef.current !== null
+        const sttDurationMs = hadTurnStart && turnStartedAtRef.current
+          ? Math.max(0, now - turnStartedAtRef.current)
+          : undefined
         turnStartedAtRef.current = null
         if (
           sig
@@ -1286,6 +1313,12 @@ export default function useRealtimeSTT({
           return
         }
         stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
+
+        if (!hadTurnStart && isLikelyRecentDuplicateFinal(text, lang, now)) {
+          clearPartialBuffers()
+          pendingLocalFinalizeRef.current = null
+          return
+        }
 
         const pendingLocal = pendingLocalFinalizeRef.current
         if (
@@ -1365,7 +1398,7 @@ export default function useRealtimeSTT({
         partialLangRef.current = lang
       }
     }
-  }, [clearPartialBuffers, finalizeTurnWithTranslation, languages, logClientEvent, normalizedUsageLimitSec, startAudioProcessing, stopRecordingGracefully])
+  }, [clearPartialBuffers, finalizeTurnWithTranslation, isLikelyRecentDuplicateFinal, languages, logClientEvent, normalizedUsageLimitSec, startAudioProcessing, stopRecordingGracefully])
 
   const startRecording = useCallback(async () => {
     if (isStoppingRef.current) return
