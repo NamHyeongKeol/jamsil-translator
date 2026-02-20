@@ -74,6 +74,8 @@ Reset local `app` schema via `psql` (drop + recreate + apply migrations):
 pnpm db:reset:local:psql
 ```
 
+`db:*` Prisma scripts load environment variables from `.env.local`.
+
 Production build runs `prisma generate` first:
 
 ```bash
