@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_audio_session_policy_polish_milestone6
+    %% @lastActive: mingle_app_pc_scroll_pagination_anchor_regression_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -523,6 +523,9 @@ flowchart TD
     %% @mingle_app_chat_scroll_overlay_and_threshold_tuning [ai-task, closed, 2026-02-19, ai]
     mingle_app_chat_scroll_overlay_and_threshold_tuning("채팅 스크롤 UX 오버레이/임계값 조정<br/><sub>자동 스크롤 바닥 판정을 80px에서 200px로 완화하고<br/>바닥에서 400px 이상 이탈 시 하단 중앙 점프 버튼을 표시,<br/>오버레이를 뷰포트 래퍼 기준으로 고정하고 사용자 의도 스크롤일 때만<br/>배지/스크롤바를 노출하며 초기 진입 시 먼저 하단 정착 후 페이지네이션 허용</sub>")
 
+    %% @mingle_app_pc_scroll_pagination_anchor_regression_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_app_pc_scroll_pagination_anchor_regression_fix("PC 스크롤 페이지네이션 앵커 회귀 수정<br/><sub>천천히 위로 스크롤할 때 상단 페이지네이션 직후<br/>최신 메시지 하단으로 순간이동하던 회귀를 차단하기 위해<br/>loadOlder 시 auto-follow를 즉시 비활성화하고<br/>사용자 스크롤 업 의도 동안 자동 하단 이동을 억제</sub>")
+
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
 
@@ -768,6 +771,7 @@ flowchart TD
     mingle_app_recent_turn_context_source_lang_filter_fix --> mingle_app_translation_bubble_target_snapshot_policy
     mingle_app_translation_bubble_target_snapshot_policy --> mingle_app_turbopack_root_tailwind_resolution_fix
     mingle_app_turbopack_root_tailwind_resolution_fix --> mingle_app_chat_scroll_overlay_and_threshold_tuning
+    mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_pc_scroll_pagination_anchor_regression_fix
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -803,6 +807,7 @@ flowchart TD
     mingle_app_translation_bubble_target_snapshot_policy -.-> ultimate_goal
     mingle_app_turbopack_root_tailwind_resolution_fix -.-> ultimate_goal
     mingle_app_chat_scroll_overlay_and_threshold_tuning -.-> ultimate_goal
+    mingle_app_pc_scroll_pagination_anchor_regression_fix -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -825,7 +830,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_audio_session_policy_polish_milestone6
+        mingle_app_pc_scroll_pagination_anchor_regression_fix
     end
 
     %% === STYLES ===
@@ -1062,8 +1067,9 @@ flowchart TD
     style mingle_app_tts_playback_id_event_alignment_milestone3 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tts_stop_policy_split_milestone4 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tts_tail_noise_graceful_deactivate_milestone5 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_audio_session_policy_polish_milestone6 fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_audio_session_policy_polish_milestone6 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_audio_session_route_metrics_milestone7 fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

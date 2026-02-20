@@ -922,6 +922,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     if (isLoadingOlderRef.current || !hasOlderUtterances || !chatRef.current) return
     isLoadingOlderRef.current = true
     suppressAutoScrollRef.current = true
+    shouldAutoScroll.current = false
     isPaginatingRef.current = true
     prevScrollHeightRef.current = chatRef.current.scrollHeight
     loadOlderUtterances()
@@ -948,8 +949,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     const { scrollTop, scrollHeight, clientHeight } = chatRef.current
     const distanceToBottom = Math.max(0, scrollHeight - scrollTop - clientHeight)
     const isNearBottom = distanceToBottom <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX
-    if (fromUserScroll && isNearBottom) {
-      suppressAutoScrollRef.current = false
+    if (fromUserScroll) {
+      // User manual upward scroll should immediately suppress auto-follow.
+      // Re-enable only when user intentionally returns near the bottom.
+      suppressAutoScrollRef.current = !isNearBottom
     }
     shouldAutoScroll.current = (
       isNearBottom
@@ -1061,7 +1064,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [updateScrollDerivedState, utterances])
 
   useEffect(() => {
-    if (chatRef.current && shouldAutoScroll.current) {
+    if (
+      chatRef.current
+      && shouldAutoScroll.current
+      && !suppressAutoScrollRef.current
+      && !isPaginatingRef.current
+      && !isLoadingOlderRef.current
+    ) {
       const targetTop = chatRef.current.scrollHeight
       if (Math.abs(targetTop - chatRef.current.scrollTop) > 1) {
         chatRef.current.scrollTo({ top: targetTop, behavior: 'smooth' })
