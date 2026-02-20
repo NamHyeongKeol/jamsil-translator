@@ -40,16 +40,24 @@ Default local endpoints:
 
 Default audio fixture path:
 
-- `test-fixtures/audio/fixtures/stt-smoke.en.wav`
+- `test-fixtures/audio/fixtures/` (all files in this folder are scanned)
 
 You can override paths/endpoints with env vars:
 
 ```bash
 MINGLE_TEST_AUDIO_FIXTURE=/absolute/path/to/file.wav
+MINGLE_TEST_AUDIO_FIXTURE_DIR=/absolute/path/to/fixtures-dir
 MINGLE_TEST_WS_URL=ws://127.0.0.1:3001
 MINGLE_TEST_API_BASE_URL=http://127.0.0.1:3000
 MINGLE_TEST_EXPECTED_PHRASE="hello mingle"
 ```
+
+Fixture scan behavior:
+
+- 폴더 내 파일명은 자유입니다.
+- `.wav`가 아닌 파일은 경고만 출력하고 skip 후 다음 파일로 진행합니다.
+- `.wav`라도 WAV/PCM16/mono 포맷이 아니면 경고만 출력하고 skip 후 다음 파일로 진행합니다.
+- 유효한 fixture가 1개도 없으면 테스트는 실패합니다.
 
 Fixture requirements:
 

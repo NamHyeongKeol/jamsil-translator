@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 
 type JsonObject = Record<string, unknown>
 
@@ -29,10 +29,12 @@ const SOURCE_LANGUAGE = readEnvString('MINGLE_TEST_SOURCE_LANGUAGE', 'en')
 const TARGET_LANGUAGE = readEnvString('MINGLE_TEST_TARGET_LANGUAGE', 'ko')
 const EXPECTED_PHRASE = readEnvString('MINGLE_TEST_EXPECTED_PHRASE', '')
 const FALLBACK_TRANSLATION = readEnvString('MINGLE_TEST_FALLBACK_TRANSLATION', '테스트 폴백 번역')
-const AUDIO_FIXTURE_PATH = readEnvString(
-  'MINGLE_TEST_AUDIO_FIXTURE',
-  path.resolve(process.cwd(), 'test-fixtures/audio/fixtures/stt-smoke.en.wav'),
+const AUDIO_FIXTURE_DIR = readEnvString(
+  'MINGLE_TEST_AUDIO_FIXTURE_DIR',
+  path.resolve(process.cwd(), 'test-fixtures/audio/fixtures'),
 )
+const AUDIO_FIXTURE_OVERRIDE = readEnvOptionalString('MINGLE_TEST_AUDIO_FIXTURE')
+const AUDIO_FIXTURE_CANDIDATES = collectAudioFixtureCandidates()
 
 function readEnvString(name: string, fallback: string): string {
   const value = process.env[name]
@@ -41,12 +43,46 @@ function readEnvString(name: string, fallback: string): string {
   return trimmed || fallback
 }
 
+function readEnvOptionalString(name: string): string | null {
+  const value = process.env[name]
+  if (!value) return null
+  const trimmed = value.trim()
+  return trimmed || null
+}
+
 function readEnvInt(name: string, fallback: number): number {
   const value = process.env[name]
   if (!value) return fallback
   const parsed = Number.parseInt(value, 10)
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback
   return parsed
+}
+
+function collectAudioFixtureCandidates(): string[] {
+  if (AUDIO_FIXTURE_OVERRIDE) {
+    return [path.resolve(process.cwd(), AUDIO_FIXTURE_OVERRIDE)]
+  }
+  if (!fs.existsSync(AUDIO_FIXTURE_DIR)) {
+    return []
+  }
+
+  const entries = fs.readdirSync(AUDIO_FIXTURE_DIR, { withFileTypes: true })
+    .filter(entry => entry.isFile())
+    .map(entry => path.resolve(AUDIO_FIXTURE_DIR, entry.name))
+    .sort((a, b) => a.localeCompare(b))
+
+  return entries
+}
+
+function isWavFilename(filePath: string): boolean {
+  return path.extname(filePath).toLowerCase() === '.wav'
+}
+
+function formatError(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  return String(error)
 }
 
 function asRecord(value: unknown): JsonObject | null {
@@ -345,11 +381,10 @@ async function fetchJsonWithTimeout(
   }
 }
 
-async function streamAudioFixtureToStt(): Promise<FinalTurn> {
-  const fixture = parsePcm16MonoWav(AUDIO_FIXTURE_PATH)
+async function streamAudioFixtureToStt(fixture: Pcm16MonoWav): Promise<FinalTurn> {
   const chunks = splitPcmIntoChunks(fixture.pcm, fixture.sampleRate, STREAM_CHUNK_MS)
   if (chunks.length === 0) {
-    throw new Error(`[live-test] audio fixture has no PCM frames: ${AUDIO_FIXTURE_PATH}`)
+    throw new Error('[live-test] audio fixture has no PCM frames')
   }
 
   const ws = new WebSocket(STT_WS_URL)
@@ -395,35 +430,14 @@ async function streamAudioFixtureToStt(): Promise<FinalTurn> {
   }
 }
 
-describe.sequential('local live integration: stt websocket + finalize api', () => {
-  let capturedFinalTurn: FinalTurn | null = null
-
-  it('streams fixture audio to local STT websocket and receives a final transcript', async () => {
-    capturedFinalTurn = await streamAudioFixtureToStt()
-
-    expect(capturedFinalTurn.text.length).toBeGreaterThan(0)
-    expect(capturedFinalTurn.language.length).toBeGreaterThan(0)
-
-    if (EXPECTED_PHRASE) {
-      const actual = normalizeText(capturedFinalTurn.text)
-      const expected = normalizeText(EXPECTED_PHRASE)
-      expect(actual).toContain(expected)
-    }
-  }, LIVE_TEST_TIMEOUT_MS)
-
-  it('sends the finalized transcript to local /api/translate/finalize', async (context) => {
-    if (!capturedFinalTurn) {
-      context.skip()
-      return
-    }
-
+async function runFinalizeApiCheck(finalTurn: FinalTurn): Promise<void> {
     const requestBody = {
-      text: capturedFinalTurn.text,
-      sourceLanguage: capturedFinalTurn.language,
+      text: finalTurn.text,
+      sourceLanguage: finalTurn.language,
       targetLanguages: [TARGET_LANGUAGE],
       currentTurnPreviousState: {
-        sourceLanguage: capturedFinalTurn.language,
-        sourceText: capturedFinalTurn.text,
+        sourceLanguage: finalTurn.language,
+        sourceText: finalTurn.text,
         translations: {
           [TARGET_LANGUAGE]: FALLBACK_TRANSLATION,
         },
@@ -462,5 +476,61 @@ describe.sequential('local live integration: stt websocket + finalize api', () =
     const error = typeof json.error === 'string' ? json.error : ''
     expect(error).toBe('empty_translation_response')
     expect(rawText.length).toBeGreaterThan(0)
-  }, LIVE_TEST_TIMEOUT_MS)
+}
+
+describe.sequential('local live integration: stt websocket + finalize api', () => {
+  let processedValidFixtureCount = 0
+
+  it('discovers audio fixtures from directory or override path', () => {
+    if (AUDIO_FIXTURE_CANDIDATES.length > 0) return
+    throw new Error([
+      '[live-test] no fixture file found.',
+      `- fixture dir: ${AUDIO_FIXTURE_DIR}`,
+      '- add one or more .wav files or set MINGLE_TEST_AUDIO_FIXTURE.',
+    ].join('\n'))
+  })
+
+  for (const fixturePath of AUDIO_FIXTURE_CANDIDATES) {
+    const fixtureName = path.basename(fixturePath)
+    it(`runs live flow for fixture: ${fixtureName}`, async () => {
+      if (!isWavFilename(fixturePath)) {
+        console.warn(`[live-test][skip] non-wav file: ${fixturePath}`)
+        return
+      }
+
+      let fixture: Pcm16MonoWav
+      try {
+        fixture = parsePcm16MonoWav(fixturePath)
+      } catch (error) {
+        console.warn([
+          `[live-test][skip] invalid wav fixture: ${fixturePath}`,
+          formatError(error),
+        ].join('\n'))
+        return
+      }
+
+      processedValidFixtureCount += 1
+
+      const finalTurn = await streamAudioFixtureToStt(fixture)
+      expect(finalTurn.text.length).toBeGreaterThan(0)
+      expect(finalTurn.language.length).toBeGreaterThan(0)
+
+      if (EXPECTED_PHRASE) {
+        const actual = normalizeText(finalTurn.text)
+        const expected = normalizeText(EXPECTED_PHRASE)
+        expect(actual).toContain(expected)
+      }
+
+      await runFinalizeApiCheck(finalTurn)
+    }, LIVE_TEST_TIMEOUT_MS)
+  }
+
+  afterAll(() => {
+    if (processedValidFixtureCount > 0) return
+    throw new Error([
+      '[live-test] no valid wav fixture was processed.',
+      `- fixture dir: ${AUDIO_FIXTURE_DIR}`,
+      '- unsupported/invalid files are skipped; add at least one valid PCM16 mono wav file.',
+    ].join('\n'))
+  })
 })

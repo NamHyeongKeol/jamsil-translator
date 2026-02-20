@@ -545,7 +545,7 @@ flowchart TD
     mingle_app_tdd_stt_hook_server_integration_plan("STT 훅/서버 통합 테스트 계획 확정<br/><sub>단위 테스트만으로는 로컬 실서버 연계 품질을<br/>판단하기 어려운 공백이 확인되어<br/>WS 스트리밍+finalize API를 함께 검증하는<br/>라이브 통합 테스트 방향을 명시하고 고정</sub>")
 
     %% @mingle_app_tdd_live_stt_finalize_integration_automation [ai-task, closed, 2026-02-20, ai]
-    mingle_app_tdd_live_stt_finalize_integration_automation("pnpm test 라이브 통합 자동화 구현<br/><sub>src/integration/live 테스트를 추가해<br/>로컬 STT WS에 WAV fixture를 스트리밍하고<br/>final transcript를 /api/translate/finalize로<br/>연결 검증하는 실환경 회귀 경로를 구축</sub>")
+    mingle_app_tdd_live_stt_finalize_integration_automation("pnpm test 라이브 통합 자동화 구현<br/><sub>src/integration/live 테스트를 추가해<br/>fixtures 폴더의 다중 WAV를 순회 스트리밍하고<br/>포맷 불일치는 경고 후 skip 처리하며<br/>final transcript→finalize API 연계를 검증</sub>")
 
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")

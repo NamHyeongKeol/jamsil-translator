@@ -2,13 +2,21 @@
 
 `pnpm test` now includes a live integration test that streams a WAV file to the local STT WebSocket server.
 
-Default fixture path:
+Default fixture directory:
 
-- `test-fixtures/audio/fixtures/stt-smoke.en.wav`
+- `test-fixtures/audio/fixtures/`
 
-You can override it with:
+How fixture selection works:
+
+- All files under `test-fixtures/audio/fixtures/` are scanned.
+- Non-`.wav` files are skipped with a warning.
+- Invalid WAV format files are skipped with a warning.
+- At least one valid file must exist, or the live test fails.
+
+You can override fixture source with:
 
 - `MINGLE_TEST_AUDIO_FIXTURE=/absolute/path/to/fixture.wav`
+- `MINGLE_TEST_AUDIO_FIXTURE_DIR=/absolute/path/to/fixtures-dir`
 
 Required fixture format:
 
@@ -27,4 +35,3 @@ Required fixture format:
 - `MINGLE_TEST_WS_URL` (default: `ws://127.0.0.1:3001`)
 - `MINGLE_TEST_API_BASE_URL` (default: `http://127.0.0.1:3000`)
 - `MINGLE_TEST_EXPECTED_PHRASE` (asserts recognized text contains this phrase)
-
