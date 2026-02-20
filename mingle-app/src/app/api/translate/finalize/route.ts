@@ -4,6 +4,16 @@ import {
   ensureTrackingContext,
   sanitizeNonNegativeInt,
 } from '@/lib/app-analytics'
+import {
+  buildFallbackTranslationsFromCurrentTurnPreviousState,
+  normalizeLang,
+  normalizeTargetLanguages,
+  parseCurrentTurnPreviousState,
+  parseRecentTurns,
+  parseTranslations,
+  type CurrentTurnPreviousState,
+  type RecentTurnContext,
+} from './utils'
 
 export const runtime = 'nodejs'
 
@@ -42,25 +52,12 @@ type TranslationEngineResult = {
   usage?: TranslationUsage
 }
 
-type RecentTurnContext = {
-  sourceLanguage: string
-  sourceText: string
-  translations: Record<string, string>
-  ageMs?: number
-}
-
 type TranslateContext = {
   text: string
   sourceLanguage: string
   targetLanguages: string[]
   recentTurns: RecentTurnContext[]
   currentTurnPreviousState: CurrentTurnPreviousState | null
-}
-
-type CurrentTurnPreviousState = {
-  sourceLanguage: string
-  sourceText: string
-  translations: Record<string, string>
 }
 
 type GeminiUsageMetadata = {
@@ -80,114 +77,6 @@ type GeminiResponseLike = {
 }
 
 const voiceCache = new Map<string, { voiceId: string, expiresAt: number }>()
-
-function normalizeLang(input: string): string {
-  return input.trim().replace('_', '-').toLowerCase().split('-')[0] || ''
-}
-
-function parseTranslations(raw: string): Record<string, string> {
-  const base = raw.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '')
-  let parsed: Record<string, unknown> | null = null
-
-  try {
-    parsed = JSON.parse(base) as Record<string, unknown>
-  } catch {
-    const start = base.indexOf('{')
-    const end = base.lastIndexOf('}')
-    if (start >= 0 && end > start) {
-      const sliced = base.slice(start, end + 1)
-      try {
-        parsed = JSON.parse(sliced) as Record<string, unknown>
-      } catch {
-        parsed = null
-      }
-    }
-  }
-
-  if (!parsed) return {}
-  const output: Record<string, string> = {}
-
-  for (const [key, value] of Object.entries(parsed)) {
-    if (typeof value !== 'string') continue
-    const cleaned = value.replace(/<\/?(?:end|fin)>/gi, '').trim()
-    if (!cleaned) continue
-    output[key] = cleaned
-  }
-  return output
-}
-
-function parseRecentTurns(raw: unknown): RecentTurnContext[] {
-  if (!Array.isArray(raw)) return []
-  const items = raw.slice(-12)
-  const turns: RecentTurnContext[] = []
-
-  for (const item of items) {
-    if (!item || typeof item !== 'object') continue
-    const payload = item as Record<string, unknown>
-    const sourceText = typeof payload.sourceText === 'string'
-      ? payload.sourceText.replace(/<\/?(?:end|fin)>/gi, '').trim()
-      : ''
-    if (!sourceText) continue
-    const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '') || 'unknown'
-
-    const translationsPayload = (
-      typeof payload.translations === 'object'
-      && payload.translations !== null
-    ) ? payload.translations as Record<string, unknown> : {}
-    const translations: Record<string, string> = {}
-    for (const [language, translatedText] of Object.entries(translationsPayload)) {
-      if (typeof translatedText !== 'string') continue
-      const normalizedLanguage = normalizeLang(language)
-      if (!normalizedLanguage) continue
-      if (normalizedLanguage === sourceLanguage) continue
-      const cleaned = translatedText.replace(/<\/?(?:end|fin)>/gi, '').trim()
-      if (!cleaned) continue
-      translations[normalizedLanguage] = cleaned
-    }
-
-    const ageMs = sanitizeNonNegativeInt(payload.ageMs)
-    turns.push({
-      sourceLanguage,
-      sourceText,
-      translations,
-      ...(ageMs !== null ? { ageMs } : {}),
-    })
-  }
-
-  return turns
-}
-
-function parseCurrentTurnPreviousState(raw: unknown): CurrentTurnPreviousState | null {
-  if (!raw || typeof raw !== 'object') return null
-  const payload = raw as Record<string, unknown>
-
-  const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '')
-  const sourceText = typeof payload.sourceText === 'string'
-    ? payload.sourceText.replace(/<\/?(?:end|fin)>/gi, '').trim()
-    : ''
-  if (!sourceLanguage || !sourceText) return null
-
-  const translationsPayload = (
-    typeof payload.translations === 'object'
-    && payload.translations !== null
-  ) ? payload.translations as Record<string, unknown> : {}
-  const translations: Record<string, string> = {}
-  for (const [language, translatedText] of Object.entries(translationsPayload)) {
-    if (typeof translatedText !== 'string') continue
-    const normalizedLanguage = normalizeLang(language)
-    if (!normalizedLanguage) continue
-    if (normalizedLanguage === sourceLanguage) continue
-    const cleaned = translatedText.replace(/<\/?(?:end|fin)>/gi, '').trim()
-    if (!cleaned) continue
-    translations[normalizedLanguage] = cleaned
-  }
-
-  return {
-    sourceLanguage,
-    sourceText,
-    translations,
-  }
-}
 
 function formatRecentTurnsForPrompt(turns: RecentTurnContext[]): string {
   if (turns.length === 0) return 'None'
@@ -261,20 +150,6 @@ function normalizeUsage(raw: {
   if (completionTokens !== null) usage.completionTokens = completionTokens
   if (totalTokens !== null) usage.totalTokens = totalTokens
   return usage
-}
-
-function buildFallbackTranslationsFromCurrentTurnPreviousState(
-  state: CurrentTurnPreviousState | null,
-  targetLanguages: string[],
-): Record<string, string> {
-  if (!state) return {}
-  const output: Record<string, string> = {}
-  for (const language of targetLanguages) {
-    const candidate = state.translations[language]?.trim()
-    if (!candidate) continue
-    output[language] = candidate
-  }
-  return output
 }
 
 function buildGeminiResponseSchema(targetLanguages: string[]): ResponseSchema {
@@ -533,14 +408,7 @@ export async function POST(request: NextRequest) {
     return response
   }
 
-  const targetLanguagesSet = new Set<string>()
-  for (const item of targetLanguagesRaw) {
-    if (typeof item !== 'string') continue
-    const normalized = normalizeLang(item)
-    if (!normalized || normalized === sourceLanguage) continue
-    targetLanguagesSet.add(normalized)
-  }
-  const targetLanguages = Array.from(targetLanguagesSet)
+  const targetLanguages = normalizeTargetLanguages(targetLanguagesRaw, sourceLanguage)
 
   if (!text) {
     const response = NextResponse.json({ error: 'text is required' }, { status: 400 })
