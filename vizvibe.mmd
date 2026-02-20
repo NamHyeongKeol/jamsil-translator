@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_android_webview_cleartext_and_load_error_recovery
+    %% @lastActive: mingle_app_android_webview_locale_fallback_and_http_error_diagnostics
 
     %% === START ===
     %% @project_start [start, closed]
@@ -574,6 +574,9 @@ flowchart TD
     %% @mingle_app_android_webview_cleartext_and_load_error_recovery [ai-task, closed, 2026-02-20, ai]
     mingle_app_android_webview_cleartext_and_load_error_recovery("Android WebView 로드 복구 고정<br/><sub>release 매니페스트에서 cleartext를 허용해<br/>로컬 http 웹뷰 진입 차단 가능성을 제거하고<br/>RN App.tsx에 성공 시 에러 상태 초기화와<br/>실패 코드/URL 표시를 추가해 진단성을 강화</sub>")
 
+    %% @mingle_app_android_webview_locale_fallback_and_http_error_diagnostics [ai-task, closed, 2026-02-20, ai]
+    mingle_app_android_webview_locale_fallback_and_http_error_diagnostics("Android WebView 진단/폴백 강화<br/><sub>onHttpError를 추가해 상태코드/URL을 노출하고<br/>오버레이에 현재 active URL을 직접 표시하도록 보강<br/>Android에서 /{locale} 첫 로드 실패 시<br/>root 경로(/?nativeStt=1)로 1회 자동 폴백 적용</sub>")
+
     %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
     mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
 
@@ -812,6 +815,7 @@ flowchart TD
     mingle_app_android_release_hermes_path_fix --> mingle_app_android_env_stt_and_branding_parity
     mingle_app_android_env_stt_and_branding_parity --> mingle_app_android_webview_cleartext_and_load_error_recovery
     mingle_app_rn_env_only_server_url_config --> mingle_app_android_webview_cleartext_and_load_error_recovery
+    mingle_app_android_webview_cleartext_and_load_error_recovery --> mingle_app_android_webview_locale_fallback_and_http_error_diagnostics
     mingle_app_audio_session_policy_polish_milestone6 --> mingle_app_audio_session_route_metrics_milestone7
     mingle_app_audio_session_route_metrics_milestone7 --> demo_limit_server_db_migration
     demo_limit_server_db_migration --> chat_invite_feature
@@ -868,10 +872,11 @@ flowchart TD
     mingle_app_usage_truth_policy -.-> ultimate_goal
     mingle_app_rn_env_only_server_url_config -.-> ultimate_goal
     mingle_app_android_webview_cleartext_and_load_error_recovery -.-> ultimate_goal
+    mingle_app_android_webview_locale_fallback_and_http_error_diagnostics -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_android_webview_cleartext_and_load_error_recovery
+        mingle_app_android_webview_locale_fallback_and_http_error_diagnostics
     end
 
     %% === STYLES ===
@@ -1118,7 +1123,8 @@ flowchart TD
     style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_android_webview_cleartext_and_load_error_recovery fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_android_webview_cleartext_and_load_error_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_android_webview_locale_fallback_and_http_error_diagnostics fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

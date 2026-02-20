@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Platform,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -179,15 +180,27 @@ function App(): React.JSX.Element {
   const isPageReadyRef = useRef(false);
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
+  const didFallbackToRootRef = useRef(false);
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
-  const webUrl = useMemo(() => {
+  const localeWebUrl = useMemo(() => {
     if (!WEB_APP_BASE_URL) return 'about:blank';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1${debugParams}`;
   }, [locale]);
+  const rootWebUrl = useMemo(() => {
+    if (!WEB_APP_BASE_URL) return 'about:blank';
+    const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
+    return `${WEB_APP_BASE_URL}/?nativeStt=1${debugParams}`;
+  }, []);
+  const [activeWebUrl, setActiveWebUrl] = useState(localeWebUrl);
+
+  useEffect(() => {
+    didFallbackToRootRef.current = false;
+    setActiveWebUrl(localeWebUrl);
+  }, [localeWebUrl]);
 
   const emitToWeb = useCallback((payload: NativeSttEvent) => {
     if (!isPageReadyRef.current) return;
@@ -422,13 +435,36 @@ function App(): React.JSX.Element {
   const handleLoadSuccess = useCallback((_event: WebViewNavigationEvent) => {
     if (REQUIRED_CONFIG_ERROR) return;
     setLoadError(null);
+    didFallbackToRootRef.current = false;
   }, []);
 
   const handleLoadError = useCallback((event: WebViewErrorEvent) => {
     const { code, description, url } = event.nativeEvent;
+
+    if (
+      Platform.OS === 'android'
+      && !didFallbackToRootRef.current
+      && activeWebUrl === localeWebUrl
+      && rootWebUrl !== localeWebUrl
+    ) {
+      didFallbackToRootRef.current = true;
+      setLoadError(`primary_url_failed(code=${code ?? 'unknown'}), fallback_to_root`);
+      setActiveWebUrl(rootWebUrl);
+      return;
+    }
+
     const details: string[] = [description || 'webview_load_failed'];
     if (typeof code === 'number') details.push(`code=${code}`);
     if (typeof url === 'string' && url.length > 0) details.push(url);
+    setLoadError(details.join(' | '));
+  }, [activeWebUrl, localeWebUrl, rootWebUrl]);
+
+  const handleHttpError = useCallback((event: { nativeEvent: { statusCode?: number; description?: string; url?: string } }) => {
+    const { statusCode, description, url } = event.nativeEvent;
+    const details: string[] = ['webview_http_error'];
+    if (typeof statusCode === 'number') details.push(`status=${statusCode}`);
+    if (description) details.push(description);
+    if (url) details.push(url);
     setLoadError(details.join(' | '));
   }, []);
 
@@ -437,7 +473,7 @@ function App(): React.JSX.Element {
       <StatusBar barStyle="dark-content" />
       <WebView
         ref={webViewRef}
-        source={{ uri: webUrl }}
+        source={{ uri: activeWebUrl }}
         originWhitelist={['*']}
         javaScriptEnabled
         domStorageEnabled
@@ -448,6 +484,7 @@ function App(): React.JSX.Element {
         onMessage={handleWebMessage}
         onLoad={handleLoadSuccess}
         onLoadEnd={handleLoadEnd}
+        onHttpError={handleHttpError}
         onError={handleLoadError}
         style={styles.webView}
       />
@@ -455,6 +492,7 @@ function App(): React.JSX.Element {
         <View style={styles.errorOverlay}>
           <Text style={styles.errorTitle}>WebView Load Failed</Text>
           <Text style={styles.errorDescription}>{loadError}</Text>
+          <Text style={styles.errorMeta}>url={activeWebUrl}</Text>
         </View>
       ) : null}
     </SafeAreaView>
@@ -490,6 +528,11 @@ const styles = StyleSheet.create({
     color: '#d1d5db',
     fontSize: 12,
     lineHeight: 16,
+  },
+  errorMeta: {
+    color: '#9ca3af',
+    fontSize: 11,
+    lineHeight: 14,
   },
 });
 
