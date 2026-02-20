@@ -432,6 +432,7 @@ export default function useRealtimeSTT({
   const partialTranslateControllerRef = useRef<AbortController | null>(null)
   const sessionKeyRef = useRef('')
   const turnStartedAtRef = useRef<number | null>(null)
+  const sawNonFinalSinceLastFinalRef = useRef(false)
   const hasActiveSessionRef = useRef(false)
   const useNativeSttRef = useRef(false)
   const nativeStopRequestedRef = useRef(false)
@@ -915,9 +916,12 @@ export default function useRealtimeSTT({
     text: string,
     lang: string,
     now: number,
-    options?: { requireNoTurnStart?: boolean },
+    options?: { requireNoTurnStart?: boolean, requireNoNonFinalSinceLastFinal?: boolean },
   ): boolean => {
     if (options?.requireNoTurnStart && turnStartedAtRef.current !== null) {
+      return false
+    }
+    if (options?.requireNoNonFinalSinceLastFinal && sawNonFinalSinceLastFinalRef.current) {
       return false
     }
     const lastUtterance = utterancesRef.current[utterancesRef.current.length - 1]
@@ -935,7 +939,10 @@ export default function useRealtimeSTT({
     if (!text) return null
 
     const now = Date.now()
-    if (isLikelyRecentDuplicateFinal(text, lang, now, { requireNoTurnStart: true })) {
+    if (isLikelyRecentDuplicateFinal(text, lang, now, {
+      requireNoTurnStart: true,
+      requireNoNonFinalSinceLastFinal: true,
+    })) {
       clearPartialBuffers()
       pendingLocalFinalizeRef.current = null
       return null
@@ -985,6 +992,7 @@ export default function useRealtimeSTT({
     partialTranscriptRef.current = ''
     setPartialLang(null)
     partialLangRef.current = null
+    sawNonFinalSinceLastFinalRef.current = false
     pendingLocalFinalizeRef.current = { utteranceId, text, lang, expiresAt: now + 15000 }
     return { utteranceId, text, lang, currentTurnPreviousState }
   }, [clearPartialBuffers, isLikelyRecentDuplicateFinal, languages])
@@ -1314,7 +1322,7 @@ export default function useRealtimeSTT({
         }
         stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
 
-        if (!hadTurnStart && isLikelyRecentDuplicateFinal(text, lang, now)) {
+        if (isLikelyRecentDuplicateFinal(text, lang, now, { requireNoNonFinalSinceLastFinal: true })) {
           clearPartialBuffers()
           pendingLocalFinalizeRef.current = null
           return
@@ -1341,6 +1349,7 @@ export default function useRealtimeSTT({
             }
           }))
           pendingLocalFinalizeRef.current = null
+          sawNonFinalSinceLastFinalRef.current = false
           clearPartialBuffers()
           return
         }
@@ -1368,6 +1377,7 @@ export default function useRealtimeSTT({
           createdAtMs: now,
         }
         setUtterances(u => [...u, newUtterance])
+        sawNonFinalSinceLastFinalRef.current = false
         clearPartialBuffers()
         pendingLocalFinalizeRef.current = null
 
@@ -1396,6 +1406,9 @@ export default function useRealtimeSTT({
         partialTranscriptRef.current = text
         setPartialLang(lang)
         partialLangRef.current = lang
+        if (text) {
+          sawNonFinalSinceLastFinalRef.current = true
+        }
       }
     }
   }, [clearPartialBuffers, finalizeTurnWithTranslation, isLikelyRecentDuplicateFinal, languages, logClientEvent, normalizedUsageLimitSec, startAudioProcessing, stopRecordingGracefully])
@@ -1427,6 +1440,7 @@ export default function useRealtimeSTT({
       stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
       pendingLocalFinalizeRef.current = null
       turnStartedAtRef.current = null
+      sawNonFinalSinceLastFinalRef.current = false
       hasActiveSessionRef.current = false
       setPartialTranscript('')
       setPartialTranslations({})
