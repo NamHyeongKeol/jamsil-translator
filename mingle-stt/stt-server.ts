@@ -1,7 +1,16 @@
 import { createServer } from 'http';
+import { existsSync } from 'fs';
+import { resolve } from 'path';
 import { WebSocket, WebSocketServer } from 'ws';
 import fetch from 'node-fetch';
-import 'dotenv/config';
+import { config as loadDotenv } from 'dotenv';
+
+const envCandidates = ['.env.local', '.env'];
+for (const filename of envCandidates) {
+    const fullPath = resolve(process.cwd(), filename);
+    if (!existsSync(fullPath)) continue;
+    loadDotenv({ path: fullPath });
+}
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const GLADIA_API_URL = 'https://api.gladia.io/v2/live';
