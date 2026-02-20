@@ -854,4 +854,6 @@ wss.on('connection', (clientWs) => {
     };
 });
 
-server.listen(PORT, '0.0.0.0');
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[stt-server] listening on 0.0.0.0:${PORT}`);
+});
