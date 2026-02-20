@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_stt_endpoint_marker_tail_split_fix
+    %% @lastActive: mingle_stt_manual_finalize_burst_guard_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -568,6 +568,9 @@ flowchart TD
     %% @mingle_stt_endpoint_marker_tail_split_fix [ai-task, closed, 2026-02-20, ai]
     mingle_stt_endpoint_marker_tail_split_fix("endpoint 마커 이후 tail 분리 보정<br/><sub>동일 Soniox payload에서 <fin>/<end> 뒤에 붙는<br/>non-final tail이 직전 final 턴에 합쳐지던 문제를<br/>마커 기준으로 final/carry로 분리해 final 오염을 막고<br/>carry는 다음 partial로 유지되도록 서버 경계를 보정</sub>")
 
+    %% @mingle_stt_manual_finalize_burst_guard_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_stt_manual_finalize_burst_guard_fix("Soniox finalize 중복호출 가드 강화<br/><sub>무음 구간 finalize 요청이 소음 피크로 반복돼<br/><fin> 단독 final 버블이 연속 생성되던 경로를 추적해<br/>수동 finalize 재요청에 cooldown/진행신호 가드를 추가하고<br/>marker-only endpoint final은 무시하도록 보정</sub>")
+
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
 
@@ -836,6 +839,7 @@ flowchart TD
     mingle_app_raw_fin_token_trace_overlay --> mingle_app_end_fin_marker_sanitize_full_disable
     mingle_app_end_fin_marker_sanitize_full_disable --> mingle_stt_env_local_priority_load
     mingle_stt_env_local_priority_load --> mingle_stt_endpoint_marker_tail_split_fix
+    mingle_stt_endpoint_marker_tail_split_fix --> mingle_stt_manual_finalize_burst_guard_fix
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -906,11 +910,12 @@ flowchart TD
     mingle_app_end_fin_marker_sanitize_full_disable -.-> ultimate_goal
     mingle_stt_env_local_priority_load -.-> ultimate_goal
     mingle_stt_endpoint_marker_tail_split_fix -.-> ultimate_goal
+    mingle_stt_manual_finalize_burst_guard_fix -.-> ultimate_goal
     mingle_app_vercel_main_branch_only_deploy_guard -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_stt_endpoint_marker_tail_split_fix
+        mingle_stt_manual_finalize_burst_guard_fix
     end
 
     %% === STYLES ===
@@ -1165,7 +1170,8 @@ flowchart TD
     style mingle_app_raw_fin_token_trace_overlay fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_end_fin_marker_sanitize_full_disable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_env_local_priority_load fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_stt_endpoint_marker_tail_split_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_stt_endpoint_marker_tail_split_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_manual_finalize_burst_guard_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
