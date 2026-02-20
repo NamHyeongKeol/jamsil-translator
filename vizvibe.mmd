@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_mobile_safari_stt_no_log_rootcause
+    %% @lastActive: mingle_app_ngrok_dual_tunnel_overlay_setup
 
     %% === START ===
     %% @project_start [start, closed]
@@ -541,6 +541,9 @@ flowchart TD
     %% @mingle_app_mobile_safari_stt_no_log_rootcause [ai-task, closed, 2026-02-20, ai]
     mingle_app_mobile_safari_stt_no_log_rootcause("Safari STT 무로그 원인 진단 및 가드<br/><sub>iOS Safari에서 http://192.168 대역 접근 시<br/>보안 컨텍스트 불충족으로 getUserMedia가<br/>WS 연결 전 단계에서 실패해 서버 로그가<br/>비는 경로를 확인하고 콘솔 에러 가드를 추가</sub>")
 
+    %% @mingle_app_ngrok_dual_tunnel_overlay_setup [ai-task, closed, 2026-02-20, ai]
+    mingle_app_ngrok_dual_tunnel_overlay_setup("ngrok 웹+STT 듀얼 터널 오버레이 구성<br/><sub>샌드박스 제약으로 전역 ngrok.yml은<br/>직접 수정하지 않고 워크트리 로컬 설정 파일에<br/>web(3000)/stt(3001) 터널을 정의해<br/>iPhone HTTPS 테스트 경로를 즉시 준비</sub>")
+
     %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
     mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
 
@@ -800,6 +803,7 @@ flowchart TD
     mingle_marker_sanitization_restore_after_debug --> mingle_app_final_duplicate_guard_experiment
     mingle_app_final_duplicate_guard_experiment --> mingle_app_final_duplicate_guard_nonfinal_aware_refine
     mingle_app_final_duplicate_guard_nonfinal_aware_refine --> mingle_app_mobile_safari_stt_no_log_rootcause
+    mingle_app_mobile_safari_stt_no_log_rootcause --> mingle_app_ngrok_dual_tunnel_overlay_setup
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -842,6 +846,7 @@ flowchart TD
     mingle_app_final_duplicate_guard_experiment -.-> ultimate_goal
     mingle_app_final_duplicate_guard_nonfinal_aware_refine -.-> ultimate_goal
     mingle_app_mobile_safari_stt_no_log_rootcause -.-> ultimate_goal
+    mingle_app_ngrok_dual_tunnel_overlay_setup -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -865,7 +870,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_mobile_safari_stt_no_log_rootcause
+        mingle_app_ngrok_dual_tunnel_overlay_setup
     end
 
     %% === STYLES ===
@@ -1111,7 +1116,8 @@ flowchart TD
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_final_duplicate_guard_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_final_duplicate_guard_nonfinal_aware_refine fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_mobile_safari_stt_no_log_rootcause fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_mobile_safari_stt_no_log_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ngrok_dual_tunnel_overlay_setup fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
