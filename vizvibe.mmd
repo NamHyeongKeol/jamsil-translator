@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_android_stt_languages_payload_compat_fix
+    %% @lastActive: mingle_app_android_aec_voice_communication_parity
 
     %% === START ===
     %% @project_start [start, closed]
@@ -589,6 +589,9 @@ flowchart TD
     %% @mingle_app_android_stt_languages_payload_compat_fix [ai-task, closed, 2026-02-20, ai]
     mingle_app_android_stt_languages_payload_compat_fix("Android STT languages 페이로드 호환 보강<br/><sub>NativeSTTModule start config의 languages를<br/>JSON 배열로 강제 직렬화해 서버 타입 불일치를 차단하고<br/>mingle-stt는 배열/문자열/객체 입력을 모두 정규화하도록<br/>config 파서를 확장해 join 크래시를 방지</sub>")
 
+    %% @mingle_app_android_aec_voice_communication_parity [ai-task, closed, 2026-02-20, ai]
+    mingle_app_android_aec_voice_communication_parity("Android AEC 동작 패리티 보강<br/><sub>UI/버튼은 유지한 채 네이티브 내부에서만<br/>AEC ON 시 VOICE_COMMUNICATION 소스와<br/>MODE_IN_COMMUNICATION을 적용하고 OFF 시 원복해<br/>iOS setAec 토글 의미와 실행 흐름을 정렬</sub>")
+
     %% @mingle_stt_server_crash_guard_for_android_stream [ai-task, closed, 2026-02-20, ai]
     mingle_stt_server_crash_guard_for_android_stream("STT 서버 프로세스 다운가드 적용<br/><sub>Android 녹음 시작 직후 서버 종료 재현 이슈 대응으로<br/>mingle-stt 송신 경로를 safe send 래퍼로 통일하고<br/>config payload 타입/값을 정규화해 예외 입력을 차단,<br/>uncaught/unhandled 런타임 훅으로 비정상 종료를 방어</sub>")
 
@@ -835,6 +838,7 @@ flowchart TD
     mingle_app_rn_dotenv_absolute_path_fix --> mingle_app_rn_env_runtime_diagnostics_overlay
     mingle_app_rn_env_runtime_diagnostics_overlay --> mingle_app_rn_android_diag_label_and_env_quote_sanitize
     mingle_app_rn_android_diag_label_and_env_quote_sanitize --> mingle_app_android_stt_languages_payload_compat_fix
+    mingle_app_android_stt_languages_payload_compat_fix --> mingle_app_android_aec_voice_communication_parity
     mingle_app_rn_env_runtime_diagnostics_overlay --> mingle_stt_server_crash_guard_for_android_stream
     mingle_app_audio_session_policy_polish_milestone6 --> mingle_app_audio_session_route_metrics_milestone7
     mingle_app_audio_session_route_metrics_milestone7 --> demo_limit_server_db_migration
@@ -897,11 +901,12 @@ flowchart TD
     mingle_app_rn_env_runtime_diagnostics_overlay -.-> ultimate_goal
     mingle_app_rn_android_diag_label_and_env_quote_sanitize -.-> ultimate_goal
     mingle_app_android_stt_languages_payload_compat_fix -.-> ultimate_goal
+    mingle_app_android_aec_voice_communication_parity -.-> ultimate_goal
     mingle_stt_server_crash_guard_for_android_stream -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_android_stt_languages_payload_compat_fix
+        mingle_app_android_aec_voice_communication_parity
     end
 
     %% === STYLES ===
@@ -1154,7 +1159,8 @@ flowchart TD
     style mingle_app_rn_dotenv_absolute_path_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_runtime_diagnostics_overlay fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_android_diag_label_and_env_quote_sanitize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_android_stt_languages_payload_compat_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_android_stt_languages_payload_compat_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_android_aec_voice_communication_parity fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
