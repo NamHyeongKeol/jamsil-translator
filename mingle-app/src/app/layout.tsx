@@ -21,8 +21,7 @@ const metadataBase =
   toMetadataBaseUrl(process.env.NEXT_PUBLIC_SITE_URL) ??
   toMetadataBaseUrl(process.env.NEXTAUTH_URL) ??
   toMetadataBaseUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
-  toMetadataBaseUrl(process.env.VERCEL_URL) ??
-  new URL("https://mingle-app.vercel.app");
+  toMetadataBaseUrl(process.env.VERCEL_URL);
 
 export const metadata: Metadata = {
   metadataBase,
