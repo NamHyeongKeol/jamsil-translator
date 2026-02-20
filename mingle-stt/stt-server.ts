@@ -578,6 +578,21 @@ wss.on('connection', (clientWs) => {
             let detectedLang = config.languages[0] || 'en';
             sonioxStopRequested = false;
 
+            const splitTurnAtFirstEndpointMarker = (text: string): { finalText: string; carryText: string } => {
+                const markerMatch = /<\/?(?:end|fin)>/i.exec(text);
+                if (!markerMatch) {
+                    return {
+                        finalText: text.trim(),
+                        carryText: '',
+                    };
+                }
+                const markerEndIndex = markerMatch.index + markerMatch[0].length;
+                return {
+                    finalText: text.slice(0, markerEndIndex).trim(),
+                    carryText: text.slice(markerEndIndex).trim(),
+                };
+            };
+
             const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
                 // Temporary debug mode: keep <end>/<fin> markers in emitted transcript text.
                 const cleanedText = text.trim();
@@ -705,7 +720,29 @@ wss.on('connection', (clientWs) => {
                     // Soniox endpoint(<end>/<fin>) 토큰이 포함된 경우에만 완료 처리
                     if (hasEndpointToken) {
                         const mergedAtEndpoint = `${finalizedText}${latestNonFinalText}`.trim();
-                        emitFinalTurn(mergedAtEndpoint, detectedLang);
+                        const { finalText, carryText } = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
+                        emitFinalTurn(finalText, detectedLang);
+
+                        // Keep trailing text after endpoint marker as next-turn partial
+                        // so it does not contaminate the just-finished final turn.
+                        if (carryText) {
+                            latestNonFinalText = carryText;
+                            sonioxHasPendingTranscript = true;
+                            sonioxSawSpeechInCurrentSegment = true;
+
+                            if (clientWs.readyState === WebSocket.OPEN) {
+                                clientWs.send(JSON.stringify({
+                                    type: 'transcript',
+                                    data: {
+                                        is_final: false,
+                                        utterance: {
+                                            text: carryText,
+                                            language: detectedLang,
+                                        },
+                                    },
+                                }));
+                            }
+                        }
                     }
                 } catch (parseError) {
                     console.error('Error parsing Soniox message:', parseError);
