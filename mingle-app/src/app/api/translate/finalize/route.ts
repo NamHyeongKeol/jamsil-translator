@@ -85,6 +85,10 @@ function normalizeLang(input: string): string {
   return input.trim().replace('_', '-').toLowerCase().split('-')[0] || ''
 }
 
+function stripEndpointMarkers(text: string): string {
+  return text.replace(/<\/?(?:end|fin)>/giu, '')
+}
+
 function parseTranslations(raw: string): Record<string, string> {
   const base = raw.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '')
   let parsed: Record<string, unknown> | null = null
@@ -109,7 +113,7 @@ function parseTranslations(raw: string): Record<string, string> {
 
   for (const [key, value] of Object.entries(parsed)) {
     if (typeof value !== 'string') continue
-    const cleaned = value.trim()
+    const cleaned = stripEndpointMarkers(value).trim()
     if (!cleaned) continue
     output[key] = cleaned
   }
@@ -125,7 +129,7 @@ function parseRecentTurns(raw: unknown): RecentTurnContext[] {
     if (!item || typeof item !== 'object') continue
     const payload = item as Record<string, unknown>
     const sourceText = typeof payload.sourceText === 'string'
-      ? payload.sourceText.trim()
+      ? stripEndpointMarkers(payload.sourceText).trim()
       : ''
     if (!sourceText) continue
     const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '') || 'unknown'
@@ -140,7 +144,7 @@ function parseRecentTurns(raw: unknown): RecentTurnContext[] {
       const normalizedLanguage = normalizeLang(language)
       if (!normalizedLanguage) continue
       if (normalizedLanguage === sourceLanguage) continue
-      const cleaned = translatedText.trim()
+      const cleaned = stripEndpointMarkers(translatedText).trim()
       if (!cleaned) continue
       translations[normalizedLanguage] = cleaned
     }
@@ -163,7 +167,7 @@ function parseCurrentTurnPreviousState(raw: unknown): CurrentTurnPreviousState |
 
   const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '')
   const sourceText = typeof payload.sourceText === 'string'
-    ? payload.sourceText.trim()
+    ? stripEndpointMarkers(payload.sourceText).trim()
     : ''
   if (!sourceLanguage || !sourceText) return null
 
@@ -177,7 +181,7 @@ function parseCurrentTurnPreviousState(raw: unknown): CurrentTurnPreviousState |
     const normalizedLanguage = normalizeLang(language)
     if (!normalizedLanguage) continue
     if (normalizedLanguage === sourceLanguage) continue
-    const cleaned = translatedText.trim()
+    const cleaned = stripEndpointMarkers(translatedText).trim()
     if (!cleaned) continue
     translations[normalizedLanguage] = cleaned
   }

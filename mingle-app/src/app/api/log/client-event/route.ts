@@ -31,6 +31,10 @@ function normalizeLang(input: unknown): string {
   return normalized || 'unknown'
 }
 
+function stripEndpointMarkers(text: string): string {
+  return text.replace(/<\/?(?:end|fin)>/giu, '')
+}
+
 function sanitizeTranslations(raw: unknown): Record<string, string> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
 
@@ -40,8 +44,7 @@ function sanitizeTranslations(raw: unknown): Record<string, string> {
     const language = normalizeLang(rawLanguage)
     if (!language || language === 'unknown') continue
 
-    // Temporary debug mode: keep <end>/<fin> marker visibility in logs.
-    const text = rawText.trim().slice(0, 20000)
+    const text = stripEndpointMarkers(rawText).trim().slice(0, 20000)
     if (!text) continue
     output[language] = text
   }
@@ -71,7 +74,8 @@ export async function POST(request: NextRequest) {
   const sessionKeyHint = sanitizeText(body.sessionKey, 128)
   const clientMessageId = sanitizeText(body.clientMessageId, 128)
   const sourceLanguage = normalizeLang(body.sourceLanguage)
-  const sourceText = sanitizeText(body.sourceText, 20000)
+  const sourceTextRaw = sanitizeText(body.sourceText, 20000)
+  const sourceText = sourceTextRaw ? stripEndpointMarkers(sourceTextRaw).trim() : null
   const sttDurationMs = sanitizeNonNegativeInt(body.sttDurationMs)
   const totalDurationMs = sanitizeNonNegativeInt(body.totalDurationMs)
   const provider = sanitizeText(body.provider, 64)

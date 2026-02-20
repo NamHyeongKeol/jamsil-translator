@@ -728,6 +728,7 @@ wss.on('connection', (clientWs) => {
 
                     const previousFinalizedText = finalizedText;
                     const previousNonFinalText = latestNonFinalText;
+                    const hadPendingTextBeforeFrame = composeTurnText(previousFinalizedText, previousNonFinalText).length > 0;
                     let newFinalText = '';
                     let rebuiltNonFinalText = '';
                     let maxSeenFinalEndMs = lastFinalizedEndMs;
@@ -772,7 +773,10 @@ wss.on('connection', (clientWs) => {
                         }
                     }
 
-                    if (endpointMarkerText && hasProgressTokenBeyondWatermark) {
+                    const hasAnyPendingTextForEndpoint = hadPendingTextBeforeFrame
+                        || newFinalText.trim().length > 0
+                        || rebuiltNonFinalText.trim().length > 0;
+                    if (endpointMarkerText && (hasProgressTokenBeyondWatermark || hasAnyPendingTextForEndpoint)) {
                         newFinalText += endpointMarkerText;
                     }
 
@@ -825,7 +829,8 @@ wss.on('connection', (clientWs) => {
                     // 발화 완료 판단:
                     // Soniox endpoint(<end>/<fin>) 토큰이 포함된 경우에만 완료 처리
                     const mergedHasEndpointMarker = /<\/?(?:end|fin)>/i.test(mergedSnapshot);
-                    if (hasEndpointToken && (hasProgressTokenBeyondWatermark || mergedHasEndpointMarker)) {
+                    const hasPendingTextSnapshot = stripEndpointMarkers(mergedSnapshot).trim().length > 0;
+                    if (hasEndpointToken && (hasProgressTokenBeyondWatermark || mergedHasEndpointMarker || hasPendingTextSnapshot)) {
                         const mergedAtEndpoint = composeTurnText(finalizedText, latestNonFinalText);
                         const { finalText, carryText } = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
                         let finalTextToEmit = finalText;
