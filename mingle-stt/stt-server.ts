@@ -585,6 +585,7 @@ wss.on('connection', (clientWs) => {
             // 토큰 누적 상태 (Soniox는 토큰 단위로 반환)
             let finalizedText = '';
             let latestNonFinalText = '';
+            let latestNonFinalIsProvisionalCarry = false;
             let detectedLang = config.languages[0] || 'en';
             sonioxStopRequested = false;
             const stripEndpointMarkers = (text: string): string => text.replace(/<\/?(?:end|fin)>/ig, '');
@@ -601,7 +602,6 @@ wss.on('connection', (clientWs) => {
                 // STT snapshots often repeat prefix text across final/non-final boundaries.
                 // Merge with overlap/prefix rules so stale partial text does not duplicate.
                 if (nonFinal.startsWith(final)) return nonFinal;
-                if (final.startsWith(nonFinal)) return final;
 
                 const maxOverlap = Math.min(final.length, nonFinal.length);
                 for (let overlap = maxOverlap; overlap > 0; overlap--) {
@@ -637,6 +637,7 @@ wss.on('connection', (clientWs) => {
                 // Clear turn accumulators immediately.
                 finalizedText = '';
                 latestNonFinalText = '';
+                latestNonFinalIsProvisionalCarry = false;
                 resetSonioxSegmentState();
 
                 if (clientWs.readyState === WebSocket.OPEN) {
@@ -659,6 +660,11 @@ wss.on('connection', (clientWs) => {
             };
 
             finalizePendingTurnFromProvider = async () => {
+                // Carry text right after endpoint marker can be a stale prefix from the same turn.
+                // Keep it visible as partial, but avoid auto-finalizing until new progress arrives.
+                if (latestNonFinalIsProvisionalCarry && !finalizedText.trim()) {
+                    return null;
+                }
                 const merged = mergeFinalAndNonFinalText(finalizedText, latestNonFinalText);
                 return emitFinalTurn(merged, detectedLang) ?? null;
             };
@@ -731,9 +737,20 @@ wss.on('connection', (clientWs) => {
 
                     const previousMerged = mergeFinalAndNonFinalText(finalizedText, latestNonFinalText);
                     finalizedText += newFinalText;
+                    if (newFinalText.trim()) {
+                        latestNonFinalIsProvisionalCarry = false;
+                    }
                     const hasEndpointToken = /<\/?(?:end|fin)>/i.test(newFinalText) || /<\/?(?:end|fin)>/i.test(nonFinalText);
 
                     if (nonFinalText) {
+                        if (latestNonFinalIsProvisionalCarry) {
+                            const prevCarry = latestNonFinalText.trim();
+                            const incoming = nonFinalText.trim();
+                            const hasProgress = incoming.length > prevCarry.length || !incoming.startsWith(prevCarry);
+                            if (hasProgress) {
+                                latestNonFinalIsProvisionalCarry = false;
+                            }
+                        }
                         latestNonFinalText = nonFinalText;
                         // 부분 결과: 확정된 텍스트 + 미확정 텍스트
                         const fullText = mergeFinalAndNonFinalText(finalizedText, nonFinalText);
@@ -751,7 +768,7 @@ wss.on('connection', (clientWs) => {
                     }
 
                     const mergedSnapshot = mergeFinalAndNonFinalText(finalizedText, latestNonFinalText);
-                    sonioxHasPendingTranscript = mergedSnapshot.length > 0;
+                    sonioxHasPendingTranscript = mergedSnapshot.length > 0 && !(latestNonFinalIsProvisionalCarry && !finalizedText.trim());
                     if (mergedSnapshot && mergedSnapshot !== previousMerged) {
                         // Allow another manual finalize only when transcript actually progressed.
                         sonioxManualFinalizeSent = false;
@@ -778,6 +795,7 @@ wss.on('connection', (clientWs) => {
                             // Ignore marker-only finals to avoid <fin>-only bubble floods.
                             finalizedText = '';
                             latestNonFinalText = '';
+                            latestNonFinalIsProvisionalCarry = false;
                             resetSonioxSegmentState();
                         }
 
@@ -785,10 +803,11 @@ wss.on('connection', (clientWs) => {
                         // so it does not contaminate the just-finished final turn.
                         if (carryTextToEmit) {
                             latestNonFinalText = carryTextToEmit;
-                            sonioxHasPendingTranscript = true;
+                            latestNonFinalIsProvisionalCarry = true;
+                            sonioxHasPendingTranscript = false;
                             sonioxSawSpeechInCurrentSegment = true;
                             sonioxTrailingSilenceMs = 0;
-                            sonioxManualFinalizeSent = false;
+                            sonioxManualFinalizeSent = true;
 
                             if (clientWs.readyState === WebSocket.OPEN) {
                                 clientWs.send(JSON.stringify({
