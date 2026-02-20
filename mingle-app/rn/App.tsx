@@ -22,29 +22,88 @@ import {
   stopNativeTts,
 } from './src/nativeTts';
 
-const WEB_APP_BASE_URL = 'https://mingle-app-xi.vercel.app';
-const DEFAULT_WS_URL = 'wss://mingle.up.railway.app';
+type RuntimeEnvMap = Record<string, string | undefined>;
+
+function readRuntimeEnvValue(keys: string[]): string {
+  const env = (globalThis as { process?: { env?: RuntimeEnvMap } }).process?.env;
+  if (!env) return '';
+
+  for (const key of keys) {
+    const value = env[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return '';
+}
+
+function resolveConfiguredUrl(
+  keys: string[],
+  allowedProtocols: string[],
+  options?: { trimTrailingSlash?: boolean },
+): string {
+  const raw = readRuntimeEnvValue(keys);
+  if (!raw) return '';
+
+  try {
+    const parsed = new URL(raw);
+    if (!allowedProtocols.includes(parsed.protocol)) return '';
+    if (options?.trimTrailingSlash) {
+      return raw.replace(/\/+$/, '');
+    }
+    return raw;
+  } catch {
+    return '';
+  }
+}
+
+const WEB_APP_BASE_URL = resolveConfiguredUrl(
+  ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
+  ['http:', 'https:'],
+  { trimTrailingSlash: true },
+);
+const DEFAULT_WS_URL = resolveConfiguredUrl(
+  ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
+  ['ws:', 'wss:'],
+);
+
+const missingRuntimeConfig: string[] = [];
+if (!WEB_APP_BASE_URL) {
+  missingRuntimeConfig.push('RN_WEB_APP_BASE_URL (or NEXT_PUBLIC_SITE_URL)');
+}
+if (!DEFAULT_WS_URL) {
+  missingRuntimeConfig.push('RN_DEFAULT_WS_URL (or NEXT_PUBLIC_WS_URL)');
+}
+const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
+  ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}`
+  : null;
+
 const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
 const SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
 
+type NativeSttStartPayload = {
+  wsUrl?: string;
+  languages?: string[];
+  sttModel?: string;
+  langHintsStrict?: boolean;
+  aecEnabled?: boolean;
+};
+
+type NativeSttStopPayload = {
+  pendingText?: string;
+  pendingLanguage?: string;
+};
+
 type NativeSttCommand =
   | {
       type: 'native_stt_start';
-      payload?: {
-        wsUrl?: string;
-        languages?: string[];
-        sttModel?: string;
-        langHintsStrict?: boolean;
-        aecEnabled?: boolean;
-      };
+      payload?: NativeSttStartPayload;
     }
   | {
       type: 'native_stt_stop';
-      payload?: {
-        pendingText?: string;
-        pendingLanguage?: string;
-      };
+      payload?: NativeSttStopPayload;
     };
 
 type NativeTtsCommand =
@@ -91,12 +150,13 @@ function App(): React.JSX.Element {
   const webViewRef = useRef<WebView>(null);
   const isPageReadyRef = useRef(false);
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
+    if (!WEB_APP_BASE_URL) return 'about:blank';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1${debugParams}`;
   }, [locale]);
@@ -144,14 +204,20 @@ function App(): React.JSX.Element {
     return { utteranceId, playbackId };
   }, []);
 
-  const handleNativeStart = useCallback(async (payload?: NativeSttCommand['payload']) => {
+  const handleNativeStart = useCallback(async (payload?: NativeSttStartPayload) => {
     if (!nativeAvailable) {
       emitToWeb({ type: 'error', message: 'native_stt_unavailable' });
       return;
     }
 
-    const wsUrl = typeof payload?.wsUrl === 'string' && payload.wsUrl.trim()
-      ? payload.wsUrl.trim()
+    const payloadWsUrl = typeof payload?.wsUrl === 'string' ? payload.wsUrl.trim() : '';
+    if (!payloadWsUrl && !DEFAULT_WS_URL) {
+      emitToWeb({ type: 'error', message: 'missing_ws_url_env(RN_DEFAULT_WS_URL or NEXT_PUBLIC_WS_URL)' });
+      return;
+    }
+
+    const wsUrl = payloadWsUrl
+      ? payloadWsUrl
       : DEFAULT_WS_URL;
     const languages = Array.isArray(payload?.languages)
       ? payload.languages.filter((language): language is string => typeof language === 'string' && language.trim().length > 0)
@@ -179,7 +245,7 @@ function App(): React.JSX.Element {
     }
   }, [emitToWeb, nativeAvailable]);
 
-  const handleNativeStop = useCallback(async (payload?: NativeSttCommand['payload']) => {
+  const handleNativeStop = useCallback(async (payload?: NativeSttStopPayload) => {
     try {
       await stopNativeStt({
         pendingText: typeof payload?.pendingText === 'string' ? payload.pendingText : '',

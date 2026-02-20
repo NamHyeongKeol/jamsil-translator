@@ -97,6 +97,13 @@ pnpm rn:start
 pnpm rn:ios
 ```
 
+RN 앱 URL은 하드코딩하지 않고 환경변수로만 읽습니다.
+
+- `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
+- `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
+
+루트 `pnpm rn:start|ios|android` 스크립트는 `.env.local`을 먼저 로드한 뒤 RN CLI를 실행합니다.
+
 - iOS native STT bridge lives in:
   - `rn/ios/rnnative/NativeSTTModule.swift`
   - `rn/ios/rnnative/NativeSTTModuleBridge.m`
