@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tdd_finalize_clientevent_unit_tests
+    %% @lastActive: mingle_app_tdd_finalize_route_mock_integration_tests
 
     %% === START ===
     %% @project_start [start, closed]
@@ -535,6 +535,9 @@ flowchart TD
     %% @mingle_app_tdd_finalize_clientevent_unit_tests [ai-task, closed, 2026-02-20, ai]
     mingle_app_tdd_finalize_clientevent_unit_tests("Finalize/ClientEvent 유틸 단위테스트 적용<br/><sub>translate finalize 파서/타깃언어 정규화와<br/>client-event sanitize 로직을 유틸로 분리해<br/>marker 제거·source 언어 필터·길이 제한 등<br/>핵심 회귀 케이스 12개를 자동 검증하도록 추가</sub>")
 
+    %% @mingle_app_tdd_finalize_route_mock_integration_tests [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_finalize_route_mock_integration_tests("Finalize 라우트 모킹 통합테스트 확장<br/><sub>Gemini SDK·Inworld fetch·tracking context를<br/>Vitest 모킹으로 묶어 /api/translate/finalize를<br/>실행 단위로 검증하고 번역+인라인 TTS 응답,<br/>provider 빈응답 시 이전 상태 폴백까지 자동 고정</sub>")
+
     %% @mingle_app_tdd_stt_hook_server_integration_plan [ai-task, opened, 2026-02-20, ai]
     mingle_app_tdd_stt_hook_server_integration_plan("STT 훅/서버 통합 테스트 2차 계획<br/><sub>use-realtime-stt stop/finalize 흐름과<br/>mingle-stt stop_recording_ack 경계를 대상으로<br/>WebSocket 이벤트 시퀀스를 모의한 통합테스트를<br/>추가해 중단-확정 회귀를 방지할 예정</sub>")
 
@@ -787,7 +790,8 @@ flowchart TD
     mingle_app_pc_scroll_pagination_anchor_regression_fix --> mingle_app_mobile_scroll_overlay_visibility_hold_fix
     mingle_app_mobile_scroll_overlay_visibility_hold_fix --> mingle_app_tdd_test_harness_plan
     mingle_app_tdd_test_harness_plan --> mingle_app_tdd_finalize_clientevent_unit_tests
-    mingle_app_tdd_finalize_clientevent_unit_tests --> mingle_app_tdd_stt_hook_server_integration_plan
+    mingle_app_tdd_finalize_clientevent_unit_tests --> mingle_app_tdd_finalize_route_mock_integration_tests
+    mingle_app_tdd_finalize_route_mock_integration_tests --> mingle_app_tdd_stt_hook_server_integration_plan
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -827,6 +831,7 @@ flowchart TD
     mingle_app_mobile_scroll_overlay_visibility_hold_fix -.-> ultimate_goal
     mingle_app_tdd_test_harness_plan -.-> ultimate_goal
     mingle_app_tdd_finalize_clientevent_unit_tests -.-> ultimate_goal
+    mingle_app_tdd_finalize_route_mock_integration_tests -.-> ultimate_goal
     mingle_app_tdd_stt_hook_server_integration_plan -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
@@ -850,7 +855,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_tdd_finalize_clientevent_unit_tests
+        mingle_app_tdd_finalize_route_mock_integration_tests
     end
 
     %% === STYLES ===
@@ -1092,7 +1097,8 @@ flowchart TD
     style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_mobile_scroll_overlay_visibility_hold_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tdd_finalize_clientevent_unit_tests fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tdd_finalize_clientevent_unit_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_finalize_route_mock_integration_tests fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_tdd_stt_hook_server_integration_plan fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
