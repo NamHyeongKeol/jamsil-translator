@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_stt_endpoint_only_frame_and_api_marker_guard
+    %% @lastActive: mingle_app_tdd_live_regression_e2e_matrix_expansion
 
     %% === START ===
     %% @project_start [start, closed]
@@ -532,8 +532,26 @@ flowchart TD
     %% @mingle_app_mobile_scroll_overlay_visibility_hold_fix [ai-task, closed, 2026-02-20, ai]
     mingle_app_mobile_scroll_overlay_visibility_hold_fix("모바일 스크롤바/날짜 오버레이 유지 수정<br/><sub>모바일 관성 스크롤 중에는 touch 의도 신호가 끝나도<br/>실제 scroll 이벤트가 계속 발생하는 특성을 반영해<br/>auto-follow 스크롤이 아닌 경우에는 스크롤 진행 중<br/>오버레이가 중간에 꺼지지 않도록 표시 정책을 보정</sub>")
 
-    %% @mingle_app_tdd_test_harness_plan [ai-task, opened, 2026-02-20, ai]
-    mingle_app_tdd_test_harness_plan("mingle-app TDD 베이스라인 수립<br/><sub>웹 라우트/훅의 순수 함수 경계를 분리해<br/>Vitest 기반 단위 테스트 러너를 도입하고<br/>finalize·client-event·STT 정규화 로직을<br/>회귀 케이스 중심으로 우선 고정할 계획</sub>")
+    %% @mingle_app_tdd_test_harness_plan [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_test_harness_plan("mingle-app TDD 베이스라인 수립<br/><sub>웹 라우트/훅의 순수 함수 경계를 분리해<br/>Vitest 기반 단위 테스트 러너를 도입하고<br/>finalize·client-event 정규화 유틸에 대한<br/>회귀 단위 테스트를 녹색 상태로 고정</sub>")
+
+    %% @mingle_app_tdd_finalize_clientevent_unit_tests [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_finalize_clientevent_unit_tests("Finalize/ClientEvent 유틸 단위테스트 적용<br/><sub>translate finalize 파서/타깃언어 정규화와<br/>client-event sanitize 로직을 유틸로 분리해<br/>marker 제거·source 언어 필터·길이 제한 등<br/>핵심 회귀 케이스 12개를 자동 검증하도록 추가</sub>")
+
+    %% @mingle_app_tdd_finalize_route_mock_integration_tests [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_finalize_route_mock_integration_tests("Finalize 라우트 모킹 통합테스트 확장<br/><sub>Gemini SDK·Inworld fetch·tracking context를<br/>Vitest 모킹으로 묶어 /api/translate/finalize를<br/>실행 단위로 검증하고 번역+인라인 TTS 응답,<br/>provider 빈응답 시 이전 상태 폴백까지 자동 고정</sub>")
+
+    %% @mingle_app_tdd_stt_hook_logic_unit_tests [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_stt_hook_logic_unit_tests("STT 훅 핵심로직 단위테스트 1차 적용<br/><sub>use-realtime-stt의 WS URL 결정과<br/>transcript 파싱·final 발화 생성 경로를<br/>순수 함수 export로 분리해 회귀를 고정하고<br/>총 21개 Vitest 케이스를 녹색으로 유지</sub>")
+
+    %% @mingle_app_tdd_stt_hook_server_integration_plan [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_stt_hook_server_integration_plan("STT 훅/서버 통합 테스트 계획 확정<br/><sub>단위 테스트만으로는 로컬 실서버 연계 품질을<br/>판단하기 어려운 공백이 확인되어<br/>WS 스트리밍+finalize API를 함께 검증하는<br/>라이브 통합 테스트 방향을 명시하고 고정</sub>")
+
+    %% @mingle_app_tdd_live_stt_finalize_integration_automation [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_live_stt_finalize_integration_automation("pnpm test 라이브 통합 자동화 구현<br/><sub>src/integration/live 테스트를 추가해<br/>fixtures/local 다중 파일을 실시간 속도로 스트리밍하고<br/>m4a 변환·언어별 타깃번역·TTS 저장 경로를 기본화해<br/>원문/번역 stdout 추적까지 한 번에 검증</sub>")
+
+    %% @mingle_app_tdd_live_regression_e2e_matrix_expansion [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_live_regression_e2e_matrix_expansion("라이브 회귀 E2E 매트릭스 상시 실행화<br/><sub>오디오/서버 경로 e2e를 env 플래그 없이<br/>pnpm test:live 기본 실행에 포함하도록 전환하고<br/>조기 stop 시 ack close(1005)에서도 final 보강 경로로<br/>회귀 스위트 안정성을 유지하도록 테스트를 보정</sub>")
 
     %% @mingle_app_final_duplicate_guard_experiment [ai-task, closed, 2026-02-20, ai]
     mingle_app_final_duplicate_guard_experiment("final 중복 가드 실험 브랜치 적용<br/><sub>별도 worktree/브랜치에서 동일 언어·문장 final이<br/>짧은 시간 내 재유입될 때 최근 턴과 비교해 차단하고<br/>새 발화 시작 신호(turnStartedAt)가 없을 때만 적용해<br/>정상 반복 발화 오탐을 줄이는 보수적 dedupe를 도입</sub>")
@@ -868,6 +886,12 @@ flowchart TD
     mingle_stt_front_log_minimal_fields_only --> mingle_stt_final_watermark_and_provisional_carry
     mingle_stt_final_watermark_and_provisional_carry --> mingle_stt_debug_log_cleanup_and_client_marker_boundary
     mingle_stt_debug_log_cleanup_and_client_marker_boundary --> mingle_stt_endpoint_only_frame_and_api_marker_guard
+    mingle_app_tdd_test_harness_plan --> mingle_app_tdd_finalize_clientevent_unit_tests
+    mingle_app_tdd_finalize_clientevent_unit_tests --> mingle_app_tdd_finalize_route_mock_integration_tests
+    mingle_app_tdd_finalize_route_mock_integration_tests --> mingle_app_tdd_stt_hook_logic_unit_tests
+    mingle_app_tdd_stt_hook_logic_unit_tests --> mingle_app_tdd_stt_hook_server_integration_plan
+    mingle_app_tdd_stt_hook_server_integration_plan --> mingle_app_tdd_live_stt_finalize_integration_automation
+    mingle_app_tdd_live_stt_finalize_integration_automation --> mingle_app_tdd_live_regression_e2e_matrix_expansion
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -913,6 +937,12 @@ flowchart TD
     mingle_app_ngrok_dual_tunnel_overlay_setup -.-> ultimate_goal
     mingle_app_final_dedupe_false_negative_fix -.-> ultimate_goal
     mingle_app_fin_marker_sanitize_temp_disable -.-> ultimate_goal
+    mingle_app_tdd_finalize_clientevent_unit_tests -.-> ultimate_goal
+    mingle_app_tdd_finalize_route_mock_integration_tests -.-> ultimate_goal
+    mingle_app_tdd_stt_hook_logic_unit_tests -.-> ultimate_goal
+    mingle_app_tdd_stt_hook_server_integration_plan -.-> ultimate_goal
+    mingle_app_tdd_live_stt_finalize_integration_automation -.-> ultimate_goal
+    mingle_app_tdd_live_regression_e2e_matrix_expansion -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -950,7 +980,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_stt_endpoint_only_frame_and_api_marker_guard
+        mingle_app_tdd_live_regression_e2e_matrix_expansion
     end
 
     %% === STYLES ===
@@ -1191,7 +1221,13 @@ flowchart TD
     style mingle_app_audio_session_route_metrics_milestone7 fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_mobile_scroll_overlay_visibility_hold_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_finalize_clientevent_unit_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_finalize_route_mock_integration_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_stt_hook_logic_unit_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_stt_hook_server_integration_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_stt_finalize_integration_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_regression_e2e_matrix_expansion fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1213,7 +1249,7 @@ flowchart TD
     style mingle_stt_final_watermark_and_provisional_carry fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

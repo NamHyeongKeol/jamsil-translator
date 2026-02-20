@@ -8,6 +8,12 @@ import {
   sanitizeNonNegativeInt,
   upsertTrackedUser,
 } from '@/lib/app-analytics'
+import {
+  normalizeLang,
+  sanitizeJsonObject,
+  sanitizeText,
+  sanitizeTranslations,
+} from './sanitize'
 
 export const runtime = 'nodejs'
 
@@ -18,46 +24,8 @@ const ALLOWED_EVENT_TYPES = new Set([
   'stt_turn_finalized',
 ])
 
-function sanitizeText(value: unknown, maxLength = 512): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  return trimmed.slice(0, maxLength)
-}
-
-function normalizeLang(input: unknown): string {
-  if (typeof input !== 'string') return 'unknown'
-  const normalized = input.trim().replace('_', '-').toLowerCase().split('-')[0]
-  return normalized || 'unknown'
-}
-
 function stripEndpointMarkers(text: string): string {
   return text.replace(/<\/?(?:end|fin)>/giu, '')
-}
-
-function sanitizeTranslations(raw: unknown): Record<string, string> {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
-
-  const output: Record<string, string> = {}
-  for (const [rawLanguage, rawText] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof rawText !== 'string') continue
-    const language = normalizeLang(rawLanguage)
-    if (!language || language === 'unknown') continue
-
-    const text = stripEndpointMarkers(rawText).trim().slice(0, 20000)
-    if (!text) continue
-    output[language] = text
-  }
-  return output
-}
-
-function sanitizeJsonObject(raw: unknown): Prisma.JsonObject | null {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
-  try {
-    return JSON.parse(JSON.stringify(raw)) as Prisma.JsonObject
-  } catch {
-    return null
-  }
 }
 
 export async function POST(request: NextRequest) {
