@@ -403,7 +403,8 @@ ensure_workspace_dependencies() {
 
 ensure_rn_workspace_dependencies() {
   local rn_cli_bin="$ROOT_DIR/mingle-app/rn/node_modules/.bin/react-native"
-  if [[ ! -x "$rn_cli_bin" ]]; then
+  local rn_gradle_plugin_dir="$ROOT_DIR/mingle-app/rn/node_modules/@react-native/gradle-plugin"
+  if [[ ! -x "$rn_cli_bin" || ! -d "$rn_gradle_plugin_dir" ]]; then
     log "installing dependencies: mingle-app/rn"
     pnpm --dir "$ROOT_DIR/mingle-app/rn" install
   fi
@@ -413,7 +414,27 @@ ensure_ios_pods_if_needed() {
   local pods_dir="$ROOT_DIR/mingle-app/rn/ios/Pods"
   if [[ ! -d "$pods_dir" ]]; then
     log "installing iOS pods: mingle-app/rn/ios"
-    pnpm --dir "$ROOT_DIR/mingle-app" rn:pods
+    (
+      cd "$ROOT_DIR/mingle-app/rn"
+      if command -v bundle >/dev/null 2>&1; then
+        local bundle_home="$ROOT_DIR/.devbox-cache/bundle/rn"
+        mkdir -p "$bundle_home"
+        BUNDLE_USER_HOME="$bundle_home" \
+        BUNDLE_PATH="$bundle_home" \
+        BUNDLE_DISABLE_SHARED_GEMS=true \
+          bundle install
+        (
+          cd ios
+          BUNDLE_USER_HOME="$bundle_home" \
+          BUNDLE_PATH="$bundle_home" \
+          BUNDLE_DISABLE_SHARED_GEMS=true \
+            bundle exec pod install
+        )
+      else
+        cd ios
+        pod install
+      fi
+    )
   fi
 }
 

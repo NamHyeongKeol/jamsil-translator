@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_mobile_build_install_automation
+    %% @lastActive: mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization
 
     %% === START ===
     %% @project_start [start, closed]
@@ -616,6 +616,9 @@ flowchart TD
     %% @mingle_worktree_devbox_mobile_build_install_automation [ai-task, closed, 2026-02-21, ai]
     mingle_worktree_devbox_mobile_build_install_automation("Devbox 모바일 빌드/설치 자동화 추가<br/><sub>mobile 명령과 up 옵션에서 연결된 기기를 감지해<br/>iOS/Android 빌드와 설치를 자동 실행하고<br/>기기 미연결 시 플랫폼별 설치 단계를 자동 스킵해<br/>워크트리 테스트 준비를 단일 흐름으로 통합</sub>")
 
+    %% @mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization("Devbox 모바일 의존성/번들 안정화<br/><sub>RN Android gradle-plugin 누락으로 실패하던 경로를<br/>rn devDependency와 설치 체크를 통해 보완하고<br/>iOS pod 준비 시 로컬 bundle 경로를 강제해<br/>권한/전역 gem 환경 차이로 인한 실패를 완화</sub>")
+
     %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
 
@@ -1008,6 +1011,7 @@ flowchart TD
     mingle_worktree_devbox_vault_path_persist_and_auto_sync --> mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up
     mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up --> mingle_worktree_devbox_device_split_ngrok_terminal_launch
     mingle_worktree_devbox_device_split_ngrok_terminal_launch --> mingle_worktree_devbox_mobile_build_install_automation
+    mingle_worktree_devbox_mobile_build_install_automation --> mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
     mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_top_tap_regression_hotfix
     mingle_app_ios_top_tap_regression_hotfix --> mingle_app_ios_top_tap_pr9_reaudit_hardening
@@ -1089,6 +1093,7 @@ flowchart TD
     mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up -.-> ultimate_goal
     mingle_worktree_devbox_device_split_ngrok_terminal_launch -.-> ultimate_goal
     mingle_worktree_devbox_mobile_build_install_automation -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization -.-> ultimate_goal
     mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     mingle_app_ios_top_tap_regression_hotfix -.-> ultimate_goal
     mingle_app_ios_top_tap_pr9_reaudit_hardening -.-> ultimate_goal
@@ -1136,7 +1141,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_mobile_build_install_automation
+        mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization
     end
 
     %% === STYLES ===
@@ -1403,7 +1408,8 @@ flowchart TD
     style mingle_worktree_devbox_vault_path_persist_and_auto_sync fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_device_split_ngrok_terminal_launch fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_worktree_devbox_mobile_build_install_automation fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_mobile_build_install_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
