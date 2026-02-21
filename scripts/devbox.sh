@@ -3,12 +3,17 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT_CANON="$(cd "$ROOT_DIR" && pwd -P)"
+LOCAL_TOOLS_BIN="$ROOT_DIR/.tools/bin"
 DEVBOX_ENV_FILE="$ROOT_DIR/.devbox.env"
 APP_ENV_FILE="$ROOT_DIR/mingle-app/.env.local"
 STT_ENV_FILE="$ROOT_DIR/mingle-stt/.env.local"
 NGROK_LOCAL_CONFIG="$ROOT_DIR/ngrok.mobile.local.yml"
 MANAGED_START="# >>> devbox managed (auto)"
 MANAGED_END="# <<< devbox managed (auto)"
+
+if [[ -d "$LOCAL_TOOLS_BIN" ]]; then
+  PATH="$LOCAL_TOOLS_BIN:$PATH"
+fi
 
 APP_MANAGED_KEYS=(
   DEVBOX_WORKTREE_NAME
@@ -70,14 +75,16 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--host HOST]
+  scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
-  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro]
+  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [vitest args...]
   scripts/devbox status
 
 Commands:
   init         Generate worktree-specific ports/config/env files.
+  bootstrap    Seed env files from main/Vault and install dependencies.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
   up           Start STT + Next app together (device profile includes ngrok).
@@ -136,6 +143,46 @@ ensure_single_line_value() {
   local value="$2"
   [[ "$value" != *$'\n'* ]] || die "$name cannot contain newline"
   [[ "$value" != *$'\r'* ]] || die "$name cannot contain carriage return"
+}
+
+is_valid_env_key() {
+  [[ "${1:-}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
+}
+
+is_managed_key_for_target() {
+  local target="$1"
+  local key="$2"
+  shift 2 || true
+
+  local item
+  case "$target" in
+    app)
+      for item in "${APP_MANAGED_KEYS[@]}"; do
+        [[ "$item" == "$key" ]] && return 0
+      done
+      ;;
+    stt)
+      for item in "${STT_MANAGED_KEYS[@]}"; do
+        [[ "$item" == "$key" ]] && return 0
+      done
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  return 1
+}
+
+format_env_value_for_dotenv() {
+  local value="$1"
+  if [[ "$value" =~ ^[A-Za-z0-9_./:@,+=-]*$ ]]; then
+    printf '%s' "$value"
+    return 0
+  fi
+
+  local escaped
+  escaped="$(printf '%s' "$value" | sed "s/'/'\"'\"'/g")"
+  printf "'%s'" "$escaped"
 }
 
 port_in_use() {
@@ -256,6 +303,154 @@ calc_default_ports() {
 ensure_file_parent() {
   local file="$1"
   mkdir -p "$(dirname "$file")"
+}
+
+find_main_worktree_root() {
+  local line=""
+  local worktree_path=""
+  while IFS= read -r line; do
+    case "$line" in
+      worktree\ *)
+        worktree_path="${line#worktree }"
+        ;;
+      branch\ refs/heads/main)
+        printf '%s' "$worktree_path"
+        return 0
+        ;;
+    esac
+  done < <(git -C "$ROOT_DIR" worktree list --porcelain)
+  return 1
+}
+
+file_has_non_managed_env_entries() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+
+  awk -v start="$MANAGED_START" -v end="$MANAGED_END" '
+    $0 == start { in_block = 1; next }
+    $0 == end { in_block = 0; next }
+    !in_block && $0 ~ /^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=.*/ { found = 1; exit }
+    END { exit(found ? 0 : 1) }
+  ' "$file"
+}
+
+sync_env_file_from_main_if_needed() {
+  local label="$1"
+  local source_file="$2"
+  local target_file="$3"
+
+  [[ -f "$source_file" ]] || return 0
+  [[ "$source_file" != "$target_file" ]] || return 0
+
+  if [[ ! -f "$target_file" ]]; then
+    ensure_file_parent "$target_file"
+    cp "$source_file" "$target_file"
+    log "seeded $label env from main worktree"
+    return 0
+  fi
+
+  if file_has_non_managed_env_entries "$target_file"; then
+    return 0
+  fi
+
+  if file_has_non_managed_env_entries "$source_file"; then
+    cp "$source_file" "$target_file"
+    log "seeded $label env from main worktree"
+  fi
+}
+
+seed_env_from_main_worktree() {
+  local main_root=""
+  main_root="$(find_main_worktree_root || true)"
+  [[ -n "$main_root" ]] || return 0
+  main_root="$(cd "$main_root" 2>/dev/null && pwd -P || true)"
+  [[ -n "$main_root" ]] || return 0
+
+  sync_env_file_from_main_if_needed \
+    "mingle-app" \
+    "$main_root/mingle-app/.env.local" \
+    "$APP_ENV_FILE"
+  sync_env_file_from_main_if_needed \
+    "mingle-stt" \
+    "$main_root/mingle-stt/.env.local" \
+    "$STT_ENV_FILE"
+}
+
+ensure_workspace_dependencies() {
+  local app_next_bin="$ROOT_DIR/mingle-app/node_modules/.bin/next"
+  local stt_tsnode_bin="$ROOT_DIR/mingle-stt/node_modules/.bin/ts-node"
+
+  if [[ ! -x "$app_next_bin" ]]; then
+    log "installing dependencies: mingle-app"
+    pnpm --dir "$ROOT_DIR/mingle-app" install
+  fi
+  if [[ ! -x "$stt_tsnode_bin" ]]; then
+    log "installing dependencies: mingle-stt"
+    pnpm --dir "$ROOT_DIR/mingle-stt" install
+  fi
+}
+
+upsert_non_managed_env_entry() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+
+  ensure_single_line_value "$key" "$value"
+  is_valid_env_key "$key" || return 0
+  ensure_file_parent "$file"
+
+  strip_env_keys "$file" "$key"
+
+  local formatted
+  formatted="$(format_env_value_for_dotenv "$value")"
+
+  if [[ -f "$file" && -s "$file" ]]; then
+    printf '\n%s=%s\n' "$key" "$formatted" >> "$file"
+  else
+    printf '%s=%s\n' "$key" "$formatted" > "$file"
+  fi
+}
+
+sync_env_from_vault_path() {
+  local target="$1"
+  local path="$2"
+  local file="$3"
+  [[ -n "$path" ]] || return 0
+
+  require_cmd vault
+  require_cmd jq
+
+  log "syncing ${target} env from vault path: $path"
+
+  local payload
+  payload="$(vault kv get -format=json "$path")" || die "failed to read vault path: $path"
+
+  local line key value count
+  count=0
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    key="${line%%$'\t'*}"
+    value="${line#*$'\t'}"
+    is_valid_env_key "$key" || continue
+    if is_managed_key_for_target "$target" "$key"; then
+      continue
+    fi
+    upsert_non_managed_env_entry "$file" "$key" "$value"
+    count=$((count + 1))
+  done < <(
+    printf '%s' "$payload" | jq -r '
+      ((.data.data // .data // {}) | to_entries[]? | [.key, (.value | if type=="string" then . else tojson end)] | @tsv)
+    '
+  )
+
+  log "synced ${count} keys from vault (${target})"
+}
+
+sync_env_from_vault_paths() {
+  local app_path="${1:-}"
+  local stt_path="${2:-}"
+  sync_env_from_vault_path "app" "$app_path" "$APP_ENV_FILE"
+  sync_env_from_vault_path "stt" "$stt_path" "$STT_ENV_FILE"
 }
 
 remove_managed_block() {
@@ -674,10 +869,34 @@ cmd_init() {
   DEVBOX_METRO_PORT="$metro_port"
   set_local_profile_values "$host"
 
+  seed_env_from_main_worktree
   save_and_refresh
 
   log "initialized for worktree: $DEVBOX_WORKTREE_NAME"
   cmd_status
+}
+
+cmd_bootstrap() {
+  require_cmd pnpm
+  local vault_app_path=""
+  local vault_stt_path=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --vault-app-path) vault_app_path="${2:-}"; shift 2 ;;
+      --vault-stt-path) vault_stt_path="${2:-}"; shift 2 ;;
+      *) die "unknown option for bootstrap: $1" ;;
+    esac
+  done
+
+  seed_env_from_main_worktree
+  sync_env_from_vault_paths "$vault_app_path" "$vault_stt_path"
+  ensure_workspace_dependencies
+  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    require_devbox_env
+    refresh_runtime_files
+  fi
+  log "bootstrap complete"
 }
 
 cmd_profile() {
@@ -709,6 +928,9 @@ cmd_ngrok_config() {
 cmd_up() {
   require_devbox_env
   require_cmd pnpm
+  local vault_app_path=""
+  local vault_stt_path=""
+  seed_env_from_main_worktree
 
   local profile="local"
   local host=""
@@ -719,9 +941,14 @@ cmd_up() {
       --profile) profile="${2:-}"; shift 2 ;;
       --host) host="${2:-}"; shift 2 ;;
       --with-metro) with_metro=1; shift ;;
+      --vault-app-path) vault_app_path="${2:-}"; shift 2 ;;
+      --vault-stt-path) vault_stt_path="${2:-}"; shift 2 ;;
       *) die "unknown option for up: $1" ;;
     esac
   done
+
+  sync_env_from_vault_paths "$vault_app_path" "$vault_stt_path"
+  ensure_workspace_dependencies
 
   local -a pids=()
   local exit_code=0
@@ -845,6 +1072,7 @@ main() {
 
   case "$cmd" in
     init) cmd_init "$@" ;;
+    bootstrap) cmd_bootstrap "$@" ;;
     profile) cmd_profile "$@" ;;
     profile-local) cmd_profile --profile local "$@" ;;
     profile-device|profile-ngrok) cmd_profile --profile device "$@" ;;
