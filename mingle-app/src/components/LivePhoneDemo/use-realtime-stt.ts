@@ -140,6 +140,28 @@ export function normalizeSpeakerKey(rawSpeaker: string | null | undefined): stri
   return trimmed.replace(/[^a-z0-9_]+/g, '_') || UNKNOWN_SPEAKER
 }
 
+export function isRecentDuplicateFinalBySpeaker(
+  utterances: Array<Pick<Utterance, 'id' | 'createdAtMs' | 'originalText' | 'originalLang' | 'speaker'>>,
+  text: string,
+  lang: string,
+  speaker: string,
+  now: number,
+  windowMs: number,
+): boolean {
+  const normalizedSpeaker = normalizeSpeakerKey(speaker)
+  for (let index = utterances.length - 1; index >= 0; index -= 1) {
+    const utterance = utterances[index]
+    if (normalizeSpeakerKey(utterance.speaker) !== normalizedSpeaker) continue
+
+    const createdAt = inferUtteranceCreatedAtMs(utterance)
+    if (createdAt === null) continue
+    if ((now - createdAt) > windowMs) return false
+    if (normalizeLangForCompare(utterance.originalLang) !== normalizeLangForCompare(lang)) return false
+    return normalizeSttTurnText(utterance.originalText) === text
+  }
+  return false
+}
+
 export function stripSourceLanguageFromTranslations(
   translationsRaw: Record<string, string>,
   sourceLanguageRaw: string,
@@ -327,6 +349,7 @@ export interface PartialSpeakerTurn {
   text: string
   language: string
   translations: Record<string, string>
+  firstSeenAtMs: number
   updatedAtMs: number
 }
 
@@ -553,12 +576,9 @@ export default function useRealtimeSTT({
   // preventing old (slow) translations from overwriting newer ones.
   const translateSeqRef = useRef(0)
   const lastAppliedSeqRef = useRef<Map<string, number>>(new Map()) // utteranceId -> last applied seq
-  // Track the partial transcript 10-char threshold last used for partial translation.
-  // A first partial translation fires immediately when the first transcript arrives,
-  // then subsequent calls fire when 10/20/30... thresholds are crossed.
-  const hasFiredInitialPartialTranslateRef = useRef(false)
-  const lastPartialTranslateLenRef = useRef(0)
-  const partialTranslateSpeakerRef = useRef<string>(UNKNOWN_SPEAKER)
+  // Per-speaker partial-translation thresholds. Each speaker gets independent
+  // 10-char step tracking so one speaker's turn doesn't suppress another's.
+  const partialTranslateThresholdBySpeakerRef = useRef<Map<string, { hasFiredInitial: boolean, lastPartialLen: number }>>(new Map())
   const partialTranslateControllerRef = useRef<AbortController | null>(null)
   const sessionKeyRef = useRef('')
   const turnStartedAtRef = useRef<number | null>(null)
@@ -672,16 +692,21 @@ export default function useRealtimeSTT({
   const sortPartialTurns = useCallback((items: Iterable<PartialSpeakerTurn>): PartialSpeakerTurn[] => {
     return Array.from(items)
       .sort((a, b) => {
-        if (a.updatedAtMs === b.updatedAtMs) {
+        if (a.firstSeenAtMs === b.firstSeenAtMs) {
           return a.speaker.localeCompare(b.speaker)
         }
-        return a.updatedAtMs - b.updatedAtMs
+        return a.firstSeenAtMs - b.firstSeenAtMs
       })
   }, [])
 
   const syncPrimaryPartialFromTurns = useCallback((orderedTurns: PartialSpeakerTurn[]) => {
     setPartialTurns(orderedTurns)
-    const latest = orderedTurns[orderedTurns.length - 1]
+    let latest: PartialSpeakerTurn | null = null
+    for (const turn of orderedTurns) {
+      if (!latest || turn.updatedAtMs > latest.updatedAtMs) {
+        latest = turn
+      }
+    }
     if (!latest) {
       activePartialSpeakerRef.current = UNKNOWN_SPEAKER
       setPartialTranscript('')
@@ -711,17 +736,31 @@ export default function useRealtimeSTT({
     return sortPartialTurns(partialTurnsRef.current.values())
   }, [sortPartialTurns])
 
+  const getMostRecentlyUpdatedPartialTurn = useCallback((): PartialSpeakerTurn | null => {
+    let latest: PartialSpeakerTurn | null = null
+    for (const turn of partialTurnsRef.current.values()) {
+      if (!latest || turn.updatedAtMs > latest.updatedAtMs) {
+        latest = turn
+      }
+    }
+    return latest
+  }, [])
+
   const upsertPartialTurn = useCallback((nextTurn: PartialSpeakerTurn) => {
     const speaker = normalizeSpeakerKey(nextTurn.speaker)
     const previous = partialTurnsRef.current.get(speaker)
+    const normalizedUpdatedAtMs = (
+      typeof nextTurn.updatedAtMs === 'number' && Number.isFinite(nextTurn.updatedAtMs)
+        ? Math.floor(nextTurn.updatedAtMs)
+        : Date.now()
+    )
     partialTurnsRef.current.set(speaker, {
       speaker,
       text: nextTurn.text,
       language: nextTurn.language,
       translations: nextTurn.translations,
-      updatedAtMs: typeof nextTurn.updatedAtMs === 'number' && Number.isFinite(nextTurn.updatedAtMs)
-        ? Math.floor(nextTurn.updatedAtMs)
-        : (previous?.updatedAtMs || Date.now()),
+      firstSeenAtMs: previous?.firstSeenAtMs || normalizedUpdatedAtMs,
+      updatedAtMs: normalizedUpdatedAtMs,
     })
     syncPartialTurnsStateFromRef()
   }, [syncPartialTurnsStateFromRef])
@@ -729,6 +768,7 @@ export default function useRealtimeSTT({
   const removePartialTurn = useCallback((speakerRaw: string) => {
     const speaker = normalizeSpeakerKey(speakerRaw)
     if (!partialTurnsRef.current.delete(speaker)) return
+    partialTranslateThresholdBySpeakerRef.current.delete(speaker)
     syncPartialTurnsStateFromRef()
   }, [syncPartialTurnsStateFromRef])
 
@@ -818,9 +858,7 @@ export default function useRealtimeSTT({
   const clearPartialBuffers = useCallback(() => {
     partialTurnsRef.current.clear()
     syncPrimaryPartialFromTurns([])
-    hasFiredInitialPartialTranslateRef.current = false
-    lastPartialTranslateLenRef.current = 0
-    partialTranslateSpeakerRef.current = UNKNOWN_SPEAKER
+    partialTranslateThresholdBySpeakerRef.current.clear()
     if (partialTranslateControllerRef.current) {
       partialTranslateControllerRef.current.abort()
       partialTranslateControllerRef.current = null
@@ -1115,14 +1153,14 @@ export default function useRealtimeSTT({
     if (options?.requireNoNonFinalSinceLastFinal && sawNonFinalSinceLastFinalRef.current) {
       return false
     }
-    const lastUtterance = utterancesRef.current[utterancesRef.current.length - 1]
-    if (!lastUtterance) return false
-    const lastCreatedAt = inferUtteranceCreatedAtMs(lastUtterance)
-    if (lastCreatedAt === null || (now - lastCreatedAt) > FINAL_DUPLICATE_WINDOW_MS) return false
-    if (normalizeLangForCompare(lastUtterance.originalLang) !== normalizeLangForCompare(lang)) return false
-    if (normalizeSpeakerKey(lastUtterance.speaker) !== normalizeSpeakerKey(speaker)) return false
-    const normalizedLastText = normalizeSttTurnText(lastUtterance.originalText)
-    return normalizedLastText === text
+    return isRecentDuplicateFinalBySpeaker(
+      utterancesRef.current,
+      text,
+      lang,
+      speaker,
+      now,
+      FINAL_DUPLICATE_WINDOW_MS,
+    )
   }, [])
 
   const finalizePendingLocally = useCallback((
@@ -1277,7 +1315,7 @@ export default function useRealtimeSTT({
 
     const socket = socketRef.current
     const pendingTurns = getOrderedPartialTurns()
-    const latestPendingTurn = pendingTurns[pendingTurns.length - 1] || null
+    const latestPendingTurn = getMostRecentlyUpdatedPartialTurn()
     const pendingText = latestPendingTurn?.text.trim() || ''
     const pendingLang = latestPendingTurn?.language || 'unknown'
     const pendingSpeaker = latestPendingTurn?.speaker || ''
@@ -1354,7 +1392,7 @@ export default function useRealtimeSTT({
         })
       }
     }
-  }, [finalizePendingLocally, finalizeTurnWithTranslation, getOrderedPartialTurns, logClientEvent, sendNativeSttCommand, stopAudioPipeline])
+  }, [finalizePendingLocally, finalizeTurnWithTranslation, getMostRecentlyUpdatedPartialTurn, getOrderedPartialTurns, logClientEvent, sendNativeSttCommand, stopAudioPipeline])
 
   const visualize = useCallback(() => {
     if (analyserRef.current) {
@@ -1588,11 +1626,11 @@ export default function useRealtimeSTT({
           rawLanguage: lang,
           speaker: speakerKey,
           languages,
-          partialTranslations: partialTurnForSpeaker?.translations || partialTranslationsRef.current,
+          partialTranslations: partialTurnForSpeaker?.translations || {},
           utteranceSerial: utteranceIdRef.current,
           nowMs: now,
-          previousStateSourceLanguage: partialTurnForSpeaker?.language || partialLangRef.current || lang,
-          previousStateSourceText: partialTurnForSpeaker?.text || partialTranscriptRef.current || text,
+          previousStateSourceLanguage: partialTurnForSpeaker?.language || lang,
+          previousStateSourceText: partialTurnForSpeaker?.text || text,
         })
         if (!finalizedPayload) {
           removePartialTurn(speakerKey)
@@ -1638,6 +1676,7 @@ export default function useRealtimeSTT({
           text,
           language: lang,
           translations: partialTurnForSpeaker?.translations || {},
+          firstSeenAtMs: partialTurnForSpeaker?.firstSeenAtMs || Date.now(),
           updatedAtMs: Date.now(),
         })
         if (text) {
@@ -1879,21 +1918,21 @@ export default function useRealtimeSTT({
       && normalizeLangForCompare(currentLang) === normalizeLangForCompare(languages[0] || '')
     ) return
 
-    if (partialTranslateSpeakerRef.current !== activeSpeaker) {
-      partialTranslateSpeakerRef.current = activeSpeaker
-      hasFiredInitialPartialTranslateRef.current = false
-      lastPartialTranslateLenRef.current = 0
+    const thresholdState = partialTranslateThresholdBySpeakerRef.current.get(activeSpeaker) || {
+      hasFiredInitial: false,
+      lastPartialLen: 0,
     }
-
-    if (!hasFiredInitialPartialTranslateRef.current) {
-      hasFiredInitialPartialTranslateRef.current = true
+    if (!thresholdState.hasFiredInitial) {
+      thresholdState.hasFiredInitial = true
       // Prime the threshold tracker based on the first partial length so
       // the next request is triggered at the next 10-char boundary.
-      lastPartialTranslateLenRef.current = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
+      thresholdState.lastPartialLen = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
+      partialTranslateThresholdBySpeakerRef.current.set(activeSpeaker, thresholdState)
     } else {
-      const nextThreshold = lastPartialTranslateLenRef.current + PARTIAL_TRANSLATE_STEP
+      const nextThreshold = thresholdState.lastPartialLen + PARTIAL_TRANSLATE_STEP
       if (len < nextThreshold) return
-      lastPartialTranslateLenRef.current = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
+      thresholdState.lastPartialLen = Math.floor(len / PARTIAL_TRANSLATE_STEP) * PARTIAL_TRANSLATE_STEP
+      partialTranslateThresholdBySpeakerRef.current.set(activeSpeaker, thresholdState)
     }
 
     // Capture the utterance counter at request time so we can discard stale responses

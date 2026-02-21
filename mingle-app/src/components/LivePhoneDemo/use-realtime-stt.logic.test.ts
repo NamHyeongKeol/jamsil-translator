@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFinalizedUtterancePayload,
   getWsUrl,
+  isRecentDuplicateFinalBySpeaker,
   parseSttTranscriptMessage,
 } from './use-realtime-stt'
 
@@ -149,5 +150,56 @@ describe('use-realtime-stt pure logic', () => {
     })
 
     expect(built).toBeNull()
+  })
+
+  it('detects recent duplicate final per speaker even when another speaker interleaves', () => {
+    const now = 1_700_000_000_000
+    const utterances = [
+      {
+        id: 'u-1699999999950-1',
+        createdAtMs: now - 50,
+        originalText: 'Hello',
+        originalLang: 'en',
+        speaker: 'speaker_1',
+      },
+      {
+        id: 'u-1699999999970-2',
+        createdAtMs: now - 30,
+        originalText: 'Hi',
+        originalLang: 'en',
+        speaker: 'speaker_2',
+      },
+    ]
+
+    expect(isRecentDuplicateFinalBySpeaker(
+      utterances,
+      'Hello',
+      'en',
+      'speaker_1',
+      now,
+      700,
+    )).toBe(true)
+  })
+
+  it('does not treat other speaker recent utterance as duplicate', () => {
+    const now = 1_700_000_000_000
+    const utterances = [
+      {
+        id: 'u-1699999999970-2',
+        createdAtMs: now - 30,
+        originalText: 'Hello',
+        originalLang: 'en',
+        speaker: 'speaker_2',
+      },
+    ]
+
+    expect(isRecentDuplicateFinalBySpeaker(
+      utterances,
+      'Hello',
+      'en',
+      'speaker_1',
+      now,
+      700,
+    )).toBe(false)
   })
 })
