@@ -69,6 +69,8 @@ scripts/devbox up --profile device
   - 이전에 저장된 Vault 경로가 있으면 자동으로 env 동기화 수행
   - 필요 시 `--vault-app-path/--vault-stt-path`로 경로를 덮어써 즉시 반영 가능
   - `mingle-stt` + `mingle-app` 동시 실행
+  - `device` 프로필에서 ngrok이 없으면 iTerm/Terminal에 별도 탭/패널로 ngrok 실행 시도
+    (실패 시 기존 인라인 실행으로 폴백)
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
   - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
   - `--with-metro`를 추가하면 RN Metro도 함께 실행
