@@ -63,8 +63,8 @@ function describeTunnels(tunnels) {
     .join("\n");
 }
 
-function selectTunnel(tunnels, name, expectedPort, requireHttps) {
-  let candidates = tunnels.filter((t) => t.name === name && t.publicUrl);
+function selectTunnel(tunnels, names, expectedPort, requireHttps) {
+  let candidates = tunnels.filter((t) => names.includes(t.name) && t.publicUrl);
   if (Number.isFinite(expectedPort)) {
     candidates = candidates.filter((t) => t.addrPort === expectedPort);
   }
@@ -86,8 +86,18 @@ export function parseNgrokTunnels(payload, options) {
   const expectedSttPort = options.expectedSttPort;
   const requireHttps = options.requireHttps === true;
 
-  const web = selectTunnel(tunnels, "web", expectedWebPort, requireHttps);
-  const stt = selectTunnel(tunnels, "stt", expectedSttPort, requireHttps);
+  const web = selectTunnel(
+    tunnels,
+    ["devbox_web", "web"],
+    expectedWebPort,
+    requireHttps,
+  );
+  const stt = selectTunnel(
+    tunnels,
+    ["devbox_stt", "stt"],
+    expectedSttPort,
+    requireHttps,
+  );
 
   if (!web || !stt) {
     const detail = describeTunnels(tunnels);
