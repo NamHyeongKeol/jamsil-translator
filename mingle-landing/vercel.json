@@ -6,5 +6,5 @@
       "**": false
     }
   },
-  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then exit 0; fi; git show --name-only --pretty=\"\" HEAD | grep -Eq '^(mingle-landing/)' && exit 1 || exit 0"
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then exit 0; fi; exit 1"
 }
