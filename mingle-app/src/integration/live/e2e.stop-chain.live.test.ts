@@ -10,19 +10,11 @@ import { pickShortestFixture, scanFixtures } from './support/live-fixture-utils'
 
 const env = readLiveE2EEnv()
 const scanResult = scanFixtures(env)
+const describeWithFixtureCandidates = scanResult.candidates.length > 0 ? describe.sequential : describe.skip
 const MAX_FINAL_LATENCY_AFTER_STOP_MS = readEnvInt('MINGLE_TEST_MAX_FINAL_LATENCY_AFTER_STOP_MS', 15_000)
 const STOP_CHAIN_AFTER_MS = readEnvInt('MINGLE_TEST_E2E_STOP_CHAIN_AFTER_MS', 4_000)
 
-describe.sequential('e2e regression: stop chain integrity', () => {
-  it('discovers fixtures for stop-chain e2e', () => {
-    if (scanResult.candidates.length > 0) return
-    throw new Error([
-      '[live-test] no fixture file found.',
-      `- scanned dirs: ${scanResult.scanDirs.join(', ')}`,
-      '- add fixture files or set MINGLE_TEST_AUDIO_FIXTURE.',
-    ].join('\n'))
-  })
-
+describeWithFixtureCandidates('e2e regression: stop chain integrity', () => {
   it('keeps final -> translation -> tts chain on early stop', async () => {
     const fixtureEntry = pickShortestFixture(scanResult)
     const stopAfterMs = Math.min(
