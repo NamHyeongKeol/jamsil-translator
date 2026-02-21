@@ -156,7 +156,7 @@ function parseRecentTurnContextItem(raw: unknown): RecentTurnContext | null {
   const sourceLanguage = normalizeLang(typeof payload.sourceLanguage === 'string' ? payload.sourceLanguage : '') || 'unknown'
   const translations = parseTranslationsPayload(payload.translations, sourceLanguage)
   const ageMs = sanitizeNonNegativeInt(payload.ageMs)
-  const isFinalized = payload.isFinalized !== false
+  const isFinalized = payload.isFinalized === true
 
   return {
     sourceLanguage,

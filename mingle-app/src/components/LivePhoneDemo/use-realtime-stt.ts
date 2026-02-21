@@ -754,9 +754,11 @@ export default function useRealtimeSTT({
 
       const sourceLanguage = (utterance.originalLang || 'unknown').trim() || 'unknown'
       const translations = stripSourceLanguageFromTranslations(utterance.translations || {}, sourceLanguage)
-      const isFinalized = Object.keys(translations).every((language) => {
-        return utterance.translationFinalized?.[language] !== false
-      })
+      const translationLanguages = Object.keys(translations)
+      const isFinalized = (
+        translationLanguages.length > 0
+        && translationLanguages.every((language) => utterance.translationFinalized?.[language] === true)
+      )
 
       recentTurns.push({
         sourceLanguage,
