@@ -31,7 +31,7 @@ export async function postSubscribeForWebLandingV1(request: NextRequest) {
   try {
     const subscriber = await prisma.subscriber.upsert({
       where: { email },
-      update: { 
+      update: {
         updatedAt: new Date(),
         ...(feedback && { feedback }),
         // Update tracking info on re-subscribe
@@ -48,7 +48,7 @@ export async function postSubscribeForWebLandingV1(request: NextRequest) {
         timezone,
         platform,
       },
-      create: { 
+      create: {
         email,
         ...(feedback && { feedback }),
         ipAddress,
