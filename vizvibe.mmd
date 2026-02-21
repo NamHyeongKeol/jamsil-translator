@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_finalize_immediate_prev_turn_context_boost
+    %% @lastActive: mingle_app_tdd_github_actions_unit_ci
 
     %% === START ===
     %% @project_start [start, closed]
@@ -559,6 +559,12 @@ flowchart TD
     %% @mingle_app_tdd_vitest_node20_compat_fix [ai-task, closed, 2026-02-21, ai]
     mingle_app_tdd_vitest_node20_compat_fix("Vitest 런타임 호환 버전 고정<br/><sub>Node 20.18 환경에서 vitest@3 + vite@7 조합이<br/>ERR_REQUIRE_ESM으로 즉시 실패하던 경로를<br/>vitest 2.1 계열로 조정해 unit test 실행을 복구하고<br/>기존 TDD 스위트가 로컬에서 바로 동작하게 보정</sub>")
 
+    %% @mingle_app_tdd_github_actions_unit_ci [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_github_actions_unit_ci("GitHub Actions TDD 유닛 CI 적용<br/><sub>mingle-app 경로 변경 시 자동 실행되는<br/>워크플로우를 추가해 pnpm install 이후<br/>Vitest unit 스위트(test:unit)를 CI에서 검증하고<br/>PR/푸시 단계에서 회귀를 자동 차단하도록 고정</sub>")
+
+    %% @mingle_app_tdd_live_ci_orchestration_plan [ai-task, opened, 2026-02-21, ai]
+    mingle_app_tdd_live_ci_orchestration_plan("라이브 STT 통합테스트 CI 오케스트레이션 계획<br/><sub>현재 GitHub 기본 러너에서는 로컬 STT/API 서버가<br/>없어 test:live를 바로 실행하기 어려운 제약이 있어<br/>서비스 컨테이너 또는 mock STT 부트스트랩으로<br/>라이브 회귀까지 CI에 포함하는 후속 설계를 추적</sub>")
+
     %% @mingle_app_final_duplicate_guard_experiment [ai-task, closed, 2026-02-20, ai]
     mingle_app_final_duplicate_guard_experiment("final 중복 가드 실험 브랜치 적용<br/><sub>별도 worktree/브랜치에서 동일 언어·문장 final이<br/>짧은 시간 내 재유입될 때 최근 턴과 비교해 차단하고<br/>새 발화 시작 신호(turnStartedAt)가 없을 때만 적용해<br/>정상 반복 발화 오탐을 줄이는 보수적 dedupe를 도입</sub>")
 
@@ -900,6 +906,8 @@ flowchart TD
     mingle_app_tdd_stt_hook_server_integration_plan --> mingle_app_tdd_live_stt_finalize_integration_automation
     mingle_app_tdd_live_stt_finalize_integration_automation --> mingle_app_tdd_live_regression_e2e_matrix_expansion
     mingle_app_tdd_live_regression_e2e_matrix_expansion --> mingle_app_tdd_vitest_node20_compat_fix
+    mingle_app_tdd_vitest_node20_compat_fix --> mingle_app_tdd_github_actions_unit_ci
+    mingle_app_tdd_github_actions_unit_ci --> mingle_app_tdd_live_ci_orchestration_plan
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -953,6 +961,8 @@ flowchart TD
     mingle_app_tdd_live_stt_finalize_integration_automation -.-> ultimate_goal
     mingle_app_tdd_live_regression_e2e_matrix_expansion -.-> ultimate_goal
     mingle_app_tdd_vitest_node20_compat_fix -.-> ultimate_goal
+    mingle_app_tdd_github_actions_unit_ci -.-> ultimate_goal
+    mingle_app_tdd_live_ci_orchestration_plan -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -990,7 +1000,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_finalize_immediate_prev_turn_context_boost
+        mingle_app_tdd_github_actions_unit_ci
     end
 
     %% === STYLES ===
@@ -1238,7 +1248,9 @@ flowchart TD
     style mingle_app_tdd_stt_hook_server_integration_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_live_stt_finalize_integration_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_live_regression_e2e_matrix_expansion fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tdd_vitest_node20_compat_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tdd_vitest_node20_compat_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_github_actions_unit_ci fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tdd_live_ci_orchestration_plan fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1261,7 +1273,7 @@ flowchart TD
     style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_finalize_immediate_prev_turn_context_boost fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
