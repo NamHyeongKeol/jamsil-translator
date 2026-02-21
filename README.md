@@ -45,6 +45,8 @@ scripts/devbox status
 - 워크트리마다 ngrok inspector 포트를 분리(`DEVBOX_NGROK_API_PORT`)해 동시 실행 충돌을 줄였습니다.
 - `--profile device`는 현재 워크트리 포트와 일치하는 `https/wss` 터널만 허용합니다.
 - `scripts/devbox up`은 `.devbox.env`가 없으면 `init`을 자동 실행합니다.
+- `scripts/devbox up --profile device`는 가능한 경우 ngrok을 별도 터미널 탭/패널로 분리 실행합니다
+  (불가 환경에서는 기존 인라인 실행으로 자동 폴백).
 
 ## Learn More
 

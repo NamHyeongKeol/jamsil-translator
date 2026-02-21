@@ -714,6 +714,76 @@ hint: ngrok free plan limits can vary by account generation (often 1~3 online en
 EOF
 }
 
+escape_for_osascript_string() {
+  local input="$1"
+  input="${input//\\/\\\\}"
+  input="${input//\"/\\\"}"
+  printf '%s' "$input"
+}
+
+build_ngrok_launch_command() {
+  local root_q
+  root_q="$(printf '%q' "$ROOT_DIR")"
+  printf 'cd %s && scripts/ngrok-start-mobile.sh --log stdout --log-format logfmt' "$root_q"
+}
+
+launch_ngrok_in_iterm_app() {
+  local app_name="$1"
+  local command_text="$2"
+  local escaped_command
+  escaped_command="$(escape_for_osascript_string "$command_text")"
+
+  osascript >/dev/null <<EOF
+tell application "$app_name"
+  activate
+  if (count of windows) = 0 then
+    create window with default profile
+  end if
+  tell current window
+    tell current session
+      set newSession to (split horizontally with default profile)
+    end tell
+    tell newSession
+      write text "$escaped_command"
+    end tell
+  end tell
+end tell
+EOF
+}
+
+launch_ngrok_in_terminal_app() {
+  local command_text="$1"
+  local escaped_command
+  escaped_command="$(escape_for_osascript_string "$command_text")"
+
+  osascript >/dev/null <<EOF
+tell application "Terminal"
+  activate
+  do script "$escaped_command"
+end tell
+EOF
+}
+
+launch_ngrok_in_separate_terminal() {
+  local ngrok_command
+  ngrok_command="$(build_ngrok_launch_command)"
+
+  command -v osascript >/dev/null 2>&1 || return 1
+
+  case "${TERM_PROGRAM:-}" in
+    iTerm.app)
+      launch_ngrok_in_iterm_app "iTerm2" "$ngrok_command" \
+        || launch_ngrok_in_iterm_app "iTerm" "$ngrok_command"
+      ;;
+    Apple_Terminal)
+      launch_ngrok_in_terminal_app "$ngrok_command"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 try_read_ngrok_urls() {
   local expected_web_port="${1:-}"
   local expected_stt_port="${2:-}"
@@ -1024,7 +1094,7 @@ cmd_up() {
 
   local -a pids=()
   local exit_code=0
-  local started_ngrok=0
+  local started_ngrok_mode="none"
 
   if [[ "$profile" == "device" ]]; then
     write_ngrok_local_config
@@ -1037,15 +1107,23 @@ $(ngrok_plan_capacity_hint)"
       fi
       require_cmd ngrok
       log "starting ngrok for device profile"
-      (
-        cd "$ROOT_DIR"
-        scripts/ngrok-start-mobile.sh
-      ) &
-      pids+=("$!")
-      started_ngrok=1
+      if launch_ngrok_in_separate_terminal; then
+        started_ngrok_mode="separate"
+        log "ngrok started in a separate terminal pane/tab"
+      else
+        log "separate terminal launch unavailable; falling back to inline ngrok"
+        (
+          cd "$ROOT_DIR"
+          scripts/ngrok-start-mobile.sh --log stdout --log-format logfmt
+        ) &
+        pids+=("$!")
+        started_ngrok_mode="inline"
+      fi
 
       if ! wait_for_ngrok_tunnels "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT" 20; then
-        cleanup_processes "${pids[@]}"
+        if [[ "$started_ngrok_mode" == "inline" ]]; then
+          cleanup_processes "${pids[@]}"
+        fi
         if [[ -n "$NGROK_LAST_ERROR" ]]; then
           die "$NGROK_LAST_ERROR
 $(ngrok_plan_capacity_hint)"
@@ -1053,6 +1131,8 @@ $(ngrok_plan_capacity_hint)"
         die "ngrok inspector(port=$DEVBOX_NGROK_API_PORT) did not expose matching web/stt tunnels within 20s.
 $(ngrok_plan_capacity_hint)"
       fi
+    else
+      started_ngrok_mode="reused"
     fi
   fi
 
@@ -1082,8 +1162,10 @@ $(ngrok_plan_capacity_hint)"
     pids+=("$!")
   fi
 
-  if [[ "$started_ngrok" -eq 1 ]]; then
+  if [[ "$started_ngrok_mode" == "inline" ]]; then
     log "ngrok is running with this process group (Ctrl+C to stop all)"
+  elif [[ "$started_ngrok_mode" == "separate" ]]; then
+    log "ngrok is running in separate terminal pane/tab"
   elif [[ "$profile" == "device" ]]; then
     log "reusing existing ngrok tunnels from inspector"
   fi
