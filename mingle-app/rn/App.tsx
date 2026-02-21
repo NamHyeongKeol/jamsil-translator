@@ -149,10 +149,9 @@ function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
   const numeric = typeof rawStatusBarHeight === 'number'
     ? rawStatusBarHeight
     : Number(rawStatusBarHeight);
-  if (!Number.isFinite(numeric) || numeric <= 0) return 36;
-  // Keep status-bar tap while also covering the top header inset margin.
-  const expanded = Math.ceil(numeric) + 20;
-  return Math.max(36, Math.min(76, expanded));
+  if (!Number.isFinite(numeric) || numeric <= 0) return 24;
+  // iOS 상단 탭은 상태바/노치 영역 기준으로만 처리합니다.
+  return Math.max(20, Math.min(64, Math.ceil(numeric)));
 }
 
 function resolveLocaleSegment(): string {

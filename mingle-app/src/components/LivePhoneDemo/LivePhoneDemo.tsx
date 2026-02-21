@@ -1080,7 +1080,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               aria-label="Scroll to top"
               onClick={handleTopSafeAreaTap}
               className="absolute inset-x-0 top-0 z-10 bg-transparent"
-              style={{ height: "max(calc(env(safe-area-inset-top) + 20px), 24px)" }}
+              style={{ height: "max(env(safe-area-inset-top), 20px)" }}
             />
           )}
           <span className="text-[2.05rem] font-extrabold leading-[1.08] bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
