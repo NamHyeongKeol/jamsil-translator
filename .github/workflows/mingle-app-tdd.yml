@@ -98,6 +98,10 @@ jobs:
         if: steps.secret_gate.outputs.run_live == 'true'
         run: pnpm --dir mingle-app install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        if: steps.secret_gate.outputs.run_live == 'true'
+        run: pnpm --dir mingle-app exec prisma generate
+
       - name: Install STT dependencies
         if: steps.secret_gate.outputs.run_live == 'true'
         run: pnpm --dir mingle-stt install --frozen-lockfile

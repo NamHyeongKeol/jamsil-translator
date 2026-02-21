@@ -583,6 +583,9 @@ flowchart TD
     %% @mingle_app_tdd_run8_green_validation [ai-task, closed, 2026-02-21, ai]
     mingle_app_tdd_run8_green_validation("Run #8 TDD 파이프라인 녹색 검증<br/><sub>pull_request 런에서 Unit Tests와<br/>Live Integration(STT+Finalize) job이<br/>모두 success로 완료된 것을 확인해<br/>워크플로우 변경 안정성을 최종 검증</sub>")
 
+    %% @mingle_app_live_fixture_autoskip_without_env [ai-task, closed, 2026-02-21, ai]
+    mingle_app_live_fixture_autoskip_without_env("라이브 fixture 자동 감지/스킵 정렬<br/><sub>fixture 후보 파일이 없을 때는 live 스위트를<br/>실패 대신 자동 skip 하도록 테스트를 조정해<br/>환경변수 없이도 파일만 두면 관련 회귀가<br/>로컬 pnpm test에서 바로 실행되게 보정</sub>")
+
     %% @vercel_deploy_rate_limit_blocker [blocker, opened, 2026-02-21, user]
     vercel_deploy_rate_limit_blocker("Vercel 배포 rate limit 대기<br/><sub>현재 PR commit status에서 Vercel – mingle-app/<br/>mingle-landing 체크가 배포 한도 초과로 실패해<br/>GitHub Actions는 녹색이어도 mergeable_state가<br/>unstable로 남아 대기 또는 수동 재시도가 필요</sub>")
 
@@ -696,6 +699,9 @@ flowchart TD
 
     %% @mingle_stt_silence_tuning_300ms_0006 [ai-task, closed, 2026-02-19, ai]
     mingle_stt_silence_tuning_300ms_0006("Soniox 무음 튜닝 300ms/0.006 적용<br/><sub>200ms/0.008 설정에서 과분할이 잦아<br/>기본 임계값을 300ms와 0.006으로 조정해<br/>짧은 숨고르기/저레벨 구간에서 finalize 빈도를 낮추고<br/>발화 단위를 조금 더 길게 유지하도록 보정</sub>")
+
+    %% @mingle_stt_silence_retune_200ms_0008 [ai-task, closed, 2026-02-21, ai]
+    mingle_stt_silence_retune_200ms_0008("Soniox 무음 튜닝 200ms/0.008 재적용<br/><sub>최근 발화 경계 체감을 다시 빠르게 맞추기 위해<br/>수동 finalize 기본값을 300ms/0.006에서<br/>200ms와 0.008로 되돌려 짧은 무음에서<br/>턴 확정 반응성을 높이도록 재조정</sub>")
 
     %% @mingle_stt_marker_token_visibility_debug_toggle [ai-task, closed, 2026-02-19, ai]
     mingle_stt_marker_token_visibility_debug_toggle("Soniox 특수토큰 표시 디버그 모드<br/><sub>앱 화면에서 <end>/<fin> 토큰 유입 시점을<br/>직접 확인할 수 있도록 final/forced/pending 경로의<br/>토큰 제거 치환을 임시 주석 처리해<br/>원문 토큰이 그대로 보이게 서버를 보정</sub>")
@@ -851,6 +857,7 @@ flowchart TD
     mingle_stt_endpoint_only_finalize_mode --> mingle_stt_finalize_heuristic_removed
     mingle_stt_finalize_heuristic_removed --> mingle_stt_silence_200ms_manual_finalize
     mingle_stt_silence_200ms_manual_finalize --> mingle_stt_silence_tuning_300ms_0006
+    mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_silence_retune_200ms_0008
     mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_marker_token_visibility_debug_toggle
     mingle_stt_marker_token_visibility_debug_toggle --> mingle_stt_endpoint_detection_disabled_experiment
     mingle_stt_endpoint_detection_disabled_experiment --> mingle_stt_endpoint_delay_param_guard_fix
@@ -1013,6 +1020,7 @@ flowchart TD
     mingle_app_tdd_live_ci_ffmpeg_fixture_fix -.-> ultimate_goal
     mingle_app_tdd_live_ci_node20_websocket_polyfill -.-> ultimate_goal
     mingle_app_tdd_run8_green_validation -.-> ultimate_goal
+    mingle_app_live_fixture_autoskip_without_env -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
     api_platform_versioned_namespace_architecture -.-> ultimate_goal
     namespace_release_rollout_and_rn_query_override -.-> ultimate_goal
@@ -1030,6 +1038,7 @@ flowchart TD
     mingle_stt_finalize_heuristic_removed -.-> ultimate_goal
     mingle_stt_silence_200ms_manual_finalize -.-> ultimate_goal
     mingle_stt_silence_tuning_300ms_0006 -.-> ultimate_goal
+    mingle_stt_silence_retune_200ms_0008 -.-> ultimate_goal
     mingle_stt_marker_token_visibility_debug_toggle -.-> ultimate_goal
     mingle_stt_endpoint_detection_disabled_experiment -.-> ultimate_goal
     mingle_stt_endpoint_delay_param_guard_fix -.-> ultimate_goal
@@ -1344,6 +1353,7 @@ flowchart TD
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_tuning_300ms_0006 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_silence_retune_200ms_0008 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
