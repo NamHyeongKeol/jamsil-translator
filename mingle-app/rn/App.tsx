@@ -149,9 +149,9 @@ function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
   const numeric = typeof rawStatusBarHeight === 'number'
     ? rawStatusBarHeight
     : Number(rawStatusBarHeight);
-  if (!Number.isFinite(numeric) || numeric <= 0) return 36;
-  const expanded = Math.ceil(numeric) + 8;
-  return Math.max(28, Math.min(64, expanded));
+  if (!Number.isFinite(numeric) || numeric <= 0) return 24;
+  // Match the measured status bar region only.
+  return Math.max(20, Math.min(64, Math.ceil(numeric)));
 }
 
 function resolveLocaleSegment(): string {
