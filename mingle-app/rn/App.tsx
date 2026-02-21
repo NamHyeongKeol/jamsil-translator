@@ -118,11 +118,11 @@ const WEB_APP_BASE_URL = resolveConfiguredUrl(
   webBaseRaw,
   ['http:', 'https:'],
   { trimTrailingSlash: true },
-) || 'https://mingle-app-xi.vercel.app';
+);
 const DEFAULT_WS_URL = resolveConfiguredUrl(
   normalizedWsRaw,
   ['ws:', 'wss:'],
-) || 'wss://mingle.up.railway.app';
+);
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {

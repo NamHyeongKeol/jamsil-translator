@@ -924,7 +924,6 @@ wss.on('connection', (clientWs) => {
                         // Non-final snapshot이 빈 경우 기존 tail을 지워 stale carry가 남지 않도록 함.
                         latestNonFinalText = '';
                     }
-                    }
 
                     const mergedSnapshot = composeTurnText(finalizedText, latestNonFinalText);
                     sonioxHasPendingTranscript = mergedSnapshot.length > 0
