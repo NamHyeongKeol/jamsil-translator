@@ -4,17 +4,55 @@ import { useEffect, useState } from 'react'
 import i18n from '@/lib/i18n'
 
 const locales = ['en', 'ko', 'ja', 'zh-CN', 'zh-TW', 'fr', 'de', 'es', 'pt', 'it', 'ru', 'ar', 'hi', 'th', 'vi']
+const versions = ['normal', 'flirting', 'working', 'gaming']
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // URL 경로에서 언어 감지 (최우선)
+    // URL 경로에서 언어 감지
+    // /normal/ko, /ko, /normal 등 다양한 형태 지원
     const pathname = window.location.pathname
-    const pathLocale = pathname.split('/')[1]
+    const segments = pathname.split('/').filter(Boolean)
 
-    if (pathLocale && locales.includes(pathLocale)) {
-      i18n.changeLanguage(pathLocale)
+    let detectedLocale: string | null = null
+
+    if (segments.length >= 2) {
+      // /normal/ko 형태
+      const first = segments[0]
+      const second = segments[1]
+      if (versions.includes(first) && locales.includes(second)) {
+        detectedLocale = second
+      }
+    } else if (segments.length === 1) {
+      // /ko 또는 /normal 형태
+      const first = segments[0]
+      if (locales.includes(first)) {
+        detectedLocale = first
+      }
+      // /normal만 있으면 브라우저 언어 감지
+      if (versions.includes(first)) {
+        const browserLang = navigator.language.split('-')[0]
+        // 브라우저 언어가 지원 목록에 있으면 사용, 아니면 기본값(en)
+        if (locales.includes(browserLang)) {
+          detectedLocale = browserLang
+        } else if (locales.includes(navigator.language)) {
+          // zh-CN, zh-TW 같은 전체 언어 코드 확인
+          detectedLocale = navigator.language
+        }
+      }
+    } else {
+      // 루트 경로 "/" - 브라우저 언어 감지
+      const browserLang = navigator.language.split('-')[0]
+      if (locales.includes(browserLang)) {
+        detectedLocale = browserLang
+      } else if (locales.includes(navigator.language)) {
+        detectedLocale = navigator.language
+      }
+    }
+
+    if (detectedLocale) {
+      i18n.changeLanguage(detectedLocale)
     }
 
     setMounted(true)

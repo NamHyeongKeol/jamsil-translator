@@ -5,6 +5,9 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Mingle, Seamless Translator',
   description: 'Just stay in the conversation. Mingle lets you talk without translating sentence by sentence.',
+  icons: {
+    icon: '/favicon.ico',
+  },
   openGraph: {
     title: 'Mingle, Seamless Translator',
     description: 'Just stay in the conversation. Mingle lets you talk without translating sentence by sentence.',

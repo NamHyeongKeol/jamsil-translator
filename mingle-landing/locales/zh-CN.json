@@ -3,82 +3,108 @@
     "cta": "下载"
   },
   "hero": {
-    "badge": "为真正的连接而生的实时翻译",
-    "title1": "即使语言不同，",
-    "title2": "深度对话",
-    "title3": "也成为可能",
-    "subtitle": "说话即刻翻译，屏幕上显示文字。实时语音持续翻译让长时间对话也能流畅自然。聊天记录会保存下来，随时可以再次联系。",
-    "cta": "下载"
+    "title1": "逐句停顿的翻译，",
+    "title2": "该结束了。",
+    "subtitle": "不再需要每句话都停下来翻译。Mingle让长时间对话持续翻译，说话的同时实时翻译并显示在屏幕上。所有对话都记录在聊天室中，可以邀请对方随时在线继续对话。",
+    "cta": "下载",
+    "tryDemo": "试一试",
+    "flirting": {
+      "title1": "和外国人谈情说爱，",
+      "title2": "语言不再是障碍。",
+      "subtitle": "不要因为语言而犹豫。Mingle实时翻译，让你保持自然的氛围。对话保存在聊天室，随时可以联系。"
+    },
+    "working": {
+      "title1": "与全球团队协作，",
+      "title2": "没有语言障碍。",
+      "subtitle": "与全球团队实时沟通。Mingle在会议中无缝翻译。所有对话都会记录，方便日后查看，还可以随时与队友聊天。"
+    }
+  },
+  "valueProposition": {
+    "label": "Why Mingle",
+    "title": "与外国人交流，自信就是一切",
+    "description": "不会外语也没关系。只需打开Mingle。我们会给你这份自信。",
+    "social": {
+      "label": "Offline",
+      "title": "自信地参加线下聚会。",
+      "description": "变身为实时语音翻译器。不用逐句停顿，多种语言也能双向自动翻译，让您专注于对话。",
+      "titleHighlight": "与Mingle一起。"
+    },
+    "titleHighlight": ""
   },
   "problem": {
     "label": "问题所在",
     "title1": "结交外国朋友，",
     "title2": "为什么这么难？",
-    "description": "在派对上遇到很棒的人，但一句一句翻译会打断对话的流程，只留下尴尬的沉默。",
-    "list": {
-      "item1": "逐句翻译打断对话流程",
-      "item2": "3人以上对话时无法分辨谁说了什么",
-      "item3": "分开后没有办法保持联系"
-    },
-    "chat": {
-      "msg1": "\"嘿，今晚和你聊天真的很开心！\"",
-      "msg2": "\"呃...等一下...翻译器...\"",
-      "msg3": "\"...我们可以交换联系方式吗？\"",
-      "msg4": "\"啊好的...那个...\""
-    }
+    "description": "在派对上遇到很棒的人，但一句一句翻译会打断对话的流程，只留下尴尬的沉默。"
+  },
+  "beforeAfter": {
+    "beforeLabel": "Before",
+    "afterLabel": "With Mingle",
+    "beforeDesc": "用翻译应用一句句翻...",
+    "afterDesc": "流畅自然的对话！",
+    "problemLabel": "问题",
+    "solutionLabel": "解决",
+    "problems": [
+      "逐句翻译打断对话流程",
+      "3人以上对话时无法分辨谁说了什么",
+      "分开后没有办法保持联系",
+      "每次对话都要手动切换语言选择"
+    ],
+    "solutions": [
+      "实时流畅自然的对话",
+      "语音识别自动按说话者分离对话",
+      "对话变成聊天室，随时可联系",
+      "自动检测任意语言进行双向翻译"
+    ]
   },
   "features": {
     "label": "功能特点",
-    "title": "无缝翻译，远不止于此",
-    "subtitle": "Mingle不仅仅是一个翻译应用。它拥有真正沟通所需的一切。",
+    "title": "让你专注于对话",
+    "subtitle": "Mingle不仅仅是翻译器。它是让你专注于对话的世界上最舒适的聊天工具。",
     "realtime": {
       "title": "实时翻译",
       "desc": "说话的同时翻译就开始了。自然对话，不会中断。"
     },
     "continuous": {
-      "title": "持续翻译",
-      "desc": "长时间对话也没问题。对方说话时翻译持续进行。"
+      "title": "长对话不间断翻译",
+      "desc": "长时间对话也没问题。对方说话时翻译持续进行。直到你结束。"
     },
     "autoDetect": {
       "title": "多语言检测",
-      "desc": "自动检测任何语言。支持3人以上同时使用不同语言交流。"
+      "desc": "无需选择语言。自动检测任何语言。支持3人以上同时使用不同语言交流。"
     },
     "speaker": {
       "title": "语音识别",
       "desc": "AI识别每个人的声音。即使3人以上对话也能清楚显示谁说了什么。"
     }
   },
+  "realtimeSync": {
+    "label": "实时同步",
+    "title": "邀请对话伙伴，一起查看相同的对话记录",
+    "description": "将对话伙伴邀请到聊天室。通过实时同步功能，对方也能方便地查看相同的对话记录。",
+    "myScreen": "我的屏幕",
+    "theirScreen": "对方屏幕",
+    "syncStatus": "实时同步"
+  },
   "coreValue": {
     "label": "核心价值",
-    "highlight": "从线下到线上",
-    "title": "将线下对话延续为聊天室",
+    "title": "将线下对话延续到在线聊天室",
     "desc1": "这才是Mingle真正的价值所在。",
     "desc2": "邀请你在现实中遇到的人加入应用。翻译过的对话会成为永久聊天室。第二天、下周、任何时候都可以继续对话。",
     "desc3": "派对上的偶遇变成真正的友谊的那一刻，这就是",
     "chatDate": "2024年2月4日的对话",
-    "chatMsg1": "\"见到你真的太高兴了！我去首尔的时候一定要再见面。\"",
-    "chatMsg2": "\"很高兴认识你！你来首尔的时候一定要再聚。\"",
     "inviteBtn": "邀请Jamie"
   },
-  "howItWorks": {
-    "label": "使用方法",
-    "title": "如何使用",
-    "step1": {
-      "title": "开始对话",
-      "desc": "打开应用，按下录音按钮。无需设置语言。"
-    },
-    "step2": {
-      "title": "实时翻译",
-      "desc": "对话会自动识别并实时翻译。"
-    },
-    "step3": {
-      "title": "邀请朋友",
-      "desc": "邀请朋友到聊天记录，随时保持联系。"
-    }
+  "talkToWorld": {
+    "label": "连接全球",
+    "title": "与世界对话",
+    "subtitle": "在线轻松结识世界各地的人并畅聊。",
+    "description": "语言障碍由我们完全消除。无论语音还是文字，只管专注于对话。"
   },
   "cta": {
-    "title1": "打破语言障碍，",
-    "title2": "开始真正的沟通",
+    "title1": "和外国人交朋友",
+    "title2": "最简单的方式 —",
+    "title2Highlight": "Mingle",
     "subtitle": "有了Mingle，无论对方说什么语言，你都能进行深度对话。",
     "button": "立即下载"
   },
@@ -86,20 +112,76 @@
     "copyright": "© 2026 Mingle. 保留所有权利。"
   },
   "modal": {
-    "title": "获取早期访问",
-    "subtitle": "输入您的邮箱，Mingle上线时我们会通知您。",
+    "title": "中国区上线通知",
+    "subtitle": "Mingle已在全球150个国家受到喜爱。注册邮箱，第一时间获取中国区上线通知。",
     "placeholder": "your@email.com",
     "submit": "通知我",
     "success": "已加入名单！",
-    "successDesc": "Mingle准备好后我们会通知您。",
+    "successDesc": "中国区上线时会第一时间通知您！",
     "error": "出现问题，请重试。",
-    "close": "关闭"
+    "close": "关闭",
+    "feedbackPlaceholder": "如果有想要的功能或期待的内容，请告诉我们"
   },
-  "mockup": {
-    "recording": "录音中...",
-    "translate": "实时翻译中",
-    "speaker1": "说话者1",
-    "speaker2": "说话者2",
-    "speaker3": "说话者3"
+  "demo": {
+    "limitReached": "演示已达上限（60秒）",
+    "limitDesc": "注册抢先体验以继续使用"
+  },
+  "partyScenario": {
+    "step1Title": "1. 派对相遇",
+    "step1Desc": "用Mingle实时翻译",
+    "step2Title": "2. 邀请加入应用！",
+    "step2Desc": "邀请对方加入应用后",
+    "step2Highlight": "对话变成聊天室！",
+    "step3Title": "3. 保持联系！",
+    "step3Desc": "随时继续对话",
+    "resultFriends": "派对后仍是朋友！",
+    "resultSaved": "翻译过的对话记录永久保存"
+  },
+  "socialHero": {
+    "title1": "与世界对话",
+    "title2": "没有语言障碍",
+    "subtitle": "AI技术完美解决语言障碍。自信地与全球人交流。",
+    "ctaMain": "下载",
+    "ctaSub": "与数百万外国人对话",
+    "gaming": {
+      "title1": "支持同声传译的",
+      "title2": "游戏语音聊天",
+      "subtitle": "和外国人组队时也能自由交流。没有语言障碍。",
+      "ctaMain": "下载",
+      "ctaSub": "与全球玩家一起",
+      "tryDemo": "试试看",
+      "demoDisclaimer": "* 这只是用于性能测试的演示，实际应用界面会有所不同。"
+    }
+  },
+  "globalStats": {
+    "activeUsers": "活跃用户",
+    "countries": "国家",
+    "languages": "语言"
+  },
+  "connect": {
+    "label": "Connect",
+    "title1": "与喜欢的朋友",
+    "title2": "连接聊天",
+    "description": "与全球超过一千万人连接聊天。语言障碍已被Mingle的AI技术克服。"
+  },
+  "communication": {
+    "title": "任何沟通方式都轻松搞定",
+    "description": "通过文字、语音、视频通话、Voicerooms、Livestreams与当地人见面聊天。所有情况都提供实时翻译。",
+    "label": "Communication"
+  },
+  "moments": {
+    "title": "一起分享世界的瞬间",
+    "description": "在Moments中享受全世界用户的旅行和文化交流。",
+    "label": "Moments"
+  },
+  "voiceroom": {
+    "title": "在Voiceroom中表达自己",
+    "description": "不会外语也没关系，实时翻译让您很快与陌生人熟络起来。",
+    "label": "Voiceroom"
+  },
+  "worldMap": {
+    "title": "寻找世界各地的朋友",
+    "description": "旅行前，先在Mingle上结交当地朋友。",
+    "label": "Explore"
   }
 }

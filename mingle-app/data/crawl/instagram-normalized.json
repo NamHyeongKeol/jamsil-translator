@@ -1,0 +1,41 @@
+[
+  {
+    "platform": "instagram",
+    "author": "sofia.runner",
+    "sourceUrl": "https://instagram.com/p/sample001",
+    "text": "Seoul sunset run + language exchange coffee after it.",
+    "language": "en",
+    "metrics": {
+      "likes": 182,
+      "comments": 23
+    },
+    "createdAt": "2026-02-10T12:00:00.000Z",
+    "collectedAt": "2026-02-13T04:15:59.404Z"
+  },
+  {
+    "platform": "instagram",
+    "author": "aiko.bookclub",
+    "sourceUrl": "https://instagram.com/p/sample002",
+    "text": "오늘 북클럽 끝나고 일본어/한국어 스터디!",
+    "language": "ko",
+    "metrics": {
+      "likes": 96,
+      "comments": 14
+    },
+    "createdAt": "2026-02-11T03:20:00.000Z",
+    "collectedAt": "2026-02-13T04:15:59.404Z"
+  },
+  {
+    "platform": "instagram",
+    "author": "mina.cafe",
+    "sourceUrl": "https://instagram.com/p/sample003",
+    "text": "Busan ocean view cafe list for weekend travelers.",
+    "language": "en",
+    "metrics": {
+      "likes": 211,
+      "comments": 37
+    },
+    "createdAt": "2026-02-12T08:35:00.000Z",
+    "collectedAt": "2026-02-13T04:15:59.404Z"
+  }
+]

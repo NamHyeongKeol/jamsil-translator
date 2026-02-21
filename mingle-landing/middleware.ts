@@ -2,27 +2,49 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 const locales = ['en', 'ko', 'ja', 'zh-CN', 'zh-TW', 'fr', 'de', 'es', 'pt', 'it', 'ru', 'ar', 'hi', 'th', 'vi']
-const defaultLocale = 'en'
+const versions = ['normal', 'flirting', 'working', 'gaming'] // 지원하는 버전 목록
+const defaultVersion = 'normal'
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
-  // Check if pathname starts with a locale
-  const pathnameHasLocale = locales.some(
-    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
-  )
+  // API, static 파일 등은 패스
+  if (pathname.startsWith('/api') || pathname.startsWith('/_next') || pathname.includes('.')) {
+    return NextResponse.next()
+  }
 
-  if (pathnameHasLocale) {
-    // Extract locale from path
-    const locale = pathname.split('/')[1]
+  const segments = pathname.split('/').filter(Boolean)
 
-    // Rewrite to root but keep locale in URL for client-side detection
-    const response = NextResponse.rewrite(new URL('/', request.url))
-    response.headers.set('x-locale', locale)
+  // Case 1: 루트 경로 "/" -> 기본 버전으로 rewrite (리디렉션 없이)
+  if (segments.length === 0) {
+    const response = NextResponse.rewrite(new URL(`/${defaultVersion}`, request.url))
     return response
   }
 
-  // No locale in path - serve as-is (default English)
+  const first = segments[0]
+  const second = segments[1]
+
+  // Case 2: /[version] (예: /normal, /flirting)
+  if (versions.includes(first)) {
+    // /normal 또는 /normal/ko 형태
+    if (second && locales.includes(second)) {
+      // /normal/ko -> 그대로 서빙
+      return NextResponse.next()
+    }
+    // /normal -> 그대로 서빙 (locale은 클라이언트에서 감지)
+    return NextResponse.next()
+  }
+
+  // Case 3: /[locale] (예: /ko, /ja) - 이전 URL 호환
+  // 기존 /ko 링크는 /normal/ko로 rewrite
+  if (locales.includes(first)) {
+    const newPath = second 
+      ? `/${defaultVersion}/${first}/${segments.slice(1).join('/')}`
+      : `/${defaultVersion}/${first}`
+    return NextResponse.rewrite(new URL(newPath, request.url))
+  }
+
+  // Case 4: 그 외 알 수 없는 경로 -> 그대로 (404 처리)
   return NextResponse.next()
 }
 

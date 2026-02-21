@@ -1,0 +1,11 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pnpm install --ignore-scripts && npx tsc stt-server.ts --outDir dist --esModuleInterop --module commonjs --target ES2017 --skipLibCheck --resolveJsonModule"
+  },
+  "deploy": {
+    "startCommand": "node dist/stt-server.js",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}

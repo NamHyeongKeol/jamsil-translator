@@ -3,82 +3,108 @@
     "cta": "다운로드"
   },
   "hero": {
-    "badge": "진짜 연결을 위한 실시간 번역",
-    "title1": "언어가 달라도",
-    "title2": "깊이 있는 대화",
-    "title3": "가 가능해요",
-    "subtitle": "말하면 바로 번역해서 화면에 텍스트로 보여줍니다. 실시간 음성 지속번역으로 긴 대화도 끊김 없이 자연스럽게. 대화록은 채팅방으로 남아 언제든 다시 연락할 수 있어요.",
-    "cta": "다운로드"
+    "title1": "한 문장씩 멈추는 번역은",
+    "title2": "이제 그만.",
+    "subtitle": "한 문장씩 멈춰야 하는 번역기는 이제 그만. Mingle은 긴 대화도 끊김 없이 계속해서 번역하며, 말하는 즉시 실시간으로 번역해 화면에 보여줍니다. 모든 대화는 채팅방에 기록되고, 상대를 초대해 언제든 온라인으로 다시 대화할 수 있어요.",
+    "cta": "다운로드",
+    "tryDemo": "테스트 해보기",
+    "flirting": {
+      "title1": "외국인과 썸 타기,",
+      "title2": "이제 쉬워집니다.",
+      "subtitle": "언어 때문에 망설이지 마세요. Mingle이 실시간으로 번역해드려요. 대화가 끊기지 않으니 자연스럽게 분위기를 이어갈 수 있습니다. 그 사람과의 대화는 채팅방에 저장되어 언제든 다시 연락할 수 있어요."
+    },
+    "working": {
+      "title1": "외국인 동료와 협업,",
+      "title2": "언어 장벽 없이.",
+      "subtitle": "글로벌 팀과 실시간으로 소통하세요. Mingle이 회의 중에도 끊김 없이 번역해드립니다. 모든 대화는 기록되어 나중에 확인할 수 있고, 팀원들과 언제든 채팅으로 이어갈 수 있어요."
+    }
+  },
+  "valueProposition": {
+    "label": "Why Mingle",
+    "title": "외국인과의 대화, 자신감이 전부입니다",
+    "description": "외국어 못해도 괜찮아요. 밍글만 켜놓으세요. 그 자신감을 만들어드립니다.",
+    "social": {
+      "label": "Offline",
+      "title": "오프라인 모임에도 자신 있게 참여하세요.",
+      "description": "실시간 음성 번역기로 변신해요. 한 문장씩 끊기지 않고 여러 언어도 양방향으로 자동으로 번역해줘서 대화에만 집중할 수 있어요.",
+      "titleHighlight": "Mingle과 함께."
+    },
+    "titleHighlight": ""
   },
   "problem": {
     "label": "문제점",
     "title1": "외국인 친구 사귀기,",
     "title2": "왜 이렇게 어려울까요?",
-    "description": "파티에서 만난 멋진 친구, 통역 앱 켜고 한마디씩 번역하다 보면 대화의 흐름이 끊기고, 어색한 침묵만 남습니다.",
-    "list": {
-      "item1": "한 문장씩 번역하느라 대화 흐름이 끊김",
-      "item2": "3명 이상 대화에서 누가 뭐라 했는지 구분 불가",
-      "item3": "헤어지고 나면 연락할 방법이 없음"
-    },
-    "chat": {
-      "msg1": "\"Hey, I really enjoyed talking with you tonight!\"",
-      "msg2": "\"어... 잠시만요... 번역기...\"",
-      "msg3": "\"...maybe we can exchange contacts?\"",
-      "msg4": "\"아 네... 그게...\""
-    }
+    "description": "파티에서 만난 멋진 친구, 통역 앱 켜고 한마디씩 번역하다 보면 대화의 흐름이 끊기고, 어색한 침묵만 남습니다."
+  },
+  "beforeAfter": {
+    "beforeLabel": "Before",
+    "afterLabel": "With Mingle",
+    "beforeDesc": "번역 앱으로 한 문장씩...",
+    "afterDesc": "끊김 없는 자연스러운 대화!",
+    "problemLabel": "Problem",
+    "solutionLabel": "Solution",
+    "problems": [
+      "한 문장씩 번역하느라 대화 흐름이 끊김",
+      "3명 이상 대화에서 누가 뭐라 했는지 구분 불가",
+      "헤어지고 나면 연락할 방법이 없음",
+      "대화 순서마다 언어 선택을 수동으로 바꿔줘야 함"
+    ],
+    "solutions": [
+      "실시간으로 끊김 없이 자연스러운 대화",
+      "음성 인식으로 발화자별 대화 자동 분리",
+      "대화록이 채팅방으로 변환, 언제든 연락 가능",
+      "몇 개의 언어든 자동으로 감지해서 양방향 번역"
+    ]
   },
   "features": {
     "label": "기능",
-    "title": "심리스한 번역, 그 이상",
-    "subtitle": "Mingle은 단순한 번역 앱이 아닙니다. 진짜 소통을 위한 모든 기능을 담았습니다.",
+    "title": "대화에만 집중할 수 있도록",
+    "subtitle": "Mingle은 단순한 번역기가 아닙니다. 대화에만 집중할 수 있게 해주는 세상에서 가장 편한 메신저입니다.",
     "realtime": {
       "title": "실시간 번역",
       "desc": "말하는 동시에 번역이 시작됩니다. 끊김 없이 자연스러운 대화가 가능해요."
     },
     "continuous": {
-      "title": "지속 번역",
-      "desc": "긴 대화도 문제없어요. 상대가 말하는 동안 계속해서 번역을 이어갑니다."
+      "title": "끊김 없이 긴 대화 번역",
+      "desc": "긴 대화도 문제없어요. 상대가 말하는 동안 계속해서 번역을 이어갑니다. 내가 종료할 때까지."
     },
     "autoDetect": {
       "title": "다중 언어 감지",
-      "desc": "어떤 언어도 자동 감지. 3명 이상이 서로 다른 언어로 동시에 말해도 OK."
+      "desc": "언어 선택할 필요 없어요. 어떤 언어도 자동 감지. 3명 이상이 서로 다른 언어로 동시에 말해도 OK."
     },
     "speaker": {
       "title": "발화자 분리",
       "desc": "AI 음성 인식으로 각 사람의 목소리를 구별하여 발화자별로 대화를 분리해 표시합니다. 3명 이상도 OK."
     }
   },
+  "realtimeSync": {
+    "label": "실시간 동기화",
+    "title": "대화 상대를 초대하면, 같은 대화록을 함께 볼 수 있어요",
+    "description": "채팅방에 대화 상대를 초대하세요. 실시간 동기화 기능으로 상대도 편하게 같은 대화록을 볼 수 있습니다.",
+    "myScreen": "내 화면",
+    "theirScreen": "상대 화면",
+    "syncStatus": "실시간 동기화"
+  },
   "coreValue": {
     "label": "핵심 가치",
-    "highlight": "오프라인에서 온라인으로",
-    "title": "오프라인 대화를 채팅방으로 이어가세요",
+    "title": "오프라인 대화를 온라인 채팅방에서 이어가세요",
     "desc1": "Mingle의 진짜 가치는 여기에 있습니다.",
     "desc2": "실제로 만난 사람을 앱에 초대하세요. 번역된 대화가 영구적인 채팅방이 됩니다. 다음날도, 다음 주에도, 언제든 대화를 이어갈 수 있어요.",
     "desc3": "파티에서 만난 인연이 진짜 친구가 되는 순간, 그게 바로",
     "chatDate": "2024년 2월 4일 대화",
-    "chatMsg1": "\"It was so nice meeting you! Let's definitely hang out again when I visit Seoul.\"",
-    "chatMsg2": "\"너 만나서 정말 좋았어! 서울 가면 꼭 다시 보자.\"",
     "inviteBtn": "Jamie 초대하기"
   },
-  "howItWorks": {
-    "label": "사용 방법",
-    "title": "이렇게 사용해요",
-    "step1": {
-      "title": "대화 시작",
-      "desc": "앱을 켜고 녹음 버튼만 누르세요. 언어 설정도 필요 없어요."
-    },
-    "step2": {
-      "title": "실시간 번역",
-      "desc": "대화를 자동으로 인식하고 실시간으로 번역해 보여드려요."
-    },
-    "step3": {
-      "title": "친구 초대",
-      "desc": "대화록에 친구를 초대하면 언제든 다시 연락할 수 있어요."
-    }
+  "talkToWorld": {
+    "label": "글로벌 연결",
+    "title": "전 세계와 대화하세요",
+    "subtitle": "전 세계 사람들을 온라인에서 편하게 만나 대화하세요.",
+    "description": "언어 장벽은 저희가 완전히 없애드릴게요. 음성이든 텍스트든, 대화에만 집중하세요."
   },
   "cta": {
-    "title1": "언어의 벽을 넘어,",
-    "title2": "진짜 소통을 시작하세요",
+    "title1": "외국인과 친해지는",
+    "title2": "가장 쉬운 방법,",
+    "title2Highlight": "밍글",
     "subtitle": "Mingle과 함께라면 어떤 언어를 쓰는 사람과도 깊이 있는 대화를 나눌 수 있습니다.",
     "button": "지금 다운로드"
   },
@@ -86,20 +112,76 @@
     "copyright": "© 2026 Mingle. All rights reserved."
   },
   "modal": {
-    "title": "얼리 액세스 신청",
-    "subtitle": "Mingle 출시 알림을 받을 이메일을 입력하세요.",
+    "title": "한국 출시 알림 신청",
+    "subtitle": "전 세계 150개국에서 사랑받는 Mingle이 곧 한국에 출시됩니다. 이메일을 등록하고 가장 먼저 만나보세요.",
     "placeholder": "your@email.com",
     "submit": "알림 받기",
     "success": "등록 완료!",
-    "successDesc": "Mingle이 준비되면 알려드릴게요.",
+    "successDesc": "한국 출시 시 가장 먼저 알려드릴게요!",
     "error": "문제가 발생했습니다. 다시 시도해주세요.",
-    "close": "닫기"
+    "close": "닫기",
+    "feedbackPlaceholder": "요청하고 싶거나 기대되는 내용이 있다면 적어주세요"
   },
-  "mockup": {
-    "recording": "녹음 중...",
-    "translate": "실시간 번역 중",
-    "speaker1": "화자 1",
-    "speaker2": "화자 2",
-    "speaker3": "화자 3"
+  "demo": {
+    "limitReached": "데모 제한 도달 (60초)",
+    "limitDesc": "계속 사용하려면 얼리 액세스에 등록하세요"
+  },
+  "partyScenario": {
+    "step1Title": "1. 파티에서 만남",
+    "step1Desc": "Mingle로 실시간 번역",
+    "step2Title": "2. 앱에 초대!",
+    "step2Desc": "상대를 앱에 초대하면",
+    "step2Highlight": "대화록이 채팅방으로!",
+    "step3Title": "3. 계속 연락!",
+    "step3Desc": "언제든 다시 대화",
+    "resultFriends": "파티 후에도 친구로!",
+    "resultSaved": "번역된 대화 기록 영구 저장"
+  },
+  "socialHero": {
+    "title1": "세계와 대화하세요",
+    "title2": "언어 장벽 없이",
+    "subtitle": "AI 기술로 언어 문제를 완벽히 해결해드립니다. 전 세계 외국인과 자신 있게 대화하세요.",
+    "ctaMain": "다운로드",
+    "ctaSub": "수백만 명의 외국인과 대화하기",
+    "gaming": {
+      "title1": "동시 통역 되는",
+      "title2": "게이밍 보이스톡",
+      "subtitle": "외국인과 플레이할 때도 자유롭게 대화할 수 있어요. 언어 장벽 없이.",
+      "ctaMain": "다운로드",
+      "ctaSub": "전 세계 게이머와 함께하기",
+      "tryDemo": "테스트 해보기",
+      "demoDisclaimer": "* 성능 테스트를 위한 데모일뿐 실제 앱은 다르게 생겼습니다"
+    }
+  },
+  "globalStats": {
+    "activeUsers": "활성 사용자",
+    "countries": "국가",
+    "languages": "언어"
+  },
+  "connect": {
+    "label": "Connect",
+    "title1": "마음에 드는 친구와",
+    "title2": "연결하고 대화하세요",
+    "description": "전 세계 천만명 이상의 사람들과 연결하고 대화해보세요. 언어 장벽은 Mingle의 AI 기술이 극복했습니다."
+  },
+  "communication": {
+    "title": "어떤 방식의 소통이든 쉽게",
+    "description": "텍스트, 음성, 영상 통화, Voicerooms, Livestreams를 통해 현지인을 만나고 채팅하세요. 모든 경우에 실시간 번역이 제공되어요.",
+    "label": "Communication"
+  },
+  "moments": {
+    "title": "세상의 순간들을 함께하세요",
+    "description": "모먼트에서 전 세계 사용자들의 여행과 문화 교류를 즐겨보세요.",
+    "label": "Moments"
+  },
+  "voiceroom": {
+    "title": "Voiceroom에서 자신을 표현해보세요",
+    "description": "외국어를 못해도 괜찮아요, 실시간 번역으로 낯선 사람들과 금세 친해질 수 있어요.",
+    "label": "Voiceroom"
+  },
+  "worldMap": {
+    "title": "전 세계 누구든 찾아보세요",
+    "description": "여행 가기 전, Mingle에서 현지인 친구를 미리 사귀어보세요.",
+    "label": "Explore"
   }
 }

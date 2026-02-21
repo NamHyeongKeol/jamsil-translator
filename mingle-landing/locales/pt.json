@@ -3,82 +3,108 @@
     "cta": "Baixar"
   },
   "hero": {
-    "badge": "Tradução em tempo real para conexões reais",
-    "title1": "Mesmo com idiomas diferentes,",
-    "title2": "conversas profundas",
-    "title3": "são possíveis",
-    "subtitle": "Fale e veja traduções instantâneas na tela. A tradução de voz em tempo real contínua mantém as conversas fluindo. Os registros de chat ficam salvos para você se reconectar quando quiser.",
-    "cta": "Baixar"
+    "title1": "Tradução frase por frase,",
+    "title2": "chega disso.",
+    "subtitle": "Chega de parar após cada frase para traduzir. O Mingle traduz conversas longas continuamente, mostrando em tempo real na tela o que você diz. Todas as conversas são salvas em uma sala de chat, e você pode convidar outros para continuar conversando online a qualquer momento.",
+    "cta": "Baixar",
+    "tryDemo": "Experimente",
+    "flirting": {
+      "title1": "Paquerar com estrangeiros,",
+      "title2": "ficou mais fácil.",
+      "subtitle": "Não deixe o idioma te impedir. O Mingle traduz em tempo real para manter o clima natural. Sua conversa fica salva como sala de chat, assim você pode se reconectar quando quiser."
+    },
+    "working": {
+      "title1": "Trabalhar com equipes globais,",
+      "title2": "sem barreiras de idioma.",
+      "subtitle": "Comunique-se com sua equipe global em tempo real. O Mingle traduz sem interrupções durante reuniões. Todas as conversas são gravadas para revisar depois, e você pode continuar conversando com colegas a qualquer momento."
+    }
+  },
+  "valueProposition": {
+    "label": "Why Mingle",
+    "title": "Falar com Estrangeiros? Confiança é Tudo",
+    "description": "Não fala o idioma deles? Sem problema. Basta ligar o Mingle. Nós te daremos a confiança.",
+    "social": {
+      "label": "Offline",
+      "title": "Participe de encontros offline com confiança.",
+      "description": "Transforma-se em tradutor de voz em tempo real. Traduz automaticamente vários idiomas em ambas as direções.",
+      "titleHighlight": "Com Mingle."
+    },
+    "titleHighlight": ""
   },
   "problem": {
     "label": "O Problema",
     "title1": "Fazer amigos estrangeiros,",
     "title2": "por que é tão difícil?",
-    "description": "Você conhece alguém incrível em uma festa, mas traduzir frase por frase quebra o fluxo da conversa, deixando apenas um silêncio constrangedor.",
-    "list": {
-      "item1": "O fluxo da conversa quebra ao traduzir frase por frase",
-      "item2": "Impossível distinguir quem disse o quê em conversas com 3+ pessoas",
-      "item3": "Sem forma de manter contato depois de se separar"
-    },
-    "chat": {
-      "msg1": "\"Ei, adorei conversar com você hoje à noite!\"",
-      "msg2": "\"Hum...espera...tradutor...\"",
-      "msg3": "\"...podemos trocar contatos?\"",
-      "msg4": "\"Ah sim...é que...\""
-    }
+    "description": "Você conhece alguém incrível em uma festa, mas traduzir frase por frase quebra o fluxo da conversa, deixando apenas um silêncio constrangedor."
+  },
+  "beforeAfter": {
+    "beforeLabel": "Antes",
+    "afterLabel": "Com Mingle",
+    "beforeDesc": "Traduzindo frase por frase...",
+    "afterDesc": "Conversa fluida e natural!",
+    "problemLabel": "Problema",
+    "solutionLabel": "Solução",
+    "problems": [
+      "O fluxo da conversa quebra ao traduzir frase por frase",
+      "Impossível distinguir quem disse o quê em conversas com 3+ pessoas",
+      "Sem forma de manter contato depois de se separar",
+      "Precisa mudar manualmente a seleção de idioma a cada turno"
+    ],
+    "solutions": [
+      "Conversa fluida e natural em tempo real",
+      "Reconhecimento de voz separa automaticamente por falante",
+      "A conversa se torna sala de chat, sempre conectados",
+      "Detecta automaticamente qualquer idioma para tradução bidirecional"
+    ]
   },
   "features": {
     "label": "Recursos",
-    "title": "Tradução perfeita, e muito mais",
-    "subtitle": "Mingle não é apenas um app de tradução. Tem tudo que você precisa para comunicação real.",
+    "title": "Para você focar na conversa",
+    "subtitle": "Mingle não é apenas um tradutor. É o mensageiro mais confortável do mundo que permite você focar apenas na conversa.",
     "realtime": {
       "title": "Tradução em Tempo Real",
       "desc": "A tradução começa enquanto você fala. Conversa natural sem interrupção."
     },
     "continuous": {
-      "title": "Tradução Contínua",
-      "desc": "Conversas longas não são problema. A tradução continua enquanto seu parceiro fala."
+      "title": "Tradução de conversas longas",
+      "desc": "Conversas longas não são problema. A tradução continua enquanto seu parceiro fala. Até você parar."
     },
     "autoDetect": {
       "title": "Detecção Multi-idioma",
-      "desc": "Detecta automaticamente qualquer idioma. Suporta 3+ pessoas falando idiomas diferentes simultaneamente."
+      "desc": "Não precisa selecionar idioma. Detecta automaticamente qualquer idioma. Suporta 3+ pessoas falando idiomas diferentes simultaneamente."
     },
     "speaker": {
       "title": "Reconhecimento de Voz",
       "desc": "IA identifica a voz de cada pessoa. Mesmo em conversas com 3+ pessoas, mostra claramente quem disse o quê."
     }
   },
+  "realtimeSync": {
+    "label": "Sincronização em tempo real",
+    "title": "Convide seu parceiro de conversa e compartilhem a mesma transcrição",
+    "description": "Convide seu parceiro de conversa para a sala de chat. Com a sincronização em tempo real, ele também pode ver confortavelmente a mesma transcrição.",
+    "myScreen": "Minha tela",
+    "theirScreen": "Tela deles",
+    "syncStatus": "Sincronização em tempo real"
+  },
   "coreValue": {
     "label": "Valor Central",
-    "highlight": "Do Offline para Online",
-    "title": "Continue sua conversa offline como uma sala de chat",
+    "title": "Continue sua conversa offline em uma sala de chat online",
     "desc1": "Este é o verdadeiro valor do Mingle.",
     "desc2": "Convide a pessoa que você conheceu pessoalmente para o app. Sua conversa traduzida se torna uma sala de chat permanente. Continue conversando no dia seguinte, na próxima semana, ou quando quiser.",
     "desc3": "O momento em que um encontro casual em uma festa se torna uma amizade real, isso é",
     "chatDate": "Conversa de 4 de fevereiro de 2024",
-    "chatMsg1": "\"Foi muito bom te conhecer! Vamos nos ver de novo quando eu visitar Seul.\"",
-    "chatMsg2": "\"Foi ótimo te conhecer! Vamos nos encontrar quando você vier a Seul.\"",
     "inviteBtn": "Convidar Jamie"
   },
-  "howItWorks": {
-    "label": "Como Funciona",
-    "title": "Como usar",
-    "step1": {
-      "title": "Iniciar Conversa",
-      "desc": "Abra o app e pressione gravar. Sem necessidade de configurar idioma."
-    },
-    "step2": {
-      "title": "Tradução em Tempo Real",
-      "desc": "Conversas são automaticamente reconhecidas e traduzidas em tempo real."
-    },
-    "step3": {
-      "title": "Convidar Amigos",
-      "desc": "Convide amigos para o registro de chat e mantenha-se conectado a qualquer momento."
-    }
+  "talkToWorld": {
+    "label": "Conexão Global",
+    "title": "Fale com o mundo",
+    "subtitle": "Conheça pessoas de todo o mundo e converse confortavelmente online.",
+    "description": "Nós removemos completamente a barreira do idioma para você. Seja voz ou texto, apenas foque na conversa."
   },
   "cta": {
-    "title1": "Quebre a barreira do idioma,",
-    "title2": "comece a comunicação real",
+    "title1": "O jeito mais fácil de",
+    "title2": "fazer amigos —",
+    "title2Highlight": "Mingle",
     "subtitle": "Com Mingle, você pode ter conversas profundas com qualquer pessoa, não importa que idioma fale.",
     "button": "Baixar Agora"
   },
@@ -86,20 +112,76 @@
     "copyright": "© 2026 Mingle. Todos os direitos reservados."
   },
   "modal": {
-    "title": "Acesso Antecipado",
-    "subtitle": "Digite seu email para ser notificado quando o Mingle for lançado.",
+    "title": "Inscreva-se para o lançamento no Brasil",
+    "subtitle": "Mingle já é amado por milhões no mundo todo. Cadastre seu email para saber quando chegaremos ao Brasil.",
     "placeholder": "seu@email.com",
     "submit": "Me notifique",
     "success": "Você está na lista!",
-    "successDesc": "Notificaremos você quando o Mingle estiver pronto.",
+    "successDesc": "Avisaremos quando o Mingle for lançado no Brasil!",
     "error": "Algo deu errado. Por favor, tente novamente.",
-    "close": "Fechar"
+    "close": "Fechar",
+    "feedbackPlaceholder": "Se você tem alguma solicitação ou expectativa, conte-nos"
   },
-  "mockup": {
-    "recording": "Gravando...",
-    "translate": "Traduzindo em tempo real",
-    "speaker1": "Falante 1",
-    "speaker2": "Falante 2",
-    "speaker3": "Falante 3"
+  "demo": {
+    "limitReached": "Limite da demo atingido (60s)",
+    "limitDesc": "Cadastre-se para acesso antecipado"
+  },
+  "partyScenario": {
+    "step1Title": "1. Conhecer na festa",
+    "step1Desc": "Tradução em tempo real com Mingle",
+    "step2Title": "2. Convidar para o app!",
+    "step2Desc": "Ao convidar a outra pessoa",
+    "step2Highlight": "A conversa vira sala de chat!",
+    "step3Title": "3. Manter contato!",
+    "step3Desc": "Conversar quando quiser",
+    "resultFriends": "Amigos depois da festa!",
+    "resultSaved": "Histórico traduzido salvo para sempre"
+  },
+  "socialHero": {
+    "title1": "Fale com o mundo",
+    "title2": "Sem barreiras",
+    "subtitle": "A tecnologia de IA resolve completamente a barreira linguística. Converse com confiança com pessoas de todo o mundo.",
+    "ctaMain": "Baixar",
+    "ctaSub": "Converse com milhões de pessoas",
+    "gaming": {
+      "title1": "Chat de Voz para Gaming",
+      "title2": "com Tradução em Tempo Real",
+      "subtitle": "Jogue globalmente. Fale livremente. Zero barreiras de idioma.",
+      "ctaMain": "Baixar",
+      "ctaSub": "Junte-se a gamers do mundo todo",
+      "tryDemo": "Experimentar",
+      "demoDisclaimer": "* Esta é apenas uma demo para teste de desempenho. O app real é diferente."
+    }
+  },
+  "globalStats": {
+    "activeUsers": "Usuários ativos",
+    "countries": "Países",
+    "languages": "Idiomas"
+  },
+  "connect": {
+    "label": "Connect",
+    "title1": "Conecte-se e converse",
+    "title2": "com amigos que você gosta",
+    "description": "Conecte-se com mais de 10 milhões de pessoas. A tecnologia IA do Mingle superou a barreira linguística."
+  },
+  "communication": {
+    "title": "Qualquer tipo de comunicação, facilmente",
+    "description": "Conheça e converse com locais por texto, voz, chamadas de vídeo, Voicerooms e Livestreams. Tradução em tempo real em todos os casos.",
+    "label": "Communication"
+  },
+  "moments": {
+    "title": "Compartilhe momentos com o mundo",
+    "description": "Aproveite viagens e trocas culturais de usuários de todo o mundo nos Moments.",
+    "label": "Moments"
+  },
+  "voiceroom": {
+    "title": "Expresse-se no Voiceroom",
+    "description": "Não fala o idioma? Sem problema. A tradução em tempo real permite conectar rapidamente.",
+    "label": "Voiceroom"
+  },
+  "worldMap": {
+    "title": "Encontre qualquer pessoa no mundo",
+    "description": "Antes de viajar, faça amigos locais no Mingle primeiro.",
+    "label": "Explore"
   }
 }
