@@ -5,7 +5,7 @@ Date: 2026-02-21
 ## 1. Build Readiness (codebase)
 
 - [x] RN deps sync (`pnpm --dir mingle-app/rn install`)
-- [x] iOS pods sync (`HOME=/tmp/codex-home pod install`)
+- [x] iOS pods sync (`pod install` or `bundle exec pod install`)
 - [x] Release iOS build succeeded (`xcodebuild ... -workspace rnnative.xcworkspace -scheme rnnative -configuration Release -sdk iphoneos ... build`)
 - [x] `Info.plist` cleanup: removed empty `NSLocationWhenInUseUsageDescription`
 
