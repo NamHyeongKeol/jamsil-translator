@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_multi_worktree_devbox_automation
+    %% @lastActive: mingle_devbox_security_port_isolation_hardening
 
     %% === START ===
     %% @project_start [start, closed]
@@ -700,6 +700,9 @@ flowchart TD
     %% @mingle_multi_worktree_devbox_automation [ai-task, closed, 2026-02-21, ai]
     mingle_multi_worktree_devbox_automation("워크트리별 devbox 자동화 구현<br/><sub>scripts/devbox.sh로 포트/환경변수/프로필을<br/>워크트리 단위로 자동 분리하고 STT+Next(+Metro)<br/>원커맨드 실행 및 live test 바인딩을 추가해<br/>PC웹/iOS웹/iOS앱/안드앱/안드웹 검증 흐름을 정리</sub>")
 
+    %% @mingle_devbox_security_port_isolation_hardening [ai-task, closed, 2026-02-21, ai]
+    mingle_devbox_security_port_isolation_hardening("devbox 보안/격리 하드닝<br/><sub>.devbox.env source 제거 후 안전 파싱으로<br/>명령 주입 벡터를 차단하고 host 검증을 추가<br/>기존 NEXT_PUBLIC_WS_URL stale 값을 강제 초기화해<br/>로컬/터널 프로필 전환 시 오접속 회귀를 방지</sub>")
+
     %% @ultimate_goal [end, opened]
     ultimate_goal("Mingle Launch<br/><sub>소셜링 중심의 실시간 번역 앱으로<br/>외국인과 깊이 있는 대화를 나누고<br/>지속적인 관계를 만들어가는 서비스</sub>")
 
@@ -883,6 +886,7 @@ flowchart TD
     mingle_app_final_duplicate_guard_nonfinal_aware_refine --> mingle_app_mobile_safari_stt_no_log_rootcause
     mingle_app_mobile_safari_stt_no_log_rootcause --> mingle_app_ngrok_dual_tunnel_overlay_setup
     mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_multi_worktree_devbox_automation
+    mingle_multi_worktree_devbox_automation --> mingle_devbox_security_port_isolation_hardening
     mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_app_final_dedupe_false_negative_fix
     mingle_app_final_dedupe_false_negative_fix --> mingle_app_fin_marker_sanitize_temp_disable
     mingle_app_fin_marker_sanitize_temp_disable --> mingle_stt_endpoint_final_merge_for_fin_visibility
@@ -992,11 +996,12 @@ flowchart TD
     mingle_app_rn_release_about_blank_crash_fix -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
     mingle_multi_worktree_devbox_automation -.-> ultimate_goal
+    mingle_devbox_security_port_isolation_hardening -.-> ultimate_goal
     mingle_app_rn_ios_device_build_install -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_multi_worktree_devbox_automation
+        mingle_devbox_security_port_isolation_hardening
     end
 
     %% === STYLES ===
@@ -1268,7 +1273,8 @@ flowchart TD
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_ios_device_build_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_multi_worktree_devbox_automation fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_multi_worktree_devbox_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_devbox_security_port_isolation_hardening fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

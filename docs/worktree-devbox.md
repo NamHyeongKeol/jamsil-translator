@@ -8,6 +8,7 @@
 - `mingle-app` + `mingle-stt` 동시 실행 단일 명령 제공
 - iOS/Android Web/App 테스트에 필요한 URL/WS env를 자동 동기화
 - ngrok 사용 시 로컬 포트 기반 설정 자동 반영
+- 기존 `NEXT_PUBLIC_WS_URL` 잔존으로 인한 오접속 방지
 
 ## 빠른 시작
 
@@ -29,6 +30,7 @@ scripts/devbox.sh up --with-metro
 
 - `scripts/devbox.sh init`
   - `.devbox.env` 생성
+  - git worktree 목록 기준으로 이미 할당된 포트를 회피해 기본 포트 자동 선택
   - `mingle-app/.env.local` devbox 관리 블록 갱신
   - `mingle-stt/.env.local` 포트 블록 갱신
   - `ngrok.mobile.local.yml` 생성
@@ -36,6 +38,7 @@ scripts/devbox.sh up --with-metro
 - `scripts/devbox.sh profile-local --host <LAN_IP>`
   - 디바이스가 같은 네트워크에서 직접 접속할 때 사용
   - 예: `--host 192.168.0.12`
+  - `NEXT_PUBLIC_WS_URL`를 빈 값으로 강제해 stale ngrok URL 잔존을 제거
 
 - `scripts/devbox.sh profile-ngrok`
   - ngrok inspector(`http://127.0.0.1:4040`)에서 `web`, `stt` 터널 URL을 읽어
