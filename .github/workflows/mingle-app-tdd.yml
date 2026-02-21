@@ -57,17 +57,35 @@ jobs:
     name: Live Integration (STT + Finalize)
     needs: unit-tests
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && secrets.GEMINI_API_KEY != '' && secrets.SONIOX_API_KEY != '' }}
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      SONIOX_API_KEY: ${{ secrets.SONIOX_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check required secrets
+        id: secret_gate
+        run: |
+          if [ -n "${GEMINI_API_KEY:-}" ] && [ -n "${SONIOX_API_KEY:-}" ]; then
+            echo "run_live=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_live=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip live tests when secrets are missing
+        if: steps.secret_gate.outputs.run_live != 'true'
+        run: echo "GEMINI_API_KEY or SONIOX_API_KEY is missing. Skipping live-tests job."
+
       - name: Setup pnpm
+        if: steps.secret_gate.outputs.run_live == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
       - name: Setup Node.js
+        if: steps.secret_gate.outputs.run_live == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20.18.1
@@ -77,21 +95,23 @@ jobs:
             mingle-stt/pnpm-lock.yaml
 
       - name: Install app dependencies
+        if: steps.secret_gate.outputs.run_live == 'true'
         run: pnpm --dir mingle-app install --frozen-lockfile
 
       - name: Install STT dependencies
+        if: steps.secret_gate.outputs.run_live == 'true'
         run: pnpm --dir mingle-stt install --frozen-lockfile
 
       - name: Prepare live audio fixture
+        if: steps.secret_gate.outputs.run_live == 'true'
         run: |
           set -euo pipefail
           mkdir -p mingle-app/test-fixtures/audio/fixtures
           cp mingle-landing/public/demo_conversation.mp4 mingle-app/test-fixtures/audio/fixtures/ci-demo.mp4
 
       - name: Run live integration suite
+        if: steps.secret_gate.outputs.run_live == 'true'
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          SONIOX_API_KEY: ${{ secrets.SONIOX_API_KEY }}
           MINGLE_TEST_API_BASE_URL: http://127.0.0.1:3000
           MINGLE_TEST_WS_URL: ws://127.0.0.1:3001
           MINGLE_TEST_AUDIO_FIXTURE_DIR: test-fixtures/audio/fixtures
