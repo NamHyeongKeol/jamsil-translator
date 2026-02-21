@@ -550,8 +550,16 @@ export async function POST(request: NextRequest) {
         const encoder = new TextEncoder()
         const stream = new ReadableStream<Uint8Array>({
           async start(controller) {
+            let streamClosed = false
             const pushEvent = (eventPayload: Record<string, unknown>) => {
-              controller.enqueue(encoder.encode(`${JSON.stringify(eventPayload)}\n`))
+              if (streamClosed) return false
+              try {
+                controller.enqueue(encoder.encode(`${JSON.stringify(eventPayload)}\n`))
+                return true
+              } catch {
+                streamClosed = true
+                return false
+              }
             }
             try {
               pushEvent({
@@ -600,7 +608,13 @@ export async function POST(request: NextRequest) {
                 error: 'deferred_tts_stream_failed',
               })
             } finally {
-              controller.close()
+              if (!streamClosed) {
+                try {
+                  controller.close()
+                } catch {
+                  // no-op: stream might already be closed by the runtime/client.
+                }
+              }
             }
           },
         })
