@@ -1,4 +1,7 @@
-import { postTranslateFinalizeForWebLandingV1 } from '@/server/api/controllers/web/landing/v1/translate-finalize-controller'
+import { legacyApiGoneResponse } from '@/server/api/versioning/legacy-route'
 
 export const runtime = 'nodejs'
-export const POST = postTranslateFinalizeForWebLandingV1
+
+export async function POST() {
+  return legacyApiGoneResponse('/api/web/landing/v1/translate/finalize')
+}

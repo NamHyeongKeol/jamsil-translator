@@ -39,22 +39,20 @@ pnpm --dir mingle-landing build:release:web
   - Android: `mobile/android/v1`
 - 값이 없거나 불일치하면 WebView를 로드하지 않고 오류를 표시합니다.
 
-## 5) Legacy Endpoint Decommission Plan
+## 5) Legacy Endpoint Policy
 
-- 현재 상태: legacy `/api/*` 래퍼 유지(호환)
-- 권장 단계:
-  1. 1주: 로그에서 legacy 호출 0건 확인
-  2. 2주: legacy route에 299 deprecation header 추가
-  3. 3주: legacy route 제거
+- legacy 무버전 `/api/*` 경로는 즉시 차단(410 Gone)됩니다.
+- 응답 헤더 `X-Mingle-Api-Replacement`로 버전 URL을 안내합니다.
+- 클라이언트/테스트/문서는 반드시 `/api/{namespace}/v1/...`만 사용해야 합니다.
 
 ## 6) Contract Test Coverage
 
 - app:
   - `src/lib/api-contract.test.ts` (allow-list + override guard)
-  - `src/app/api/namespace-routing.contract.test.ts` (legacy/web/mobile 라우트 매핑)
+  - `src/app/api/namespace-routing.contract.test.ts` (legacy 차단 + web/mobile 라우트 매핑)
 - landing:
   - `lib/api-contract.test.ts`
-  - `app/api/namespace-routing.contract.test.ts`
+  - `app/api/namespace-routing.contract.test.ts` (legacy 차단 + v1 라우트 매핑)
 - rn:
   - `src/lib/rn-api-namespace.test.ts` (`rn/src/apiNamespace.ts` 검증)
 - CI:

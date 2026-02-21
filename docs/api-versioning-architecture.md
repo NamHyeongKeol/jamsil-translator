@@ -76,5 +76,6 @@ Namespaces:
 
 ## Compatibility Policy
 
-기존 레거시 경로(`/api/translate/finalize` 등)는 내부적으로 `web/*/v1` 컨트롤러를 호출하는 래퍼로 유지합니다.
-이후 클라이언트 전환 완료 시 단계적으로 제거할 수 있습니다.
+레거시 무버전 경로(`/api/translate/finalize` 등)는 허용하지 않습니다.
+레거시 경로 요청은 `410 Gone`과 `X-Mingle-Api-Replacement` 헤더를 반환하며,
+클라이언트는 반드시 `/api/{namespace}/v1/...` 형태의 URL만 사용해야 합니다.

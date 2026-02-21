@@ -55,7 +55,7 @@ async function importRouteWithEnv() {
   process.env.INWORLD_TTS_DEFAULT_VOICE_ID = 'Ashley'
   process.env.INWORLD_TTS_MODEL_ID = 'inworld-tts-1.5-mini'
 
-  const mod = await import('./route')
+  const mod = await import('@/app/api/web/app/v1/translate/finalize/route')
   return mod.POST
 }
 

@@ -23,18 +23,51 @@ import { postTranslateFinalizeForWebAppV1 } from '@/server/api/controllers/web/a
 import { postTtsInworldForWebAppV1 } from '@/server/api/controllers/web/app/v1/tts-inworld-controller'
 
 describe('mingle-app namespace route wiring', () => {
-  it('maps web and legacy translate finalize routes to web/app/v1 controller', () => {
-    expect(postLegacyTranslateFinalize).toBe(postTranslateFinalizeForWebAppV1)
+  it('rejects legacy translate finalize endpoint without namespace/version', async () => {
+    const response = await postLegacyTranslateFinalize()
+
+    expect(response.status).toBe(410)
+    expect(response.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/app/v1/translate/finalize')
+    const payload = await response.json()
+    expect(payload).toMatchObject({
+      error: 'api_version_required',
+      replacement: '/api/web/app/v1/translate/finalize',
+    })
+  })
+
+  it('maps /web/app/v1 translate finalize route to web/app/v1 controller', () => {
     expect(postWebV1TranslateFinalize).toBe(postTranslateFinalizeForWebAppV1)
   })
 
-  it('maps web and legacy tts routes to web/app/v1 controller', () => {
-    expect(postLegacyTtsInworld).toBe(postTtsInworldForWebAppV1)
+  it('rejects legacy tts endpoint without namespace/version', async () => {
+    const response = await postLegacyTtsInworld()
+
+    expect(response.status).toBe(410)
+    expect(response.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/app/v1/tts/inworld')
+    const payload = await response.json()
+    expect(payload).toMatchObject({
+      error: 'api_version_required',
+      replacement: '/api/web/app/v1/tts/inworld',
+    })
+  })
+
+  it('maps /web/app/v1 tts route to web/app/v1 controller', () => {
     expect(postWebV1TtsInworld).toBe(postTtsInworldForWebAppV1)
   })
 
-  it('maps web and legacy client-event routes to web/app/v1 controller', () => {
-    expect(postLegacyLogClientEvent).toBe(postLogClientEventForWebAppV1)
+  it('rejects legacy client-event endpoint without namespace/version', async () => {
+    const response = await postLegacyLogClientEvent()
+
+    expect(response.status).toBe(410)
+    expect(response.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/app/v1/log/client-event')
+    const payload = await response.json()
+    expect(payload).toMatchObject({
+      error: 'api_version_required',
+      replacement: '/api/web/app/v1/log/client-event',
+    })
+  })
+
+  it('maps /web/app/v1 client-event route to web/app/v1 controller', () => {
     expect(postWebV1LogClientEvent).toBe(postLogClientEventForWebAppV1)
   })
 
