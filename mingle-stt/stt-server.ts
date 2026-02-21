@@ -711,7 +711,13 @@ wss.on('connection', (clientWs) => {
                 state.latestNonFinalText = '';
                 state.latestNonFinalIsProvisionalCarry = false;
                 updateSonioxPendingState();
-                resetSonioxSegmentState();
+                if (!sonioxHasPendingTranscript) {
+                    resetSonioxSegmentState();
+                } else {
+                    // Keep segment activity when other speakers still have pending text.
+                    // Otherwise silence-based manual finalize can be suppressed.
+                    sonioxManualFinalizeSent = false;
+                }
 
                 if (clientWs.readyState === WebSocket.OPEN) {
                     clientWs.send(JSON.stringify({
@@ -971,7 +977,11 @@ wss.on('connection', (clientWs) => {
                                 state.latestNonFinalText = '';
                                 state.latestNonFinalIsProvisionalCarry = false;
                                 updateSonioxPendingState();
-                                resetSonioxSegmentState();
+                                if (!sonioxHasPendingTranscript) {
+                                    resetSonioxSegmentState();
+                                } else {
+                                    sonioxManualFinalizeSent = false;
+                                }
                             }
 
                             // Keep trailing text after endpoint marker as next-turn partial
