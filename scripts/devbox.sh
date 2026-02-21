@@ -741,7 +741,7 @@ tell application "$app_name"
   end if
   tell current window
     tell current session
-      set newSession to (split horizontally with default profile)
+      set newSession to (split vertically with default profile)
     end tell
     tell newSession
       write text "$escaped_command"
