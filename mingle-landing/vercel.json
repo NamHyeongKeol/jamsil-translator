@@ -1,4 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "git show --name-only --pretty=\"\" HEAD | grep -Eq '^(mingle-landing/)' && exit 1 || exit 0"
+  "ignoreCommand": "git show --name-only --pretty=\"\" HEAD | grep -Eq '^(mingle-landing/)' && exit 1 || exit 0",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "**": false
+    }
+  }
 }
