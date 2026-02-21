@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_ios_appstore_readiness_audit
+    %% @lastActive: mingle_app_tdd_nonstraight_main_merge_guard
 
     %% === START ===
     %% @project_start [start, closed]
@@ -586,8 +586,32 @@ flowchart TD
     %% @mingle_app_live_fixture_autoskip_without_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_live_fixture_autoskip_without_env("라이브 fixture 자동 감지/스킵 정렬<br/><sub>fixture 후보 파일이 없을 때는 live 스위트를<br/>실패 대신 자동 skip 하도록 테스트를 조정해<br/>환경변수 없이도 파일만 두면 관련 회귀가<br/>로컬 pnpm test에서 바로 실행되게 보정</sub>")
 
+    %% @mingle_app_tdd_pr_only_trigger_without_post_merge_run [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_pr_only_trigger_without_post_merge_run("CI를 PR 전용으로 트리거 정렬<br/><sub>mingle-app TDD 워크플로우의 main push 트리거를<br/>제거하고 pull_request(main)만 남겨<br/>머지 전 검증은 유지하면서 머지 직후에는<br/>같은 테스트가 다시 자동 실행되지 않게 정리</sub>")
+
+    %% @mingle_app_tdd_main_push_direct_guard [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_main_push_direct_guard("main 직접 push 경로 테스트 가드 보강<br/><sub>push(main) 트리거를 복원하되 커밋-PR 연계를 조회해<br/>PR 머지 커밋이면 post-merge 테스트를 스킵하고<br/>연계 PR 없는 direct push일 때만 unit/live가 실행되게<br/>워크플로우 분기 로직으로 검증 공백을 해소</sub>")
+
+    %% @mingle_app_tdd_nonstraight_main_merge_guard [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_nonstraight_main_merge_guard("비정형 main merge 테스트 실행 분기<br/><sub>PR 연계가 있더라도 parent 2+ 이면서<br/>표준 'Merge pull request #' 형태가 아니면<br/>비정형 머지로 간주해 post-merge 테스트를 실행하고<br/>표준 PR 머지 커밋만 재실행 스킵으로 유지</sub>")
+
+    %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
+    mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
+
     %% @vercel_deploy_rate_limit_blocker [blocker, opened, 2026-02-21, user]
     vercel_deploy_rate_limit_blocker("Vercel 배포 rate limit 대기<br/><sub>현재 PR commit status에서 Vercel – mingle-app/<br/>mingle-landing 체크가 배포 한도 초과로 실패해<br/>GitHub Actions는 녹색이어도 mergeable_state가<br/>unstable로 남아 대기 또는 수동 재시도가 필요</sub>")
+
+    %% @vercel_app_landing_main_branch_deploy_gate [ai-task, closed, 2026-02-21, ai]
+    vercel_app_landing_main_branch_deploy_gate("Vercel main 브랜치 배포 가드 통일<br/><sub>mingle-app과 mingle-landing vercel.json에<br/>git.deploymentEnabled 규칙을 추가해<br/>main 이외 브랜치 커밋에서는 Vercel 배포가<br/>시도되지 않도록 공통 정책으로 맞춤</sub>")
+
+    %% @vercel_deployment_enabled_double_star_pattern_fix [ai-task, closed, 2026-02-21, ai]
+    vercel_deployment_enabled_double_star_pattern_fix("Vercel 브랜치 패턴을 **로 보정<br/><sub>codex/.. 처럼 슬래시가 포함된 브랜치는<br/>git.deploymentEnabled의 *=false 규칙에서<br/>누락될 수 있어 **=false로 교체해<br/>main 외 브랜치 배포 시도를 전면 차단</sub>")
+
+    %% @vercel_main_always_deploy_ignore_command_fix [ai-task, closed, 2026-02-21, ai]
+    vercel_main_always_deploy_ignore_command_fix("main 커밋 취소 이슈용 ignoreCommand 정리<br/><sub>경로 기반 grep 필터가 남아 있어 main 커밋도<br/>Ignored Build Step으로 취소되던 로그를 확인하고<br/>ignoreCommand를 non-main 스킵 전용으로 단순화해<br/>main에서는 항상 배포가 진행되도록 보정</sub>")
+
+    %% @mingle_stt_railway_main_branch_deploy_setting [human-task, opened, 2026-02-21, user]
+    mingle_stt_railway_main_branch_deploy_setting("Railway mingle-stt main 브랜치 고정<br/><sub>railway.json 스키마에는 브랜치 트리거 옵션이 없어<br/>서비스 대시보드의 Connected Branch를 main으로<br/>직접 설정해야 PR 브랜치 배포 시도 자체를<br/>완전히 막을 수 있어 후속 반영이 필요</sub>")
 
     %% @mingle_app_final_duplicate_guard_experiment [ai-task, closed, 2026-02-20, ai]
     mingle_app_final_duplicate_guard_experiment("final 중복 가드 실험 브랜치 적용<br/><sub>별도 worktree/브랜치에서 동일 언어·문장 final이<br/>짧은 시간 내 재유입될 때 최근 턴과 비교해 차단하고<br/>새 발화 시작 신호(turnStartedAt)가 없을 때만 적용해<br/>정상 반복 발화 오탐을 줄이는 보수적 dedupe를 도입</sub>")
@@ -675,15 +699,6 @@ flowchart TD
 
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
-
-    %% @mingle_app_rn_ios_device_build_install [ai-task, closed, 2026-02-21, ai]
-    mingle_app_rn_ios_device_build_install("RN iPhone 빌드/설치 완료<br/><sub>연결된 Royce의 iPhone(14) 대상으로<br/>pnpm rn:ios --no-packager 경로에서<br/>xcodebuild Debug 빌드 후 앱 설치/실행까지<br/>CLI 단독 플로우를 재검증 완료</sub>")
-
-    %% @mingle_app_ios_appstore_readiness_audit [ai-task, closed, 2026-02-21, ai]
-    mingle_app_ios_appstore_readiness_audit("iOS App Store 제출 준비도 점검<br/><sub>main 기준 RN 의존성/Pods 동기화 후<br/>Release(iphoneos) 빌드 성공을 재확인하고<br/>Info.plist의 빈 위치 권한 문구를 제거해<br/>리뷰 리젝 가능성이 큰 설정 리스크를 정리</sub>")
-
-    %% @mingle_app_ios_appstore_submission_todo [human-task, opened, 2026-02-21, user]
-    mingle_app_ios_appstore_submission_todo("App Store 제출 실행 체크리스트<br/><sub>버전/빌드 번호 상승, 서명/프로비저닝과<br/>App Store Connect 메타데이터/프라이버시<br/>작성, TestFlight 스모크 검증까지 포함한<br/>실제 제출 전 단계별 실행 항목을 정리</sub>")
 
     %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
     mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
@@ -880,9 +895,6 @@ flowchart TD
     mingle_app_vercel_rn_typecheck_scope_fix --> mingle_app_rn_webview_native_stt_bridge
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_env_only_server_url_config
     mingle_app_rn_env_only_server_url_config --> mingle_app_rn_release_about_blank_crash_fix
-    mingle_app_rn_release_about_blank_crash_fix --> mingle_app_rn_ios_device_build_install
-    mingle_app_rn_ios_device_build_install --> mingle_app_ios_appstore_readiness_audit
-    mingle_app_ios_appstore_readiness_audit --> mingle_app_ios_appstore_submission_todo
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -955,7 +967,15 @@ flowchart TD
     mingle_app_tdd_live_ci_ffmpeg_fixture_fix --> mingle_app_tdd_live_ci_node20_websocket_polyfill
     mingle_app_tdd_live_ci_node20_websocket_polyfill --> mingle_app_tdd_run8_green_validation
     mingle_app_tdd_run8_green_validation --> mingle_app_live_fixture_autoskip_without_env
-    mingle_app_live_fixture_autoskip_without_env --> vercel_deploy_rate_limit_blocker
+    mingle_app_live_fixture_autoskip_without_env --> mingle_app_tdd_pr_only_trigger_without_post_merge_run
+    mingle_app_tdd_pr_only_trigger_without_post_merge_run --> mingle_app_tdd_main_push_direct_guard
+    mingle_app_tdd_main_push_direct_guard --> mingle_app_tdd_nonstraight_main_merge_guard
+    mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
+    mingle_app_tdd_nonstraight_main_merge_guard --> vercel_deploy_rate_limit_blocker
+    vercel_deploy_rate_limit_blocker --> vercel_app_landing_main_branch_deploy_gate
+    vercel_app_landing_main_branch_deploy_gate --> vercel_deployment_enabled_double_star_pattern_fix
+    vercel_deployment_enabled_double_star_pattern_fix --> vercel_main_always_deploy_ignore_command_fix
+    vercel_main_always_deploy_ignore_command_fix --> mingle_stt_railway_main_branch_deploy_setting
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -1018,7 +1038,15 @@ flowchart TD
     mingle_app_tdd_live_ci_node20_websocket_polyfill -.-> ultimate_goal
     mingle_app_tdd_run8_green_validation -.-> ultimate_goal
     mingle_app_live_fixture_autoskip_without_env -.-> ultimate_goal
+    mingle_app_tdd_pr_only_trigger_without_post_merge_run -.-> ultimate_goal
+    mingle_app_tdd_main_push_direct_guard -.-> ultimate_goal
+    mingle_app_tdd_nonstraight_main_merge_guard -.-> ultimate_goal
+    mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
+    vercel_app_landing_main_branch_deploy_gate -.-> ultimate_goal
+    vercel_deployment_enabled_double_star_pattern_fix -.-> ultimate_goal
+    vercel_main_always_deploy_ignore_command_fix -.-> ultimate_goal
+    mingle_stt_railway_main_branch_deploy_setting -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -1054,12 +1082,10 @@ flowchart TD
     mingle_app_vercel_main_branch_only_deploy_guard -.-> ultimate_goal
     mingle_app_rn_release_about_blank_crash_fix -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
-    mingle_app_rn_ios_device_build_install -.-> ultimate_goal
-    mingle_app_ios_appstore_submission_todo -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_ios_appstore_readiness_audit
+        mingle_app_tdd_nonstraight_main_merge_guard
     end
 
     %% === STYLES ===
@@ -1316,8 +1342,16 @@ flowchart TD
     style mingle_app_tdd_live_ci_ffmpeg_fixture_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_live_ci_node20_websocket_polyfill fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_run8_green_validation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_live_fixture_autoskip_without_env fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_live_fixture_autoskip_without_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_pr_only_trigger_without_post_merge_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_main_push_direct_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_nonstraight_main_merge_guard fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
+    style vercel_app_landing_main_branch_deploy_gate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_deployment_enabled_double_star_pattern_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_main_always_deploy_ignore_command_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_railway_main_branch_deploy_setting fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1340,9 +1374,7 @@ flowchart TD
     style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_rn_ios_device_build_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_ios_appstore_submission_todo fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
-    style mingle_app_ios_appstore_readiness_audit fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
