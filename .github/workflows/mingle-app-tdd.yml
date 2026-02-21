@@ -122,7 +122,8 @@ jobs:
 
           pnpm --dir mingle-app dev > /tmp/mingle-ci/app.log 2>&1 &
           APP_PID=$!
-          pnpm --dir mingle-stt dev > /tmp/mingle-ci/stt.log 2>&1 &
+          pnpm --dir mingle-stt build > /tmp/mingle-ci/stt-build.log 2>&1
+          pnpm --dir mingle-stt start > /tmp/mingle-ci/stt.log 2>&1 &
           STT_PID=$!
 
           cleanup() {
@@ -157,6 +158,7 @@ jobs:
 
           if [ "$stt_ready" -ne 1 ]; then
             echo "::error::mingle-stt server did not become ready on :3001"
+            tail -n 200 /tmp/mingle-ci/stt-build.log || true
             tail -n 200 /tmp/mingle-ci/app.log || true
             tail -n 200 /tmp/mingle-ci/stt.log || true
             exit 1
