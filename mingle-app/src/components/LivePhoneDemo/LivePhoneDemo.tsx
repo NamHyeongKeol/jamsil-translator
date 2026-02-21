@@ -15,6 +15,10 @@ import {
   deriveScrollUiVisibility,
   isLikelyIOSNavigator,
 } from './live-phone-demo.scroll.logic'
+import {
+  NATIVE_UI_EVENT,
+  parseNativeUiScrollToTopDetail,
+} from './live-phone-demo.native-ui.logic'
 
 const VOLUME_THRESHOLD = 0.05
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
@@ -1047,6 +1051,21 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     chatRef.current.scrollTo({ top: 0, behavior: 'smooth' })
     updateScrollDerivedState({ fromUserScroll: true })
   }, [markUserScrollIntent, updateScrollDerivedState])
+
+  useEffect(() => {
+    if (!isNativeApp()) return
+
+    const handleNativeUiEvent = (event: Event) => {
+      const detail = parseNativeUiScrollToTopDetail((event as CustomEvent<unknown>).detail)
+      if (!detail) return
+      handleTopSafeAreaTap()
+    }
+
+    window.addEventListener(NATIVE_UI_EVENT, handleNativeUiEvent as EventListener)
+    return () => {
+      window.removeEventListener(NATIVE_UI_EVENT, handleNativeUiEvent as EventListener)
+    }
+  }, [handleTopSafeAreaTap])
 
   // On fresh mount/re-entry, pin to the latest messages first.
   // This prevents initial top-pagination from running before we settle at bottom.
