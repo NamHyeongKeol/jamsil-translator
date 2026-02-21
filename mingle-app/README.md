@@ -20,6 +20,99 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Live STT/API Integration Test (included in `pnpm test`)
+
+`pnpm test` runs both unit tests and live integration tests that:
+
+1. Streams an audio fixture to local STT WebSocket server
+2. Sends the finalized transcript to `/api/translate/finalize`
+
+Useful commands:
+
+- `pnpm test` (unit + live integration)
+- `pnpm test:unit` (unit only, excludes live integration)
+- `pnpm test:live` (all live `.live.test.ts` only)
+
+Default local endpoints:
+
+- STT WS: `ws://127.0.0.1:3001`
+- API: `http://127.0.0.1:3000`
+
+Default audio fixture path:
+
+- `test-fixtures/audio/fixtures/`
+- `test-fixtures/audio/local/` (git ignored local fixtures)
+
+You can override paths/endpoints with env vars:
+
+```bash
+MINGLE_TEST_AUDIO_FIXTURE=/absolute/path/to/file.wav
+MINGLE_TEST_AUDIO_FIXTURE_DIR=/absolute/path/to/fixtures-dir
+MINGLE_TEST_WS_URL=ws://127.0.0.1:3001
+MINGLE_TEST_API_BASE_URL=http://127.0.0.1:3000
+MINGLE_TEST_EXPECTED_PHRASE="hello mingle"
+MINGLE_TEST_TARGET_LANGUAGES=ko,en
+MINGLE_TEST_TTS_LANGUAGE=ko
+MINGLE_TEST_TTS_OUTPUT_DIR=/absolute/path/to/tts-output
+```
+
+Fixture scan behavior:
+
+- 폴더 내 파일명은 자유입니다.
+- `.wav`(PCM16/mono) 파일은 바로 처리합니다.
+- `.m4a` 포함 일부 포맷은 ffmpeg(또는 macOS afconvert)로 변환 후 처리합니다.
+- 변환/파싱 실패 파일은 경고만 출력하고 skip 후 다음 파일로 진행합니다.
+- 유효한 fixture가 1개도 없으면 테스트는 실패합니다.
+- 기본 오디오 전송은 실시간 속도(`40ms chunk / 40ms delay`)로 동작합니다.
+
+Translation/TTS behavior:
+
+- source가 `en`이면 target은 기본 `ko`
+- source가 `ko`면 target은 기본 `en`
+- 그 외 source는 기본 target `ko,en`
+- 테스트 stdout에 Soniox 원문과 finalize 번역 결과를 출력합니다.
+- finalize 응답에 TTS가 오면 음성 파일을 `test-fixtures/audio/local/tts-output/`에 저장합니다(로컬 전용, git ignore).
+
+### Live E2E suites
+
+Always-on suites:
+
+- `src/integration/live/stt-finalize.live.test.ts`
+- `src/integration/live/e2e.stop-chain.live.test.ts`
+- `src/integration/live/e2e.stop-ack-fallback.live.test.ts`
+- `src/integration/live/e2e.finalize-fallback.live.test.ts`
+- `src/integration/live/e2e.language-matrix.live.test.ts`
+- `src/integration/live/e2e.soniox-endpoint-compat.live.test.ts`
+- `src/integration/live/e2e.soniox-segmentation.live.test.ts`
+- `src/integration/live/e2e.tts-artifact.live.test.ts`
+
+Device-dependent optional suites (env flag required):
+
+- `MINGLE_TEST_IOS_HEALTHCHECK=1` -> `e2e.ios-launch-healthcheck.live.test.ts`
+- `MINGLE_TEST_IOS_TTS_EVENT_E2E=1` -> `e2e.ios-tts-event-order.live.test.ts`
+
+Finalize fault-injection E2E notes:
+
+- live 테스트는 finalize fault mode 요청 시 `x-mingle-live-test: 1` 헤더를 붙입니다.
+- API 서버는 non-production 환경에서만 `provider_empty/target_miss/provider_error` 강제 모드를 허용합니다.
+
+iOS launch healthcheck notes:
+
+- 스크립트: `scripts/e2e-ios-launch-healthcheck.sh`
+- 필수 env: `MINGLE_TEST_IOS_UDID`
+- 선택 env: `MINGLE_TEST_IOS_BUNDLE_ID`, `MINGLE_TEST_IOS_INSTALL=1`, `MINGLE_TEST_IOS_APP_PATH`
+
+Fixture requirements:
+
+- WAV (RIFF/WAVE)
+- PCM 16-bit
+- mono (1 channel)
+
+Audio fixture git policy:
+
+- 팀 공통 재현용 짧은 샘플 1개는 `test-fixtures/audio/fixtures/`에 커밋 권장
+- 개인/민감 음성은 `test-fixtures/audio/local/`에 두고 git ignore 처리
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

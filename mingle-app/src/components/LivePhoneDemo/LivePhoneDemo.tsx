@@ -789,7 +789,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   // Stop current playback when sound is disabled.
   useEffect(() => {
     if (isSoundEnabled) return
-    forceStopTtsPlayback('mute_or_sound_disabled', { clearSpeakingItem: true })
+    const timerId = window.setTimeout(() => {
+      forceStopTtsPlayback('mute_or_sound_disabled', { clearSpeakingItem: true })
+    }, 0)
+    return () => window.clearTimeout(timerId)
   }, [forceStopTtsPlayback, isSoundEnabled])
 
   const prevEnableAutoTTSRef = useRef(enableAutoTTS)
@@ -797,7 +800,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     const wasEnabled = prevEnableAutoTTSRef.current
     prevEnableAutoTTSRef.current = enableAutoTTS
     if (enableAutoTTS || !wasEnabled) return
-    forceStopTtsPlayback('force_reset', { clearSpeakingItem: true })
+    const timerId = window.setTimeout(() => {
+      forceStopTtsPlayback('force_reset', { clearSpeakingItem: true })
+    }, 0)
+    return () => window.clearTimeout(timerId)
   }, [enableAutoTTS, forceStopTtsPlayback])
 
   useEffect(() => {

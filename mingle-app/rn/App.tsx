@@ -118,11 +118,11 @@ const WEB_APP_BASE_URL = resolveConfiguredUrl(
   webBaseRaw,
   ['http:', 'https:'],
   { trimTrailingSlash: true },
-);
+) || 'https://mingle-app-xi.vercel.app';
 const DEFAULT_WS_URL = resolveConfiguredUrl(
   normalizedWsRaw,
   ['ws:', 'wss:'],
-);
+) || 'wss://mingle.up.railway.app';
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {
@@ -226,12 +226,12 @@ function App(): React.JSX.Element {
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const localeWebUrl = useMemo(() => {
-    if (!WEB_APP_BASE_URL) return 'about:blank';
+    if (!WEB_APP_BASE_URL) return '';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1${debugParams}`;
   }, [locale]);
   const rootWebUrl = useMemo(() => {
-    if (!WEB_APP_BASE_URL) return 'about:blank';
+    if (!WEB_APP_BASE_URL) return '';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/?nativeStt=1${debugParams}`;
   }, []);
@@ -371,7 +371,7 @@ function App(): React.JSX.Element {
     }
 
     if (parsed.type === 'native_tts_play') {
-      const { utteranceId, audioBase64, contentType } = parsed.payload;
+      const { utteranceId, audioBase64 } = parsed.payload;
       const playbackId = typeof parsed.payload.playbackId === 'string' && parsed.payload.playbackId.trim()
         ? parsed.payload.playbackId.trim()
         : utteranceId;
@@ -519,7 +519,9 @@ function App(): React.JSX.Element {
       <StatusBar barStyle="dark-content" />
       <WebView
         ref={webViewRef}
-        source={{ uri: activeWebUrl }}
+        source={activeWebUrl
+          ? { uri: activeWebUrl }
+          : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
         originWhitelist={['*']}
         javaScriptEnabled
         domStorageEnabled
