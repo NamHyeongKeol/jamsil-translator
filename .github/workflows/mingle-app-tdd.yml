@@ -102,12 +102,21 @@ jobs:
         if: steps.secret_gate.outputs.run_live == 'true'
         run: pnpm --dir mingle-stt install --frozen-lockfile
 
+      - name: Install ffmpeg
+        if: steps.secret_gate.outputs.run_live == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
       - name: Prepare live audio fixture
         if: steps.secret_gate.outputs.run_live == 'true'
         run: |
           set -euo pipefail
           mkdir -p mingle-app/test-fixtures/audio/fixtures
-          cp mingle-landing/public/demo_conversation.mp4 mingle-app/test-fixtures/audio/fixtures/ci-demo.mp4
+          ffmpeg -v error -y \
+            -i mingle-landing/public/demo_conversation.mp4 \
+            -ar 16000 -ac 1 -sample_fmt s16 \
+            mingle-app/test-fixtures/audio/fixtures/ci-demo.wav
 
       - name: Run live integration suite
         if: steps.secret_gate.outputs.run_live == 'true'
