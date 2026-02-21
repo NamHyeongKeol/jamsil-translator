@@ -11,8 +11,9 @@ import { pickShortestFixture, scanFixtures } from './support/live-fixture-utils'
 const REQUIRE_TTS = process.env.MINGLE_TEST_REQUIRE_TTS === '1'
 const env = readLiveE2EEnv()
 const scanResult = scanFixtures(env)
+const describeWithFixtureCandidates = scanResult.candidates.length > 0 ? describe.sequential : describe.skip
 
-describe.sequential('e2e regression: tts artifact integrity', () => {
+describeWithFixtureCandidates('e2e regression: tts artifact integrity', () => {
   it('stores non-empty tts artifact when finalize returns audio', async () => {
     const fixtureEntry = pickShortestFixture(scanResult)
     const stopAfterMs = Math.min(
