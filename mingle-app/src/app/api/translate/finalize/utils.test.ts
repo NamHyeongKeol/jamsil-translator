@@ -4,6 +4,7 @@ import {
   normalizeLang,
   normalizeTargetLanguages,
   parseCurrentTurnPreviousState,
+  parseImmediatePreviousTurn,
   parseRecentTurns,
   parseTranslations,
 } from './utils'
@@ -65,8 +66,29 @@ describe('translate/finalize utils', () => {
       sourceText: 'msg-0',
       translations: { ko: 'ko-0' },
       ageMs: 1500,
+      isFinalized: false,
     })
     expect(turns[11]?.sourceText).toBe('msg-11')
+  })
+
+  it('parses immediate previous turn and defaults isFinalized to false', () => {
+    expect(parseImmediatePreviousTurn({
+      sourceLanguage: 'en',
+      sourceText: '<fin>hello',
+      translations: { ko: '안녕' },
+    })).toEqual({
+      sourceLanguage: 'en',
+      sourceText: 'hello',
+      translations: { ko: '안녕' },
+      isFinalized: false,
+    })
+
+    expect(parseImmediatePreviousTurn({
+      sourceLanguage: 'en',
+      sourceText: 'hello again',
+      translations: { ko: '또 안녕' },
+      isFinalized: true,
+    })?.isFinalized).toBe(true)
   })
 
   it('parses current turn previous state with source-language filtering', () => {

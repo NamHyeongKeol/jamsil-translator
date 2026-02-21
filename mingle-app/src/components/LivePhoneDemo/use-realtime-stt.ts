@@ -1582,7 +1582,6 @@ export default function useRealtimeSTT({
       turnStartedAtRef.current = null
       sawNonFinalSinceLastFinalRef.current = false
       lastPartialTranslationStateRef.current = null
-      sawNonFinalSinceLastFinalRef.current = false
       hasActiveSessionRef.current = false
       setPartialTranscript('')
       setPartialTranslations({})
