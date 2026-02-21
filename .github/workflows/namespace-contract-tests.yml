@@ -52,6 +52,9 @@ jobs:
       - name: Install app dependencies
         run: pnpm --dir mingle-app install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        run: pnpm --dir mingle-app exec prisma generate
+
       - name: Run app namespace contract tests
         env:
           NEXT_PUBLIC_API_NAMESPACE: ${{ matrix.api_namespace }}

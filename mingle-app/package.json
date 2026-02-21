@@ -46,6 +46,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@react-native/typescript-config": "0.84.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
