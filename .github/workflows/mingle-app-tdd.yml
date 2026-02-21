@@ -1,6 +1,14 @@
 name: mingle-app TDD
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "mingle-app/**"
+      - "mingle-stt/**"
+      - "data/**"
+      - ".github/workflows/mingle-app-tdd.yml"
   pull_request:
     branches:
       - main
@@ -13,14 +21,61 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: mingle-app-tdd-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
+  push-context:
+    name: Push Context Gate
+    runs-on: ubuntu-latest
+    outputs:
+      run_tests_on_push: ${{ steps.decide.outputs.run_tests_on_push }}
+    steps:
+      - name: Decide whether push should run tests
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_API_URL: ${{ github.api_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" != "push" ]; then
+            echo "run_tests_on_push=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          api_url="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls"
+          if ! response="$(curl -fsSL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${api_url}")"; then
+            echo "::warning::Failed to query commit PR associations; running tests for safety."
+            echo "run_tests_on_push=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          associated_pr_count="$(
+            echo "$response" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const v=JSON.parse(s);process.stdout.write(String(Array.isArray(v)?v.length:0));}catch{process.stdout.write('0')}})"
+          )"
+
+          if [ "${associated_pr_count}" -gt 0 ]; then
+            echo "run_tests_on_push=false" >> "$GITHUB_OUTPUT"
+            echo "Push commit is associated with PR(s); skipping post-merge test rerun."
+          else
+            echo "run_tests_on_push=true" >> "$GITHUB_OUTPUT"
+            echo "Push commit has no associated PR; running tests."
+          fi
+
   unit-tests:
     name: Unit Tests (Vitest)
+    needs: push-context
+    if: ${{ github.event_name != 'push' || needs.push-context.outputs.run_tests_on_push == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
