@@ -517,6 +517,9 @@ flowchart TD
     %% @mingle_app_recent_turn_context_source_lang_filter_fix [ai-task, closed, 2026-02-19, ai]
     mingle_app_recent_turn_context_source_lang_filter_fix("Recent context 원문언어 누수 차단<br/><sub>partial 언어 추정 변동으로 source와 동일한 번역키가<br/>recentTurns/currentTurnPreviousState에 섞이던 경로를 추적해<br/>클라이언트 seed/partial/recent payload에서 source 언어 키를 제거하고<br/>서버 parse 단계에도 동일 필터를 추가해 2중 방어로 정합성 고정</sub>")
 
+    %% @mingle_app_finalize_immediate_prev_turn_context_boost [ai-task, closed, 2026-02-20, ai]
+    mingle_app_finalize_immediate_prev_turn_context_boost("Finalize 직전턴 컨텍스트 강화<br/><sub>recentTurns에 isFinalized와 직전턴 필드를 추가해<br/>확정/미확정 문맥 신뢰도를 프롬프트에서 구분하고<br/>현재턴>동일턴직전상태>직전턴>기타최근턴 순서로<br/>의역 규칙을 재강화해 잘게 분할된 턴 번역을 보강</sub>")
+
     %% @mingle_app_translation_bubble_target_snapshot_policy [ai-task, closed, 2026-02-19, ai]
     mingle_app_translation_bubble_target_snapshot_policy("번역 버블 언어 스냅샷 정책 적용<br/><sub>언어 추가/제거가 과거 메시지 버블을 바꾸지 않도록<br/>턴 생성 시점 targetLanguages를 utterance에 스냅샷 저장하고<br/>ChatBubble은 selectedLanguages 대신 utterance 메타데이터로 렌더해<br/>localStorage에 남은 기존 번역 버블도 그대로 유지되게 고정</sub>")
 
@@ -910,6 +913,7 @@ flowchart TD
     mingle_app_finalize_current_state_fallback_and_target_guard --> mingle_app_stt_leading_noise_chars_expand
     mingle_app_stt_leading_noise_chars_expand --> mingle_app_finalize_prompt_minify_for_structured_output
     mingle_app_finalize_prompt_minify_for_structured_output --> mingle_app_recent_turn_context_source_lang_filter_fix
+    mingle_app_recent_turn_context_source_lang_filter_fix --> mingle_app_finalize_immediate_prev_turn_context_boost
     mingle_app_recent_turn_context_source_lang_filter_fix --> mingle_app_translation_bubble_target_snapshot_policy
     mingle_app_translation_bubble_target_snapshot_policy --> mingle_app_turbopack_root_tailwind_resolution_fix
     mingle_app_turbopack_root_tailwind_resolution_fix --> mingle_app_chat_scroll_overlay_and_threshold_tuning
@@ -988,6 +992,7 @@ flowchart TD
     mingle_app_stt_leading_noise_chars_expand -.-> ultimate_goal
     mingle_app_finalize_prompt_minify_for_structured_output -.-> ultimate_goal
     mingle_app_recent_turn_context_source_lang_filter_fix -.-> ultimate_goal
+    mingle_app_finalize_immediate_prev_turn_context_boost -.-> ultimate_goal
     mingle_app_translation_bubble_target_snapshot_policy -.-> ultimate_goal
     mingle_app_turbopack_root_tailwind_resolution_fix -.-> ultimate_goal
     mingle_app_chat_scroll_overlay_and_threshold_tuning -.-> ultimate_goal
@@ -1352,6 +1357,7 @@ flowchart TD
     style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
