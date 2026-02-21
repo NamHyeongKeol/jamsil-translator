@@ -70,6 +70,7 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--host HOST]
+  scripts/devbox bootstrap
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
   scripts/devbox up [--profile local|device] [--host HOST] [--with-metro]
@@ -78,6 +79,7 @@ Usage:
 
 Commands:
   init         Generate worktree-specific ports/config/env files.
+  bootstrap    Seed env files from main worktree and install dependencies.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
   up           Start STT + Next app together (device profile includes ngrok).
@@ -256,6 +258,91 @@ calc_default_ports() {
 ensure_file_parent() {
   local file="$1"
   mkdir -p "$(dirname "$file")"
+}
+
+find_main_worktree_root() {
+  local line=""
+  local worktree_path=""
+  while IFS= read -r line; do
+    case "$line" in
+      worktree\ *)
+        worktree_path="${line#worktree }"
+        ;;
+      branch\ refs/heads/main)
+        printf '%s' "$worktree_path"
+        return 0
+        ;;
+    esac
+  done < <(git -C "$ROOT_DIR" worktree list --porcelain)
+  return 1
+}
+
+file_has_non_managed_env_entries() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+
+  awk -v start="$MANAGED_START" -v end="$MANAGED_END" '
+    $0 == start { in_block = 1; next }
+    $0 == end { in_block = 0; next }
+    !in_block && $0 ~ /^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=.*/ { found = 1; exit }
+    END { exit(found ? 0 : 1) }
+  ' "$file"
+}
+
+sync_env_file_from_main_if_needed() {
+  local label="$1"
+  local source_file="$2"
+  local target_file="$3"
+
+  [[ -f "$source_file" ]] || return 0
+  [[ "$source_file" != "$target_file" ]] || return 0
+
+  if [[ ! -f "$target_file" ]]; then
+    ensure_file_parent "$target_file"
+    cp "$source_file" "$target_file"
+    log "seeded $label env from main worktree"
+    return 0
+  fi
+
+  if file_has_non_managed_env_entries "$target_file"; then
+    return 0
+  fi
+
+  if file_has_non_managed_env_entries "$source_file"; then
+    cp "$source_file" "$target_file"
+    log "seeded $label env from main worktree"
+  fi
+}
+
+seed_env_from_main_worktree() {
+  local main_root=""
+  main_root="$(find_main_worktree_root || true)"
+  [[ -n "$main_root" ]] || return 0
+  main_root="$(cd "$main_root" 2>/dev/null && pwd -P || true)"
+  [[ -n "$main_root" ]] || return 0
+
+  sync_env_file_from_main_if_needed \
+    "mingle-app" \
+    "$main_root/mingle-app/.env.local" \
+    "$APP_ENV_FILE"
+  sync_env_file_from_main_if_needed \
+    "mingle-stt" \
+    "$main_root/mingle-stt/.env.local" \
+    "$STT_ENV_FILE"
+}
+
+ensure_workspace_dependencies() {
+  local app_next_bin="$ROOT_DIR/mingle-app/node_modules/.bin/next"
+  local stt_tsnode_bin="$ROOT_DIR/mingle-stt/node_modules/.bin/ts-node"
+
+  if [[ ! -x "$app_next_bin" ]]; then
+    log "installing dependencies: mingle-app"
+    pnpm --dir "$ROOT_DIR/mingle-app" install
+  fi
+  if [[ ! -x "$stt_tsnode_bin" ]]; then
+    log "installing dependencies: mingle-stt"
+    pnpm --dir "$ROOT_DIR/mingle-stt" install
+  fi
 }
 
 remove_managed_block() {
@@ -674,10 +761,22 @@ cmd_init() {
   DEVBOX_METRO_PORT="$metro_port"
   set_local_profile_values "$host"
 
+  seed_env_from_main_worktree
   save_and_refresh
 
   log "initialized for worktree: $DEVBOX_WORKTREE_NAME"
   cmd_status
+}
+
+cmd_bootstrap() {
+  require_cmd pnpm
+  seed_env_from_main_worktree
+  ensure_workspace_dependencies
+  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    require_devbox_env
+    refresh_runtime_files
+  fi
+  log "bootstrap complete"
 }
 
 cmd_profile() {
@@ -709,6 +808,8 @@ cmd_ngrok_config() {
 cmd_up() {
   require_devbox_env
   require_cmd pnpm
+  seed_env_from_main_worktree
+  ensure_workspace_dependencies
 
   local profile="local"
   local host=""
@@ -845,6 +946,7 @@ main() {
 
   case "$cmd" in
     init) cmd_init "$@" ;;
+    bootstrap) cmd_bootstrap "$@" ;;
     profile) cmd_profile "$@" ;;
     profile-local) cmd_profile --profile local "$@" ;;
     profile-device|profile-ngrok) cmd_profile --profile device "$@" ;;

@@ -26,12 +26,15 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ```bash
 scripts/devbox init
+scripts/devbox bootstrap
 scripts/devbox up --profile local
 scripts/devbox up --profile device
 scripts/devbox status
 ```
 
 - 상세 가이드: `docs/worktree-devbox.md`
+- `scripts/devbox bootstrap`은 main 워크트리의 `mingle-app/.env.local`,
+  `mingle-stt/.env.local`을 시드하고 필요한 의존성을 자동 설치합니다.
 - `--profile device`는 ngrok(`web`/`stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
 - `--profile device`는 현재 워크트리 포트와 일치하는 `https/wss` 터널만 허용합니다.
 

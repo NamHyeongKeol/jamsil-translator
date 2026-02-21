@@ -16,13 +16,16 @@
 # 1) 워크트리에서 1회 초기화
 scripts/devbox init
 
-# 2) 현재 상태 확인
+# 2) 메인 워크트리 env 시드 + 의존성 설치
+scripts/devbox bootstrap
+
+# 3) 현재 상태 확인
 scripts/devbox status
 
-# 3) 로컬 프로필로 서버 실행 (mingle-app + mingle-stt)
+# 4) 로컬 프로필로 서버 실행 (mingle-app + mingle-stt)
 scripts/devbox up --profile local
 
-# 4) 디바이스 프로필로 서버+ngrok 실행
+# 5) 디바이스 프로필로 서버+ngrok 실행
 scripts/devbox up --profile device
 ```
 
@@ -31,9 +34,16 @@ scripts/devbox up --profile device
 - `scripts/devbox init`
   - `.devbox.env` 생성
   - git worktree 목록 기준으로 이미 할당된 포트를 회피해 기본 포트 자동 선택
+  - 현재 워크트리 `.env.local`에 비관리 키가 없으면 main 워크트리의
+    `mingle-app/.env.local`, `mingle-stt/.env.local`을 시드
   - `mingle-app/.env.local` devbox 관리 블록 갱신
   - `mingle-stt/.env.local` 포트 블록 갱신
   - `ngrok.mobile.local.yml` 생성
+
+- `scripts/devbox bootstrap`
+  - main 워크트리의 `mingle-app/.env.local`, `mingle-stt/.env.local`을 현재 워크트리에 시드
+  - `mingle-app`, `mingle-stt` 의존성(`pnpm install`) 자동 설치
+  - `.devbox.env`가 있으면 devbox 관리 블록 재적용
 
 - `scripts/devbox profile --profile local --host <LAN_IP>`
   - 같은 네트워크에서 실기기 직접 접속할 때 사용
@@ -45,6 +55,7 @@ scripts/devbox up --profile device
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
 
 - `scripts/devbox up --profile local|device`
+  - 시작 전에 main 워크트리 env 시드와 의존성 설치를 자동 수행
   - `mingle-stt` + `mingle-app` 동시 실행
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
   - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
