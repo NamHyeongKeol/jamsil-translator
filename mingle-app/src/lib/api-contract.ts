@@ -1,7 +1,21 @@
 const DEFAULT_API_NAMESPACE = 'web/app/v1'
+const ALLOWED_API_NAMESPACES = new Set([
+  'web/app/v1',
+  'mobile/ios/v1',
+  'mobile/android/v1',
+])
 
 function normalizeApiNamespace(raw: string): string {
   return raw.trim().replace(/^\/+/, '').replace(/\/+$/, '')
+}
+
+function parseAllowedApiNamespace(raw: string): string | null {
+  const normalized = normalizeApiNamespace(raw)
+  if (!normalized || !ALLOWED_API_NAMESPACES.has(normalized)) {
+    return null
+  }
+
+  return normalized
 }
 
 function readApiNamespaceFromLocation(): string | null {
@@ -10,14 +24,13 @@ function readApiNamespaceFromLocation(): string | null {
   try {
     const query = new URLSearchParams(window.location.search || '')
     const fromQuery = query.get('apiNamespace') || query.get('apiNs') || ''
-    const normalized = normalizeApiNamespace(fromQuery)
-    return normalized || null
+    return parseAllowedApiNamespace(fromQuery)
   } catch {
     return null
   }
 }
 
-const envNamespace = normalizeApiNamespace(process.env.NEXT_PUBLIC_API_NAMESPACE || DEFAULT_API_NAMESPACE)
+const envNamespace = parseAllowedApiNamespace(process.env.NEXT_PUBLIC_API_NAMESPACE || '')
 const queryNamespace = readApiNamespaceFromLocation()
 
 export const clientApiNamespace = queryNamespace || envNamespace || DEFAULT_API_NAMESPACE

@@ -26,15 +26,18 @@ pnpm --dir mingle-landing build:release:web
 - App/Landing 클라이언트는 `/api/{namespace}/...` 형식으로 호출합니다.
 - URL query override 지원:
   - `apiNamespace` 또는 `apiNs`
+  - app 허용값: `web/app/v1`, `mobile/ios/v1`, `mobile/android/v1`
+  - landing 허용값: `web/landing/v1`
   - 예: `?apiNamespace=mobile/ios/v1`
+  - 허용되지 않은 값은 무시됩니다.
 
 ## 4) RN Runtime Contract
 
 - RN WebView URL은 `apiNamespace` 쿼리를 자동 전달합니다.
-- 설정 우선순위:
-  1. `RN_API_NAMESPACE`
-  2. `NEXT_PUBLIC_API_NAMESPACE`
-  3. (없으면 query 미전달, 웹 기본값 사용)
+- `RN_API_NAMESPACE`는 필수이며 현재 플랫폼 기준값과 일치해야 합니다.
+  - iOS: `mobile/ios/v1`
+  - Android: `mobile/android/v1`
+- 값이 없거나 불일치하면 WebView를 로드하지 않고 오류를 표시합니다.
 
 ## 5) Legacy Endpoint Decommission Plan
 

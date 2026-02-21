@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Platform,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -62,6 +63,15 @@ function normalizeApiNamespace(raw: string): string {
   return raw.trim().replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
+const RN_RUNTIME_OS = Platform.OS;
+const EXPECTED_API_NAMESPACE_BY_OS: Record<'ios' | 'android', string> = {
+  ios: 'mobile/ios/v1',
+  android: 'mobile/android/v1',
+};
+const EXPECTED_API_NAMESPACE =
+  RN_RUNTIME_OS === 'ios' || RN_RUNTIME_OS === 'android'
+    ? EXPECTED_API_NAMESPACE_BY_OS[RN_RUNTIME_OS]
+    : '';
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
   ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
   ['http:', 'https:'],
@@ -71,9 +81,13 @@ const DEFAULT_WS_URL = resolveConfiguredUrl(
   ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
   ['ws:', 'wss:'],
 ) || 'wss://mingle.up.railway.app';
-const CONFIGURED_API_NAMESPACE = normalizeApiNamespace(
-  readRuntimeEnvValue(['RN_API_NAMESPACE', 'NEXT_PUBLIC_API_NAMESPACE']),
-);
+const CONFIGURED_API_NAMESPACE = normalizeApiNamespace(readRuntimeEnvValue(['RN_API_NAMESPACE']));
+const VALIDATED_API_NAMESPACE =
+  CONFIGURED_API_NAMESPACE &&
+  EXPECTED_API_NAMESPACE &&
+  CONFIGURED_API_NAMESPACE === EXPECTED_API_NAMESPACE
+    ? CONFIGURED_API_NAMESPACE
+    : '';
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {
@@ -81,6 +95,13 @@ if (!WEB_APP_BASE_URL) {
 }
 if (!DEFAULT_WS_URL) {
   missingRuntimeConfig.push('RN_DEFAULT_WS_URL (or NEXT_PUBLIC_WS_URL)');
+}
+if (!EXPECTED_API_NAMESPACE) {
+  missingRuntimeConfig.push(`Unsupported platform for RN_API_NAMESPACE validation: ${RN_RUNTIME_OS}`);
+} else if (!CONFIGURED_API_NAMESPACE) {
+  missingRuntimeConfig.push(`RN_API_NAMESPACE (expected: ${EXPECTED_API_NAMESPACE})`);
+} else if (!VALIDATED_API_NAMESPACE) {
+  missingRuntimeConfig.push(`RN_API_NAMESPACE must match current platform namespace: ${EXPECTED_API_NAMESPACE}`);
 }
 const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
   ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}`
@@ -163,10 +184,8 @@ function App(): React.JSX.Element {
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
-    if (!WEB_APP_BASE_URL) return '';
-    const apiNamespaceQuery = CONFIGURED_API_NAMESPACE
-      ? `&apiNamespace=${encodeURIComponent(CONFIGURED_API_NAMESPACE)}`
-      : '';
+    if (!WEB_APP_BASE_URL || !VALIDATED_API_NAMESPACE || REQUIRED_CONFIG_ERROR) return '';
+    const apiNamespaceQuery = `&apiNamespace=${encodeURIComponent(VALIDATED_API_NAMESPACE)}`;
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1${apiNamespaceQuery}${debugParams}`;
   }, [locale]);

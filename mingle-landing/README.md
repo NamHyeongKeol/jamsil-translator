@@ -87,4 +87,6 @@ pnpm build:release:web
 
 URL override (optional):
 
-- 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)를 우선 사용합니다.
+- 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)는 allow-list 값만 반영됩니다.
+- 허용값: `web/landing/v1`
+- 허용되지 않은 값은 무시되고 env/default를 사용합니다.

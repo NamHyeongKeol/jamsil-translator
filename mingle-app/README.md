@@ -75,8 +75,10 @@ pnpm build:release:android
 
 URL override (optional):
 
-- 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)가 있으면 env보다 우선합니다.
+- 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)는 allow-list 값만 반영됩니다.
+- 허용값: `web/app/v1`, `mobile/ios/v1`, `mobile/android/v1`
 - 예: `https://your-app/ko?apiNamespace=mobile/ios/v1`
+- 허용되지 않은 값은 무시되고 env/default를 사용합니다.
 
 Fixture scan behavior:
 
@@ -216,6 +218,8 @@ RN 앱 URL은 하드코딩하지 않고 환경변수로만 읽습니다.
 
 - `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
 - `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
+- `RN_API_NAMESPACE` (필수: iOS=`mobile/ios/v1`, Android=`mobile/android/v1`)
+- `RN_API_NAMESPACE`가 플랫폼값과 불일치하면 WebView를 로드하지 않고 오류를 표시합니다.
 
 루트 `pnpm rn:start|ios|android` 스크립트는 `.env.local`을 먼저 로드한 뒤 RN CLI를 실행합니다.
 

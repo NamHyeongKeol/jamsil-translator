@@ -1,13 +1,28 @@
+def resolveReactNativeGradlePluginDir = {
+    def directDir = file("../node_modules/@react-native/gradle-plugin")
+    if (directDir.exists()) {
+        return directDir
+    }
+
+    def pnpmStoreDir = file("../node_modules/.pnpm")
+    if (!pnpmStoreDir.exists()) {
+        return directDir
+    }
+
+    def pnpmEntries = pnpmStoreDir.listFiles()
+        ?.findAll { it.name.startsWith("@react-native+gradle-plugin@") }
+        ?.sort { a, b -> a.name <=> b.name }
+    if (pnpmEntries != null && !pnpmEntries.isEmpty()) {
+        return new File(pnpmEntries.last(), "node_modules/@react-native/gradle-plugin")
+    }
+
+    return directDir
+}
+
 pluginManagement {
-    def reactNativeGradlePluginDir = file("../node_modules/@react-native/gradle-plugin")
+    def reactNativeGradlePluginDir = resolveReactNativeGradlePluginDir()
     if (!reactNativeGradlePluginDir.exists()) {
-        def pnpmStoreDir = file("../node_modules/.pnpm")
-        def pnpmEntry = pnpmStoreDir.exists()
-            ? pnpmStoreDir.listFiles()?.find { it.name.startsWith("@react-native+gradle-plugin@") }
-            : null
-        if (pnpmEntry != null) {
-            reactNativeGradlePluginDir = new File(pnpmEntry, "node_modules/@react-native/gradle-plugin")
-        }
+        throw new GradleException("Unable to locate @react-native/gradle-plugin in node_modules.")
     }
     includeBuild(reactNativeGradlePluginDir.absolutePath)
 }
@@ -15,14 +30,8 @@ plugins { id("com.facebook.react.settings") }
 extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
 rootProject.name = 'rnnative'
 include ':app'
-def reactNativeGradlePluginDir = file("../node_modules/@react-native/gradle-plugin")
+def reactNativeGradlePluginDir = resolveReactNativeGradlePluginDir()
 if (!reactNativeGradlePluginDir.exists()) {
-    def pnpmStoreDir = file("../node_modules/.pnpm")
-    def pnpmEntry = pnpmStoreDir.exists()
-        ? pnpmStoreDir.listFiles()?.find { it.name.startsWith("@react-native+gradle-plugin@") }
-        : null
-    if (pnpmEntry != null) {
-        reactNativeGradlePluginDir = new File(pnpmEntry, "node_modules/@react-native/gradle-plugin")
-    }
+    throw new GradleException("Unable to locate @react-native/gradle-plugin in node_modules.")
 }
 includeBuild(reactNativeGradlePluginDir.absolutePath)
