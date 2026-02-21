@@ -51,7 +51,7 @@ scripts/devbox up --profile device
   - 옵션으로 Vault KV 경로를 주면 해당 키를 비관리 영역에 반영
     - `--vault-app-path <path>`
     - `--vault-stt-path <path>`
-  - `.devbox.env`가 있으면 devbox 관리 블록 재적용
+  - `.devbox.env`가 있으면 전달한 Vault 경로를 저장하고(devbox 관리 블록 포함) 재적용
 
 - `scripts/devbox profile --profile local --host <LAN_IP>`
   - 같은 네트워크에서 실기기 직접 접속할 때 사용
@@ -64,7 +64,8 @@ scripts/devbox up --profile device
 
 - `scripts/devbox up --profile local|device`
   - 시작 전에 main 워크트리 env 시드와 의존성 설치를 자동 수행
-  - 필요 시 `--vault-app-path/--vault-stt-path`로 Vault 값까지 즉시 반영 가능
+  - 이전에 저장된 Vault 경로가 있으면 자동으로 env 동기화 수행
+  - 필요 시 `--vault-app-path/--vault-stt-path`로 경로를 덮어써 즉시 반영 가능
   - `mingle-stt` + `mingle-app` 동시 실행
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
   - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
