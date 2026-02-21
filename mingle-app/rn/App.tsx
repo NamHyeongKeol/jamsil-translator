@@ -9,9 +9,7 @@ import {
 } from 'react-native';
 import {
   WebView,
-  type WebViewErrorEvent,
   type WebViewMessageEvent,
-  type WebViewNavigationEvent,
 } from 'react-native-webview';
 import {
   RN_DEFAULT_WS_URL,
@@ -478,13 +476,13 @@ function App(): React.JSX.Element {
     emitToWeb({ type: 'status', status: nativeStatusRef.current });
   }, [emitToWeb]);
 
-  const handleLoadSuccess = useCallback((_event: WebViewNavigationEvent) => {
+  const handleLoadSuccess = useCallback(() => {
     if (REQUIRED_CONFIG_ERROR) return;
     setLoadError(null);
     didFallbackToRootRef.current = false;
   }, []);
 
-  const handleLoadError = useCallback((event: WebViewErrorEvent) => {
+  const handleLoadError = useCallback((event: { nativeEvent: { code?: number; description?: string; url?: string } }) => {
     const { code, description, url } = event.nativeEvent;
 
     if (
