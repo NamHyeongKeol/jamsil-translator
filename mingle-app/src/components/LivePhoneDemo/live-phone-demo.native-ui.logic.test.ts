@@ -4,6 +4,7 @@ import {
   NATIVE_UI_QUERY_KEY,
   isNativeUiBridgeEnabledFromSearch,
   parseNativeUiScrollToTopDetail,
+  shouldEnableIosTopTapFallback,
 } from './live-phone-demo.native-ui.logic'
 
 describe('live-phone-demo native ui bridge logic', () => {
@@ -64,5 +65,31 @@ describe('live-phone-demo native ui bridge logic', () => {
     expect(isNativeUiBridgeEnabledFromSearch('')).toBe(false)
     expect(isNativeUiBridgeEnabledFromSearch('?foo=bar')).toBe(false)
     expect(isNativeUiBridgeEnabledFromSearch('%')).toBe(false)
+  })
+
+  describe('shouldEnableIosTopTapFallback', () => {
+    it('enables fallback for iOS platform regardless of bridge flag', () => {
+      expect(shouldEnableIosTopTapFallback({
+        isLikelyIosPlatform: true,
+        isNativeApp: true,
+        isNativeUiBridgeEnabled: false,
+      })).toBe(true)
+    })
+
+    it('enables fallback when native bridge mode is on even if iOS detection fails', () => {
+      expect(shouldEnableIosTopTapFallback({
+        isLikelyIosPlatform: false,
+        isNativeApp: true,
+        isNativeUiBridgeEnabled: true,
+      })).toBe(true)
+    })
+
+    it('disables fallback for non-native non-iOS contexts', () => {
+      expect(shouldEnableIosTopTapFallback({
+        isLikelyIosPlatform: false,
+        isNativeApp: false,
+        isNativeUiBridgeEnabled: false,
+      })).toBe(false)
+    })
   })
 })

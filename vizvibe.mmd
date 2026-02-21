@@ -604,6 +604,12 @@ flowchart TD
     %% @mingle_app_ios_top_tap_regression_hotfix [ai-task, closed, 2026-02-22, ai]
     mingle_app_ios_top_tap_regression_hotfix("iOS 상단 탭 회귀 핫픽스<br/><sub>RN 상태바 탭 오버레이 높이를<br/>상단 헤더 마진까지 포함하도록 복구하고<br/>nativeUi 브리지 사용 중에도 iOS 웹 상단 탭<br/>fallback을 유지해 기존 스크롤 UX를 복원</sub>")
 
+    %% @mingle_app_ios_top_tap_pr9_reaudit_hardening [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_top_tap_pr9_reaudit_hardening("PR #9 상단탭 재검수 및 하드닝<br/><sub>nativeUi 쿼리 파싱/UA 오인식 시에도<br/>iOS 상단탭 fallback이 꺼지지 않도록<br/>활성화 조건을 보수적으로 고정하고<br/>브리지 이벤트 리스너 결합도를 낮춰 회귀를 완화</sub>")
+
+    %% @mingle_app_ios_notch_tap_margin_decouple [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_notch_tap_margin_decouple("노치 탭 로직과 헤더 마진 분리<br/><sub>상단 탭 감지 영역을 상태바/노치 높이로만 고정해<br/>header paddingTop(+20)과의 결합을 제거하고<br/>웹 fallback 버튼 높이도 safe-area top 기준으로 축소해<br/>노치 터치 동작이 네비게이션 마진에 영향받지 않게 정렬</sub>")
+
     %% @vercel_deploy_rate_limit_blocker [blocker, opened, 2026-02-21, user]
     vercel_deploy_rate_limit_blocker("Vercel 배포 rate limit 대기<br/><sub>현재 PR commit status에서 Vercel – mingle-app/<br/>mingle-landing 체크가 배포 한도 초과로 실패해<br/>GitHub Actions는 녹색이어도 mergeable_state가<br/>unstable로 남아 대기 또는 수동 재시도가 필요</sub>")
 
@@ -980,6 +986,8 @@ flowchart TD
     mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_worktree_devbox_local_device_automation
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
     mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_top_tap_regression_hotfix
+    mingle_app_ios_top_tap_regression_hotfix --> mingle_app_ios_top_tap_pr9_reaudit_hardening
+    mingle_app_ios_top_tap_pr9_reaudit_hardening --> mingle_app_ios_notch_tap_margin_decouple
     mingle_app_tdd_nonstraight_main_merge_guard --> vercel_deploy_rate_limit_blocker
     vercel_deploy_rate_limit_blocker --> vercel_app_landing_main_branch_deploy_gate
     vercel_app_landing_main_branch_deploy_gate --> vercel_deployment_enabled_double_star_pattern_fix
@@ -1053,6 +1061,8 @@ flowchart TD
     mingle_worktree_devbox_local_device_automation -.-> ultimate_goal
     mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     mingle_app_ios_top_tap_regression_hotfix -.-> ultimate_goal
+    mingle_app_ios_top_tap_pr9_reaudit_hardening -.-> ultimate_goal
+    mingle_app_ios_notch_tap_margin_decouple -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
     vercel_app_landing_main_branch_deploy_gate -.-> ultimate_goal
     vercel_deployment_enabled_double_star_pattern_fix -.-> ultimate_goal
@@ -1360,6 +1370,8 @@ flowchart TD
     style mingle_worktree_devbox_local_device_automation fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_notch_tap_margin_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
     style vercel_app_landing_main_branch_deploy_gate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deployment_enabled_double_star_pattern_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
