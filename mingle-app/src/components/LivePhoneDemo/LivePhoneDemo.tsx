@@ -9,6 +9,12 @@ import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
 import { useTtsSettings } from '@/context/tts-settings'
+import {
+  AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
+  deriveScrollAutoFollowState,
+  deriveScrollUiVisibility,
+  isLikelyIOSNavigator,
+} from './live-phone-demo.scroll.logic'
 
 const VOLUME_THRESHOLD = 0.05
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
@@ -18,7 +24,6 @@ const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABA
 const TTS_STT_GAIN = 1.0
 const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 const NATIVE_TTS_EVENT = 'mingle:native-tts'
-const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 200
 const SCROLL_TO_BOTTOM_BUTTON_THRESHOLD_PX = 400
 const SCROLL_UI_HIDE_DELAY_MS = 1000
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 28
@@ -32,9 +37,7 @@ function isNativeApp(): boolean {
 
 function isLikelyIOSPlatform(): boolean {
   if (typeof window === 'undefined') return false
-  const ua = window.navigator.userAgent || ''
-  const platform = window.navigator.platform || ''
-  return /iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
+  return isLikelyIOSNavigator(window.navigator)
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -954,18 +957,16 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     const fromUserScroll = options?.fromUserScroll === true
     const { scrollTop, scrollHeight, clientHeight } = chatRef.current
     const distanceToBottom = Math.max(0, scrollHeight - scrollTop - clientHeight)
-    const isNearBottom = distanceToBottom <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX
-    if (fromUserScroll) {
-      // User manual upward scroll should immediately suppress auto-follow.
-      // Re-enable only when user intentionally returns near the bottom.
-      suppressAutoScrollRef.current = !isNearBottom
-    }
-    shouldAutoScroll.current = (
-      isNearBottom
-      && !suppressAutoScrollRef.current
-      && !isPaginatingRef.current
-      && !isLoadingOlderRef.current
-    )
+    const nextScrollState = deriveScrollAutoFollowState({
+      distanceToBottom,
+      fromUserScroll,
+      suppressAutoScroll: suppressAutoScrollRef.current,
+      isPaginating: isPaginatingRef.current,
+      isLoadingOlder: isLoadingOlderRef.current,
+      nearBottomThresholdPx: AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
+    })
+    suppressAutoScrollRef.current = nextScrollState.suppressAutoScroll
+    shouldAutoScroll.current = nextScrollState.shouldAutoScroll
 
     if (scrollHeight > clientHeight + 1) {
       const thumbHeight = Math.max(
@@ -1009,10 +1010,12 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     const fromUserScroll = isUserScrollIntentActive()
     updateScrollDerivedState({ fromUserScroll })
 
-    // Mobile momentum scroll can continue after touchend without additional
-    // pointer/touch intent events. Keep the overlay visible while scroll
-    // events are still arriving, unless this is a pure auto-follow scroll.
-    if (!fromUserScroll && shouldAutoScroll.current) {
+    const scrollUi = deriveScrollUiVisibility({
+      fromUserScroll,
+      shouldAutoScroll: shouldAutoScroll.current,
+    })
+
+    if (!scrollUi.visible) {
       clearScrollUiHideTimer()
       setScrollUiVisible(false)
       return
@@ -1020,9 +1023,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
     setScrollUiVisible(true)
     clearScrollUiHideTimer()
-    scrollUiHideTimerRef.current = setTimeout(() => {
-      setScrollUiVisible(false)
-    }, SCROLL_UI_HIDE_DELAY_MS)
+    if (scrollUi.scheduleHideTimer) {
+      scrollUiHideTimerRef.current = setTimeout(() => {
+        setScrollUiVisible(false)
+      }, SCROLL_UI_HIDE_DELAY_MS)
+    }
   }, [clearScrollUiHideTimer, isUserScrollIntentActive, updateScrollDerivedState])
 
   const handleScrollToBottom = useCallback(() => {
