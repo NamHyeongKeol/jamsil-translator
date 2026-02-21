@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_device_split_ngrok_terminal_launch
+    %% @lastActive: mingle_worktree_devbox_mobile_build_install_automation
 
     %% === START ===
     %% @project_start [start, closed]
@@ -613,6 +613,9 @@ flowchart TD
     %% @mingle_worktree_devbox_device_split_ngrok_terminal_launch [ai-task, closed, 2026-02-21, ai]
     mingle_worktree_devbox_device_split_ngrok_terminal_launch("Devbox device ngrok 로그 분리 실행<br/><sub>up --profile device에서 ngrok 기동이 필요하면<br/>iTerm은 분할 패널, Terminal은 새 탭/윈도우로<br/>ngrok을 별도 실행해 서버 로그와 분리하고<br/>불가 환경에서는 인라인 실행으로 자동 폴백</sub>")
 
+    %% @mingle_worktree_devbox_mobile_build_install_automation [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_mobile_build_install_automation("Devbox 모바일 빌드/설치 자동화 추가<br/><sub>mobile 명령과 up 옵션에서 연결된 기기를 감지해<br/>iOS/Android 빌드와 설치를 자동 실행하고<br/>기기 미연결 시 플랫폼별 설치 단계를 자동 스킵해<br/>워크트리 테스트 준비를 단일 흐름으로 통합</sub>")
+
     %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
 
@@ -1004,6 +1007,7 @@ flowchart TD
     mingle_worktree_devbox_vault_secret_sync_option --> mingle_worktree_devbox_vault_path_persist_and_auto_sync
     mingle_worktree_devbox_vault_path_persist_and_auto_sync --> mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up
     mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up --> mingle_worktree_devbox_device_split_ngrok_terminal_launch
+    mingle_worktree_devbox_device_split_ngrok_terminal_launch --> mingle_worktree_devbox_mobile_build_install_automation
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
     mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_top_tap_regression_hotfix
     mingle_app_ios_top_tap_regression_hotfix --> mingle_app_ios_top_tap_pr9_reaudit_hardening
@@ -1084,6 +1088,7 @@ flowchart TD
     mingle_worktree_devbox_vault_path_persist_and_auto_sync -.-> ultimate_goal
     mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up -.-> ultimate_goal
     mingle_worktree_devbox_device_split_ngrok_terminal_launch -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_build_install_automation -.-> ultimate_goal
     mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     mingle_app_ios_top_tap_regression_hotfix -.-> ultimate_goal
     mingle_app_ios_top_tap_pr9_reaudit_hardening -.-> ultimate_goal
@@ -1131,7 +1136,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_device_split_ngrok_terminal_launch
+        mingle_worktree_devbox_mobile_build_install_automation
     end
 
     %% === STYLES ===
@@ -1397,7 +1402,8 @@ flowchart TD
     style mingle_worktree_devbox_vault_secret_sync_option fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_vault_path_persist_and_auto_sync fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_worktree_devbox_device_split_ngrok_terminal_launch fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_device_split_ngrok_terminal_launch fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_build_install_automation fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

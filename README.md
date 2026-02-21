@@ -33,6 +33,8 @@ scripts/devbox bootstrap
 # scripts/devbox up --profile device --vault-app-path secret/mingle-app/dev --vault-stt-path secret/mingle-stt/dev
 scripts/devbox up --profile local
 scripts/devbox up --profile device
+# 연결된 테스트폰이 있으면 모바일 빌드/설치까지
+# scripts/devbox up --profile device --with-mobile-install
 scripts/devbox status
 ```
 
@@ -47,6 +49,8 @@ scripts/devbox status
 - `scripts/devbox up`은 `.devbox.env`가 없으면 `init`을 자동 실행합니다.
 - `scripts/devbox up --profile device`는 가능한 경우 ngrok을 별도 터미널 탭/패널로 분리 실행합니다
   (불가 환경에서는 기존 인라인 실행으로 자동 폴백).
+- `scripts/devbox mobile --platform ios|android|all`로 기기 연결 시 RN 앱 빌드/설치 자동화를 수행합니다.
+- `scripts/devbox up --profile device --with-mobile-install`으로 서버 준비 + 모바일 설치를 한 번에 실행할 수 있습니다.
 
 ## Learn More
 

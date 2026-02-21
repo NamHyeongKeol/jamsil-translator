@@ -82,7 +82,8 @@ Usage:
   scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
-  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox mobile [--platform ios|android|all] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release]
+  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [vitest args...]
   scripts/devbox status
 
@@ -91,6 +92,7 @@ Commands:
   bootstrap    Seed env files from main/Vault and install dependencies.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
+  mobile       Build/install RN app(s) on connected iOS/Android device if available.
   up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
   test         Run mingle-app live integration tests with devbox endpoints.
   status       Print current endpoints for PC/iOS/Android web and app targets.
@@ -396,6 +398,22 @@ ensure_workspace_dependencies() {
   if [[ ! -x "$stt_tsnode_bin" ]]; then
     log "installing dependencies: mingle-stt"
     pnpm --dir "$ROOT_DIR/mingle-stt" install
+  fi
+}
+
+ensure_rn_workspace_dependencies() {
+  local rn_cli_bin="$ROOT_DIR/mingle-app/rn/node_modules/.bin/react-native"
+  if [[ ! -x "$rn_cli_bin" ]]; then
+    log "installing dependencies: mingle-app/rn"
+    pnpm --dir "$ROOT_DIR/mingle-app/rn" install
+  fi
+}
+
+ensure_ios_pods_if_needed() {
+  local pods_dir="$ROOT_DIR/mingle-app/rn/ios/Pods"
+  if [[ ! -d "$pods_dir" ]]; then
+    log "installing iOS pods: mingle-app/rn/ios"
+    pnpm --dir "$ROOT_DIR/mingle-app" rn:pods
   fi
 }
 
@@ -784,6 +802,166 @@ launch_ngrok_in_separate_terminal() {
   esac
 }
 
+normalize_ios_configuration() {
+  local raw="${1:-Release}"
+  case "$raw" in
+    Debug|debug) printf 'Debug' ;;
+    Release|release) printf 'Release' ;;
+    *) die "invalid --ios-configuration: $raw (expected Debug|Release)" ;;
+  esac
+}
+
+normalize_android_variant() {
+  local raw="${1:-release}"
+  case "$raw" in
+    debug|Debug) printf 'debug' ;;
+    release|Release) printf 'release' ;;
+    *) die "invalid --android-variant: $raw (expected debug|release)" ;;
+  esac
+}
+
+detect_ios_device_udid() {
+  command -v xcrun >/dev/null 2>&1 || return 1
+  xcrun xctrace list devices 2>/dev/null | \
+    sed -nE '/Simulator/d; s/^.*\([^)]*\)[[:space:]]+\(([A-Fa-f0-9-]{8,})\)$/\1/p' | \
+    head -n 1
+}
+
+detect_android_device_serial() {
+  command -v adb >/dev/null 2>&1 || return 1
+  adb devices | awk 'NR > 1 && $2 == "device" { print $1; exit }'
+}
+
+resolve_ios_bundle_id() {
+  local project_file="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcodeproj/project.pbxproj"
+  if [[ -f "$project_file" ]]; then
+    awk -F'= ' '/PRODUCT_BUNDLE_IDENTIFIER = /{gsub(/;$/, "", $2); print $2; exit}' "$project_file"
+    return 0
+  fi
+  printf '%s' "com.rnnative"
+}
+
+resolve_android_application_id() {
+  local gradle_file="$ROOT_DIR/mingle-app/rn/android/app/build.gradle"
+  if [[ -f "$gradle_file" ]]; then
+    awk -F'"' '/applicationId[[:space:]]+"/{print $2; exit}' "$gradle_file"
+    return 0
+  fi
+  printf '%s' "com.rnnative"
+}
+
+run_ios_mobile_install() {
+  local requested_udid="${1:-}"
+  local configuration="$2"
+  local udid="$requested_udid"
+
+  if [[ -z "$udid" ]]; then
+    udid="$(detect_ios_device_udid || true)"
+  fi
+
+  if [[ -z "$udid" ]]; then
+    log "iOS device not detected; skipping iOS build/install"
+    return 0
+  fi
+
+  require_cmd xcodebuild
+  require_cmd xcrun
+  ensure_rn_workspace_dependencies
+  ensure_ios_pods_if_needed
+
+  local derived_data_path="$ROOT_DIR/.devbox-cache/ios/$DEVBOX_WORKTREE_NAME"
+  local app_path="$derived_data_path/Build/Products/${configuration}-iphoneos/rnnative.app"
+  local bundle_id
+  bundle_id="$(resolve_ios_bundle_id)"
+
+  mkdir -p "$(dirname "$derived_data_path")"
+
+  log "building iOS app ($configuration) for device: $udid"
+  (
+    cd "$ROOT_DIR/mingle-app/rn/ios"
+    RN_WEB_APP_BASE_URL="$DEVBOX_SITE_URL" \
+    RN_DEFAULT_WS_URL="$DEVBOX_RN_WS_URL" \
+    NEXT_PUBLIC_SITE_URL="$DEVBOX_SITE_URL" \
+    NEXT_PUBLIC_WS_URL="$DEVBOX_RN_WS_URL" \
+      xcodebuild \
+        -workspace rnnative.xcworkspace \
+        -scheme rnnative \
+        -configuration "$configuration" \
+        -destination "id=$udid" \
+        -derivedDataPath "$derived_data_path" \
+        build
+  )
+
+  [[ -d "$app_path" ]] || die "built iOS app not found: $app_path"
+
+  log "installing iOS app on device: $udid"
+  xcrun devicectl device install app --device "$udid" "$app_path"
+
+  if [[ -n "$bundle_id" ]]; then
+    log "launching iOS app bundle: $bundle_id"
+    xcrun devicectl device process launch --device "$udid" "$bundle_id" >/dev/null 2>&1 || \
+      log "iOS app launch skipped (manual launch may be required)"
+  fi
+}
+
+run_android_mobile_install() {
+  local requested_serial="${1:-}"
+  local variant="$2"
+  local serial="$requested_serial"
+
+  if [[ -z "$serial" ]]; then
+    serial="$(detect_android_device_serial || true)"
+  fi
+
+  if [[ -z "$serial" ]]; then
+    log "Android device not detected; skipping Android build/install"
+    return 0
+  fi
+
+  require_cmd adb
+  ensure_rn_workspace_dependencies
+
+  local gradle_task="installRelease"
+  if [[ "$variant" == "debug" ]]; then
+    gradle_task="installDebug"
+  fi
+  local app_id
+  app_id="$(resolve_android_application_id)"
+
+  log "building Android app ($variant) for device: $serial"
+  (
+    cd "$ROOT_DIR/mingle-app/rn/android"
+    ANDROID_SERIAL="$serial" \
+    RN_WEB_APP_BASE_URL="$DEVBOX_SITE_URL" \
+    RN_DEFAULT_WS_URL="$DEVBOX_RN_WS_URL" \
+    NEXT_PUBLIC_SITE_URL="$DEVBOX_SITE_URL" \
+    NEXT_PUBLIC_WS_URL="$DEVBOX_RN_WS_URL" \
+      ./gradlew "$gradle_task"
+  )
+
+  if [[ -n "$app_id" ]]; then
+    log "launching Android app package: $app_id"
+    adb -s "$serial" shell monkey -p "$app_id" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || \
+      log "Android app launch skipped (manual launch may be required)"
+  fi
+}
+
+run_mobile_install_targets() {
+  local do_ios="$1"
+  local do_android="$2"
+  local ios_udid="$3"
+  local android_serial="$4"
+  local ios_configuration="$5"
+  local android_variant="$6"
+
+  if [[ "$do_ios" -eq 1 ]]; then
+    run_ios_mobile_install "$ios_udid" "$ios_configuration"
+  fi
+  if [[ "$do_android" -eq 1 ]]; then
+    run_android_mobile_install "$android_serial" "$android_variant"
+  fi
+}
+
 try_read_ngrok_urls() {
   local expected_web_port="${1:-}"
   local expected_stt_port="${2:-}"
@@ -1062,6 +1240,71 @@ cmd_ngrok_config() {
   log "wrote $NGROK_LOCAL_CONFIG"
 }
 
+cmd_mobile() {
+  if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
+    log "missing .devbox.env, running init automatically"
+    cmd_init
+  fi
+  require_devbox_env
+  require_cmd pnpm
+
+  local platform="all"
+  local ios_udid=""
+  local android_serial=""
+  local ios_configuration="Release"
+  local android_variant="release"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --platform) platform="${2:-}"; shift 2 ;;
+      --ios-udid) ios_udid="${2:-}"; shift 2 ;;
+      --android-serial) android_serial="${2:-}"; shift 2 ;;
+      --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
+      --android-variant) android_variant="${2:-}"; shift 2 ;;
+      *) die "unknown option for mobile: $1" ;;
+    esac
+  done
+
+  ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
+  android_variant="$(normalize_android_variant "$android_variant")"
+
+  local do_ios=0
+  local do_android=0
+
+  case "$platform" in
+    ios)
+      do_ios=1
+      ;;
+    android)
+      do_android=1
+      ;;
+    all)
+      do_ios=1
+      do_android=1
+      ;;
+    *)
+      die "invalid --platform: $platform (expected ios|android|all)"
+      ;;
+  esac
+
+  if [[ -n "$ios_udid" ]]; then
+    do_ios=1
+  fi
+  if [[ -n "$android_serial" ]]; then
+    do_android=1
+  fi
+
+  run_mobile_install_targets \
+    "$do_ios" \
+    "$do_android" \
+    "$ios_udid" \
+    "$android_serial" \
+    "$ios_configuration" \
+    "$android_variant"
+
+  log "mobile build/install complete"
+}
+
 cmd_up() {
   if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
     log "missing .devbox.env, running init automatically"
@@ -1076,17 +1319,33 @@ cmd_up() {
   local profile="local"
   local host=""
   local with_metro=0
+  local with_ios_install=0
+  local with_android_install=0
+  local ios_udid=""
+  local android_serial=""
+  local ios_configuration="Release"
+  local android_variant="release"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --profile) profile="${2:-}"; shift 2 ;;
       --host) host="${2:-}"; shift 2 ;;
       --with-metro) with_metro=1; shift ;;
+      --with-ios-install) with_ios_install=1; shift ;;
+      --with-android-install) with_android_install=1; shift ;;
+      --with-mobile-install) with_ios_install=1; with_android_install=1; shift ;;
+      --ios-udid) ios_udid="${2:-}"; with_ios_install=1; shift 2 ;;
+      --android-serial) android_serial="${2:-}"; with_android_install=1; shift 2 ;;
+      --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
+      --android-variant) android_variant="${2:-}"; shift 2 ;;
       --vault-app-path) vault_app_override="${2:-}"; shift 2 ;;
       --vault-stt-path) vault_stt_override="${2:-}"; shift 2 ;;
       *) die "unknown option for up: $1" ;;
     esac
   done
+
+  ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
+  android_variant="$(normalize_android_variant "$android_variant")"
 
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
   sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
@@ -1138,6 +1397,16 @@ $(ngrok_plan_capacity_hint)"
 
   apply_profile "$profile" "$host"
   cmd_status
+
+  if [[ "$with_ios_install" -eq 1 || "$with_android_install" -eq 1 ]]; then
+    run_mobile_install_targets \
+      "$with_ios_install" \
+      "$with_android_install" \
+      "$ios_udid" \
+      "$android_serial" \
+      "$ios_configuration" \
+      "$android_variant"
+  fi
 
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
   (
@@ -1220,7 +1489,10 @@ Files:
 Run:
 - scripts/devbox up --profile local
 - scripts/devbox up --profile device
+- scripts/devbox up --profile device --with-mobile-install
 - scripts/devbox up --profile local --with-metro
+- scripts/devbox mobile --platform ios
+- scripts/devbox mobile --platform android
 - scripts/devbox profile --profile local --host <LAN_IP>
 - scripts/devbox test
 EOF
@@ -1237,6 +1509,7 @@ main() {
     profile-local) cmd_profile --profile local "$@" ;;
     profile-device|profile-ngrok) cmd_profile --profile device "$@" ;;
     ngrok-config) cmd_ngrok_config "$@" ;;
+    mobile) cmd_mobile "$@" ;;
     up) cmd_up "$@" ;;
     test|test-live) cmd_test "$@" ;;
     status) cmd_status "$@" ;;
