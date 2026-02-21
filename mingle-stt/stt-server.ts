@@ -12,12 +12,19 @@ for (const filename of envCandidates) {
     loadDotenv({ path: fullPath });
 }
 
-// Keep the STT relay alive in local/dev even when an async handler throws.
+const isProduction = process.env.NODE_ENV === 'production';
+const handleFatalProcessError = (label: string, value: unknown) => {
+    console.error(`[stt-server] ${label}:`, value);
+    if (!isProduction) return;
+    // Production must fail fast on fatal process-level errors.
+    setImmediate(() => process.exit(1));
+};
+
 process.on('uncaughtException', (error) => {
-    console.error('[stt-server] uncaughtException:', error);
+    handleFatalProcessError('uncaughtException', error);
 });
 process.on('unhandledRejection', (reason) => {
-    console.error('[stt-server] unhandledRejection:', reason);
+    handleFatalProcessError('unhandledRejection', reason);
 });
 
 const PORT = parseInt(process.env.PORT || '3001', 10);

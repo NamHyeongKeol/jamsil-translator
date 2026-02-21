@@ -484,6 +484,32 @@ class NativeSTTModule(private val reactContext: ReactApplicationContext) :
         promise.resolve(result)
     }
 
+    private fun maybeStartAudioCaptureAfterReady(rawMessage: String): Boolean {
+        if (!isRunning) return false
+
+        val ready = try {
+            JSONObject(rawMessage).optString("status") == "ready"
+        } catch (_: Throwable) {
+            false
+        }
+        if (!ready) return true
+
+        val shouldStartAudio = synchronized(stateLock) {
+            audioRecord == null
+        }
+        if (!shouldStartAudio) return true
+
+        if (!startAudioCapture()) {
+            rejectPendingStart("audio_engine", "Failed to start AudioRecord")
+            stopAndCleanup("audio_start_failed", emitCloseEvent = true)
+            return false
+        }
+
+        emitStatus("running")
+        resolvePendingStart(currentSampleRate)
+        return true
+    }
+
     private fun createWebSocketListener(config: StartConfig): WebSocketListener {
         return object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -494,32 +520,26 @@ class NativeSTTModule(private val reactContext: ReactApplicationContext) :
 
                 wsMessageCount = 0
 
-                if (!startAudioCapture()) {
-                    rejectPendingStart("audio_engine", "Failed to start AudioRecord")
-                    stopAndCleanup("audio_start_failed", emitCloseEvent = true)
-                    return
-                }
-
                 if (!sendStartConfig(config, currentSampleRate)) {
                     rejectPendingStart("ws_send_failed", "Failed to send STT start config")
                     stopAndCleanup("ws_send_failed", emitCloseEvent = true)
                     return
                 }
-
-                emitStatus("running")
-                resolvePendingStart(currentSampleRate)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 if (!isRunning) return
+                if (!maybeStartAudioCaptureAfterReady(text)) return
                 wsMessageCount += 1
                 emitMessage(text)
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                 if (!isRunning) return
+                val raw = bytes.utf8()
+                if (!maybeStartAudioCaptureAfterReady(raw)) return
                 wsMessageCount += 1
-                emitMessage(bytes.utf8())
+                emitMessage(raw)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
