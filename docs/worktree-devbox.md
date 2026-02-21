@@ -38,6 +38,9 @@ scripts/devbox mobile --platform all
 
 # 7) (선택) 서버+모바일 설치를 한 번에
 scripts/devbox up --profile device --with-mobile-install
+
+# 8) (선택) iOS만 설치
+scripts/devbox up --profile device --with-ios-install
 ```
 
 ## 주요 명령

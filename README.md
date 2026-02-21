@@ -35,6 +35,8 @@ scripts/devbox up --profile local
 scripts/devbox up --profile device
 # 연결된 테스트폰이 있으면 모바일 빌드/설치까지
 # scripts/devbox up --profile device --with-mobile-install
+# iOS만 설치하려면
+# scripts/devbox up --profile device --with-ios-install
 scripts/devbox status
 ```
 
