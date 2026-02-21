@@ -41,6 +41,7 @@ RESERVED_ALL_PORTS=""
 DEFAULT_WEB_PORT=""
 DEFAULT_STT_PORT=""
 DEFAULT_METRO_PORT=""
+DEFAULT_NGROK_API_PORT=""
 
 # Populated by ngrok tunnel lookup.
 NGROK_WEB_URL=""
@@ -63,6 +64,7 @@ DEVBOX_TEST_API_BASE_URL=""
 DEVBOX_TEST_WS_URL=""
 DEVBOX_VAULT_APP_PATH=""
 DEVBOX_VAULT_STT_PATH=""
+DEVBOX_NGROK_API_PORT=""
 
 log() {
   printf '[devbox] %s\n' "$*"
@@ -76,7 +78,7 @@ die() {
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--host HOST]
+  scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--ngrok-api-port N] [--host HOST]
   scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
@@ -89,7 +91,7 @@ Commands:
   bootstrap    Seed env files from main/Vault and install dependencies.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
-  up           Start STT + Next app together (device profile includes ngrok).
+  up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
   test         Run mingle-app live integration tests with devbox endpoints.
   status       Print current endpoints for PC/iOS/Android web and app targets.
 EOF
@@ -256,7 +258,7 @@ collect_reserved_ports() {
     env_file="$worktree_canon/.devbox.env"
     [[ -f "$env_file" ]] || continue
 
-    for key in DEVBOX_WEB_PORT DEVBOX_STT_PORT DEVBOX_METRO_PORT; do
+    for key in DEVBOX_WEB_PORT DEVBOX_STT_PORT DEVBOX_METRO_PORT DEVBOX_NGROK_API_PORT; do
       port="$(read_env_value_from_file "$key" "$env_file")"
       if is_numeric "$port"; then
         RESERVED_ALL_PORTS="$(append_port "$RESERVED_ALL_PORTS" "$port")"
@@ -268,7 +270,7 @@ collect_reserved_ports() {
 calc_default_ports() {
   collect_reserved_ports
 
-  local range seed_text seed slot web stt metro
+  local range seed_text seed slot web stt metro ngrok_api
   range=800
   seed_text="$ROOT_CANON|$DEVBOX_WORKTREE_NAME"
   seed="$(printf '%s' "$seed_text" | cksum | awk '{print $1}')"
@@ -278,6 +280,7 @@ calc_default_ports() {
     web=$((3200 + slot))
     stt=$((5200 + slot))
     metro=$((8200 + slot))
+    ngrok_api=$((10200 + slot))
 
     if port_list_contains "$RESERVED_ALL_PORTS" "$web"; then
       continue
@@ -288,18 +291,22 @@ calc_default_ports() {
     if port_list_contains "$RESERVED_ALL_PORTS" "$metro"; then
       continue
     fi
+    if port_list_contains "$RESERVED_ALL_PORTS" "$ngrok_api"; then
+      continue
+    fi
 
-    if port_in_use "$web" || port_in_use "$stt" || port_in_use "$metro"; then
+    if port_in_use "$web" || port_in_use "$stt" || port_in_use "$metro" || port_in_use "$ngrok_api"; then
       continue
     fi
 
     DEFAULT_WEB_PORT="$web"
     DEFAULT_STT_PORT="$stt"
     DEFAULT_METRO_PORT="$metro"
+    DEFAULT_NGROK_API_PORT="$ngrok_api"
     return
   done
 
-  die "failed to allocate default ports (range exhausted: web 3200-3999, stt 5200-5999, metro 8200-8999)"
+  die "failed to allocate default ports (range exhausted: web 3200-3999, stt 5200-5999, metro 8200-8999, ngrok-api 10200-10999)"
 }
 
 ensure_file_parent() {
@@ -541,6 +548,7 @@ write_devbox_env() {
   ensure_single_line_value "DEVBOX_TEST_WS_URL" "$DEVBOX_TEST_WS_URL"
   ensure_single_line_value "DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_APP_PATH"
   ensure_single_line_value "DEVBOX_VAULT_STT_PATH" "$DEVBOX_VAULT_STT_PATH"
+  ensure_single_line_value "DEVBOX_NGROK_API_PORT" "$DEVBOX_NGROK_API_PORT"
 
   cat > "$DEVBOX_ENV_FILE" <<EOF
 DEVBOX_WORKTREE_NAME=$DEVBOX_WORKTREE_NAME
@@ -557,6 +565,7 @@ DEVBOX_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL
 DEVBOX_TEST_WS_URL=$DEVBOX_TEST_WS_URL
 DEVBOX_VAULT_APP_PATH=$DEVBOX_VAULT_APP_PATH
 DEVBOX_VAULT_STT_PATH=$DEVBOX_VAULT_STT_PATH
+DEVBOX_NGROK_API_PORT=$DEVBOX_NGROK_API_PORT
 EOF
 }
 
@@ -572,7 +581,7 @@ load_devbox_env() {
     [[ "$key" =~ ^[A-Z0-9_]+$ ]] || die "invalid key in $DEVBOX_ENV_FILE: $key"
 
     case "$key" in
-      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH)
+      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH|DEVBOX_NGROK_API_PORT)
         printf -v "$key" '%s' "$value"
         ;;
       *)
@@ -590,6 +599,9 @@ require_devbox_env() {
   : "${DEVBOX_WEB_PORT:?missing DEVBOX_WEB_PORT}"
   : "${DEVBOX_STT_PORT:?missing DEVBOX_STT_PORT}"
   : "${DEVBOX_METRO_PORT:?missing DEVBOX_METRO_PORT}"
+  if [[ -z "${DEVBOX_NGROK_API_PORT:-}" ]]; then
+    DEVBOX_NGROK_API_PORT="$((DEVBOX_WEB_PORT + 7000))"
+  fi
   : "${DEVBOX_PROFILE:?missing DEVBOX_PROFILE}"
   : "${DEVBOX_SITE_URL:?missing DEVBOX_SITE_URL}"
   : "${DEVBOX_RN_WS_URL:?missing DEVBOX_RN_WS_URL}"
@@ -599,6 +611,7 @@ require_devbox_env() {
   validate_port "DEVBOX_WEB_PORT" "$DEVBOX_WEB_PORT"
   validate_port "DEVBOX_STT_PORT" "$DEVBOX_STT_PORT"
   validate_port "DEVBOX_METRO_PORT" "$DEVBOX_METRO_PORT"
+  validate_port "DEVBOX_NGROK_API_PORT" "$DEVBOX_NGROK_API_PORT"
   validate_http_url "DEVBOX_SITE_URL" "$DEVBOX_SITE_URL"
   validate_ws_url "DEVBOX_RN_WS_URL" "$DEVBOX_RN_WS_URL"
   if [[ -n "$DEVBOX_PUBLIC_WS_URL" ]]; then
@@ -652,6 +665,7 @@ EOF
 write_ngrok_local_config() {
   cat > "$NGROK_LOCAL_CONFIG" <<EOF
 version: "3"
+web_addr: 127.0.0.1:$DEVBOX_NGROK_API_PORT
 tunnels:
   web:
     addr: $DEVBOX_WEB_PORT
@@ -691,18 +705,27 @@ to_wss_url() {
   esac
 }
 
+ngrok_plan_capacity_hint() {
+  cat <<'EOF'
+hint: ngrok free plan limits can vary by account generation (often 1~3 online endpoints).
+      devbox device profile uses 2 endpoints (web+stt) per worktree.
+      verify your exact limits from ngrok dashboard usage/billing pages.
+EOF
+}
+
 try_read_ngrok_urls() {
   local expected_web_port="${1:-}"
   local expected_stt_port="${2:-}"
   local require_https="${3:-0}"
+  local inspector_port="${4:-$DEVBOX_NGROK_API_PORT}"
 
   local raw parsed
   NGROK_LAST_ERROR=""
   NGROK_LAST_ERROR_KIND=""
 
-  raw="$(curl -fsS http://127.0.0.1:4040/api/tunnels 2>/dev/null)" || {
+  raw="$(curl -fsS "http://127.0.0.1:${inspector_port}/api/tunnels" 2>/dev/null)" || {
     NGROK_LAST_ERROR_KIND="inspector_unreachable"
-    NGROK_LAST_ERROR="cannot reach ngrok inspector at http://127.0.0.1:4040"
+    NGROK_LAST_ERROR="cannot reach ngrok inspector at http://127.0.0.1:${inspector_port}"
     return 1
   }
 
@@ -738,14 +761,15 @@ read_ngrok_urls() {
   local expected_web_port="${1:-}"
   local expected_stt_port="${2:-}"
   local require_https="${3:-0}"
+  local inspector_port="${4:-$DEVBOX_NGROK_API_PORT}"
 
   require_cmd curl
   require_cmd node
-  try_read_ngrok_urls "$expected_web_port" "$expected_stt_port" "$require_https" || {
+  try_read_ngrok_urls "$expected_web_port" "$expected_stt_port" "$require_https" "$inspector_port" || {
     if [[ -n "$NGROK_LAST_ERROR" ]]; then
       die "$NGROK_LAST_ERROR"
     fi
-    die "cannot read ngrok web/stt tunnels from inspector (http://127.0.0.1:4040)"
+    die "cannot read ngrok web/stt tunnels from inspector (http://127.0.0.1:${inspector_port})"
   }
 }
 
@@ -753,10 +777,11 @@ wait_for_ngrok_tunnels() {
   local expected_web_port="$1"
   local expected_stt_port="$2"
   local require_https="$3"
-  local timeout_sec="${4:-20}"
+  local inspector_port="${4:-$DEVBOX_NGROK_API_PORT}"
+  local timeout_sec="${5:-20}"
   local elapsed=0
   while ((elapsed < timeout_sec)); do
-    if try_read_ngrok_urls "$expected_web_port" "$expected_stt_port" "$require_https"; then
+    if try_read_ngrok_urls "$expected_web_port" "$expected_stt_port" "$require_https" "$inspector_port"; then
       return 0
     fi
     sleep 1
@@ -766,7 +791,7 @@ wait_for_ngrok_tunnels() {
 }
 
 set_device_profile_values() {
-  read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1"
+  read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"
 
   DEVBOX_PROFILE="device"
   DEVBOX_LOCAL_HOST="127.0.0.1"
@@ -856,11 +881,12 @@ wait_for_any_child_exit() {
 }
 
 cmd_init() {
-  local web_port="" stt_port="" metro_port="" host="127.0.0.1"
+  local web_port="" stt_port="" metro_port="" ngrok_api_port="" host="127.0.0.1"
 
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
     DEVBOX_VAULT_APP_PATH="$(read_env_value_from_file DEVBOX_VAULT_APP_PATH "$DEVBOX_ENV_FILE")"
     DEVBOX_VAULT_STT_PATH="$(read_env_value_from_file DEVBOX_VAULT_STT_PATH "$DEVBOX_ENV_FILE")"
+    ngrok_api_port="$(read_env_value_from_file DEVBOX_NGROK_API_PORT "$DEVBOX_ENV_FILE")"
   fi
 
   while [[ $# -gt 0 ]]; do
@@ -868,6 +894,7 @@ cmd_init() {
       --web-port) web_port="${2:-}"; shift 2 ;;
       --stt-port) stt_port="${2:-}"; shift 2 ;;
       --metro-port) metro_port="${2:-}"; shift 2 ;;
+      --ngrok-api-port) ngrok_api_port="${2:-}"; shift 2 ;;
       --host) host="${2:-}"; shift 2 ;;
       *) die "unknown option for init: $1" ;;
     esac
@@ -879,22 +906,29 @@ cmd_init() {
   [[ -n "$web_port" ]] || web_port="$DEFAULT_WEB_PORT"
   [[ -n "$stt_port" ]] || stt_port="$DEFAULT_STT_PORT"
   [[ -n "$metro_port" ]] || metro_port="$DEFAULT_METRO_PORT"
+  [[ -n "$ngrok_api_port" ]] || ngrok_api_port="$DEFAULT_NGROK_API_PORT"
 
   validate_port "web port" "$web_port"
   validate_port "stt port" "$stt_port"
   validate_port "metro port" "$metro_port"
+  validate_port "ngrok api port" "$ngrok_api_port"
 
   [[ "$web_port" != "$stt_port" ]] || die "web/stt ports must differ"
   [[ "$web_port" != "$metro_port" ]] || die "web/metro ports must differ"
   [[ "$stt_port" != "$metro_port" ]] || die "stt/metro ports must differ"
+  [[ "$ngrok_api_port" != "$web_port" ]] || die "ngrok api/web ports must differ"
+  [[ "$ngrok_api_port" != "$stt_port" ]] || die "ngrok api/stt ports must differ"
+  [[ "$ngrok_api_port" != "$metro_port" ]] || die "ngrok api/metro ports must differ"
 
   port_conflict_check "web" "$web_port"
   port_conflict_check "stt" "$stt_port"
   port_conflict_check "metro" "$metro_port"
+  port_conflict_check "ngrok api" "$ngrok_api_port"
 
   DEVBOX_WEB_PORT="$web_port"
   DEVBOX_STT_PORT="$stt_port"
   DEVBOX_METRO_PORT="$metro_port"
+  DEVBOX_NGROK_API_PORT="$ngrok_api_port"
   set_local_profile_values "$host"
 
   seed_env_from_main_worktree
@@ -958,6 +992,10 @@ cmd_ngrok_config() {
 }
 
 cmd_up() {
+  if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
+    log "missing .devbox.env, running init automatically"
+    cmd_init
+  fi
   require_devbox_env
   require_cmd pnpm
   local vault_app_override=""
@@ -990,10 +1028,11 @@ cmd_up() {
   if [[ "$profile" == "device" ]]; then
     write_ngrok_local_config
 
-    if ! try_read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1"; then
+    if ! try_read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"; then
       if [[ "$NGROK_LAST_ERROR_KIND" == "tunnel_mismatch" ]]; then
-        die "running ngrok tunnels do not match this worktree ports(web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT) or are not https/wss.
-$NGROK_LAST_ERROR"
+        die "running ngrok tunnels do not match this worktree ports(web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT) or are not https/wss (inspector port=$DEVBOX_NGROK_API_PORT).
+$NGROK_LAST_ERROR
+$(ngrok_plan_capacity_hint)"
       fi
       require_cmd ngrok
       log "starting ngrok for device profile"
@@ -1004,12 +1043,14 @@ $NGROK_LAST_ERROR"
       pids+=("$!")
       started_ngrok=1
 
-      if ! wait_for_ngrok_tunnels "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" 20; then
+      if ! wait_for_ngrok_tunnels "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT" 20; then
         cleanup_processes "${pids[@]}"
         if [[ -n "$NGROK_LAST_ERROR" ]]; then
-          die "$NGROK_LAST_ERROR"
+          die "$NGROK_LAST_ERROR
+$(ngrok_plan_capacity_hint)"
         fi
-        die "ngrok inspector did not expose matching web/stt tunnels within 20s"
+        die "ngrok inspector(port=$DEVBOX_NGROK_API_PORT) did not expose matching web/stt tunnels within 20s.
+$(ngrok_plan_capacity_hint)"
       fi
     fi
   fi
@@ -1076,6 +1117,7 @@ cmd_status() {
 [devbox] worktree: $DEVBOX_WORKTREE_NAME
 [devbox] profile:  $DEVBOX_PROFILE
 [devbox] ports:    web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT metro=$DEVBOX_METRO_PORT
+[devbox] ngrok:    inspector=http://127.0.0.1:$DEVBOX_NGROK_API_PORT
 
 PC Web      : $DEVBOX_SITE_URL
 iOS Web     : $DEVBOX_SITE_URL
