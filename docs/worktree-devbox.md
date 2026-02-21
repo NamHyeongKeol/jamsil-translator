@@ -39,6 +39,7 @@ scripts/devbox up --profile device
 - `scripts/devbox init`
   - `.devbox.env` 생성
   - git worktree 목록 기준으로 이미 할당된 포트를 회피해 기본 포트 자동 선택
+    (`web/stt/metro` + `ngrok inspector`)
   - 현재 워크트리 `.env.local`에 비관리 키가 없으면 main 워크트리의
     `mingle-app/.env.local`, `mingle-stt/.env.local`을 시드
   - `mingle-app/.env.local` devbox 관리 블록 갱신
@@ -58,11 +59,12 @@ scripts/devbox up --profile device
   - `NEXT_PUBLIC_WS_URL`를 빈 값으로 두고 host+port 조합을 사용
 
 - `scripts/devbox profile --profile device`
-  - ngrok inspector(`http://127.0.0.1:4040`)에서 `web`, `stt` 터널 URL을 읽어
+  - 현재 워크트리 ngrok inspector(`DEVBOX_NGROK_API_PORT`)에서 `web`, `stt` 터널 URL을 읽어
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`, `RN_DEFAULT_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
 
 - `scripts/devbox up --profile local|device`
+  - `.devbox.env`가 없으면 `init`을 자동 실행(1커맨드 온보딩)
   - 시작 전에 main 워크트리 env 시드와 의존성 설치를 자동 수행
   - 이전에 저장된 Vault 경로가 있으면 자동으로 env 동기화 수행
   - 필요 시 `--vault-app-path/--vault-stt-path`로 경로를 덮어써 즉시 반영 가능
@@ -83,6 +85,14 @@ scripts/devbox up --profile device
 2. `ngrok.mobile.yml` (기본 저장소 파일)
 
 즉 `scripts/devbox init` 후에는 워크트리별 포트 기준으로 ngrok이 바로 동작합니다.
+또한 inspector 포트도 워크트리별로 분리되어(`DEVBOX_NGROK_API_PORT`) 충돌 가능성을 줄입니다.
+
+## ngrok Free 플랜 참고
+
+- `device` 프로필은 워크트리당 ngrok endpoint 2개(`web`, `stt`)를 사용합니다.
+- ngrok Free 한도는 계정 생성 시점/플랜 정책에 따라 `online endpoint`가 1~3으로 다를 수 있습니다.
+- 따라서 단일 계정 Free 플랜에서는 `device` 프로필 워크트리 2개 동시(총 endpoint 4개)가
+  제한에 걸릴 가능성이 높습니다. (정확 한도는 ngrok 대시보드에서 확인)
 
 ## 생성/수정 파일
 

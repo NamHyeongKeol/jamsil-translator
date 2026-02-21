@@ -29,6 +29,8 @@ scripts/devbox init
 scripts/devbox bootstrap
 # Vault를 쓰면 (선택)
 # scripts/devbox bootstrap --vault-app-path secret/mingle-app/dev --vault-stt-path secret/mingle-stt/dev
+# 또는 첫 실행부터 한 번에
+# scripts/devbox up --profile device --vault-app-path secret/mingle-app/dev --vault-stt-path secret/mingle-stt/dev
 scripts/devbox up --profile local
 scripts/devbox up --profile device
 scripts/devbox status
@@ -40,7 +42,9 @@ scripts/devbox status
 - Vault 사용 시 `--vault-app-path`, `--vault-stt-path`로 비관리 env 키를 동기화할 수 있습니다.
   한 번 지정하면 `.devbox.env`에 저장되어 이후 `bootstrap/up`에서 자동 재사용됩니다.
 - `--profile device`는 ngrok(`web`/`stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
+- 워크트리마다 ngrok inspector 포트를 분리(`DEVBOX_NGROK_API_PORT`)해 동시 실행 충돌을 줄였습니다.
 - `--profile device`는 현재 워크트리 포트와 일치하는 `https/wss` 터널만 허용합니다.
+- `scripts/devbox up`은 `.devbox.env`가 없으면 `init`을 자동 실행합니다.
 
 ## Learn More
 
