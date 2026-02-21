@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_finalize_immediate_prev_turn_context_boost
+    %% @lastActive: mingle_multi_worktree_local_test_env_automation_plan
 
     %% === START ===
     %% @project_start [start, closed]
@@ -697,6 +697,9 @@ flowchart TD
     %% @opencode_codex_oauth_pending [human-task, opened]
     opencode_codex_oauth_pending("Codex OAuth 승인 대기<br/><sub>opencode auth login OpenAI(headless)에서<br/>장치 코드 발급까지 완료했고 브라우저 승인만 남음<br/>승인 완료 시 auth.json에 크리덴셜이 저장되어<br/>openai/gpt-5.2-codex 모델을 바로 실행 가능</sub>")
 
+    %% @mingle_multi_worktree_local_test_env_automation_plan [ai-task, opened, 2026-02-21, ai]
+    mingle_multi_worktree_local_test_env_automation_plan("워크트리별 로컬 통합테스트 자동화 계획<br/><sub>브랜치/워크트리마다 NEXT/STT 포트를<br/>자동 분리하고 환경변수를 템플릿화해<br/>PC웹·iOS웹·iOS앱·안드앱·안드웹 검증을<br/>한 명령 플로우로 재현 가능하게 설계</sub>")
+
     %% @ultimate_goal [end, opened]
     ultimate_goal("Mingle Launch<br/><sub>소셜링 중심의 실시간 번역 앱으로<br/>외국인과 깊이 있는 대화를 나누고<br/>지속적인 관계를 만들어가는 서비스</sub>")
 
@@ -879,6 +882,7 @@ flowchart TD
     mingle_app_final_duplicate_guard_experiment --> mingle_app_final_duplicate_guard_nonfinal_aware_refine
     mingle_app_final_duplicate_guard_nonfinal_aware_refine --> mingle_app_mobile_safari_stt_no_log_rootcause
     mingle_app_mobile_safari_stt_no_log_rootcause --> mingle_app_ngrok_dual_tunnel_overlay_setup
+    mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_multi_worktree_local_test_env_automation_plan
     mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_app_final_dedupe_false_negative_fix
     mingle_app_final_dedupe_false_negative_fix --> mingle_app_fin_marker_sanitize_temp_disable
     mingle_app_fin_marker_sanitize_temp_disable --> mingle_stt_endpoint_final_merge_for_fin_visibility
@@ -899,6 +903,7 @@ flowchart TD
     mingle_app_tdd_stt_hook_logic_unit_tests --> mingle_app_tdd_stt_hook_server_integration_plan
     mingle_app_tdd_stt_hook_server_integration_plan --> mingle_app_tdd_live_stt_finalize_integration_automation
     mingle_app_tdd_live_stt_finalize_integration_automation --> mingle_app_tdd_live_regression_e2e_matrix_expansion
+    mingle_app_tdd_live_regression_e2e_matrix_expansion --> mingle_multi_worktree_local_test_env_automation_plan
     mingle_app_tdd_live_regression_e2e_matrix_expansion --> mingle_app_tdd_vitest_node20_compat_fix
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
@@ -952,6 +957,7 @@ flowchart TD
     mingle_app_tdd_stt_hook_server_integration_plan -.-> ultimate_goal
     mingle_app_tdd_live_stt_finalize_integration_automation -.-> ultimate_goal
     mingle_app_tdd_live_regression_e2e_matrix_expansion -.-> ultimate_goal
+    mingle_multi_worktree_local_test_env_automation_plan -.-> ultimate_goal
     mingle_app_tdd_vitest_node20_compat_fix -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
@@ -990,7 +996,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_finalize_immediate_prev_turn_context_boost
+        mingle_multi_worktree_local_test_env_automation_plan
     end
 
     %% === STYLES ===
@@ -1262,6 +1268,7 @@ flowchart TD
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_finalize_immediate_prev_turn_context_boost fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_multi_worktree_local_test_env_automation_plan fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
