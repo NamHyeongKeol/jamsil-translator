@@ -596,15 +596,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   const {
     utterances,
-    partialTranscript,
+    partialTurns,
     volume,
     toggleRecording,
     isActive,
     isReady,
     isConnecting,
     isError,
-    partialTranslations,
-    partialLang,
     usageSec,
     isLimitReached,
     usageLimitSec,
@@ -1086,7 +1084,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       }
     }
     updateScrollDerivedState()
-  }, [demoTypingText, isConnecting, partialTranscript, updateScrollDerivedState, utterances])
+  }, [demoTypingText, isConnecting, partialTurns, updateScrollDerivedState, utterances])
 
   useEffect(() => {
     updateScrollDerivedState()
@@ -1100,15 +1098,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   const showRipple = isReady && volume > VOLUME_THRESHOLD
   const rippleScale = showRipple ? 1 + (volume - VOLUME_THRESHOLD) * 5 : 1
-
-  // Determine target languages for bouncing dots during partial transcript
-  const detectedLang = partialLang || (utterances.length > 0 ? utterances[utterances.length - 1].originalLang : null)
-  const pendingPartialLangs = partialTranscript
-    ? selectedLanguages.filter(l => l !== detectedLang && !partialTranslations[l])
-    : []
-  const availablePartialTranslations = partialTranscript
-    ? Object.entries(partialTranslations).filter(([lang]) => selectedLanguages.includes(lang) && lang !== detectedLang)
-    : []
 
   const isUsageLimited = typeof usageLimitSec === 'number'
   const remainingSec = isUsageLimited
@@ -1220,50 +1209,67 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             ))}
           </AnimatePresence>
 
-          {partialTranscript && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col gap-1"
-            >
+          {partialTurns.map((partialTurn) => {
+            const detectedLang = partialTurn.language
+            const availablePartialTranslations = Object.entries(partialTurn.translations || {})
+              .filter(([lang, text]) => selectedLanguages.includes(lang) && lang !== detectedLang && text.trim().length > 0)
+            const pendingPartialLangs = selectedLanguages
+              .filter((lang) => lang !== detectedLang && !partialTurn.translations?.[lang])
+            const speakerLabel = partialTurn.speaker
+              .replace(/^speaker_/i, 'S')
+              .replace(/^speaker\s+/i, 'S')
+              .replace(/^speaker/i, 'SPK')
+              .toUpperCase()
+
+            return (
+              <motion.div
+                key={`partial-${partialTurn.speaker}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col gap-1"
+              >
                 <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
-                <p className="text-sm text-gray-400 leading-snug">
-                  {partialTranscript}
-                  <span className="inline-block w-1 h-3 ml-0.5 bg-amber-400 rounded-full animate-pulse" />
-                </p>
-              </div>
-              {/* Available partial translations */}
-              {availablePartialTranslations.map(([lang, text]) => (
-                <div
-                  key={lang}
-                  className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
-                >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
-                  <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
-                </div>
-                  <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
-                </div>
-              ))}
-              {/* Bouncing dots for pending partial translations */}
-              {pendingPartialLangs.map((lang) => (
-                <div
-                key={`partial-pending-${lang}`}
-                  className="ml-2.5 max-w-[80%] bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
-                >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
-                    <span className="text-xs font-semibold text-amber-400 uppercase">{lang}</span>
+                    <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-600 text-[10px] font-semibold px-1.5 py-0.5">
+                      {speakerLabel}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-0.5 h-4">
-                    <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
+                  <p className="text-sm text-gray-400 leading-snug">
+                    {partialTurn.text}
+                    <span className="inline-block w-1 h-3 ml-0.5 bg-amber-400 rounded-full animate-pulse" />
+                  </p>
                 </div>
-              ))}
-            </motion.div>
-          )}
+                {availablePartialTranslations.map(([lang, text]) => (
+                  <div
+                    key={`${partialTurn.speaker}-${lang}`}
+                    className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                      <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
+                  </div>
+                ))}
+                {pendingPartialLangs.map((lang) => (
+                  <div
+                    key={`partial-pending-${partialTurn.speaker}-${lang}`}
+                    className="ml-2.5 max-w-[80%] bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                      <span className="text-xs font-semibold text-amber-400 uppercase">{lang}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 h-4">
+                      <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            )
+          })}
 
           {/* Demo typing animation */}
           {demoTypingLang && (
@@ -1304,7 +1310,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           )}
 
           {/* Empty state */}
-          {utterances.length === 0 && !partialTranscript && !demoTypingText && !demoTypingLang && !isDemoAnimating && !isActive && !isError && !isLimitReached && (
+          {utterances.length === 0 && partialTurns.length === 0 && !demoTypingText && !demoTypingLang && !isDemoAnimating && !isActive && !isError && !isLimitReached && (
             <div className="flex min-h-full flex-col items-center justify-center text-center text-gray-400 gap-2">
                 <Play size={38} className="text-gray-300" />
                 <p className="text-base">{tapPlayToStartLabel}</p>

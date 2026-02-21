@@ -65,8 +65,25 @@ describe('use-realtime-stt pure logic', () => {
       rawText: ' <fin> ... Hello there ',
       text: 'Hello there',
       language: 'en-US',
+      speaker: 'speaker_unknown',
       isFinal: true,
     })
+  })
+
+  it('normalizes speaker field from transcript payload', () => {
+    const parsed = parseSttTranscriptMessage({
+      type: 'transcript',
+      data: {
+        is_final: false,
+        utterance: {
+          text: 'hello',
+          language: 'en',
+          speaker: 'speaker 2',
+        },
+      },
+    })
+
+    expect(parsed?.speaker).toBe('speaker_2')
   })
 
   it('returns null for malformed non-transcript payloads', () => {
@@ -94,10 +111,12 @@ describe('use-realtime-stt pure logic', () => {
     expect(built?.utteranceId).toBe('u-1700000000000-7')
     expect(built?.text).toBe('hello everyone')
     expect(built?.language).toBe('en-US')
+    expect(built?.speaker).toBe('speaker_unknown')
     expect(built?.utterance).toEqual({
       id: 'u-1700000000000-7',
       originalText: 'hello everyone',
       originalLang: 'en-US',
+      speaker: 'speaker_unknown',
       targetLanguages: ['ko', 'ja'],
       translations: {
         ko: '안녕하세요',
