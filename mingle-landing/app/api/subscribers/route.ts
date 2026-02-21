@@ -1,9 +1,5 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { legacyApiGoneResponse } from '@/server/api/versioning/legacy-route'
 
 export async function GET() {
-  const subscribers = await prisma.subscriber.findMany({
-    orderBy: { createdAt: 'desc' },
-  })
-  return NextResponse.json(subscribers)
+  return legacyApiGoneResponse('/api/web/landing/v1/subscribers')
 }

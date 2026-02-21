@@ -25,7 +25,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 `pnpm test` runs both unit tests and live integration tests that:
 
 1. Streams an audio fixture to local STT WebSocket server
-2. Sends the finalized transcript to `/api/translate/finalize`
+2. Sends the finalized transcript to `/api/web/app/v1/translate/finalize`
 
 Useful commands:
 
@@ -50,10 +50,41 @@ MINGLE_TEST_AUDIO_FIXTURE=/absolute/path/to/file.wav
 MINGLE_TEST_AUDIO_FIXTURE_DIR=/absolute/path/to/fixtures-dir
 MINGLE_TEST_WS_URL=ws://127.0.0.1:3001
 MINGLE_TEST_API_BASE_URL=http://127.0.0.1:3000
+MINGLE_TEST_API_NAMESPACE=web/app/v1
 MINGLE_TEST_EXPECTED_PHRASE="hello mingle"
 MINGLE_TEST_TARGET_LANGUAGES=ko,en
 MINGLE_TEST_TTS_LANGUAGE=ko
 MINGLE_TEST_TTS_OUTPUT_DIR=/absolute/path/to/tts-output
+```
+
+## API Namespace (Release Routing)
+
+클라이언트는 런타임 분기 없이 `NEXT_PUBLIC_API_NAMESPACE`만으로 API 경로를 결정합니다.
+
+- Web: `web/app/v1` (기본값)
+- iOS release: `mobile/ios/v1`
+- Android release: `mobile/android/v1`
+
+Release build commands:
+
+```bash
+pnpm build:release:web
+pnpm build:release:ios
+pnpm build:release:android
+```
+
+URL override (optional):
+
+- 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)는 allow-list 값만 반영됩니다.
+- 허용값: `web/app/v1`, `mobile/ios/v1`, `mobile/android/v1`
+- 예: `https://your-app/ko?apiNamespace=mobile/ios/v1`
+- 허용되지 않은 값은 무시되고 env/default를 사용합니다.
+
+Contract test commands:
+
+```bash
+# API namespace allow-list + route wiring
+pnpm test:unit -- src/lib/api-contract.test.ts src/app/api/namespace-routing.contract.test.ts src/lib/rn-api-namespace.test.ts
 ```
 
 Fixture scan behavior:
@@ -195,6 +226,8 @@ RN 앱 URL은 하드코딩하지 않고 환경변수로만 읽습니다.
 
 - `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
 - `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
+- `RN_API_NAMESPACE` (필수: iOS=`mobile/ios/v1`, Android=`mobile/android/v1`)
+- `RN_API_NAMESPACE`가 플랫폼값과 불일치하면 WebView를 로드하지 않고 오류를 표시합니다.
 
 루트 `pnpm rn:start|ios|android` 스크립트는 `.env.local`을 먼저 로드한 뒤 RN CLI를 실행합니다.
 

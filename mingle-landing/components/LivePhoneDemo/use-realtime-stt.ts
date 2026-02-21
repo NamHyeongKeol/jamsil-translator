@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Utterance } from './ChatBubble'
+import { buildLandingApiPath } from '@/lib/api-contract'
 
 const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '3001'
 const getWsUrl = () => {
@@ -252,7 +253,7 @@ export default function useRealtimeSTT({
     }
   }, [])
 
-  // ===== HTTP Translation via /api/translate/finalize =====
+  // ===== HTTP Translation via versioned API namespace =====
   const translateViaApi = useCallback(async (
     text: string,
     sourceLanguage: string,
@@ -270,7 +271,7 @@ export default function useRealtimeSTT({
       if (normalizedTtsLang) {
         body.tts = { language: normalizedTtsLang }
       }
-      const res = await fetch('/api/translate/finalize', {
+      const res = await fetch(buildLandingApiPath('/translate/finalize'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

@@ -51,6 +51,9 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
     devDependencies:
+      '@react-native/typescript-config':
+        specifier: 0.84.0
+        version: 0.84.0
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.1.18
@@ -1508,6 +1511,9 @@ packages:
 
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
+
+  '@react-native/typescript-config@0.84.0':
+    resolution: {integrity: sha512-AYDoPdwuOx4rz6jRo+Qko0Y1L3TygoiNZwgqEgF0v+2oR6byDth7Rj+BZWIbIFM3OT23ecBEQG0VKsJkihNlBA==}
 
   '@rollup/rollup-android-arm-eabi@4.57.1':
     resolution: {integrity: sha512-A6ehUVSiSaaliTxai040ZpZ2zTevHYbvu/lDoeAteHI8QnaosIzm4qwtezfRg1jOYaUmnzLX1AOD6Z+UJjtifg==}
@@ -5843,6 +5849,8 @@ snapshots:
       '@types/react-dom': 19.2.3(@types/react@19.2.14)
 
   '@radix-ui/rect@1.1.1': {}
+
+  '@react-native/typescript-config@0.84.0': {}
 
   '@rollup/rollup-android-arm-eabi@4.57.1':
     optional: true

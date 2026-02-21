@@ -24,6 +24,7 @@ import {
   playNativeTts,
   stopNativeTts,
 } from './src/nativeTts';
+import { validateRnApiNamespace } from './src/apiNamespace';
 
 type RuntimeEnvMap = Record<string, string | undefined>;
 
@@ -61,6 +62,7 @@ function resolveConfiguredUrl(
   }
 }
 
+const RN_RUNTIME_OS = Platform.OS;
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
   ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
   ['http:', 'https:'],
@@ -70,6 +72,14 @@ const DEFAULT_WS_URL = resolveConfiguredUrl(
   ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
   ['ws:', 'wss:'],
 ) || 'wss://mingle.up.railway.app';
+const {
+  expectedApiNamespace: EXPECTED_API_NAMESPACE,
+  configuredApiNamespace: CONFIGURED_API_NAMESPACE,
+  validatedApiNamespace: VALIDATED_API_NAMESPACE,
+} = validateRnApiNamespace({
+  runtimeOs: RN_RUNTIME_OS,
+  configuredApiNamespace: readRuntimeEnvValue(['RN_API_NAMESPACE']),
+});
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {
@@ -77,6 +87,13 @@ if (!WEB_APP_BASE_URL) {
 }
 if (!DEFAULT_WS_URL) {
   missingRuntimeConfig.push('RN_DEFAULT_WS_URL (or NEXT_PUBLIC_WS_URL)');
+}
+if (!EXPECTED_API_NAMESPACE) {
+  missingRuntimeConfig.push(`Unsupported platform for RN_API_NAMESPACE validation: ${RN_RUNTIME_OS}`);
+} else if (!CONFIGURED_API_NAMESPACE) {
+  missingRuntimeConfig.push(`RN_API_NAMESPACE (expected: ${EXPECTED_API_NAMESPACE})`);
+} else if (!VALIDATED_API_NAMESPACE) {
+  missingRuntimeConfig.push(`RN_API_NAMESPACE must match current platform namespace: ${EXPECTED_API_NAMESPACE}`);
 }
 const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
   ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}`
@@ -181,9 +198,10 @@ function App(): React.JSX.Element {
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
-    if (!WEB_APP_BASE_URL) return '';
+    if (!WEB_APP_BASE_URL || !VALIDATED_API_NAMESPACE || REQUIRED_CONFIG_ERROR) return '';
+    const apiNamespaceQuery = `&apiNamespace=${encodeURIComponent(VALIDATED_API_NAMESPACE)}`;
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
-    return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1&nativeUi=1${debugParams}`;
+    return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1&nativeUi=1${apiNamespaceQuery}${debugParams}`;
   }, [locale]);
 
   const emitToWeb = useCallback((payload: NativeSttEvent) => {

@@ -1,15 +1,19 @@
 This is the `mingle-app/rn` React Native workspace.
 
 - Root scripts (from `/Users/nam/mingle/mingle-app`):
-  - `pnpm rn:install`
-  - `pnpm rn:pods`
-  - `pnpm rn:start`
-  - `pnpm rn:ios`
+- `pnpm rn:install`
+- `pnpm rn:pods`
+- `pnpm rn:start`
+- `pnpm rn:ios`
 
 RN 앱은 아래 env를 필요로 합니다.
 
 - `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
 - `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
+- `RN_API_NAMESPACE` (필수: iOS=`mobile/ios/v1`, Android=`mobile/android/v1`)
+
+RN WebView는 `apiNamespace` 쿼리로 웹에 전달합니다.
+값이 없거나 플랫폼 기준값과 다르면 WebView를 로드하지 않고 오류를 표시합니다.
 
 This project was bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { X, Download, Check } from 'lucide-react'
 import { getUserInfo } from '@/components/sections/tracking'
+import { buildLandingApiPath } from '@/lib/api-contract'
 
 export interface EmailModalProps {
   isOpen: boolean
@@ -23,7 +24,7 @@ export default function EmailModal({ isOpen, onClose }: EmailModalProps) {
 
     setStatus('loading')
     try {
-      const res = await fetch('/api/subscribe', {
+      const res = await fetch(buildLandingApiPath('/subscribe'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, feedback: feedback.trim() || null, ...getUserInfo() }),
