@@ -50,26 +50,50 @@ jobs:
             exit 0
           fi
 
-          api_url="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls"
-          if ! response="$(curl -fsSL \
+          pulls_api="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls"
+          commit_api="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}"
+          pulls_file="$(mktemp)"
+          commit_file="$(mktemp)"
+          trap 'rm -f "$pulls_file" "$commit_file"' EXIT
+
+          if ! curl -fsSL \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            "${api_url}")"; then
+            "${pulls_api}" > "${pulls_file}"; then
             echo "::warning::Failed to query commit PR associations; running tests for safety."
             echo "run_tests_on_push=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          associated_pr_count="$(
-            echo "$response" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const v=JSON.parse(s);process.stdout.write(String(Array.isArray(v)?v.length:0));}catch{process.stdout.write('0')}})"
-          )"
-
-          if [ "${associated_pr_count}" -gt 0 ]; then
-            echo "run_tests_on_push=false" >> "$GITHUB_OUTPUT"
-            echo "Push commit is associated with PR(s); skipping post-merge test rerun."
-          else
+          if ! curl -fsSL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${commit_api}" > "${commit_file}"; then
+            echo "::warning::Failed to query commit metadata; running tests for safety."
             echo "run_tests_on_push=true" >> "$GITHUB_OUTPUT"
-            echo "Push commit has no associated PR; running tests."
+            exit 0
+          fi
+
+          if ! decision="$(
+            node -e 'const fs=require("fs"); const pulls=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); const commit=JSON.parse(fs.readFileSync(process.argv[2],"utf8")); const associatedPrCount=Array.isArray(pulls)?pulls.length:0; const parentCount=Array.isArray(commit.parents)?commit.parents.length:0; const headline=((commit.commit&&commit.commit.message)||"").split("\n")[0]; const isStandardPrMerge=/^Merge pull request #\d+/.test(headline); const runTests=associatedPrCount===0 || (parentCount>1 && !isStandardPrMerge); process.stdout.write([runTests?"true":"false", String(associatedPrCount), String(parentCount), isStandardPrMerge?"true":"false"].join("|"));' "$pulls_file" "$commit_file"
+          )"; then
+            echo "::warning::Failed to evaluate push context; running tests for safety."
+            echo "run_tests_on_push=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          IFS='|' read -r run_tests_on_push associated_pr_count parent_count is_standard_pr_merge <<< "$decision"
+
+          echo "run_tests_on_push=${run_tests_on_push}" >> "$GITHUB_OUTPUT"
+          if [ "$run_tests_on_push" = "true" ]; then
+            if [ "${associated_pr_count}" -eq 0 ]; then
+              echo "Push commit has no associated PR; running tests."
+            else
+              echo "Push commit has PR association but non-standard merge shape; running tests."
+              echo "parents=${parent_count} standard_pr_merge=${is_standard_pr_merge}"
+            fi
+          else
+            echo "Push commit is a standard PR merge; skipping post-merge test rerun."
           fi
 
   unit-tests:
