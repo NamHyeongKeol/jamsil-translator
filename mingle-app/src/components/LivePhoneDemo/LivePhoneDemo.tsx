@@ -17,6 +17,7 @@ import {
 } from './live-phone-demo.scroll.logic'
 import {
   NATIVE_UI_EVENT,
+  isNativeUiBridgeEnabledFromSearch,
   parseNativeUiScrollToTopDetail,
 } from './live-phone-demo.native-ui.logic'
 
@@ -242,7 +243,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const processTtsQueueRef = useRef<() => void>(() => {})
   const stopClickResumeTimerIdsRef = useRef<number[]>([])
   const langSelectorButtonRef = useRef<HTMLButtonElement | null>(null)
-  const [isIosTopTapEnabled] = useState(() => isLikelyIOSPlatform())
+  const [isNativeUiBridgeEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return isNativeUiBridgeEnabledFromSearch(window.location.search || '')
+  })
+  const [isIosTopTapEnabled] = useState(() => isLikelyIOSPlatform() && !isNativeUiBridgeEnabled)
 
 
   // Persist selected languages
@@ -1053,7 +1058,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [markUserScrollIntent, updateScrollDerivedState])
 
   useEffect(() => {
-    if (!isNativeApp()) return
+    if (!isNativeApp() || !isNativeUiBridgeEnabled) return
 
     const handleNativeUiEvent = (event: Event) => {
       const detail = parseNativeUiScrollToTopDetail((event as CustomEvent<unknown>).detail)
@@ -1065,7 +1070,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     return () => {
       window.removeEventListener(NATIVE_UI_EVENT, handleNativeUiEvent as EventListener)
     }
-  }, [handleTopSafeAreaTap])
+  }, [handleTopSafeAreaTap, isNativeUiBridgeEnabled])
 
   // On fresh mount/re-entry, pin to the latest messages first.
   // This prevents initial top-pagination from running before we settle at bottom.

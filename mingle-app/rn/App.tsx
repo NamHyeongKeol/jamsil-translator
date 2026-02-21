@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  NativeModules,
   Platform,
   Pressable,
   SafeAreaView,
@@ -144,6 +145,15 @@ type NativeUiEvent = {
   source: string;
 };
 
+function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
+  const numeric = typeof rawStatusBarHeight === 'number'
+    ? rawStatusBarHeight
+    : Number(rawStatusBarHeight);
+  if (!Number.isFinite(numeric) || numeric <= 0) return 36;
+  const expanded = Math.ceil(numeric) + 8;
+  return Math.max(28, Math.min(64, expanded));
+}
+
 function resolveLocaleSegment(): string {
   try {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale || 'ko';
@@ -161,6 +171,13 @@ function App(): React.JSX.Element {
   const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
+  const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
+    if (Platform.OS !== 'ios') return 36;
+    const manager = (NativeModules as {
+      StatusBarManager?: { HEIGHT?: number };
+    }).StatusBarManager;
+    return resolveIosTopTapOverlayHeight(manager?.HEIGHT);
+  });
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
@@ -349,6 +366,27 @@ function App(): React.JSX.Element {
   }, [emitTtsToWeb, handleNativeStart, handleNativeStop]);
 
   useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    let isMounted = true;
+    const manager = (NativeModules as {
+      StatusBarManager?: {
+        HEIGHT?: number;
+        getHeight?: (callback: (metrics: { height: number }) => void) => void;
+      };
+    }).StatusBarManager;
+
+    if (!manager || typeof manager.getHeight !== 'function') return;
+
+    manager.getHeight((metrics) => {
+      if (!isMounted) return;
+      setIosTopTapOverlayHeight(resolveIosTopTapOverlayHeight(metrics?.height));
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const statusSub = addNativeSttListener('status', event => {
       if (__DEV__) console.log(`[NativeSTT] status: ${event.status}`);
       nativeStatusRef.current = event.status;
@@ -426,7 +464,7 @@ function App(): React.JSX.Element {
           accessibilityRole="button"
           accessibilityLabel="Scroll to top"
           onPress={handleIosTopTapOverlayPress}
-          style={styles.iosTopTapOverlay}
+          style={[styles.iosTopTapOverlay, { height: iosTopTapOverlayHeight }]}
         />
       ) : null}
       <WebView
@@ -466,7 +504,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 64,
     zIndex: 20,
     backgroundColor: 'transparent',
   },

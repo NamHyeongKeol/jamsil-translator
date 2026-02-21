@@ -1,4 +1,5 @@
 export const NATIVE_UI_EVENT = 'mingle:native-ui'
+export const NATIVE_UI_QUERY_KEY = 'nativeUi'
 
 export interface NativeUiScrollToTopEventDetail {
   type: 'scroll_to_top'
@@ -21,5 +22,15 @@ export function parseNativeUiScrollToTopDetail(
   return {
     type: 'scroll_to_top',
     source,
+  }
+}
+
+export function isNativeUiBridgeEnabledFromSearch(search: string): boolean {
+  try {
+    const params = new URLSearchParams(search || '')
+    const value = (params.get(NATIVE_UI_QUERY_KEY) || '').trim().toLowerCase()
+    return value === '1' || value === 'true'
+  } catch {
+    return false
   }
 }
