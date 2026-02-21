@@ -3,12 +3,17 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT_CANON="$(cd "$ROOT_DIR" && pwd -P)"
+LOCAL_TOOLS_BIN="$ROOT_DIR/.tools/bin"
 DEVBOX_ENV_FILE="$ROOT_DIR/.devbox.env"
 APP_ENV_FILE="$ROOT_DIR/mingle-app/.env.local"
 STT_ENV_FILE="$ROOT_DIR/mingle-stt/.env.local"
 NGROK_LOCAL_CONFIG="$ROOT_DIR/ngrok.mobile.local.yml"
 MANAGED_START="# >>> devbox managed (auto)"
 MANAGED_END="# <<< devbox managed (auto)"
+
+if [[ -d "$LOCAL_TOOLS_BIN" ]]; then
+  PATH="$LOCAL_TOOLS_BIN:$PATH"
+fi
 
 APP_MANAGED_KEYS=(
   DEVBOX_WORKTREE_NAME
