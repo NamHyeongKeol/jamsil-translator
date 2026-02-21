@@ -257,59 +257,16 @@ async function translateWithGemini(ctx: TranslateContext): Promise<TranslationEn
   const result = await model.generateContent(userPrompt)
   const response = result.response as unknown as GeminiResponseLike
   const rawContent = response.text() || ''
-  console.info([
-    '[translate/finalize] gemini_raw_response',
-    rawContent,
-  ].join('\n'))
   const content = rawContent.trim()
   const usageMetadata = response.usageMetadata
   const promptTokens = sanitizeNonNegativeInt(usageMetadata?.promptTokenCount)
   const completionTokens = sanitizeNonNegativeInt(usageMetadata?.candidatesTokenCount)
   const totalTokens = sanitizeNonNegativeInt(usageMetadata?.totalTokenCount)
-  const candidateMeta = Array.isArray(response.candidates)
-    ? response.candidates.map((candidate, index) => ({
-      index,
-      finishReason: candidate.finishReason ?? null,
-      safetyRatings: candidate.safetyRatings ?? null,
-    }))
-    : []
 
-  if (!content) {
-    console.error('[translate/finalize] gemini_empty_text', {
-      sourceLanguage: ctx.sourceLanguage,
-      targetLanguages: ctx.targetLanguages,
-      textPreview: ctx.text.slice(0, 120),
-      recentTurnsCount: ctx.recentTurns.length,
-      promptFeedback: response.promptFeedback ?? null,
-      candidates: candidateMeta,
-      usage: {
-        input_tokens: promptTokens,
-        output_tokens: completionTokens,
-        total_tokens: totalTokens,
-      },
-    })
-    return null
-  }
+  if (!content) return null
 
   const translations = parseTranslations(content)
-  if (Object.keys(translations).length === 0) {
-    console.error('[translate/finalize] gemini_unparseable_json', {
-      sourceLanguage: ctx.sourceLanguage,
-      targetLanguages: ctx.targetLanguages,
-      textPreview: ctx.text.slice(0, 120),
-      recentTurnsCount: ctx.recentTurns.length,
-      promptFeedback: response.promptFeedback ?? null,
-      candidates: candidateMeta,
-      responseTextLength: content.length,
-      responseTextPreview: content.slice(0, 2000),
-      usage: {
-        input_tokens: promptTokens,
-        output_tokens: completionTokens,
-        total_tokens: totalTokens,
-      },
-    })
-    return null
-  }
+  if (Object.keys(translations).length === 0) return null
 
   return {
     translations,
@@ -460,6 +417,7 @@ async function synthesizeTtsInline(args: {
   }
 }
 
+
 export async function POST(request: NextRequest) {
   const body = await request.json().catch((): Record<string, unknown> => ({}))
   const text = typeof body.text === 'string' ? body.text.trim() : ''
@@ -513,16 +471,6 @@ export async function POST(request: NextRequest) {
     currentTurnPreviousState,
     isFinal,
   }
-  const { systemPrompt, userPrompt } = buildPrompt(ctx)
-  console.info([
-    '[translate/finalize] input_prompt',
-    `sourceLanguage=${sourceLanguage}`,
-    `targetLanguages=${targetLanguages.join(',')}`,
-    '--- systemPrompt ---',
-    systemPrompt,
-    '--- userPrompt ---',
-    userPrompt,
-  ].join('\n'))
 
   try {
     const fallbackTranslations = buildFallbackTranslationsFromCurrentTurnPreviousState(
@@ -670,38 +618,12 @@ export async function POST(request: NextRequest) {
       } else {
         selectedResult = await translateWithGemini(ctx)
       }
-    } catch (error) {
+    } catch {
       geminiRequestFailed = true
-      const errorPayload = error instanceof Error
-        ? {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        }
-        : { raw: String(error) }
-      console.error('[translate/finalize] provider_error', {
-        provider: 'gemini',
-        sourceLanguage,
-        targetLanguages,
-        error: errorPayload,
-      })
     }
 
     if (!selectedResult || Object.keys(selectedResult.translations).length === 0) {
-      console.error('[translate/finalize] provider_empty_response', {
-        provider: 'gemini',
-        sourceLanguage,
-        targetLanguages,
-        textPreview: text.slice(0, 120),
-        recentTurnsCount: recentTurns.length,
-      })
       if (!geminiRequestFailed && Object.keys(fallbackTranslations).length > 0) {
-        console.warn('[translate/finalize] fallback_from_current_turn_previous_state', {
-          sourceLanguage,
-          targetLanguages,
-          fallbackLanguages: Object.keys(fallbackTranslations),
-          reason: 'provider_empty_response',
-        })
         return await buildResponseWithOptionalTts(fallbackTranslations, {
           provider: 'gemini',
           model: DEFAULT_MODEL,
@@ -713,14 +635,6 @@ export async function POST(request: NextRequest) {
       return response
     }
 
-    console.info([
-      '[translate/finalize] response_usage',
-      `provider=${selectedResult.provider}`,
-      `model=${selectedResult.model}`,
-      `input_tokens=${selectedResult.usage?.promptTokens ?? 'unknown'}`,
-      `output_tokens=${selectedResult.usage?.completionTokens ?? 'unknown'}`,
-      `total_tokens=${selectedResult.usage?.totalTokens ?? 'unknown'}`,
-    ].join(' '))
 
     const translations: Record<string, string> = {}
     for (const lang of targetLanguages) {
@@ -730,20 +644,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (Object.keys(translations).length === 0) {
-      console.error('[translate/finalize] target_language_miss', {
-        provider: selectedResult.provider,
-        sourceLanguage,
-        targetLanguages,
-        returnedLanguages: Object.keys(selectedResult.translations),
-        textPreview: text.slice(0, 120),
-      })
       if (Object.keys(fallbackTranslations).length > 0) {
-        console.warn('[translate/finalize] fallback_from_current_turn_previous_state', {
-          sourceLanguage,
-          targetLanguages,
-          fallbackLanguages: Object.keys(fallbackTranslations),
-          reason: 'target_language_miss',
-        })
         return await buildResponseWithOptionalTts(fallbackTranslations, {
           provider: selectedResult.provider,
           model: selectedResult.model,
@@ -759,8 +660,7 @@ export async function POST(request: NextRequest) {
       provider: selectedResult.provider,
       model: selectedResult.model,
     })
-  } catch (error) {
-    console.error('Finalize translation route error:', error)
+  } catch {
     const response = NextResponse.json({ error: 'finalize_translation_failed' }, { status: 500 })
     ensureTrackingContext(request, response, { sessionKeyHint })
     return response
