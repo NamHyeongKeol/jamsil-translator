@@ -665,7 +665,8 @@ EOF
 write_ngrok_local_config() {
   cat > "$NGROK_LOCAL_CONFIG" <<EOF
 version: "3"
-web_addr: 127.0.0.1:$DEVBOX_NGROK_API_PORT
+agent:
+  web_addr: 127.0.0.1:$DEVBOX_NGROK_API_PORT
 tunnels:
   web:
     addr: $DEVBOX_WEB_PORT
