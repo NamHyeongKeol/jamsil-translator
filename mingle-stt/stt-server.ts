@@ -1164,4 +1164,7 @@ wss.on('connection', (clientWs) => {
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`[stt-server] listening on 0.0.0.0:${PORT}`);
+    console.log(
+        `[stt-server] soniox_finalize_tuning silenceMs=${SONIOX_MANUAL_FINALIZE_SILENCE_MS} cooldownMs=${SONIOX_MANUAL_FINALIZE_COOLDOWN_MS} rmsThreshold=${SONIOX_SILENCE_RMS_THRESHOLD}`,
+    );
 });
