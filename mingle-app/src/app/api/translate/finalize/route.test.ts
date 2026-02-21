@@ -60,14 +60,14 @@ async function importRouteWithEnv() {
 }
 
 function makeJsonRequest(body: unknown, headers?: Record<string, string>): Request {
-  return new Request('http://localhost:3000/api/translate/finalize', {
+  return new Request('http://localhost:3000/api/web/app/v1/translate/finalize', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(headers || {}) },
     body: JSON.stringify(body),
   })
 }
 
-describe('/api/translate/finalize route', () => {
+describe('/api/web/app/v1/translate/finalize route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ensureTrackingContextMock.mockReturnValue({

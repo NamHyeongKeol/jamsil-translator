@@ -9,6 +9,7 @@ import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
 import { useTtsSettings } from '@/context/tts-settings'
+import { buildClientApiPath } from '@/lib/api-contract'
 
 const VOLUME_THRESHOLD = 0.05
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
@@ -176,22 +177,28 @@ function EchoInputRouteIcon({ echoAllowed }: { echoAllowed: boolean }) {
 
 async function saveConversation(utterances: Utterance[], selectedLanguages: string[], usageSec: number) {
   try {
-    await fetch('/api/log-conversation', {
+    await fetch(buildClientApiPath('/log/client-event'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        utterances,
-        selectedLanguages,
-        usageSec,
-        screenWidth: window.screen.width,
-        screenHeight: window.screen.height,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        platform: navigator.platform,
-        language: navigator.language,
-        referrer: document.referrer || null,
-        pathname: window.location.pathname,
-        fullUrl: window.location.href,
-        queryParams: window.location.search || null,
+        eventType: 'stt_session_stopped',
+        metadata: {
+          utterances,
+          selectedLanguages,
+          usageSec,
+        },
+        clientContext: {
+          screenWidth: window.screen.width,
+          screenHeight: window.screen.height,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          platform: navigator.platform,
+          language: navigator.language,
+          referrer: document.referrer || null,
+          pathname: window.location.pathname,
+          fullUrl: window.location.href,
+          queryParams: window.location.search || null,
+          usageSec,
+        },
       }),
     })
   } catch { /* silently fail */ }

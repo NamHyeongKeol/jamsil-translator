@@ -34,6 +34,7 @@ export type LiveE2EEnv = {
   streamChunkMs: number
   streamSendDelayMs: number
   apiBaseUrl: string
+  apiNamespace: string
   sttWsUrl: string
   sttModel: string
   sourceLanguageHint: string
@@ -75,6 +76,10 @@ export function readEnvOptionalString(name: string): string | null {
   return trimmed || null
 }
 
+export function normalizeApiNamespace(value: string): string {
+  return value.trim().replace(/^\/+/, '').replace(/\/+$/, '')
+}
+
 export function readEnvInt(name: string, fallback: number): number {
   const value = process.env[name]
   if (!value) return fallback
@@ -113,6 +118,7 @@ export function readLiveE2EEnv(): LiveE2EEnv {
     streamChunkMs,
     streamSendDelayMs: readEnvInt('MINGLE_TEST_STREAM_SEND_DELAY_MS', streamChunkMs),
     apiBaseUrl: readEnvString('MINGLE_TEST_API_BASE_URL', 'http://127.0.0.1:3000'),
+    apiNamespace: normalizeApiNamespace(readEnvString('MINGLE_TEST_API_NAMESPACE', 'web/app/v1')),
     sttWsUrl: readEnvString('MINGLE_TEST_WS_URL', 'ws://127.0.0.1:3001'),
     sttModel: readEnvString('MINGLE_TEST_STT_MODEL', 'soniox'),
     sourceLanguageHint: readEnvString('MINGLE_TEST_SOURCE_LANGUAGE', 'en'),
@@ -834,7 +840,7 @@ export async function callFinalizeApi(args: {
   }
 
   const { status, json, rawText } = await fetchJsonWithTimeout(
-    `${args.env.apiBaseUrl}/api/translate/finalize`,
+    `${args.env.apiBaseUrl}/api/${args.env.apiNamespace}/translate/finalize`,
     {
       method: 'POST',
       headers: {

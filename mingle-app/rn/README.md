@@ -10,6 +10,7 @@ RN 앱은 아래 env를 필요로 합니다.
 
 - `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
 - `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
+- `NEXT_PUBLIC_API_NAMESPACE` (권장: iOS=`mobile/ios/v1`, Android=`mobile/android/v1`)
 
 This project was bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 

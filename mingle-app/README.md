@@ -25,7 +25,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 `pnpm test` runs both unit tests and live integration tests that:
 
 1. Streams an audio fixture to local STT WebSocket server
-2. Sends the finalized transcript to `/api/translate/finalize`
+2. Sends the finalized transcript to `/api/web/app/v1/translate/finalize`
 
 Useful commands:
 
@@ -50,11 +50,20 @@ MINGLE_TEST_AUDIO_FIXTURE=/absolute/path/to/file.wav
 MINGLE_TEST_AUDIO_FIXTURE_DIR=/absolute/path/to/fixtures-dir
 MINGLE_TEST_WS_URL=ws://127.0.0.1:3001
 MINGLE_TEST_API_BASE_URL=http://127.0.0.1:3000
+MINGLE_TEST_API_NAMESPACE=web/app/v1
 MINGLE_TEST_EXPECTED_PHRASE="hello mingle"
 MINGLE_TEST_TARGET_LANGUAGES=ko,en
 MINGLE_TEST_TTS_LANGUAGE=ko
 MINGLE_TEST_TTS_OUTPUT_DIR=/absolute/path/to/tts-output
 ```
+
+## API Namespace (Release Routing)
+
+클라이언트는 런타임 분기 없이 `NEXT_PUBLIC_API_NAMESPACE`만으로 API 경로를 결정합니다.
+
+- Web: `web/app/v1` (기본값)
+- iOS release: `mobile/ios/v1`
+- Android release: `mobile/android/v1`
 
 Fixture scan behavior:
 

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Utterance } from './ChatBubble'
+import { buildClientApiPath } from '@/lib/api-contract'
 
 const WS_PORT = process.env.NEXT_PUBLIC_WS_PORT || '3001'
 export const getWsUrl = (): string => {
@@ -774,7 +775,7 @@ export default function useRealtimeSTT({
     return recentTurns
   }, [])
 
-  // ===== HTTP Translation via /api/translate/finalize =====
+  // ===== HTTP Translation via versioned API namespace =====
   const translateViaApi = useCallback(async (
     text: string,
     sourceLanguage: string,
@@ -829,7 +830,7 @@ export default function useRealtimeSTT({
       if (normalizedTtsLang) {
         body.tts = { language: normalizedTtsLang, enabled: options?.enableTts === true }
       }
-      const res = await fetch('/api/translate/finalize', {
+      const res = await fetch(buildClientApiPath('/translate/finalize'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -886,7 +887,7 @@ export default function useRealtimeSTT({
       if (payload.model) body.model = payload.model
       if (payload.metadata) body.metadata = payload.metadata
 
-      await fetch('/api/log/client-event', {
+      await fetch(buildClientApiPath('/log/client-event'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -908,7 +909,7 @@ export default function useRealtimeSTT({
       textLen: normalizedText.length,
     })
     try {
-      const res = await fetch('/api/tts/inworld', {
+      const res = await fetch(buildClientApiPath('/tts/inworld'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

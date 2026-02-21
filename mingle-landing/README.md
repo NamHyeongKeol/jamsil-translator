@@ -71,3 +71,10 @@ export default defineConfig([
   },
 ])
 ```
+
+## API Namespace
+
+Landing 프론트는 `NEXT_PUBLIC_API_NAMESPACE`로 API URL을 생성합니다.
+
+- 기본값: `web/landing/v1`
+- 예시 endpoint: `/api/web/landing/v1/subscribe`
