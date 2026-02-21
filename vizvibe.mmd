@@ -589,6 +589,9 @@ flowchart TD
     %% @mingle_app_tdd_pr_only_trigger_without_post_merge_run [ai-task, closed, 2026-02-21, ai]
     mingle_app_tdd_pr_only_trigger_without_post_merge_run("CI를 PR 전용으로 트리거 정렬<br/><sub>mingle-app TDD 워크플로우의 main push 트리거를<br/>제거하고 pull_request(main)만 남겨<br/>머지 전 검증은 유지하면서 머지 직후에는<br/>같은 테스트가 다시 자동 실행되지 않게 정리</sub>")
 
+    %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
+    mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
+
     %% @vercel_deploy_rate_limit_blocker [blocker, opened, 2026-02-21, user]
     vercel_deploy_rate_limit_blocker("Vercel 배포 rate limit 대기<br/><sub>현재 PR commit status에서 Vercel – mingle-app/<br/>mingle-landing 체크가 배포 한도 초과로 실패해<br/>GitHub Actions는 녹색이어도 mergeable_state가<br/>unstable로 남아 대기 또는 수동 재시도가 필요</sub>")
 
@@ -959,6 +962,7 @@ flowchart TD
     mingle_app_tdd_live_ci_node20_websocket_polyfill --> mingle_app_tdd_run8_green_validation
     mingle_app_tdd_run8_green_validation --> mingle_app_live_fixture_autoskip_without_env
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_tdd_pr_only_trigger_without_post_merge_run
+    mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
     mingle_app_tdd_pr_only_trigger_without_post_merge_run --> vercel_deploy_rate_limit_blocker
     vercel_deploy_rate_limit_blocker --> vercel_app_landing_main_branch_deploy_gate
     vercel_app_landing_main_branch_deploy_gate --> vercel_deployment_enabled_double_star_pattern_fix
@@ -1027,6 +1031,7 @@ flowchart TD
     mingle_app_tdd_run8_green_validation -.-> ultimate_goal
     mingle_app_live_fixture_autoskip_without_env -.-> ultimate_goal
     mingle_app_tdd_pr_only_trigger_without_post_merge_run -.-> ultimate_goal
+    mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
     vercel_app_landing_main_branch_deploy_gate -.-> ultimate_goal
     vercel_deployment_enabled_double_star_pattern_fix -.-> ultimate_goal
@@ -1329,6 +1334,7 @@ flowchart TD
     style mingle_app_tdd_run8_green_validation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_live_fixture_autoskip_without_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_pr_only_trigger_without_post_merge_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
     style vercel_app_landing_main_branch_deploy_gate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deployment_enabled_double_star_pattern_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
