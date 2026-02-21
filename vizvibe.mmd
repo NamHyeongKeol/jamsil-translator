@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tdd_nonstraight_main_merge_guard
+    %% @lastActive: mingle_worktree_devbox_local_device_automation
 
     %% === START ===
     %% @project_start [start, closed]
@@ -595,6 +595,9 @@ flowchart TD
     %% @mingle_app_tdd_nonstraight_main_merge_guard [ai-task, closed, 2026-02-21, ai]
     mingle_app_tdd_nonstraight_main_merge_guard("비정형 main merge 테스트 실행 분기<br/><sub>PR 연계가 있더라도 parent 2+ 이면서<br/>표준 'Merge pull request #' 형태가 아니면<br/>비정형 머지로 간주해 post-merge 테스트를 실행하고<br/>표준 PR 머지 커밋만 재실행 스킵으로 유지</sub>")
 
+    %% @mingle_worktree_devbox_local_device_automation [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_local_device_automation("워크트리 로컬 테스트 Devbox 자동화<br/><sub>mingle-app과 mingle-stt를 워크트리별<br/>자동 포트로 분리하고 .env.local/로컬 ngrok<br/>설정을 일괄 생성하는 scripts/devbox를 추가해<br/>local/device 프로필과 5타깃 status 출력까지 통합</sub>")
+
     %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
 
@@ -970,6 +973,8 @@ flowchart TD
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_tdd_pr_only_trigger_without_post_merge_run
     mingle_app_tdd_pr_only_trigger_without_post_merge_run --> mingle_app_tdd_main_push_direct_guard
     mingle_app_tdd_main_push_direct_guard --> mingle_app_tdd_nonstraight_main_merge_guard
+    mingle_app_tdd_live_stt_finalize_integration_automation --> mingle_worktree_devbox_local_device_automation
+    mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_worktree_devbox_local_device_automation
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
     mingle_app_tdd_nonstraight_main_merge_guard --> vercel_deploy_rate_limit_blocker
     vercel_deploy_rate_limit_blocker --> vercel_app_landing_main_branch_deploy_gate
@@ -1041,6 +1046,7 @@ flowchart TD
     mingle_app_tdd_pr_only_trigger_without_post_merge_run -.-> ultimate_goal
     mingle_app_tdd_main_push_direct_guard -.-> ultimate_goal
     mingle_app_tdd_nonstraight_main_merge_guard -.-> ultimate_goal
+    mingle_worktree_devbox_local_device_automation -.-> ultimate_goal
     mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
     vercel_app_landing_main_branch_deploy_gate -.-> ultimate_goal
@@ -1085,7 +1091,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_tdd_nonstraight_main_merge_guard
+        mingle_worktree_devbox_local_device_automation
     end
 
     %% === STYLES ===
@@ -1345,7 +1351,8 @@ flowchart TD
     style mingle_app_live_fixture_autoskip_without_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_pr_only_trigger_without_post_merge_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_main_push_direct_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tdd_nonstraight_main_merge_guard fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tdd_nonstraight_main_merge_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_local_device_automation fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
     style vercel_app_landing_main_branch_deploy_gate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

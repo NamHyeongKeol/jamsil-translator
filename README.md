@@ -20,6 +20,20 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Worktree Local Test Automation (mingle-app + mingle-stt)
+
+브랜치/워크트리별로 로컬 테스트 환경을 자동 분리하려면:
+
+```bash
+scripts/devbox init
+scripts/devbox up --profile local
+scripts/devbox up --profile device
+scripts/devbox status
+```
+
+- 상세 가이드: `docs/worktree-devbox.md`
+- `--profile device`는 ngrok(`web`/`stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
