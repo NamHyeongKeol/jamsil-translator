@@ -459,14 +459,6 @@ function App(): React.JSX.Element {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      {Platform.OS === 'ios' ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Scroll to top"
-          onPress={handleIosTopTapOverlayPress}
-          style={[styles.iosTopTapOverlay, { height: iosTopTapOverlayHeight }]}
-        />
-      ) : null}
       <WebView
         ref={webViewRef}
         source={webUrl
@@ -484,6 +476,14 @@ function App(): React.JSX.Element {
         onError={handleLoadError}
         style={styles.webView}
       />
+      {Platform.OS === 'ios' ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Scroll to top"
+          onPress={handleIosTopTapOverlayPress}
+          style={[styles.iosTopTapOverlay, { height: iosTopTapOverlayHeight }]}
+        />
+      ) : null}
       {loadError ? (
         <View style={styles.errorOverlay}>
           <Text style={styles.errorTitle}>WebView Load Failed</Text>
