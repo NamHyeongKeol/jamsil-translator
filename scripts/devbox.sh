@@ -61,6 +61,8 @@ DEVBOX_RN_WS_URL=""
 DEVBOX_PUBLIC_WS_URL=""
 DEVBOX_TEST_API_BASE_URL=""
 DEVBOX_TEST_WS_URL=""
+DEVBOX_VAULT_APP_PATH=""
+DEVBOX_VAULT_STT_PATH=""
 
 log() {
   printf '[devbox] %s\n' "$*"
@@ -453,6 +455,23 @@ sync_env_from_vault_paths() {
   sync_env_from_vault_path "stt" "$stt_path" "$STT_ENV_FILE"
 }
 
+resolve_vault_paths() {
+  local app_override="${1:-}"
+  local stt_override="${2:-}"
+  local app_path="${DEVBOX_VAULT_APP_PATH:-}"
+  local stt_path="${DEVBOX_VAULT_STT_PATH:-}"
+
+  if [[ -n "$app_override" ]]; then
+    app_path="$app_override"
+  fi
+  if [[ -n "$stt_override" ]]; then
+    stt_path="$stt_override"
+  fi
+
+  DEVBOX_VAULT_APP_PATH="$app_path"
+  DEVBOX_VAULT_STT_PATH="$stt_path"
+}
+
 remove_managed_block() {
   local file="$1"
   local out="$2"
@@ -520,6 +539,8 @@ write_devbox_env() {
   ensure_single_line_value "DEVBOX_PUBLIC_WS_URL" "$DEVBOX_PUBLIC_WS_URL"
   ensure_single_line_value "DEVBOX_TEST_API_BASE_URL" "$DEVBOX_TEST_API_BASE_URL"
   ensure_single_line_value "DEVBOX_TEST_WS_URL" "$DEVBOX_TEST_WS_URL"
+  ensure_single_line_value "DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_APP_PATH"
+  ensure_single_line_value "DEVBOX_VAULT_STT_PATH" "$DEVBOX_VAULT_STT_PATH"
 
   cat > "$DEVBOX_ENV_FILE" <<EOF
 DEVBOX_WORKTREE_NAME=$DEVBOX_WORKTREE_NAME
@@ -534,6 +555,8 @@ DEVBOX_RN_WS_URL=$DEVBOX_RN_WS_URL
 DEVBOX_PUBLIC_WS_URL=$DEVBOX_PUBLIC_WS_URL
 DEVBOX_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL
 DEVBOX_TEST_WS_URL=$DEVBOX_TEST_WS_URL
+DEVBOX_VAULT_APP_PATH=$DEVBOX_VAULT_APP_PATH
+DEVBOX_VAULT_STT_PATH=$DEVBOX_VAULT_STT_PATH
 EOF
 }
 
@@ -549,7 +572,7 @@ load_devbox_env() {
     [[ "$key" =~ ^[A-Z0-9_]+$ ]] || die "invalid key in $DEVBOX_ENV_FILE: $key"
 
     case "$key" in
-      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL)
+      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH)
         printf -v "$key" '%s' "$value"
         ;;
       *)
@@ -835,6 +858,11 @@ wait_for_any_child_exit() {
 cmd_init() {
   local web_port="" stt_port="" metro_port="" host="127.0.0.1"
 
+  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    DEVBOX_VAULT_APP_PATH="$(read_env_value_from_file DEVBOX_VAULT_APP_PATH "$DEVBOX_ENV_FILE")"
+    DEVBOX_VAULT_STT_PATH="$(read_env_value_from_file DEVBOX_VAULT_STT_PATH "$DEVBOX_ENV_FILE")"
+  fi
+
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --web-port) web_port="${2:-}"; shift 2 ;;
@@ -878,23 +906,27 @@ cmd_init() {
 
 cmd_bootstrap() {
   require_cmd pnpm
-  local vault_app_path=""
-  local vault_stt_path=""
+  local vault_app_override=""
+  local vault_stt_override=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --vault-app-path) vault_app_path="${2:-}"; shift 2 ;;
-      --vault-stt-path) vault_stt_path="${2:-}"; shift 2 ;;
+      --vault-app-path) vault_app_override="${2:-}"; shift 2 ;;
+      --vault-stt-path) vault_stt_override="${2:-}"; shift 2 ;;
       *) die "unknown option for bootstrap: $1" ;;
     esac
   done
 
-  seed_env_from_main_worktree
-  sync_env_from_vault_paths "$vault_app_path" "$vault_stt_path"
-  ensure_workspace_dependencies
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
     require_devbox_env
-    refresh_runtime_files
+  fi
+  resolve_vault_paths "$vault_app_override" "$vault_stt_override"
+
+  seed_env_from_main_worktree
+  sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
+  ensure_workspace_dependencies
+  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    save_and_refresh
   fi
   log "bootstrap complete"
 }
@@ -928,8 +960,8 @@ cmd_ngrok_config() {
 cmd_up() {
   require_devbox_env
   require_cmd pnpm
-  local vault_app_path=""
-  local vault_stt_path=""
+  local vault_app_override=""
+  local vault_stt_override=""
   seed_env_from_main_worktree
 
   local profile="local"
@@ -941,13 +973,14 @@ cmd_up() {
       --profile) profile="${2:-}"; shift 2 ;;
       --host) host="${2:-}"; shift 2 ;;
       --with-metro) with_metro=1; shift ;;
-      --vault-app-path) vault_app_path="${2:-}"; shift 2 ;;
-      --vault-stt-path) vault_stt_path="${2:-}"; shift 2 ;;
+      --vault-app-path) vault_app_override="${2:-}"; shift 2 ;;
+      --vault-stt-path) vault_stt_override="${2:-}"; shift 2 ;;
       *) die "unknown option for up: $1" ;;
     esac
   done
 
-  sync_env_from_vault_paths "$vault_app_path" "$vault_stt_path"
+  resolve_vault_paths "$vault_app_override" "$vault_stt_override"
+  sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
   ensure_workspace_dependencies
 
   local -a pids=()
@@ -1050,6 +1083,8 @@ Android Web : $DEVBOX_SITE_URL
 iOS App     : RN_WEB_APP_BASE_URL=$DEVBOX_SITE_URL | RN_DEFAULT_WS_URL=$DEVBOX_RN_WS_URL
 Android App : RN_WEB_APP_BASE_URL=$DEVBOX_SITE_URL | RN_DEFAULT_WS_URL=$DEVBOX_RN_WS_URL
 Live Test   : MINGLE_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL | MINGLE_TEST_WS_URL=$DEVBOX_TEST_WS_URL
+Vault App   : ${DEVBOX_VAULT_APP_PATH:-"(unset)"}
+Vault STT   : ${DEVBOX_VAULT_STT_PATH:-"(unset)"}
 
 Files:
 - $DEVBOX_ENV_FILE
