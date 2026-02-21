@@ -42,10 +42,12 @@ scripts/devbox up --profile device
 - `scripts/devbox profile --profile device`
   - ngrok inspector(`http://127.0.0.1:4040`)에서 `web`, `stt` 터널 URL을 읽어
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`, `RN_DEFAULT_WS_URL`에 반영
+  - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
 
 - `scripts/devbox up --profile local|device`
   - `mingle-stt` + `mingle-app` 동시 실행
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
+  - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
   - `--with-metro`를 추가하면 RN Metro도 함께 실행
 
 - `scripts/devbox test`

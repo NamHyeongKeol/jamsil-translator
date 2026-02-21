@@ -40,6 +40,8 @@ DEFAULT_METRO_PORT=""
 # Populated by ngrok tunnel lookup.
 NGROK_WEB_URL=""
 NGROK_STT_URL=""
+NGROK_LAST_ERROR=""
+NGROK_LAST_ERROR_KIND=""
 
 # Values loaded/generated via .devbox.env.
 DEVBOX_WORKTREE_NAME=""
@@ -111,10 +113,22 @@ validate_http_url() {
   [[ "$value" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?$ ]] || die "invalid $name: $value"
 }
 
+validate_https_url() {
+  local name="$1"
+  local value="$2"
+  [[ "$value" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]] || die "invalid $name (https required): $value"
+}
+
 validate_ws_url() {
   local name="$1"
   local value="$2"
   [[ "$value" =~ ^wss?://[A-Za-z0-9.-]+(:[0-9]+)?$ ]] || die "invalid $name: $value"
+}
+
+validate_wss_url() {
+  local name="$1"
+  local value="$2"
+  [[ "$value" =~ ^wss://[A-Za-z0-9.-]+(:[0-9]+)?$ ]] || die "invalid $name (wss required): $value"
 }
 
 ensure_single_line_value() {
@@ -460,44 +474,71 @@ to_wss_url() {
 }
 
 try_read_ngrok_urls() {
-  local raw parsed
+  local expected_web_port="${1:-}"
+  local expected_stt_port="${2:-}"
+  local require_https="${3:-0}"
 
-  raw="$(curl -fsS http://127.0.0.1:4040/api/tunnels 2>/dev/null)" || return 1
+  local raw parsed
+  NGROK_LAST_ERROR=""
+  NGROK_LAST_ERROR_KIND=""
+
+  raw="$(curl -fsS http://127.0.0.1:4040/api/tunnels 2>/dev/null)" || {
+    NGROK_LAST_ERROR_KIND="inspector_unreachable"
+    NGROK_LAST_ERROR="cannot reach ngrok inspector at http://127.0.0.1:4040"
+    return 1
+  }
 
   parsed="$(
-    printf '%s' "$raw" | node -e '
-      const fs = require("fs");
-      const payload = fs.readFileSync(0, "utf8");
-      const data = JSON.parse(payload);
-      const tunnels = Array.isArray(data.tunnels) ? data.tunnels : [];
-      const pick = (name) => {
-        const found = tunnels.find((t) => t && t.name === name && typeof t.public_url === "string");
-        return found ? found.public_url : "";
-      };
-      console.log(pick("web"));
-      console.log(pick("stt"));
-    '
-  )" || return 1
+    printf '%s' "$raw" | \
+      DEVBOX_EXPECT_WEB_PORT="$expected_web_port" \
+      DEVBOX_EXPECT_STT_PORT="$expected_stt_port" \
+      DEVBOX_REQUIRE_HTTPS="$require_https" \
+      node "$ROOT_DIR/scripts/devbox-ngrok-parse.mjs" 2>&1
+  )" || {
+    NGROK_LAST_ERROR_KIND="tunnel_mismatch"
+    NGROK_LAST_ERROR="$parsed"
+    return 1
+  }
 
   NGROK_WEB_URL="$(printf '%s\n' "$parsed" | sed -n '1p')"
   NGROK_STT_URL="$(printf '%s\n' "$parsed" | sed -n '2p')"
 
-  [[ -n "$NGROK_WEB_URL" ]] || return 1
-  [[ -n "$NGROK_STT_URL" ]] || return 1
+  [[ -n "$NGROK_WEB_URL" ]] || {
+    NGROK_LAST_ERROR_KIND="tunnel_mismatch"
+    NGROK_LAST_ERROR="ngrok web tunnel url is empty"
+    return 1
+  }
+  [[ -n "$NGROK_STT_URL" ]] || {
+    NGROK_LAST_ERROR_KIND="tunnel_mismatch"
+    NGROK_LAST_ERROR="ngrok stt tunnel url is empty"
+    return 1
+  }
   return 0
 }
 
 read_ngrok_urls() {
+  local expected_web_port="${1:-}"
+  local expected_stt_port="${2:-}"
+  local require_https="${3:-0}"
+
   require_cmd curl
   require_cmd node
-  try_read_ngrok_urls || die "cannot read ngrok web/stt tunnels from inspector (http://127.0.0.1:4040)"
+  try_read_ngrok_urls "$expected_web_port" "$expected_stt_port" "$require_https" || {
+    if [[ -n "$NGROK_LAST_ERROR" ]]; then
+      die "$NGROK_LAST_ERROR"
+    fi
+    die "cannot read ngrok web/stt tunnels from inspector (http://127.0.0.1:4040)"
+  }
 }
 
 wait_for_ngrok_tunnels() {
-  local timeout_sec="${1:-20}"
+  local expected_web_port="$1"
+  local expected_stt_port="$2"
+  local require_https="$3"
+  local timeout_sec="${4:-20}"
   local elapsed=0
   while ((elapsed < timeout_sec)); do
-    if try_read_ngrok_urls; then
+    if try_read_ngrok_urls "$expected_web_port" "$expected_stt_port" "$require_https"; then
       return 0
     fi
     sleep 1
@@ -507,7 +548,7 @@ wait_for_ngrok_tunnels() {
 }
 
 set_device_profile_values() {
-  read_ngrok_urls
+  read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1"
 
   DEVBOX_PROFILE="device"
   DEVBOX_LOCAL_HOST="127.0.0.1"
@@ -517,8 +558,8 @@ set_device_profile_values() {
   DEVBOX_TEST_API_BASE_URL="http://127.0.0.1:$DEVBOX_WEB_PORT"
   DEVBOX_TEST_WS_URL="ws://127.0.0.1:$DEVBOX_STT_PORT"
 
-  validate_http_url "ngrok web url" "$DEVBOX_SITE_URL"
-  validate_ws_url "ngrok stt url" "$DEVBOX_RN_WS_URL"
+  validate_https_url "ngrok web url" "$DEVBOX_SITE_URL"
+  validate_wss_url "ngrok stt url" "$DEVBOX_RN_WS_URL"
 }
 
 save_and_refresh() {
@@ -687,7 +728,13 @@ cmd_up() {
   local started_ngrok=0
 
   if [[ "$profile" == "device" ]]; then
-    if ! try_read_ngrok_urls; then
+    write_ngrok_local_config
+
+    if ! try_read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1"; then
+      if [[ "$NGROK_LAST_ERROR_KIND" == "tunnel_mismatch" ]]; then
+        die "running ngrok tunnels do not match this worktree ports(web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT) or are not https/wss.
+$NGROK_LAST_ERROR"
+      fi
       require_cmd ngrok
       log "starting ngrok for device profile"
       (
@@ -697,9 +744,12 @@ cmd_up() {
       pids+=("$!")
       started_ngrok=1
 
-      if ! wait_for_ngrok_tunnels 20; then
+      if ! wait_for_ngrok_tunnels "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" 20; then
         cleanup_processes "${pids[@]}"
-        die "ngrok inspector did not expose web/stt tunnels within 20s"
+        if [[ -n "$NGROK_LAST_ERROR" ]]; then
+          die "$NGROK_LAST_ERROR"
+        fi
+        die "ngrok inspector did not expose matching web/stt tunnels within 20s"
       fi
     fi
   fi
