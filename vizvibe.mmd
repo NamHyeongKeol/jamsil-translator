@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_finalize_immediate_prev_turn_context_boost
+    %% @lastActive: mingle_app_ios_notch_tap_refactor_plan
 
     %% === START ===
     %% @project_start [start, closed]
@@ -535,6 +535,18 @@ flowchart TD
     %% @mingle_app_mobile_scroll_overlay_visibility_hold_fix [ai-task, closed, 2026-02-20, ai]
     mingle_app_mobile_scroll_overlay_visibility_hold_fix("모바일 스크롤바/날짜 오버레이 유지 수정<br/><sub>모바일 관성 스크롤 중에는 touch 의도 신호가 끝나도<br/>실제 scroll 이벤트가 계속 발생하는 특성을 반영해<br/>auto-follow 스크롤이 아닌 경우에는 스크롤 진행 중<br/>오버레이가 중간에 꺼지지 않도록 표시 정책을 보정</sub>")
 
+    %% @mingle_app_ios_top_safe_area_tap_workaround [ai-task, closed, 2026-02-19, ai]
+    mingle_app_ios_top_safe_area_tap_workaround("iOS 상단 safe-area 탭 우회 적용<br/><sub>노치(상태바) 탭으로 채팅 상단 이동이<br/>WKWebView 내부 스크롤 구조에서는 동작하지 않아<br/>헤더 safe-area 상단에 투명 탭 레이어를 두고<br/>chatRef.scrollTo(top:0)로 임시 상단 이동을 제공</sub>")
+
+    %% @mingle_app_ios_notch_tap_refactor_plan [ai-task, closed, 2026-02-21, ai]
+    mingle_app_ios_notch_tap_refactor_plan("iOS 노치 탭 리팩토링 계획 수립<br/><sub>루트 스크롤 잠금(html/body overflow hidden)과<br/>내부 div 스크롤 구조가 상태바 탭 이벤트와 분리되는<br/>원인을 코드/커밋 기준으로 정리하고<br/>네이티브 브리지 기반 단계적 전환 계획을 확정</sub>")
+
+    %% @mingle_app_ios_statusbar_tap_native_bridge_refactor [ai-task, opened, 2026-02-21, ai]
+    mingle_app_ios_statusbar_tap_native_bridge_refactor("iOS 상태바 탭 네이티브 브리지 전환<br/><sub>RN iOS 레이어에서 상태바 탭 이벤트를 감지해<br/>WebView로 scroll_to_top 신호를 주입하고<br/>웹은 이벤트 수신 시 채팅 컨테이너를 상단으로 이동해<br/>현재 safe-area 우회 없이 동일 UX를 보장</sub>")
+
+    %% @mingle_app_ios_statusbar_tap_parity_test_matrix [ai-task, opened, 2026-02-21, ai]
+    mingle_app_ios_statusbar_tap_parity_test_matrix("노치 탭 동작 패리티 검증 매트릭스<br/><sub>iPhone 노치/다이내믹아일랜드 기기와<br/>앱 상태(녹음중/재생중/스크롤중)별 케이스를 정의해<br/>상태바 탭 상단이동 성공률과 회귀 항목을 자동/수동으로 점검하고<br/>실패 시 safe-area 폴백 유지 조건을 명시</sub>")
+
     %% @mingle_app_tdd_test_harness_plan [ai-task, closed, 2026-02-20, ai]
     mingle_app_tdd_test_harness_plan("mingle-app TDD 베이스라인 수립<br/><sub>웹 라우트/훅의 순수 함수 경계를 분리해<br/>Vitest 기반 단위 테스트 러너를 도입하고<br/>finalize·client-event 정규화 유틸에 대한<br/>회귀 단위 테스트를 녹색 상태로 고정</sub>")
 
@@ -872,8 +884,12 @@ flowchart TD
     mingle_app_recent_turn_context_source_lang_filter_fix --> mingle_app_translation_bubble_target_snapshot_policy
     mingle_app_translation_bubble_target_snapshot_policy --> mingle_app_turbopack_root_tailwind_resolution_fix
     mingle_app_turbopack_root_tailwind_resolution_fix --> mingle_app_chat_scroll_overlay_and_threshold_tuning
-    mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_pc_scroll_pagination_anchor_regression_fix
+    mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_ios_top_safe_area_tap_workaround
+    mingle_app_ios_top_safe_area_tap_workaround --> mingle_app_pc_scroll_pagination_anchor_regression_fix
     mingle_app_pc_scroll_pagination_anchor_regression_fix --> mingle_app_mobile_scroll_overlay_visibility_hold_fix
+    mingle_app_mobile_scroll_overlay_visibility_hold_fix --> mingle_app_ios_notch_tap_refactor_plan
+    mingle_app_ios_notch_tap_refactor_plan --> mingle_app_ios_statusbar_tap_native_bridge_refactor
+    mingle_app_ios_statusbar_tap_native_bridge_refactor --> mingle_app_ios_statusbar_tap_parity_test_matrix
     mingle_app_mobile_scroll_overlay_visibility_hold_fix --> mingle_app_tdd_test_harness_plan
     mingle_marker_sanitization_restore_after_debug --> mingle_app_final_duplicate_guard_experiment
     mingle_app_final_duplicate_guard_experiment --> mingle_app_final_duplicate_guard_nonfinal_aware_refine
@@ -939,6 +955,8 @@ flowchart TD
     mingle_app_chat_scroll_overlay_and_threshold_tuning -.-> ultimate_goal
     mingle_app_pc_scroll_pagination_anchor_regression_fix -.-> ultimate_goal
     mingle_app_mobile_scroll_overlay_visibility_hold_fix -.-> ultimate_goal
+    mingle_app_ios_statusbar_tap_native_bridge_refactor -.-> ultimate_goal
+    mingle_app_ios_statusbar_tap_parity_test_matrix -.-> ultimate_goal
     mingle_app_tdd_test_harness_plan -.-> ultimate_goal
     mingle_app_final_duplicate_guard_experiment -.-> ultimate_goal
     mingle_app_final_duplicate_guard_nonfinal_aware_refine -.-> ultimate_goal
@@ -990,7 +1008,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_finalize_immediate_prev_turn_context_boost
+        mingle_app_ios_notch_tap_refactor_plan
     end
 
     %% === STYLES ===
@@ -1231,6 +1249,10 @@ flowchart TD
     style mingle_app_audio_session_route_metrics_milestone7 fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_mobile_scroll_overlay_visibility_hold_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_top_safe_area_tap_workaround fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_notch_tap_refactor_plan fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_statusbar_tap_native_bridge_refactor fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_ios_statusbar_tap_parity_test_matrix fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_finalize_clientevent_unit_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_finalize_route_mock_integration_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1261,7 +1283,7 @@ flowchart TD
     style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_finalize_immediate_prev_turn_context_boost fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
