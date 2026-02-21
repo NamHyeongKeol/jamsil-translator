@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_bootstrap_env_seed_and_auto_install
+    %% @lastActive: mingle_worktree_devbox_vault_secret_sync_option
 
     %% === START ===
     %% @project_start [start, closed]
@@ -601,6 +601,9 @@ flowchart TD
     %% @mingle_worktree_devbox_bootstrap_env_seed_and_auto_install [ai-task, closed, 2026-02-22, ai]
     mingle_worktree_devbox_bootstrap_env_seed_and_auto_install("Devbox 부트스트랩 자동화 보강<br/><sub>워크트리 env에 비관리 키가 비어 있으면<br/>main 워크트리의 mingle-app/.env.local과<br/>mingle-stt/.env.local을 자동 시드하고<br/>node_modules 누락 시 pnpm install까지 자동 처리</sub>")
 
+    %% @mingle_worktree_devbox_vault_secret_sync_option [ai-task, closed, 2026-02-22, ai]
+    mingle_worktree_devbox_vault_secret_sync_option("Devbox Vault 시크릿 동기화 옵션 추가<br/><sub>bootstrap/up 명령에 Vault KV 경로 옵션을 넣어<br/>mingle-app/mingle-stt 비관리 env 키를<br/>main 파일 복사에 의존하지 않고 원격 소스에서<br/>가져오도록 경로를 확장하고 문서화까지 완료</sub>")
+
     %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
 
@@ -988,6 +991,7 @@ flowchart TD
     mingle_app_tdd_live_stt_finalize_integration_automation --> mingle_worktree_devbox_local_device_automation
     mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_worktree_devbox_local_device_automation
     mingle_worktree_devbox_local_device_automation --> mingle_worktree_devbox_bootstrap_env_seed_and_auto_install
+    mingle_worktree_devbox_bootstrap_env_seed_and_auto_install --> mingle_worktree_devbox_vault_secret_sync_option
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
     mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_top_tap_regression_hotfix
     mingle_app_ios_top_tap_regression_hotfix --> mingle_app_ios_top_tap_pr9_reaudit_hardening
@@ -1064,6 +1068,7 @@ flowchart TD
     mingle_app_tdd_nonstraight_main_merge_guard -.-> ultimate_goal
     mingle_worktree_devbox_local_device_automation -.-> ultimate_goal
     mingle_worktree_devbox_bootstrap_env_seed_and_auto_install -.-> ultimate_goal
+    mingle_worktree_devbox_vault_secret_sync_option -.-> ultimate_goal
     mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     mingle_app_ios_top_tap_regression_hotfix -.-> ultimate_goal
     mingle_app_ios_top_tap_pr9_reaudit_hardening -.-> ultimate_goal
@@ -1111,7 +1116,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_bootstrap_env_seed_and_auto_install
+        mingle_worktree_devbox_vault_secret_sync_option
     end
 
     %% === STYLES ===
@@ -1373,7 +1378,8 @@ flowchart TD
     style mingle_app_tdd_main_push_direct_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_nonstraight_main_merge_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_local_device_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_worktree_devbox_bootstrap_env_seed_and_auto_install fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_bootstrap_env_seed_and_auto_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_vault_secret_sync_option fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

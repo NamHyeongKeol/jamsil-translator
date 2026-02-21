@@ -70,16 +70,16 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--host HOST]
-  scripts/devbox bootstrap
+  scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
-  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro]
+  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [vitest args...]
   scripts/devbox status
 
 Commands:
   init         Generate worktree-specific ports/config/env files.
-  bootstrap    Seed env files from main worktree and install dependencies.
+  bootstrap    Seed env files from main/Vault and install dependencies.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
   up           Start STT + Next app together (device profile includes ngrok).
@@ -138,6 +138,46 @@ ensure_single_line_value() {
   local value="$2"
   [[ "$value" != *$'\n'* ]] || die "$name cannot contain newline"
   [[ "$value" != *$'\r'* ]] || die "$name cannot contain carriage return"
+}
+
+is_valid_env_key() {
+  [[ "${1:-}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
+}
+
+is_managed_key_for_target() {
+  local target="$1"
+  local key="$2"
+  shift 2 || true
+
+  local item
+  case "$target" in
+    app)
+      for item in "${APP_MANAGED_KEYS[@]}"; do
+        [[ "$item" == "$key" ]] && return 0
+      done
+      ;;
+    stt)
+      for item in "${STT_MANAGED_KEYS[@]}"; do
+        [[ "$item" == "$key" ]] && return 0
+      done
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  return 1
+}
+
+format_env_value_for_dotenv() {
+  local value="$1"
+  if [[ "$value" =~ ^[A-Za-z0-9_./:@,+=-]*$ ]]; then
+    printf '%s' "$value"
+    return 0
+  fi
+
+  local escaped
+  escaped="$(printf '%s' "$value" | sed "s/'/'\"'\"'/g")"
+  printf "'%s'" "$escaped"
 }
 
 port_in_use() {
@@ -343,6 +383,69 @@ ensure_workspace_dependencies() {
     log "installing dependencies: mingle-stt"
     pnpm --dir "$ROOT_DIR/mingle-stt" install
   fi
+}
+
+upsert_non_managed_env_entry() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+
+  ensure_single_line_value "$key" "$value"
+  is_valid_env_key "$key" || return 0
+  ensure_file_parent "$file"
+
+  strip_env_keys "$file" "$key"
+
+  local formatted
+  formatted="$(format_env_value_for_dotenv "$value")"
+
+  if [[ -f "$file" && -s "$file" ]]; then
+    printf '\n%s=%s\n' "$key" "$formatted" >> "$file"
+  else
+    printf '%s=%s\n' "$key" "$formatted" > "$file"
+  fi
+}
+
+sync_env_from_vault_path() {
+  local target="$1"
+  local path="$2"
+  local file="$3"
+  [[ -n "$path" ]] || return 0
+
+  require_cmd vault
+  require_cmd jq
+
+  log "syncing ${target} env from vault path: $path"
+
+  local payload
+  payload="$(vault kv get -format=json "$path")" || die "failed to read vault path: $path"
+
+  local line key value count
+  count=0
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    key="${line%%$'\t'*}"
+    value="${line#*$'\t'}"
+    is_valid_env_key "$key" || continue
+    if is_managed_key_for_target "$target" "$key"; then
+      continue
+    fi
+    upsert_non_managed_env_entry "$file" "$key" "$value"
+    count=$((count + 1))
+  done < <(
+    printf '%s' "$payload" | jq -r '
+      ((.data.data // .data // {}) | to_entries[]? | [.key, (.value | if type=="string" then . else tojson end)] | @tsv)
+    '
+  )
+
+  log "synced ${count} keys from vault (${target})"
+}
+
+sync_env_from_vault_paths() {
+  local app_path="${1:-}"
+  local stt_path="${2:-}"
+  sync_env_from_vault_path "app" "$app_path" "$APP_ENV_FILE"
+  sync_env_from_vault_path "stt" "$stt_path" "$STT_ENV_FILE"
 }
 
 remove_managed_block() {
@@ -770,7 +873,19 @@ cmd_init() {
 
 cmd_bootstrap() {
   require_cmd pnpm
+  local vault_app_path=""
+  local vault_stt_path=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --vault-app-path) vault_app_path="${2:-}"; shift 2 ;;
+      --vault-stt-path) vault_stt_path="${2:-}"; shift 2 ;;
+      *) die "unknown option for bootstrap: $1" ;;
+    esac
+  done
+
   seed_env_from_main_worktree
+  sync_env_from_vault_paths "$vault_app_path" "$vault_stt_path"
   ensure_workspace_dependencies
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
     require_devbox_env
@@ -808,8 +923,9 @@ cmd_ngrok_config() {
 cmd_up() {
   require_devbox_env
   require_cmd pnpm
+  local vault_app_path=""
+  local vault_stt_path=""
   seed_env_from_main_worktree
-  ensure_workspace_dependencies
 
   local profile="local"
   local host=""
@@ -820,9 +936,14 @@ cmd_up() {
       --profile) profile="${2:-}"; shift 2 ;;
       --host) host="${2:-}"; shift 2 ;;
       --with-metro) with_metro=1; shift ;;
+      --vault-app-path) vault_app_path="${2:-}"; shift 2 ;;
+      --vault-stt-path) vault_stt_path="${2:-}"; shift 2 ;;
       *) die "unknown option for up: $1" ;;
     esac
   done
+
+  sync_env_from_vault_paths "$vault_app_path" "$vault_stt_path"
+  ensure_workspace_dependencies
 
   local -a pids=()
   local exit_code=0
