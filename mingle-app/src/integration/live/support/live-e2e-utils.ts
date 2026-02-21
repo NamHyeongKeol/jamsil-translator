@@ -2,6 +2,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { WebSocket as NodeWebSocket } from 'ws'
+
+if (typeof globalThis.WebSocket === 'undefined') {
+  ;(globalThis as unknown as { WebSocket: typeof WebSocket }).WebSocket =
+    NodeWebSocket as unknown as typeof WebSocket
+}
 
 export type JsonObject = Record<string, unknown>
 

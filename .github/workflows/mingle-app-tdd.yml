@@ -1,0 +1,176 @@
+name: mingle-app TDD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "mingle-app/**"
+      - "mingle-stt/**"
+      - "data/**"
+      - ".github/workflows/mingle-app-tdd.yml"
+  pull_request:
+    paths:
+      - "mingle-app/**"
+      - "mingle-stt/**"
+      - "data/**"
+      - ".github/workflows/mingle-app-tdd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mingle-app-tdd-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests (Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mingle-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.1
+          cache: pnpm
+          cache-dependency-path: mingle-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run TDD suite (unit)
+        run: pnpm test:unit
+
+  live-tests:
+    name: Live Integration (STT + Finalize)
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      SONIOX_API_KEY: ${{ secrets.SONIOX_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required secrets
+        id: secret_gate
+        run: |
+          if [ -n "${GEMINI_API_KEY:-}" ] && [ -n "${SONIOX_API_KEY:-}" ]; then
+            echo "run_live=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_live=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip live tests when secrets are missing
+        if: steps.secret_gate.outputs.run_live != 'true'
+        run: echo "GEMINI_API_KEY or SONIOX_API_KEY is missing. Skipping live-tests job."
+
+      - name: Setup pnpm
+        if: steps.secret_gate.outputs.run_live == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        if: steps.secret_gate.outputs.run_live == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.1
+          cache: pnpm
+          cache-dependency-path: |
+            mingle-app/pnpm-lock.yaml
+            mingle-stt/pnpm-lock.yaml
+
+      - name: Install app dependencies
+        if: steps.secret_gate.outputs.run_live == 'true'
+        run: pnpm --dir mingle-app install --frozen-lockfile
+
+      - name: Install STT dependencies
+        if: steps.secret_gate.outputs.run_live == 'true'
+        run: pnpm --dir mingle-stt install --frozen-lockfile
+
+      - name: Install ffmpeg
+        if: steps.secret_gate.outputs.run_live == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Prepare live audio fixture
+        if: steps.secret_gate.outputs.run_live == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p mingle-app/test-fixtures/audio/fixtures
+          ffmpeg -v error -y \
+            -i mingle-landing/public/demo_conversation.mp4 \
+            -ar 16000 -ac 1 -sample_fmt s16 \
+            mingle-app/test-fixtures/audio/fixtures/ci-demo.wav
+
+      - name: Run live integration suite
+        if: steps.secret_gate.outputs.run_live == 'true'
+        env:
+          MINGLE_TEST_API_BASE_URL: http://127.0.0.1:3000
+          MINGLE_TEST_WS_URL: ws://127.0.0.1:3001
+          MINGLE_TEST_AUDIO_FIXTURE_DIR: test-fixtures/audio/fixtures
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/mingle-ci
+
+          pnpm --dir mingle-app dev > /tmp/mingle-ci/app.log 2>&1 &
+          APP_PID=$!
+          pnpm --dir mingle-stt build > /tmp/mingle-ci/stt-build.log 2>&1
+          pnpm --dir mingle-stt start > /tmp/mingle-ci/stt.log 2>&1 &
+          STT_PID=$!
+
+          cleanup() {
+            kill "$APP_PID" "$STT_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          app_ready=0
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/ > /dev/null; then
+              app_ready=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$app_ready" -ne 1 ]; then
+            echo "::error::mingle-app server did not become ready on :3000"
+            tail -n 200 /tmp/mingle-ci/app.log || true
+            tail -n 200 /tmp/mingle-ci/stt.log || true
+            exit 1
+          fi
+
+          stt_ready=0
+          for i in $(seq 1 30); do
+            if bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/3001' 2>/dev/null; then
+              stt_ready=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$stt_ready" -ne 1 ]; then
+            echo "::error::mingle-stt server did not become ready on :3001"
+            tail -n 200 /tmp/mingle-ci/stt-build.log || true
+            tail -n 200 /tmp/mingle-ci/app.log || true
+            tail -n 200 /tmp/mingle-ci/stt.log || true
+            exit 1
+          fi
+
+          pnpm --dir mingle-app test:live
