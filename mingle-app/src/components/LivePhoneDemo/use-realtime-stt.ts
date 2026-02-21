@@ -528,6 +528,10 @@ export async function parseDeferredTranslateNdjsonResponse(args: {
       if (trailing) processLine(trailing)
     } catch {
       args.onDebug?.('consume_error')
+      if (!state.sawDeferredTtsEvent && state.deferredTtsLanguage) {
+        state.sawDeferredTtsEvent = true
+        args.onDeferredTts?.({ ttsLanguage: state.deferredTtsLanguage })
+      }
     }
   } else {
     args.onDebug?.('text_fallback')
