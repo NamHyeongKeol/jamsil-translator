@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  NativeModules,
+  Platform,
+  Pressable,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -81,6 +84,7 @@ const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
 
 const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
+const NATIVE_UI_EVENT = 'mingle:native-ui';
 const SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
 
 type NativeSttStartPayload = {
@@ -136,6 +140,20 @@ type NativeSttEvent =
   | { type: 'error'; message: string }
   | { type: 'close'; reason: string };
 
+type NativeUiEvent = {
+  type: 'scroll_to_top';
+  source: string;
+};
+
+function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
+  const numeric = typeof rawStatusBarHeight === 'number'
+    ? rawStatusBarHeight
+    : Number(rawStatusBarHeight);
+  if (!Number.isFinite(numeric) || numeric <= 0) return 24;
+  // Match the measured status bar region only.
+  return Math.max(20, Math.min(64, Math.ceil(numeric)));
+}
+
 function resolveLocaleSegment(): string {
   try {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale || 'ko';
@@ -153,12 +171,19 @@ function App(): React.JSX.Element {
   const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
+  const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
+    if (Platform.OS !== 'ios') return 36;
+    const manager = (NativeModules as {
+      StatusBarManager?: { HEIGHT?: number };
+    }).StatusBarManager;
+    return resolveIosTopTapOverlayHeight(manager?.HEIGHT);
+  });
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
     if (!WEB_APP_BASE_URL) return '';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
-    return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1${debugParams}`;
+    return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1&nativeUi=1${debugParams}`;
   }, [locale]);
 
   const emitToWeb = useCallback((payload: NativeSttEvent) => {
@@ -183,6 +208,20 @@ function App(): React.JSX.Element {
     const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_TTS_EVENT)}, { detail: ${serialized} })); true;`;
     webViewRef.current?.injectJavaScript(script);
   }, []);
+
+  const emitUiToWeb = useCallback((payload: NativeUiEvent) => {
+    if (!isPageReadyRef.current) return;
+    const serialized = JSON.stringify(payload);
+    if (__DEV__) {
+      console.log(`[NativeUI→Web] ${JSON.stringify(payload).slice(0, 120)}`);
+    }
+    const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_UI_EVENT)}, { detail: ${serialized} })); true;`;
+    webViewRef.current?.injectJavaScript(script);
+  }, []);
+
+  const handleIosTopTapOverlayPress = useCallback(() => {
+    emitUiToWeb({ type: 'scroll_to_top', source: 'ios_status_bar_overlay' });
+  }, [emitUiToWeb]);
 
   const resolveCurrentTtsIdentity = useCallback((event?: { utteranceId?: string; playbackId?: string }) => {
     const active = currentTtsPlaybackRef.current;
@@ -327,6 +366,27 @@ function App(): React.JSX.Element {
   }, [emitTtsToWeb, handleNativeStart, handleNativeStop]);
 
   useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    let isMounted = true;
+    const manager = (NativeModules as {
+      StatusBarManager?: {
+        HEIGHT?: number;
+        getHeight?: (callback: (metrics: { height: number }) => void) => void;
+      };
+    }).StatusBarManager;
+
+    if (!manager || typeof manager.getHeight !== 'function') return;
+
+    manager.getHeight((metrics) => {
+      if (!isMounted) return;
+      setIosTopTapOverlayHeight(resolveIosTopTapOverlayHeight(metrics?.height));
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const statusSub = addNativeSttListener('status', event => {
       if (__DEV__) console.log(`[NativeSTT] status: ${event.status}`);
       nativeStatusRef.current = event.status;
@@ -399,6 +459,14 @@ function App(): React.JSX.Element {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
+      {Platform.OS === 'ios' ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Scroll to top"
+          onPress={handleIosTopTapOverlayPress}
+          style={[styles.iosTopTapOverlay, { height: iosTopTapOverlayHeight }]}
+        />
+      ) : null}
       <WebView
         ref={webViewRef}
         source={webUrl
@@ -430,6 +498,14 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  iosTopTapOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    backgroundColor: 'transparent',
   },
   webView: {
     flex: 1,
