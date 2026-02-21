@@ -19,6 +19,7 @@ import {
   NATIVE_UI_EVENT,
   isNativeUiBridgeEnabledFromSearch,
   parseNativeUiScrollToTopDetail,
+  shouldEnableIosTopTapFallback,
 } from './live-phone-demo.native-ui.logic'
 
 const VOLUME_THRESHOLD = 0.05
@@ -205,7 +206,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     if (typeof window === 'undefined') return false
     return isNativeUiBridgeEnabledFromSearch(window.location.search || '')
   })
-  const [isIosTopTapEnabled] = useState(() => isLikelyIOSPlatform())
+  const [isIosTopTapEnabled] = useState(() => shouldEnableIosTopTapFallback({
+    isLikelyIosPlatform: isLikelyIOSPlatform(),
+    isNativeApp: isNativeApp(),
+    isNativeUiBridgeEnabled,
+  }))
 
 
   // Persist selected languages
@@ -959,7 +964,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [markUserScrollIntent, updateScrollDerivedState])
 
   useEffect(() => {
-    if (!isNativeApp() || !isNativeUiBridgeEnabled) return
+    if (!isNativeApp()) return
 
     const handleNativeUiEvent = (event: Event) => {
       const detail = parseNativeUiScrollToTopDetail((event as CustomEvent<unknown>).detail)
@@ -971,7 +976,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     return () => {
       window.removeEventListener(NATIVE_UI_EVENT, handleNativeUiEvent as EventListener)
     }
-  }, [handleTopSafeAreaTap, isNativeUiBridgeEnabled])
+  }, [handleTopSafeAreaTap])
 
   // On fresh mount/re-entry, pin to the latest messages first.
   // This prevents initial top-pagination from running before we settle at bottom.

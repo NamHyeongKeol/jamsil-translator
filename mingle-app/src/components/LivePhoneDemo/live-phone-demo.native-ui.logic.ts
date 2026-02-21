@@ -34,3 +34,17 @@ export function isNativeUiBridgeEnabledFromSearch(search: string): boolean {
     return false
   }
 }
+
+export interface IosTopTapFallbackInput {
+  isLikelyIosPlatform: boolean
+  isNativeApp: boolean
+  isNativeUiBridgeEnabled: boolean
+}
+
+export function shouldEnableIosTopTapFallback(input: IosTopTapFallbackInput): boolean {
+  // Keep legacy iOS margin-tap behavior as the default.
+  if (input.isLikelyIosPlatform) return true
+  // If iOS UA detection ever fails inside native WebView, still keep fallback on
+  // when native bridge mode is explicitly enabled.
+  return input.isNativeApp && input.isNativeUiBridgeEnabled
+}
