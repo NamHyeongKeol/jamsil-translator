@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_rn_webview_typecheck_compat_fix_20260221
+    %% @lastActive: mingle_app_android_tts_double_playback_candidate_triage_20260221
 
     %% === START ===
     %% @project_start [start, closed]
@@ -685,6 +685,9 @@ flowchart TD
     %% @mingle_app_rn_webview_typecheck_compat_fix_20260221 [ai-task, closed, 2026-02-21, ai]
     mingle_app_rn_webview_typecheck_compat_fix_20260221("RN WebView 타입체크 호환성 복구<br/><sub>react-native-webview 버전과 맞지 않는<br/>이벤트 타입 import(WebViewErrorEvent 등)로<br/>pnpm exec tsc --noEmit이 실패하던 경로를<br/>호환 시그니처로 정리해 타입체크를 복구</sub>")
 
+    %% @mingle_app_android_tts_double_playback_candidate_triage_20260221 [ai-task, opened, 2026-02-21, ai]
+    mingle_app_android_tts_double_playback_candidate_triage_20260221("Android TTS 2회 재생 후보 분석<br/><sub>영→한 번역에서 같은 발화가 두 번 들리는<br/>재현 보고를 기준으로 main 대비 diff와<br/>STT final dedupe·RN native TTS 경로를 대조해<br/>브랜치 특이/공통 후보를 분리해 정리</sub>")
+
     %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
     mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
 
@@ -915,6 +918,7 @@ flowchart TD
     mingle_app_mobile_scroll_overlay_visibility_hold_fix --> mingle_app_tdd_test_harness_plan
     mingle_marker_sanitization_restore_after_debug --> mingle_app_final_duplicate_guard_experiment
     mingle_app_final_duplicate_guard_experiment --> mingle_app_final_duplicate_guard_nonfinal_aware_refine
+    mingle_app_final_duplicate_guard_nonfinal_aware_refine --> mingle_app_android_tts_double_playback_candidate_triage_20260221
     mingle_app_final_duplicate_guard_nonfinal_aware_refine --> mingle_app_mobile_safari_stt_no_log_rootcause
     mingle_app_mobile_safari_stt_no_log_rootcause --> mingle_app_ngrok_dual_tunnel_overlay_setup
     mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_app_final_dedupe_false_negative_fix
@@ -1052,14 +1056,16 @@ flowchart TD
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
     mingle_pr_review_blockers_fix_20260221 -.-> ultimate_goal
     mingle_app_rn_webview_typecheck_compat_fix_20260221 -.-> ultimate_goal
+    mingle_app_android_tts_double_playback_candidate_triage_20260221 -.-> ultimate_goal
 
     mingle_stt_server_crash_guard_for_android_stream --> mingle_pr_review_blockers_fix_20260221
     mingle_app_rn_android_diag_label_and_env_quote_sanitize --> mingle_pr_review_blockers_fix_20260221
     mingle_pr_review_blockers_fix_20260221 --> mingle_app_rn_webview_typecheck_compat_fix_20260221
+    mingle_app_rn_webview_typecheck_compat_fix_20260221 --> mingle_app_android_tts_double_playback_candidate_triage_20260221
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_rn_webview_typecheck_compat_fix_20260221
+        mingle_app_android_tts_double_playback_candidate_triage_20260221
     end
 
     %% === STYLES ===
@@ -1312,7 +1318,8 @@ flowchart TD
     style mingle_app_tdd_live_regression_e2e_matrix_expansion fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_vitest_node20_compat_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_pr_review_blockers_fix_20260221 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_rn_webview_typecheck_compat_fix_20260221 fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_rn_webview_typecheck_compat_fix_20260221 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_android_tts_double_playback_candidate_triage_20260221 fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_android_webview_cleartext_and_load_error_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
