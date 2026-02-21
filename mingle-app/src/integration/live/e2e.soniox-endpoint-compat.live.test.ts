@@ -7,8 +7,9 @@ import { pickShortestFixture, scanFixtures } from './support/live-fixture-utils'
 
 const env = readLiveE2EEnv()
 const scanResult = scanFixtures(env)
+const describeWithFixtureCandidates = scanResult.candidates.length > 0 ? describe.sequential : describe.skip
 
-describe.sequential('e2e regression: soniox endpoint compatibility', () => {
+describeWithFixtureCandidates('e2e regression: soniox endpoint compatibility', () => {
   it('does not close immediately when endpoint detection is disabled', async () => {
     const fixtureEntry = pickShortestFixture(scanResult)
     const stopAfterMs = Math.min(

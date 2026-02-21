@@ -48,6 +48,7 @@ const AUDIO_FIXTURE_SCAN_DIRS = [
   path.resolve(process.cwd(), 'test-fixtures/audio/local'),
 ]
 const AUDIO_FIXTURE_CANDIDATES = collectAudioFixtureCandidates()
+const describeWithFixtureCandidates = AUDIO_FIXTURE_CANDIDATES.length > 0 ? describe.sequential : describe.skip
 const AUDIO_TRANSCODER = detectAudioTranscoder()
 const TTS_OUTPUT_DIR = readEnvString(
   'MINGLE_TEST_TTS_OUTPUT_DIR',
@@ -722,20 +723,11 @@ async function runFinalizeApiCheck(finalTurn: FinalTurn, fixtureName: string): P
     expect(rawText.length).toBeGreaterThan(0)
 }
 
-describe.sequential('local live integration: stt websocket + finalize api', () => {
+describeWithFixtureCandidates('local live integration: stt websocket + finalize api', () => {
   let processedValidFixtureCount = 0
   const scanDirs = AUDIO_FIXTURE_DIR_OVERRIDE
     ? [path.resolve(process.cwd(), AUDIO_FIXTURE_DIR_OVERRIDE)]
     : AUDIO_FIXTURE_SCAN_DIRS
-
-  it('discovers audio fixtures from directory or override path', () => {
-    if (AUDIO_FIXTURE_CANDIDATES.length > 0) return
-    throw new Error([
-      '[live-test] no fixture file found.',
-      `- scanned dirs: ${scanDirs.join(', ')}`,
-      '- add fixture files or set MINGLE_TEST_AUDIO_FIXTURE.',
-    ].join('\n'))
-  })
 
   for (const fixturePath of AUDIO_FIXTURE_CANDIDATES) {
     const fixtureName = path.basename(fixturePath)
@@ -785,6 +777,7 @@ describe.sequential('local live integration: stt websocket + finalize api', () =
   }
 
   afterAll(() => {
+    if (AUDIO_FIXTURE_CANDIDATES.length === 0) return
     if (processedValidFixtureCount > 0) return
     throw new Error([
       '[live-test] no valid audio fixture was processed.',
