@@ -21,5 +21,5 @@ if [[ ! -f "$LOCAL_CONFIG" ]]; then
   exit 1
 fi
 
-# Starts both named tunnels using selected local config.
-ngrok start --config "$GLOBAL_CONFIG" --config "$LOCAL_CONFIG" web stt "$@"
+# Starts devbox-specific tunnels using selected local config.
+ngrok start --config "$GLOBAL_CONFIG" --config "$LOCAL_CONFIG" devbox_web devbox_stt "$@"

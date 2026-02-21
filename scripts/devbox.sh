@@ -707,10 +707,10 @@ version: "3"
 agent:
   web_addr: 127.0.0.1:$DEVBOX_NGROK_API_PORT
 tunnels:
-  web:
+  devbox_web:
     addr: $DEVBOX_WEB_PORT
     proto: http
-  stt:
+  devbox_stt:
     addr: $DEVBOX_STT_PORT
     proto: http
 EOF

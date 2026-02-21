@@ -68,7 +68,7 @@ scripts/devbox up --profile device --with-ios-install
   - `NEXT_PUBLIC_WS_URL`를 빈 값으로 두고 host+port 조합을 사용
 
 - `scripts/devbox profile --profile device`
-  - 현재 워크트리 ngrok inspector(`DEVBOX_NGROK_API_PORT`)에서 `web`, `stt` 터널 URL을 읽어
+  - 현재 워크트리 ngrok inspector(`DEVBOX_NGROK_API_PORT`)에서 `devbox_web`, `devbox_stt` 터널 URL을 읽어
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`, `RN_DEFAULT_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
 
@@ -111,7 +111,7 @@ scripts/devbox up --profile device --with-ios-install
 
 ## ngrok Free 플랜 참고
 
-- `device` 프로필은 워크트리당 ngrok endpoint 2개(`web`, `stt`)를 사용합니다.
+- `device` 프로필은 워크트리당 ngrok endpoint 2개(`devbox_web`, `devbox_stt`)를 사용합니다.
 - ngrok Free 한도는 계정 생성 시점/플랜 정책에 따라 `online endpoint`가 1~3으로 다를 수 있습니다.
 - 따라서 단일 계정 Free 플랜에서는 `device` 프로필 워크트리 2개 동시(총 endpoint 4개)가
   제한에 걸릴 가능성이 높습니다. (정확 한도는 ngrok 대시보드에서 확인)
