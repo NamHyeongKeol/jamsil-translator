@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: namespace_contract_test_coverage_expansion
+    %% @lastActive: namespace_ci_dependency_stabilization
 
     %% === START ===
     %% @project_start [start, closed]
@@ -586,6 +586,9 @@ flowchart TD
     %% @mingle_app_live_fixture_autoskip_without_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_live_fixture_autoskip_without_env("라이브 fixture 자동 감지/스킵 정렬<br/><sub>fixture 후보 파일이 없을 때는 live 스위트를<br/>실패 대신 자동 skip 하도록 테스트를 조정해<br/>환경변수 없이도 파일만 두면 관련 회귀가<br/>로컬 pnpm test에서 바로 실행되게 보정</sub>")
 
+    %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
+    mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
+
     %% @vercel_deploy_rate_limit_blocker [blocker, opened, 2026-02-21, user]
     vercel_deploy_rate_limit_blocker("Vercel 배포 rate limit 대기<br/><sub>현재 PR commit status에서 Vercel – mingle-app/<br/>mingle-landing 체크가 배포 한도 초과로 실패해<br/>GitHub Actions는 녹색이어도 mergeable_state가<br/>unstable로 남아 대기 또는 수동 재시도가 필요</sub>")
 
@@ -600,6 +603,9 @@ flowchart TD
 
     %% @namespace_contract_test_coverage_expansion [ai-task, closed, 2026-02-21, ai]
     namespace_contract_test_coverage_expansion("버전 아키텍처 계약 테스트 확장<br/><sub>app에 web/ios/android 라우트 매핑 계약 테스트를 추가하고<br/>landing에는 api-contract/route wiring 테스트와 Vitest를 도입<br/>RN namespace 검증 로직을 공용 모듈로 분리해<br/>워크플로우 matrix 기반 namespace 계약 검증을 자동화</sub>")
+
+    %% @namespace_ci_dependency_stabilization [ai-task, closed, 2026-02-21, ai]
+    namespace_ci_dependency_stabilization("네임스페이스 CI 의존성 안정화<br/><sub>PR 실패 로그에서 Prisma client 생성 누락과<br/>RN tsconfig extends 해석 실패를 원인으로 특정하고<br/>unit/contract workflow에 prisma generate를 추가하며<br/>mingle-app devDependency에 RN tsconfig 패키지를 보강</sub>")
 
     %% @mingle_app_final_duplicate_guard_experiment [ai-task, closed, 2026-02-20, ai]
     mingle_app_final_duplicate_guard_experiment("final 중복 가드 실험 브랜치 적용<br/><sub>별도 worktree/브랜치에서 동일 언어·문장 final이<br/>짧은 시간 내 재유입될 때 최근 턴과 비교해 차단하고<br/>새 발화 시작 신호(turnStartedAt)가 없을 때만 적용해<br/>정상 반복 발화 오탐을 줄이는 보수적 dedupe를 도입</sub>")
@@ -954,11 +960,14 @@ flowchart TD
     mingle_app_tdd_live_ci_stt_build_start_runtime_fix --> mingle_app_tdd_live_ci_ffmpeg_fixture_fix
     mingle_app_tdd_live_ci_ffmpeg_fixture_fix --> mingle_app_tdd_live_ci_node20_websocket_polyfill
     mingle_app_tdd_live_ci_node20_websocket_polyfill --> mingle_app_tdd_run8_green_validation
-    mingle_app_tdd_run8_green_validation --> vercel_deploy_rate_limit_blocker
+    mingle_app_tdd_run8_green_validation --> mingle_app_live_fixture_autoskip_without_env
+    mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
+    mingle_app_live_fixture_autoskip_without_env --> vercel_deploy_rate_limit_blocker
     mingle_app_tdd_run8_green_validation --> api_platform_versioned_namespace_architecture
     api_platform_versioned_namespace_architecture --> namespace_release_rollout_and_rn_query_override
     namespace_release_rollout_and_rn_query_override --> namespace_override_guard_and_rn_strict_validation
     namespace_override_guard_and_rn_strict_validation --> namespace_contract_test_coverage_expansion
+    namespace_contract_test_coverage_expansion --> namespace_ci_dependency_stabilization
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -1021,11 +1030,13 @@ flowchart TD
     mingle_app_tdd_live_ci_node20_websocket_polyfill -.-> ultimate_goal
     mingle_app_tdd_run8_green_validation -.-> ultimate_goal
     mingle_app_live_fixture_autoskip_without_env -.-> ultimate_goal
+    mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
     api_platform_versioned_namespace_architecture -.-> ultimate_goal
     namespace_release_rollout_and_rn_query_override -.-> ultimate_goal
     namespace_override_guard_and_rn_strict_validation -.-> ultimate_goal
     namespace_contract_test_coverage_expansion -.-> ultimate_goal
+    namespace_ci_dependency_stabilization -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -1064,7 +1075,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        namespace_contract_test_coverage_expansion
+        namespace_ci_dependency_stabilization
     end
 
     %% === STYLES ===
@@ -1321,11 +1332,14 @@ flowchart TD
     style mingle_app_tdd_live_ci_ffmpeg_fixture_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_live_ci_node20_websocket_polyfill fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_run8_green_validation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_live_fixture_autoskip_without_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
     style api_platform_versioned_namespace_architecture fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style namespace_release_rollout_and_rn_query_override fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style namespace_override_guard_and_rn_strict_validation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style namespace_contract_test_coverage_expansion fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style namespace_contract_test_coverage_expansion fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style namespace_ci_dependency_stabilization fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
