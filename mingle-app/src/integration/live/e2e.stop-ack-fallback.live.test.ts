@@ -9,10 +9,11 @@ import { pickShortestFixture, scanFixtures } from './support/live-fixture-utils'
 
 const env = readLiveE2EEnv()
 const scanResult = scanFixtures(env)
+const describeWithFixtureCandidates = scanResult.candidates.length > 0 ? describe.sequential : describe.skip
 const EXPECT_STOP_ACK_ONLY = process.env.MINGLE_TEST_EXPECT_STOP_ACK_ONLY === '1'
 const ACK_FALLBACK_AFTER_MS = readEnvInt('MINGLE_TEST_E2E_ACK_FALLBACK_AFTER_MS', 3_000)
 
-describe.sequential('e2e regression: stop ack fallback path', () => {
+describeWithFixtureCandidates('e2e regression: stop ack fallback path', () => {
   it('returns a final turn even when stop is sent very early', async () => {
     const fixtureEntry = pickShortestFixture(scanResult)
     const stopAfterMs = Math.min(
