@@ -32,7 +32,7 @@ const nativeModule = NativeModules.NativeTTSModule as NativeTtsModuleType | unde
 const nativeEmitter = nativeModule ? new NativeEventEmitter(NativeModules.NativeTTSModule) : null;
 
 export function isNativeTtsAvailable(): boolean {
-  return Platform.OS === 'ios' && Boolean(nativeModule && nativeEmitter);
+  return (Platform.OS === 'ios' || Platform.OS === 'android') && Boolean(nativeModule && nativeEmitter);
 }
 
 export async function playNativeTts(options: NativeTtsPlayOptions): Promise<void> {

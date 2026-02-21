@@ -9,7 +9,16 @@ import {
   Text,
   View,
 } from 'react-native';
-import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import {
+  WebView,
+  type WebViewMessageEvent,
+} from 'react-native-webview';
+import {
+  RN_DEFAULT_WS_URL,
+  RN_WEB_APP_BASE_URL,
+  NEXT_PUBLIC_SITE_URL,
+  NEXT_PUBLIC_WS_URL,
+} from '@env';
 
 import {
   addNativeSttListener,
@@ -27,6 +36,19 @@ import {
 
 type RuntimeEnvMap = Record<string, string | undefined>;
 
+function sanitizeEnvValue(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+
+  const hasDoubleQuotes = trimmed.startsWith('"') && trimmed.endsWith('"');
+  const hasSingleQuotes = trimmed.startsWith("'") && trimmed.endsWith("'");
+  if (hasDoubleQuotes || hasSingleQuotes) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
 function readRuntimeEnvValue(keys: string[]): string {
   const env = (globalThis as { process?: { env?: RuntimeEnvMap } }).process?.env;
   if (!env) return '';
@@ -34,19 +56,33 @@ function readRuntimeEnvValue(keys: string[]): string {
   for (const key of keys) {
     const value = env[key];
     if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim();
+      return sanitizeEnvValue(value);
     }
   }
 
   return '';
 }
 
+function readInjectedEnvValue(values: Array<string | undefined>): string {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return sanitizeEnvValue(value);
+    }
+  }
+  return '';
+}
+
+function normalizeWsUrl(raw: string): string {
+  if (raw.startsWith('http://')) return `ws://${raw.slice('http://'.length)}`;
+  if (raw.startsWith('https://')) return `wss://${raw.slice('https://'.length)}`;
+  return raw;
+}
+
 function resolveConfiguredUrl(
-  keys: string[],
+  raw: string,
   allowedProtocols: string[],
   options?: { trimTrailingSlash?: boolean },
 ): string {
-  const raw = readRuntimeEnvValue(keys);
   if (!raw) return '';
 
   try {
@@ -61,15 +97,32 @@ function resolveConfiguredUrl(
   }
 }
 
+function formatEnvDebugValue(value: string): string {
+  if (!value) return '(empty)';
+  const trimmed = value.trim();
+  const truncated = trimmed.length > 90 ? `${trimmed.slice(0, 87)}...` : trimmed;
+  const quoted = trimmed.startsWith('"') || trimmed.endsWith('"') ? ' [quoted]' : '';
+  return `${truncated}${quoted}`;
+}
+
+const injectedWebBaseRaw = readInjectedEnvValue([RN_WEB_APP_BASE_URL, NEXT_PUBLIC_SITE_URL]);
+const runtimeWebBaseRaw = readRuntimeEnvValue(['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL']);
+const webBaseRaw = injectedWebBaseRaw || runtimeWebBaseRaw;
+
+const injectedWsRaw = readInjectedEnvValue([RN_DEFAULT_WS_URL, NEXT_PUBLIC_WS_URL]);
+const runtimeWsRaw = readRuntimeEnvValue(['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL']);
+const wsRaw = injectedWsRaw || runtimeWsRaw;
+const normalizedWsRaw = normalizeWsUrl(wsRaw);
+
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
-  ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
+  webBaseRaw,
   ['http:', 'https:'],
   { trimTrailingSlash: true },
-) || 'https://mingle-app-xi.vercel.app';
+);
 const DEFAULT_WS_URL = resolveConfiguredUrl(
-  ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
+  normalizedWsRaw,
   ['ws:', 'wss:'],
-) || 'wss://mingle.up.railway.app';
+);
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {
@@ -78,10 +131,23 @@ if (!WEB_APP_BASE_URL) {
 if (!DEFAULT_WS_URL) {
   missingRuntimeConfig.push('RN_DEFAULT_WS_URL (or NEXT_PUBLIC_WS_URL)');
 }
-const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
-  ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}`
-  : null;
 
+const ENV_DIAGNOSTICS = [
+  `injWeb=${formatEnvDebugValue(injectedWebBaseRaw)}`,
+  `rtWeb=${formatEnvDebugValue(runtimeWebBaseRaw)}`,
+  `rawWeb=${formatEnvDebugValue(webBaseRaw)}`,
+  `injWs=${formatEnvDebugValue(injectedWsRaw)}`,
+  `rtWs=${formatEnvDebugValue(runtimeWsRaw)}`,
+  `rawWs=${formatEnvDebugValue(wsRaw)}`,
+  `normWs=${formatEnvDebugValue(normalizedWsRaw)}`,
+  `resolvedWeb=${formatEnvDebugValue(WEB_APP_BASE_URL)}`,
+  `resolvedWs=${formatEnvDebugValue(DEFAULT_WS_URL)}`,
+].join(' | ');
+const BUILD_TAG = 'DIAG-quotefix-20260220';
+
+const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
+  ? `[${BUILD_TAG}] Missing or invalid env: ${missingRuntimeConfig.join(', ')}\n${ENV_DIAGNOSTICS}`
+  : null;
 const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
 const NATIVE_UI_EVENT = 'mingle:native-ui';
@@ -169,6 +235,7 @@ function App(): React.JSX.Element {
   const isPageReadyRef = useRef(false);
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
+  const didFallbackToRootRef = useRef(false);
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
@@ -180,11 +247,28 @@ function App(): React.JSX.Element {
   });
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
-  const webUrl = useMemo(() => {
+  const localeWebUrl = useMemo(() => {
     if (!WEB_APP_BASE_URL) return '';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1&nativeUi=1${debugParams}`;
   }, [locale]);
+  const rootWebUrl = useMemo(() => {
+    if (!WEB_APP_BASE_URL) return '';
+    const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
+    return `${WEB_APP_BASE_URL}/?nativeStt=1${debugParams}`;
+  }, []);
+  const [activeWebUrl, setActiveWebUrl] = useState(localeWebUrl);
+
+  useEffect(() => {
+    if (__DEV__) {
+      console.log(`[RN ENV] ${ENV_DIAGNOSTICS}`);
+    }
+  }, []);
+
+  useEffect(() => {
+    didFallbackToRootRef.current = false;
+    setActiveWebUrl(localeWebUrl);
+  }, [localeWebUrl]);
 
   const emitToWeb = useCallback((payload: NativeSttEvent) => {
     if (!isPageReadyRef.current) return;
@@ -451,9 +535,40 @@ function App(): React.JSX.Element {
     emitToWeb({ type: 'status', status: nativeStatusRef.current });
   }, [emitToWeb]);
 
-  const handleLoadError = useCallback((event: { nativeEvent: { description?: string } }) => {
-    const description = event.nativeEvent.description || 'webview_load_failed';
-    setLoadError(description);
+  const handleLoadSuccess = useCallback(() => {
+    if (REQUIRED_CONFIG_ERROR) return;
+    setLoadError(null);
+    didFallbackToRootRef.current = false;
+  }, []);
+
+  const handleLoadError = useCallback((event: { nativeEvent: { code?: number; description?: string; url?: string } }) => {
+    const { code, description, url } = event.nativeEvent;
+
+    if (
+      Platform.OS === 'android'
+      && !didFallbackToRootRef.current
+      && activeWebUrl === localeWebUrl
+      && rootWebUrl !== localeWebUrl
+    ) {
+      didFallbackToRootRef.current = true;
+      setLoadError(`[${BUILD_TAG}] primary_url_failed(code=${code ?? 'unknown'}), fallback_to_root\n${ENV_DIAGNOSTICS}`);
+      setActiveWebUrl(rootWebUrl);
+      return;
+    }
+
+    const details: string[] = [description || 'webview_load_failed'];
+    if (typeof code === 'number') details.push(`code=${code}`);
+    if (typeof url === 'string' && url.length > 0) details.push(url);
+    setLoadError(`[${BUILD_TAG}] ${details.join(' | ')}\n${ENV_DIAGNOSTICS}`);
+  }, [activeWebUrl, localeWebUrl, rootWebUrl]);
+
+  const handleHttpError = useCallback((event: { nativeEvent: { statusCode?: number; description?: string; url?: string } }) => {
+    const { statusCode, description, url } = event.nativeEvent;
+    const details: string[] = ['webview_http_error'];
+    if (typeof statusCode === 'number') details.push(`status=${statusCode}`);
+    if (description) details.push(description);
+    if (url) details.push(url);
+    setLoadError(`[${BUILD_TAG}] ${details.join(' | ')}\n${ENV_DIAGNOSTICS}`);
   }, []);
 
   return (
@@ -469,8 +584,8 @@ function App(): React.JSX.Element {
       ) : null}
       <WebView
         ref={webViewRef}
-        source={webUrl
-          ? { uri: webUrl }
+        source={activeWebUrl
+          ? { uri: activeWebUrl }
           : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
         originWhitelist={['*']}
         javaScriptEnabled
@@ -480,14 +595,20 @@ function App(): React.JSX.Element {
         setSupportMultipleWindows={false}
         allowsBackForwardNavigationGestures={false}
         onMessage={handleWebMessage}
+        onLoad={handleLoadSuccess}
         onLoadEnd={handleLoadEnd}
+        onHttpError={handleHttpError}
         onError={handleLoadError}
         style={styles.webView}
       />
+      <View pointerEvents="none" style={styles.buildBadge}>
+        <Text style={styles.buildBadgeText}>{BUILD_TAG}</Text>
+      </View>
       {loadError ? (
         <View style={styles.errorOverlay}>
-          <Text style={styles.errorTitle}>WebView Load Failed</Text>
+          <Text style={styles.errorTitle}>WebView Load Failed ({BUILD_TAG})</Text>
           <Text style={styles.errorDescription}>{loadError}</Text>
+          <Text style={styles.errorMeta}>url={activeWebUrl}</Text>
         </View>
       ) : null}
     </SafeAreaView>
@@ -511,6 +632,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
+  buildBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(17, 24, 39, 0.75)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  buildBadgeText: {
+    color: '#f9fafb',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   errorOverlay: {
     position: 'absolute',
     left: 16,
@@ -531,6 +666,11 @@ const styles = StyleSheet.create({
     color: '#d1d5db',
     fontSize: 12,
     lineHeight: 16,
+  },
+  errorMeta: {
+    color: '#9ca3af',
+    fontSize: 11,
+    lineHeight: 14,
   },
 });
 
