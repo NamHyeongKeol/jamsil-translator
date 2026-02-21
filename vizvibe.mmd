@@ -664,6 +664,9 @@ flowchart TD
     %% @mingle_stt_silence_tuning_300ms_0006 [ai-task, closed, 2026-02-19, ai]
     mingle_stt_silence_tuning_300ms_0006("Soniox 무음 튜닝 300ms/0.006 적용<br/><sub>200ms/0.008 설정에서 과분할이 잦아<br/>기본 임계값을 300ms와 0.006으로 조정해<br/>짧은 숨고르기/저레벨 구간에서 finalize 빈도를 낮추고<br/>발화 단위를 조금 더 길게 유지하도록 보정</sub>")
 
+    %% @mingle_stt_silence_retune_200ms_0008 [ai-task, closed, 2026-02-21, ai]
+    mingle_stt_silence_retune_200ms_0008("Soniox 무음 튜닝 200ms/0.008 재적용<br/><sub>최근 발화 경계 체감을 다시 빠르게 맞추기 위해<br/>수동 finalize 기본값을 300ms/0.006에서<br/>200ms와 0.008로 되돌려 짧은 무음에서<br/>턴 확정 반응성을 높이도록 재조정</sub>")
+
     %% @mingle_stt_marker_token_visibility_debug_toggle [ai-task, closed, 2026-02-19, ai]
     mingle_stt_marker_token_visibility_debug_toggle("Soniox 특수토큰 표시 디버그 모드<br/><sub>앱 화면에서 <end>/<fin> 토큰 유입 시점을<br/>직접 확인할 수 있도록 final/forced/pending 경로의<br/>토큰 제거 치환을 임시 주석 처리해<br/>원문 토큰이 그대로 보이게 서버를 보정</sub>")
 
@@ -818,6 +821,7 @@ flowchart TD
     mingle_stt_endpoint_only_finalize_mode --> mingle_stt_finalize_heuristic_removed
     mingle_stt_finalize_heuristic_removed --> mingle_stt_silence_200ms_manual_finalize
     mingle_stt_silence_200ms_manual_finalize --> mingle_stt_silence_tuning_300ms_0006
+    mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_silence_retune_200ms_0008
     mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_marker_token_visibility_debug_toggle
     mingle_stt_marker_token_visibility_debug_toggle --> mingle_stt_endpoint_detection_disabled_experiment
     mingle_stt_endpoint_detection_disabled_experiment --> mingle_stt_endpoint_delay_param_guard_fix
@@ -972,6 +976,7 @@ flowchart TD
     mingle_stt_finalize_heuristic_removed -.-> ultimate_goal
     mingle_stt_silence_200ms_manual_finalize -.-> ultimate_goal
     mingle_stt_silence_tuning_300ms_0006 -.-> ultimate_goal
+    mingle_stt_silence_retune_200ms_0008 -.-> ultimate_goal
     mingle_stt_marker_token_visibility_debug_toggle -.-> ultimate_goal
     mingle_stt_endpoint_detection_disabled_experiment -.-> ultimate_goal
     mingle_stt_endpoint_delay_param_guard_fix -.-> ultimate_goal
@@ -1278,6 +1283,7 @@ flowchart TD
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_tuning_300ms_0006 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_silence_retune_200ms_0008 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
