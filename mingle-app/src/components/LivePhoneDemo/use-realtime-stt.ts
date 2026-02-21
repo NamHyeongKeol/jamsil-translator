@@ -16,7 +16,6 @@ const DEFAULT_USAGE_LIMIT_SEC = 60
 const LS_KEY_UTTERANCES = 'mingle_demo_utterances'
 const LS_KEY_USAGE = 'mingle_demo_usage_sec'
 const LS_KEY_SESSION = 'mingle_demo_session_key'
-const LS_KEY_TTS_DEBUG = 'mingle_tts_debug'
 const LS_KEY_STT_DEBUG = 'mingle_stt_debug'
 const NATIVE_STT_QUERY_KEY = 'nativeStt'
 const NATIVE_STT_EVENT = 'mingle:native-stt'
@@ -289,7 +288,7 @@ interface UseRealtimeSTTOptions {
   languages: string[]
   onLimitReached?: () => void
   onTtsRequested?: (utteranceId: string, language: string) => void
-  onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string) => void
+  onTtsAudio?: (utteranceId: string, audioBlob: Blob, language: string, ttsText?: string) => void
   enableTts?: boolean
   enableAec?: boolean
   usageLimitSec?: number | null
@@ -394,27 +393,6 @@ function decodeBase64AudioToBlob(base64: string, mime = 'audio/mpeg'): Blob | nu
   } catch {
     return null
   }
-}
-
-function isTtsDebugEnabled(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    const forced = window.localStorage.getItem(LS_KEY_TTS_DEBUG)
-    if (forced === '1') return true
-    if (forced === '0') return false
-  } catch {
-    // no-op
-  }
-  return /(?:\?|&)ttsDebug=1(?:&|$)/.test(window.location.search || '')
-}
-
-function logTtsDebug(event: string, payload?: Record<string, unknown>) {
-  if (!isTtsDebugEnabled()) return
-  if (payload) {
-    console.log('[MingleTTS]', event, payload)
-    return
-  }
-  console.log('[MingleTTS]', event)
 }
 
 function isSttDebugEnabled(): boolean {
@@ -794,16 +772,6 @@ export default function useRealtimeSTT({
     const langs = targetLanguages.filter(l => l !== sourceLanguage)
     if (!text.trim() || langs.length === 0) return { translations: {} }
     const recentTurns = buildRecentTurnContextPayload(options?.excludeUtteranceId)
-    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    logTtsDebug('translate.request', {
-      requestId,
-      sourceLanguage,
-      targetLanguages: langs,
-      ttsLanguage: options?.ttsLanguage || null,
-      textLen: text.trim().length,
-      hasCurrentTurnPreviousState: Boolean(options?.currentTurnPreviousState),
-      hasImmediatePreviousTurn: recentTurns.length > 0,
-    })
     try {
       const body: Record<string, unknown> = { text, sourceLanguage, targetLanguages: langs }
       if (recentTurns.length > 0) {
@@ -836,18 +804,10 @@ export default function useRealtimeSTT({
         signal: options?.signal,
       })
       if (!res.ok) {
-        logTtsDebug('translate.non_ok', { requestId, status: res.status })
         return { translations: {} }
       }
       const data = await res.json()
       const ttsAudioBase64 = typeof data.ttsAudioBase64 === 'string' ? data.ttsAudioBase64 : undefined
-      logTtsDebug('translate.response', {
-        requestId,
-        translationKeys: Object.keys((data.translations || {}) as Record<string, string>),
-        ttsLanguage: typeof data.ttsLanguage === 'string' ? data.ttsLanguage : null,
-        hasInlineTts: Boolean(ttsAudioBase64),
-        ttsAudioLen: ttsAudioBase64?.length || 0,
-      })
       return {
         translations: (data.translations || {}) as Record<string, string>,
         ttsLanguage: typeof data.ttsLanguage === 'string' ? data.ttsLanguage : undefined,
@@ -857,7 +817,6 @@ export default function useRealtimeSTT({
         model: typeof data.model === 'string' ? data.model : undefined,
       }
     } catch {
-      logTtsDebug('translate.error', { requestId })
       return { translations: {} }
     }
   }, [buildRecentTurnContextPayload, ensureSessionKey, usageSec])
@@ -901,12 +860,6 @@ export default function useRealtimeSTT({
     const normalizedText = text.trim()
     const normalizedLang = language.trim()
     if (!normalizedText || !normalizedLang) return null
-    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    logTtsDebug('tts_fallback.request', {
-      requestId,
-      language: normalizedLang,
-      textLen: normalizedText.length,
-    })
     try {
       const res = await fetch('/api/tts/inworld', {
         method: 'POST',
@@ -918,24 +871,12 @@ export default function useRealtimeSTT({
           clientContext: buildClientContextPayload(usageSec),
         }),
       })
-      if (!res.ok) {
-        logTtsDebug('tts_fallback.non_ok', { requestId, status: res.status })
-        return null
-      }
+      if (!res.ok) return null
       const arrayBuffer = await res.arrayBuffer()
-      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
-        logTtsDebug('tts_fallback.empty_audio', { requestId })
-        return null
-      }
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) return null
       const mime = res.headers.get('content-type') || 'audio/mpeg'
-      logTtsDebug('tts_fallback.response', {
-        requestId,
-        mime,
-        audioBytes: arrayBuffer.byteLength,
-      })
       return new Blob([arrayBuffer], { type: mime })
     } catch {
-      logTtsDebug('tts_fallback.error', { requestId })
       return null
     }
   }, [ensureSessionKey, usageSec])
@@ -953,28 +894,15 @@ export default function useRealtimeSTT({
 
     const signature = `${ttsTargetLang}::${ttsText}`
     if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return
-    logTtsDebug('tts.inline.received', {
-      utteranceId,
-      sourceLanguage,
-      ttsTargetLang,
-      textLen: ttsText.length,
-      hasInlineAudio: Boolean(result.ttsAudioBase64),
-      inlineAudioLen: result.ttsAudioBase64?.length || 0,
-    })
 
     const queueAudioIfValid = (audioBlob: Blob | null): boolean => {
-      if (!audioBlob || audioBlob.size === 0) {
-        logTtsDebug('tts.queue.skip_invalid_audio', { utteranceId, ttsTargetLang })
-        return false
+      if (!audioBlob || audioBlob.size === 0) return false
+      if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) {
+        // 이미 같은 시그니처로 큐잉됨 — 중복 차단
+        return true
       }
-      if (finalizedTtsSignatureRef.current.get(utteranceId) === signature) return true
       finalizedTtsSignatureRef.current.set(utteranceId, signature)
-      logTtsDebug('tts.queue.enqueue', {
-        utteranceId,
-        ttsTargetLang,
-        audioBytes: audioBlob.size,
-      })
-      onTtsAudioRef.current?.(utteranceId, audioBlob, ttsTargetLang)
+      onTtsAudioRef.current?.(utteranceId, audioBlob, ttsTargetLang, ttsText)
       return true
     }
 
@@ -983,8 +911,7 @@ export default function useRealtimeSTT({
       if (queueAudioIfValid(audioBlob)) return
     }
 
-    // Inline TTS is missing/invalid: recover by calling server-side Inworld proxy.
-    logTtsDebug('tts.inline.missing_or_invalid_fallback', { utteranceId, ttsTargetLang })
+    // Inline TTS가 없거나 유효하지 않음 → 별도 TTS API 호출로 폴백
     void synthesizeTtsViaApi(ttsText, ttsTargetLang).then((fallbackBlob) => {
       queueAudioIfValid(fallbackBlob)
     })
@@ -1519,7 +1446,16 @@ export default function useRealtimeSTT({
         setUtterances(u => [...u, finalizedPayload.utterance])
         sawNonFinalSinceLastFinalRef.current = false
         clearPartialBuffers()
-        pendingLocalFinalizeRef.current = null
+        // Track this server-finalized utterance so that if Soniox sends a second
+        // is_final for the same speech (e.g. partial-token final followed by
+        // full-sentence final), the two can be merged instead of producing a
+        // duplicate utterance + duplicate TTS.
+        pendingLocalFinalizeRef.current = {
+          utteranceId: finalizedPayload.utteranceId,
+          text: finalizedPayload.text,
+          lang: finalizedPayload.language,
+          expiresAt: finalizedPayload.createdAtMs + 15000,
+        }
 
         finalizeTurnWithTranslation(
           {

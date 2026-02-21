@@ -586,14 +586,44 @@ flowchart TD
     %% @mingle_app_live_fixture_autoskip_without_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_live_fixture_autoskip_without_env("라이브 fixture 자동 감지/스킵 정렬<br/><sub>fixture 후보 파일이 없을 때는 live 스위트를<br/>실패 대신 자동 skip 하도록 테스트를 조정해<br/>환경변수 없이도 파일만 두면 관련 회귀가<br/>로컬 pnpm test에서 바로 실행되게 보정</sub>")
 
+    %% @mingle_app_tdd_pr_only_trigger_without_post_merge_run [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_pr_only_trigger_without_post_merge_run("CI를 PR 전용으로 트리거 정렬<br/><sub>mingle-app TDD 워크플로우의 main push 트리거를<br/>제거하고 pull_request(main)만 남겨<br/>머지 전 검증은 유지하면서 머지 직후에는<br/>같은 테스트가 다시 자동 실행되지 않게 정리</sub>")
+
+    %% @mingle_app_tdd_main_push_direct_guard [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_main_push_direct_guard("main 직접 push 경로 테스트 가드 보강<br/><sub>push(main) 트리거를 복원하되 커밋-PR 연계를 조회해<br/>PR 머지 커밋이면 post-merge 테스트를 스킵하고<br/>연계 PR 없는 direct push일 때만 unit/live가 실행되게<br/>워크플로우 분기 로직으로 검증 공백을 해소</sub>")
+
+    %% @mingle_app_tdd_nonstraight_main_merge_guard [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_nonstraight_main_merge_guard("비정형 main merge 테스트 실행 분기<br/><sub>PR 연계가 있더라도 parent 2+ 이면서<br/>표준 'Merge pull request #' 형태가 아니면<br/>비정형 머지로 간주해 post-merge 테스트를 실행하고<br/>표준 PR 머지 커밋만 재실행 스킵으로 유지</sub>")
+
     %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
 
     %% @mingle_app_tts_utterance_id_queue_timeout_rebalance [ai-task, closed, 2026-02-21, ai]
     mingle_app_tts_utterance_id_queue_timeout_rebalance("발화ID 기준 TTS 큐 정렬 보정<br/><sub>긴 문장 뒤 짧은 문장이 먼저 재생되던<br/>역전 케이스를 막기 위해 reserve/add 경로를<br/>utteranceId(createdAt-serial) 정렬 삽입으로 통일하고<br/>선두 대기는 항목별 경과시간 9초로 조정</sub>")
 
+    %% @mingle_app_ios_top_tap_regression_hotfix [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_top_tap_regression_hotfix("iOS 상단 탭 회귀 핫픽스<br/><sub>RN 상태바 탭 오버레이 높이를<br/>상단 헤더 마진까지 포함하도록 복구하고<br/>nativeUi 브리지 사용 중에도 iOS 웹 상단 탭<br/>fallback을 유지해 기존 스크롤 UX를 복원</sub>")
+
+    %% @mingle_app_ios_top_tap_pr9_reaudit_hardening [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_top_tap_pr9_reaudit_hardening("PR #9 상단탭 재검수 및 하드닝<br/><sub>nativeUi 쿼리 파싱/UA 오인식 시에도<br/>iOS 상단탭 fallback이 꺼지지 않도록<br/>활성화 조건을 보수적으로 고정하고<br/>브리지 이벤트 리스너 결합도를 낮춰 회귀를 완화</sub>")
+
+    %% @mingle_app_ios_notch_tap_margin_decouple [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_notch_tap_margin_decouple("노치 탭 로직과 헤더 마진 분리<br/><sub>상단 탭 감지 영역을 상태바/노치 높이로만 고정해<br/>header paddingTop(+20)과의 결합을 제거하고<br/>웹 fallback 버튼 높이도 safe-area top 기준으로 축소해<br/>노치 터치 동작이 네비게이션 마진에 영향받지 않게 정렬</sub>")
+
     %% @vercel_deploy_rate_limit_blocker [blocker, opened, 2026-02-21, user]
     vercel_deploy_rate_limit_blocker("Vercel 배포 rate limit 대기<br/><sub>현재 PR commit status에서 Vercel – mingle-app/<br/>mingle-landing 체크가 배포 한도 초과로 실패해<br/>GitHub Actions는 녹색이어도 mergeable_state가<br/>unstable로 남아 대기 또는 수동 재시도가 필요</sub>")
+
+    %% @vercel_app_landing_main_branch_deploy_gate [ai-task, closed, 2026-02-21, ai]
+    vercel_app_landing_main_branch_deploy_gate("Vercel main 브랜치 배포 가드 통일<br/><sub>mingle-app과 mingle-landing vercel.json에<br/>git.deploymentEnabled 규칙을 추가해<br/>main 이외 브랜치 커밋에서는 Vercel 배포가<br/>시도되지 않도록 공통 정책으로 맞춤</sub>")
+
+    %% @vercel_deployment_enabled_double_star_pattern_fix [ai-task, closed, 2026-02-21, ai]
+    vercel_deployment_enabled_double_star_pattern_fix("Vercel 브랜치 패턴을 **로 보정<br/><sub>codex/.. 처럼 슬래시가 포함된 브랜치는<br/>git.deploymentEnabled의 *=false 규칙에서<br/>누락될 수 있어 **=false로 교체해<br/>main 외 브랜치 배포 시도를 전면 차단</sub>")
+
+    %% @vercel_main_always_deploy_ignore_command_fix [ai-task, closed, 2026-02-21, ai]
+    vercel_main_always_deploy_ignore_command_fix("main 커밋 취소 이슈용 ignoreCommand 정리<br/><sub>경로 기반 grep 필터가 남아 있어 main 커밋도<br/>Ignored Build Step으로 취소되던 로그를 확인하고<br/>ignoreCommand를 non-main 스킵 전용으로 단순화해<br/>main에서는 항상 배포가 진행되도록 보정</sub>")
+
+    %% @mingle_stt_railway_main_branch_deploy_setting [human-task, opened, 2026-02-21, user]
+    mingle_stt_railway_main_branch_deploy_setting("Railway mingle-stt main 브랜치 고정<br/><sub>railway.json 스키마에는 브랜치 트리거 옵션이 없어<br/>서비스 대시보드의 Connected Branch를 main으로<br/>직접 설정해야 PR 브랜치 배포 시도 자체를<br/>완전히 막을 수 있어 후속 반영이 필요</sub>")
 
     %% @mingle_app_final_duplicate_guard_experiment [ai-task, closed, 2026-02-20, ai]
     mingle_app_final_duplicate_guard_experiment("final 중복 가드 실험 브랜치 적용<br/><sub>별도 worktree/브랜치에서 동일 언어·문장 final이<br/>짧은 시간 내 재유입될 때 최근 턴과 비교해 차단하고<br/>새 발화 시작 신호(turnStartedAt)가 없을 때만 적용해<br/>정상 반복 발화 오탐을 줄이는 보수적 dedupe를 도입</sub>")
@@ -950,8 +980,18 @@ flowchart TD
     mingle_app_tdd_live_ci_ffmpeg_fixture_fix --> mingle_app_tdd_live_ci_node20_websocket_polyfill
     mingle_app_tdd_live_ci_node20_websocket_polyfill --> mingle_app_tdd_run8_green_validation
     mingle_app_tdd_run8_green_validation --> mingle_app_live_fixture_autoskip_without_env
+    mingle_app_live_fixture_autoskip_without_env --> mingle_app_tdd_pr_only_trigger_without_post_merge_run
+    mingle_app_tdd_pr_only_trigger_without_post_merge_run --> mingle_app_tdd_main_push_direct_guard
+    mingle_app_tdd_main_push_direct_guard --> mingle_app_tdd_nonstraight_main_merge_guard
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
-    mingle_app_live_fixture_autoskip_without_env --> vercel_deploy_rate_limit_blocker
+    mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_top_tap_regression_hotfix
+    mingle_app_ios_top_tap_regression_hotfix --> mingle_app_ios_top_tap_pr9_reaudit_hardening
+    mingle_app_ios_top_tap_pr9_reaudit_hardening --> mingle_app_ios_notch_tap_margin_decouple
+    mingle_app_tdd_nonstraight_main_merge_guard --> vercel_deploy_rate_limit_blocker
+    vercel_deploy_rate_limit_blocker --> vercel_app_landing_main_branch_deploy_gate
+    vercel_app_landing_main_branch_deploy_gate --> vercel_deployment_enabled_double_star_pattern_fix
+    vercel_deployment_enabled_double_star_pattern_fix --> vercel_main_always_deploy_ignore_command_fix
+    vercel_main_always_deploy_ignore_command_fix --> mingle_stt_railway_main_branch_deploy_setting
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -1014,9 +1054,19 @@ flowchart TD
     mingle_app_tdd_live_ci_node20_websocket_polyfill -.-> ultimate_goal
     mingle_app_tdd_run8_green_validation -.-> ultimate_goal
     mingle_app_live_fixture_autoskip_without_env -.-> ultimate_goal
+    mingle_app_tdd_pr_only_trigger_without_post_merge_run -.-> ultimate_goal
+    mingle_app_tdd_main_push_direct_guard -.-> ultimate_goal
+    mingle_app_tdd_nonstraight_main_merge_guard -.-> ultimate_goal
     mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     mingle_app_tts_utterance_id_queue_timeout_rebalance -.-> ultimate_goal
+    mingle_app_ios_top_tap_regression_hotfix -.-> ultimate_goal
+    mingle_app_ios_top_tap_pr9_reaudit_hardening -.-> ultimate_goal
+    mingle_app_ios_notch_tap_margin_decouple -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
+    vercel_app_landing_main_branch_deploy_gate -.-> ultimate_goal
+    vercel_deployment_enabled_double_star_pattern_fix -.-> ultimate_goal
+    vercel_main_always_deploy_ignore_command_fix -.-> ultimate_goal
+    mingle_stt_railway_main_branch_deploy_setting -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -1313,9 +1363,19 @@ flowchart TD
     style mingle_app_tdd_live_ci_node20_websocket_polyfill fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_run8_green_validation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_live_fixture_autoskip_without_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_pr_only_trigger_without_post_merge_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_main_push_direct_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_nonstraight_main_merge_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tts_utterance_id_queue_timeout_rebalance fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_notch_tap_margin_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
+    style vercel_app_landing_main_branch_deploy_gate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_deployment_enabled_double_star_pattern_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_main_always_deploy_ignore_command_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_railway_main_branch_deploy_setting fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
