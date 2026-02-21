@@ -1068,7 +1068,7 @@ $(ngrok_plan_capacity_hint)"
 
   (
     cd "$ROOT_DIR/mingle-app"
-    pnpm dev -- --port "$DEVBOX_WEB_PORT"
+    pnpm exec next dev --port "$DEVBOX_WEB_PORT"
   ) &
   pids+=("$!")
 
