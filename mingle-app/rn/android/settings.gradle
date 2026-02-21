@@ -1,6 +1,28 @@
-pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+pluginManagement {
+    def reactNativeGradlePluginDir = file("../node_modules/@react-native/gradle-plugin")
+    if (!reactNativeGradlePluginDir.exists()) {
+        def pnpmStoreDir = file("../node_modules/.pnpm")
+        def pnpmEntry = pnpmStoreDir.exists()
+            ? pnpmStoreDir.listFiles()?.find { it.name.startsWith("@react-native+gradle-plugin@") }
+            : null
+        if (pnpmEntry != null) {
+            reactNativeGradlePluginDir = new File(pnpmEntry, "node_modules/@react-native/gradle-plugin")
+        }
+    }
+    includeBuild(reactNativeGradlePluginDir.absolutePath)
+}
 plugins { id("com.facebook.react.settings") }
 extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
 rootProject.name = 'rnnative'
 include ':app'
-includeBuild('../node_modules/@react-native/gradle-plugin')
+def reactNativeGradlePluginDir = file("../node_modules/@react-native/gradle-plugin")
+if (!reactNativeGradlePluginDir.exists()) {
+    def pnpmStoreDir = file("../node_modules/.pnpm")
+    def pnpmEntry = pnpmStoreDir.exists()
+        ? pnpmStoreDir.listFiles()?.find { it.name.startsWith("@react-native+gradle-plugin@") }
+        : null
+    if (pnpmEntry != null) {
+        reactNativeGradlePluginDir = new File(pnpmEntry, "node_modules/@react-native/gradle-plugin")
+    }
+}
+includeBuild(reactNativeGradlePluginDir.absolutePath)

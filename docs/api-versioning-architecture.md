@@ -61,6 +61,7 @@ Namespaces:
 - `mingle-app`: `NEXT_PUBLIC_API_NAMESPACE` 사용 (default: `web/app/v1`)
 - `mingle-landing`: `NEXT_PUBLIC_API_NAMESPACE` 사용 (default: `web/landing/v1`)
 - 클라이언트는 `buildClientApiPath` / `buildLandingApiPath`로만 API URL 생성
+- URL 쿼리 `apiNamespace`(또는 `apiNs`)가 있으면 env보다 우선 적용
 
 ## Release Configuration Example
 
@@ -68,6 +69,7 @@ Namespaces:
 - Android release web bundle: `NEXT_PUBLIC_API_NAMESPACE=mobile/android/v1`
 - Browser web app: `NEXT_PUBLIC_API_NAMESPACE=web/app/v1`
 - Landing web: `NEXT_PUBLIC_API_NAMESPACE=web/landing/v1`
+- RN WebView 런타임 오버라이드: `RN_API_NAMESPACE` -> `?apiNamespace=...` 전달
 
 ## Compatibility Policy
 

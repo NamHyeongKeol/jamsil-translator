@@ -78,3 +78,13 @@ Landing 프론트는 `NEXT_PUBLIC_API_NAMESPACE`로 API URL을 생성합니다.
 
 - 기본값: `web/landing/v1`
 - 예시 endpoint: `/api/web/landing/v1/subscribe`
+
+Release build command:
+
+```bash
+pnpm build:release:web
+```
+
+URL override (optional):
+
+- 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)를 우선 사용합니다.

@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: api_platform_versioned_namespace_architecture
+    %% @lastActive: namespace_release_rollout_and_rn_query_override
 
     %% === START ===
     %% @project_start [start, closed]
@@ -589,6 +589,9 @@ flowchart TD
     %% @api_platform_versioned_namespace_architecture [ai-task, closed, 2026-02-21, ai]
     api_platform_versioned_namespace_architecture("플랫폼/버전 URL 아키텍처 분리<br/><sub>mingle-app·landing API를 /api/{scope}/v1로<br/>네임스페이스화하고 web/ios/android 경로를 고정<br/>컨트롤러를 플랫폼별 파일로 분리해 런타임 if 없이<br/>NEXT_PUBLIC_API_NAMESPACE로 호출 경로를 결정</sub>")
 
+    %% @namespace_release_rollout_and_rn_query_override [ai-task, closed, 2026-02-21, ai]
+    namespace_release_rollout_and_rn_query_override("릴리즈 네임스페이스 롤아웃 자동화<br/><sub>app/landing 빌드 스크립트에 release namespace를 추가하고<br/>RN WebView가 apiNamespace 쿼리로 경로를 전달하도록 확장<br/>TDD workflow에도 MINGLE_TEST_API_NAMESPACE를 명시해<br/>파이프라인·앱·문서의 버전 경로 정책을 일치시킴</sub>")
+
     %% @mingle_app_final_duplicate_guard_experiment [ai-task, closed, 2026-02-20, ai]
     mingle_app_final_duplicate_guard_experiment("final 중복 가드 실험 브랜치 적용<br/><sub>별도 worktree/브랜치에서 동일 언어·문장 final이<br/>짧은 시간 내 재유입될 때 최근 턴과 비교해 차단하고<br/>새 발화 시작 신호(turnStartedAt)가 없을 때만 적용해<br/>정상 반복 발화 오탐을 줄이는 보수적 dedupe를 도입</sub>")
 
@@ -940,6 +943,7 @@ flowchart TD
     mingle_app_tdd_live_ci_node20_websocket_polyfill --> mingle_app_tdd_run8_green_validation
     mingle_app_tdd_run8_green_validation --> vercel_deploy_rate_limit_blocker
     mingle_app_tdd_run8_green_validation --> api_platform_versioned_namespace_architecture
+    api_platform_versioned_namespace_architecture --> namespace_release_rollout_and_rn_query_override
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -1003,6 +1007,7 @@ flowchart TD
     mingle_app_tdd_run8_green_validation -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
     api_platform_versioned_namespace_architecture -.-> ultimate_goal
+    namespace_release_rollout_and_rn_query_override -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -1040,7 +1045,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        api_platform_versioned_namespace_architecture
+        namespace_release_rollout_and_rn_query_override
     end
 
     %% === STYLES ===
@@ -1298,7 +1303,8 @@ flowchart TD
     style mingle_app_tdd_live_ci_node20_websocket_polyfill fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_run8_green_validation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
-    style api_platform_versioned_namespace_architecture fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style api_platform_versioned_namespace_architecture fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style namespace_release_rollout_and_rn_query_override fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

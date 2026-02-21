@@ -7,6 +7,7 @@
     "dev": "next dev -p 4000",
     "dev:with-stt": "concurrently \"next dev -p 4000\" \"pnpm --dir ../mingle-stt dev\"",
     "build": "prisma generate && next build",
+    "build:release:web": "DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@127.0.0.1:5432/postgres?schema=public} NEXT_PUBLIC_API_NAMESPACE=web/landing/v1 pnpm build",
     "start": "next start -p 4000",
     "lint": "next lint",
     "db:push": "prisma db push",

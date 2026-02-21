@@ -65,6 +65,19 @@ MINGLE_TEST_TTS_OUTPUT_DIR=/absolute/path/to/tts-output
 - iOS release: `mobile/ios/v1`
 - Android release: `mobile/android/v1`
 
+Release build commands:
+
+```bash
+pnpm build:release:web
+pnpm build:release:ios
+pnpm build:release:android
+```
+
+URL override (optional):
+
+- 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)가 있으면 env보다 우선합니다.
+- 예: `https://your-app/ko?apiNamespace=mobile/ios/v1`
+
 Fixture scan behavior:
 
 - 폴더 내 파일명은 자유입니다.
