@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tts_utterance_id_queue_timeout_rebalance
+    %% @lastActive: mingle_app_tts_front_wait_timeout_fix_and_queue_utils_tests
 
     %% === START ===
     %% @project_start [start, closed]
@@ -610,6 +610,9 @@ flowchart TD
     %% @mingle_app_ios_notch_tap_margin_decouple [ai-task, closed, 2026-02-22, ai]
     mingle_app_ios_notch_tap_margin_decouple("노치 탭 로직과 헤더 마진 분리<br/><sub>상단 탭 감지 영역을 상태바/노치 높이로만 고정해<br/>header paddingTop(+20)과의 결합을 제거하고<br/>웹 fallback 버튼 높이도 safe-area top 기준으로 축소해<br/>노치 터치 동작이 네비게이션 마진에 영향받지 않게 정렬</sub>")
 
+    %% @mingle_app_tts_front_wait_timeout_fix_and_queue_utils_tests [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tts_front_wait_timeout_fix_and_queue_utils_tests("TTS 선두 대기창 기준 수정 + 유틸 테스트 추가<br/><sub>timeout 기준을 예약시각이 아닌 선두 진입시각으로<br/>재정의해 앞선 재생 구간 시간이 스킵으로 누적되던<br/>회귀 가능성을 제거하고 정렬/대기 계산을 유틸로 분리,<br/>vitest로 순서/타임아웃 회귀 케이스를 고정</sub>")
+
     %% @vercel_deploy_rate_limit_blocker [blocker, opened, 2026-02-21, user]
     vercel_deploy_rate_limit_blocker("Vercel 배포 rate limit 대기<br/><sub>현재 PR commit status에서 Vercel – mingle-app/<br/>mingle-landing 체크가 배포 한도 초과로 실패해<br/>GitHub Actions는 녹색이어도 mergeable_state가<br/>unstable로 남아 대기 또는 수동 재시도가 필요</sub>")
 
@@ -850,6 +853,7 @@ flowchart TD
     finalize_tts_double_playback_rootcause --> finalize_tts_dedupe_alignment_fix
     finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable --> tts_queue_race_retrigger_fix --> stt_background_stop_policy_update --> stt_background_auto_recovery --> stt_lock_resume_reconnect_removal --> stt_mic_button_tts_decouple --> tts_queue_watchdog_and_start_prime_guard --> tts_prime_failure_volume_recovery_fix --> stt_lock_resume_reconnect_restore_and_stop_click_tts_resume --> stt_stop_pipeline_without_output_close --> mingle_app_landing_test_section_rebase --> mingle_app_fullscreen_test_surface
     tts_priority_queue_ordering --> mingle_app_tts_utterance_id_queue_timeout_rebalance
+    mingle_app_tts_utterance_id_queue_timeout_rebalance --> mingle_app_tts_front_wait_timeout_fix_and_queue_utils_tests
     mingle_app_fullscreen_test_surface --> mingle_app_remove_mock_statusbar
     mingle_app_remove_mock_statusbar --> mingle_app_client_only_live_demo
     mingle_app_client_only_live_demo --> mingle_app_favicon_sync
@@ -1062,6 +1066,7 @@ flowchart TD
     mingle_app_ios_top_tap_regression_hotfix -.-> ultimate_goal
     mingle_app_ios_top_tap_pr9_reaudit_hardening -.-> ultimate_goal
     mingle_app_ios_notch_tap_margin_decouple -.-> ultimate_goal
+    mingle_app_tts_front_wait_timeout_fix_and_queue_utils_tests -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
     vercel_app_landing_main_branch_deploy_gate -.-> ultimate_goal
     vercel_deployment_enabled_double_star_pattern_fix -.-> ultimate_goal
@@ -1105,7 +1110,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_tts_utterance_id_queue_timeout_rebalance
+        mingle_app_tts_front_wait_timeout_fix_and_queue_utils_tests
     end
 
     %% === STYLES ===
@@ -1367,10 +1372,11 @@ flowchart TD
     style mingle_app_tdd_main_push_direct_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_nonstraight_main_merge_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tts_utterance_id_queue_timeout_rebalance fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tts_utterance_id_queue_timeout_rebalance fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_notch_tap_margin_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_front_wait_timeout_fix_and_queue_utils_tests fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
     style vercel_app_landing_main_branch_deploy_gate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deployment_enabled_double_star_pattern_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
