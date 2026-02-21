@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_rn_ios_device_build_install
+    %% @lastActive: mingle_app_ios_appstore_readiness_audit
 
     %% === START ===
     %% @project_start [start, closed]
@@ -646,6 +646,12 @@ flowchart TD
     %% @mingle_app_rn_ios_device_build_install [ai-task, closed, 2026-02-21, ai]
     mingle_app_rn_ios_device_build_install("RN iPhone 빌드/설치 완료<br/><sub>연결된 Royce의 iPhone(14) 대상으로<br/>pnpm rn:ios --no-packager 경로에서<br/>xcodebuild Debug 빌드 후 앱 설치/실행까지<br/>CLI 단독 플로우를 재검증 완료</sub>")
 
+    %% @mingle_app_ios_appstore_readiness_audit [ai-task, closed, 2026-02-21, ai]
+    mingle_app_ios_appstore_readiness_audit("iOS App Store 제출 준비도 점검<br/><sub>main 기준 RN 의존성/Pods 동기화 후<br/>Release(iphoneos) 빌드 성공을 재확인하고<br/>Info.plist의 빈 위치 권한 문구를 제거해<br/>리뷰 리젝 가능성이 큰 설정 리스크를 정리</sub>")
+
+    %% @mingle_app_ios_appstore_submission_todo [human-task, opened, 2026-02-21, user]
+    mingle_app_ios_appstore_submission_todo("App Store 제출 실행 체크리스트<br/><sub>버전/빌드 번호 상승, 서명/프로비저닝과<br/>App Store Connect 메타데이터/프라이버시<br/>작성, TestFlight 스모크 검증까지 포함한<br/>실제 제출 전 단계별 실행 항목을 정리</sub>")
+
     %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
     mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
 
@@ -838,6 +844,8 @@ flowchart TD
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_env_only_server_url_config
     mingle_app_rn_env_only_server_url_config --> mingle_app_rn_release_about_blank_crash_fix
     mingle_app_rn_release_about_blank_crash_fix --> mingle_app_rn_ios_device_build_install
+    mingle_app_rn_ios_device_build_install --> mingle_app_ios_appstore_readiness_audit
+    mingle_app_ios_appstore_readiness_audit --> mingle_app_ios_appstore_submission_todo
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -987,10 +995,11 @@ flowchart TD
     mingle_app_rn_release_about_blank_crash_fix -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
     mingle_app_rn_ios_device_build_install -.-> ultimate_goal
+    mingle_app_ios_appstore_submission_todo -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_rn_ios_device_build_install
+        mingle_app_ios_appstore_readiness_audit
     end
 
     %% === STYLES ===
@@ -1261,7 +1270,9 @@ flowchart TD
     style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_rn_ios_device_build_install fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_rn_ios_device_build_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_appstore_submission_todo fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_ios_appstore_readiness_audit fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
