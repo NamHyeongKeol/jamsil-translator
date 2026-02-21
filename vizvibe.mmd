@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_tdd_pr_only_trigger_without_post_merge_run
+    %% @lastActive: vercel_app_landing_main_branch_deploy_gate
 
     %% === START ===
     %% @project_start [start, closed]
@@ -592,6 +592,12 @@ flowchart TD
     %% @vercel_deploy_rate_limit_blocker [blocker, opened, 2026-02-21, user]
     vercel_deploy_rate_limit_blocker("Vercel 배포 rate limit 대기<br/><sub>현재 PR commit status에서 Vercel – mingle-app/<br/>mingle-landing 체크가 배포 한도 초과로 실패해<br/>GitHub Actions는 녹색이어도 mergeable_state가<br/>unstable로 남아 대기 또는 수동 재시도가 필요</sub>")
 
+    %% @vercel_app_landing_main_branch_deploy_gate [ai-task, closed, 2026-02-21, ai]
+    vercel_app_landing_main_branch_deploy_gate("Vercel main 브랜치 배포 가드 통일<br/><sub>mingle-app과 mingle-landing vercel.json에<br/>git.deploymentEnabled(main=true, *=false)를 추가해<br/>main 이외 브랜치 커밋에서는 Vercel 배포가<br/>시도되지 않도록 공통 정책으로 맞춤</sub>")
+
+    %% @mingle_stt_railway_main_branch_deploy_setting [human-task, opened, 2026-02-21, user]
+    mingle_stt_railway_main_branch_deploy_setting("Railway mingle-stt main 브랜치 고정<br/><sub>railway.json 스키마에는 브랜치 트리거 옵션이 없어<br/>서비스 대시보드의 Connected Branch를 main으로<br/>직접 설정해야 PR 브랜치 배포 시도 자체를<br/>완전히 막을 수 있어 후속 반영이 필요</sub>")
+
     %% @mingle_app_final_duplicate_guard_experiment [ai-task, closed, 2026-02-20, ai]
     mingle_app_final_duplicate_guard_experiment("final 중복 가드 실험 브랜치 적용<br/><sub>별도 worktree/브랜치에서 동일 언어·문장 final이<br/>짧은 시간 내 재유입될 때 최근 턴과 비교해 차단하고<br/>새 발화 시작 신호(turnStartedAt)가 없을 때만 적용해<br/>정상 반복 발화 오탐을 줄이는 보수적 dedupe를 도입</sub>")
 
@@ -948,6 +954,8 @@ flowchart TD
     mingle_app_tdd_run8_green_validation --> mingle_app_live_fixture_autoskip_without_env
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_tdd_pr_only_trigger_without_post_merge_run
     mingle_app_tdd_pr_only_trigger_without_post_merge_run --> vercel_deploy_rate_limit_blocker
+    vercel_deploy_rate_limit_blocker --> vercel_app_landing_main_branch_deploy_gate
+    vercel_app_landing_main_branch_deploy_gate --> mingle_stt_railway_main_branch_deploy_setting
     mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
     mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
     mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
@@ -1012,6 +1020,8 @@ flowchart TD
     mingle_app_live_fixture_autoskip_without_env -.-> ultimate_goal
     mingle_app_tdd_pr_only_trigger_without_post_merge_run -.-> ultimate_goal
     vercel_deploy_rate_limit_blocker -.-> ultimate_goal
+    vercel_app_landing_main_branch_deploy_gate -.-> ultimate_goal
+    mingle_stt_railway_main_branch_deploy_setting -.-> ultimate_goal
     mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
     mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
     mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
@@ -1050,7 +1060,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_tdd_pr_only_trigger_without_post_merge_run
+        vercel_app_landing_main_branch_deploy_gate
     end
 
     %% === STYLES ===
@@ -1308,8 +1318,10 @@ flowchart TD
     style mingle_app_tdd_live_ci_node20_websocket_polyfill fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_run8_green_validation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_live_fixture_autoskip_without_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_tdd_pr_only_trigger_without_post_merge_run fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_tdd_pr_only_trigger_without_post_merge_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
+    style vercel_app_landing_main_branch_deploy_gate fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_stt_railway_main_branch_deploy_setting fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
