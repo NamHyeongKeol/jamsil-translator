@@ -16,13 +16,21 @@
 # 1) 워크트리에서 1회 초기화
 scripts/devbox init
 
-# 2) 현재 상태 확인
+# 2) 메인 워크트리 env 시드 + 의존성 설치
+scripts/devbox bootstrap
+
+# 2-b) (선택) Vault에서 env 키 동기화
+scripts/devbox bootstrap \
+  --vault-app-path secret/mingle-app/dev \
+  --vault-stt-path secret/mingle-stt/dev
+
+# 3) 현재 상태 확인
 scripts/devbox status
 
-# 3) 로컬 프로필로 서버 실행 (mingle-app + mingle-stt)
+# 4) 로컬 프로필로 서버 실행 (mingle-app + mingle-stt)
 scripts/devbox up --profile local
 
-# 4) 디바이스 프로필로 서버+ngrok 실행
+# 5) 디바이스 프로필로 서버+ngrok 실행
 scripts/devbox up --profile device
 ```
 
@@ -31,9 +39,19 @@ scripts/devbox up --profile device
 - `scripts/devbox init`
   - `.devbox.env` 생성
   - git worktree 목록 기준으로 이미 할당된 포트를 회피해 기본 포트 자동 선택
+  - 현재 워크트리 `.env.local`에 비관리 키가 없으면 main 워크트리의
+    `mingle-app/.env.local`, `mingle-stt/.env.local`을 시드
   - `mingle-app/.env.local` devbox 관리 블록 갱신
   - `mingle-stt/.env.local` 포트 블록 갱신
   - `ngrok.mobile.local.yml` 생성
+
+- `scripts/devbox bootstrap`
+  - main 워크트리의 `mingle-app/.env.local`, `mingle-stt/.env.local`을 현재 워크트리에 시드
+  - `mingle-app`, `mingle-stt` 의존성(`pnpm install`) 자동 설치
+  - 옵션으로 Vault KV 경로를 주면 해당 키를 비관리 영역에 반영
+    - `--vault-app-path <path>`
+    - `--vault-stt-path <path>`
+  - `.devbox.env`가 있으면 devbox 관리 블록 재적용
 
 - `scripts/devbox profile --profile local --host <LAN_IP>`
   - 같은 네트워크에서 실기기 직접 접속할 때 사용
@@ -45,6 +63,8 @@ scripts/devbox up --profile device
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
 
 - `scripts/devbox up --profile local|device`
+  - 시작 전에 main 워크트리 env 시드와 의존성 설치를 자동 수행
+  - 필요 시 `--vault-app-path/--vault-stt-path`로 Vault 값까지 즉시 반영 가능
   - `mingle-stt` + `mingle-app` 동시 실행
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
   - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
@@ -76,3 +96,10 @@ scripts/devbox up --profile device
 # >>> devbox managed (auto)
 # <<< devbox managed (auto)
 ```
+
+## Vault 사용 전제
+
+- `vault` CLI와 `jq`가 로컬에 설치되어 있어야 합니다.
+- `vault login` 등으로 인증이 선행되어야 합니다.
+- Vault 동기화는 devbox 관리 키(`PORT`, `NEXT_PUBLIC_SITE_URL` 등)는 덮어쓰지 않고,
+  비관리 키만 반영합니다.
