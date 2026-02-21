@@ -307,8 +307,29 @@ interface TranslateApiResult {
   ttsLanguage?: string
   ttsAudioBase64?: string
   ttsAudioMime?: string
+  ttsDeferred?: boolean
   provider?: string
   model?: string
+}
+
+interface DeferredTtsStreamPayload {
+  ttsLanguage?: string
+  ttsAudioBase64?: string
+  ttsAudioMime?: string
+}
+
+interface TranslateApiOptions {
+  signal?: AbortSignal
+  ttsLanguage?: string
+  enableTts?: boolean
+  deferTts?: boolean
+  onDeferredTts?: (payload: DeferredTtsStreamPayload) => void
+  isFinal?: boolean
+  clientMessageId?: string
+  currentTurnPreviousState?: CurrentTurnPreviousStatePayload | null
+  excludeUtteranceId?: string
+  sttDurationMs?: number
+  totalDurationMs?: number
 }
 
 interface RecentTurnContextPayload {
@@ -779,17 +800,7 @@ export default function useRealtimeSTT({
     text: string,
     sourceLanguage: string,
     targetLanguages: string[],
-    options?: {
-      signal?: AbortSignal
-      ttsLanguage?: string
-      enableTts?: boolean
-      isFinal?: boolean
-      clientMessageId?: string
-      currentTurnPreviousState?: CurrentTurnPreviousStatePayload | null
-      excludeUtteranceId?: string
-      sttDurationMs?: number
-      totalDurationMs?: number
-    },
+    options?: TranslateApiOptions,
   ): Promise<TranslateApiResult> => {
     const langs = targetLanguages.filter(l => l !== sourceLanguage)
     if (!text.trim() || langs.length === 0) return { translations: {} }
@@ -800,6 +811,7 @@ export default function useRealtimeSTT({
       sourceLanguage,
       targetLanguages: langs,
       ttsLanguage: options?.ttsLanguage || null,
+      deferTts: options?.deferTts === true,
       textLen: text.trim().length,
       hasCurrentTurnPreviousState: Boolean(options?.currentTurnPreviousState),
       hasImmediatePreviousTurn: recentTurns.length > 0,
@@ -827,7 +839,11 @@ export default function useRealtimeSTT({
       }
       const normalizedTtsLang = (options?.ttsLanguage || '').trim()
       if (normalizedTtsLang) {
-        body.tts = { language: normalizedTtsLang, enabled: options?.enableTts === true }
+        body.tts = {
+          language: normalizedTtsLang,
+          enabled: options?.enableTts === true,
+          defer: options?.deferTts === true,
+        }
       }
       const res = await fetch('/api/translate/finalize', {
         method: 'POST',
@@ -839,6 +855,121 @@ export default function useRealtimeSTT({
         logTtsDebug('translate.non_ok', { requestId, status: res.status })
         return { translations: {} }
       }
+      const contentType = res.headers.get('content-type') || ''
+      const isNdjson = contentType.includes('application/x-ndjson')
+      if (isNdjson && res.body) {
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let settled = false
+        let sawDeferredTtsEvent = false
+        let deferredTtsLanguage: string | undefined
+        let resolveResult: ((value: TranslateApiResult) => void) | null = null
+        const translationReady = new Promise<TranslateApiResult>((resolve) => {
+          resolveResult = resolve
+        })
+
+        const settleTranslation = (result: TranslateApiResult) => {
+          if (settled || !resolveResult) return
+          settled = true
+          resolveResult(result)
+        }
+
+        const emitDeferredTts = (payload: DeferredTtsStreamPayload) => {
+          if (!options?.onDeferredTts) return
+          options.onDeferredTts(payload)
+        }
+
+        const processEventLine = (line: string) => {
+          const trimmedLine = line.trim()
+          if (!trimmedLine) return
+          let parsed: Record<string, unknown>
+          try {
+            parsed = JSON.parse(trimmedLine) as Record<string, unknown>
+          } catch {
+            return
+          }
+          const type = typeof parsed.type === 'string' ? parsed.type : ''
+          if (type === 'translation') {
+            const result: TranslateApiResult = {
+              translations: (parsed.translations || {}) as Record<string, string>,
+              provider: typeof parsed.provider === 'string' ? parsed.provider : undefined,
+              model: typeof parsed.model === 'string' ? parsed.model : undefined,
+              ttsLanguage: typeof parsed.ttsLanguage === 'string' ? parsed.ttsLanguage : undefined,
+              ttsDeferred: parsed.ttsDeferred === true,
+            }
+            deferredTtsLanguage = result.ttsLanguage
+            logTtsDebug('translate.response.streaming.translation', {
+              requestId,
+              translationKeys: Object.keys(result.translations || {}),
+              ttsLanguage: result.ttsLanguage || null,
+              ttsDeferred: result.ttsDeferred === true,
+            })
+            settleTranslation(result)
+            return
+          }
+          if (type === 'tts') {
+            sawDeferredTtsEvent = true
+            const payload: DeferredTtsStreamPayload = {
+              ttsLanguage: typeof parsed.ttsLanguage === 'string'
+                ? parsed.ttsLanguage
+                : deferredTtsLanguage,
+              ttsAudioBase64: typeof parsed.ttsAudioBase64 === 'string' ? parsed.ttsAudioBase64 : undefined,
+              ttsAudioMime: typeof parsed.ttsAudioMime === 'string' ? parsed.ttsAudioMime : undefined,
+            }
+            logTtsDebug('translate.response.streaming.tts', {
+              requestId,
+              ttsLanguage: payload.ttsLanguage || null,
+              hasInlineTts: Boolean(payload.ttsAudioBase64),
+              ttsAudioLen: payload.ttsAudioBase64?.length || 0,
+            })
+            emitDeferredTts(payload)
+            return
+          }
+          if (type === 'error') {
+            logTtsDebug('translate.response.streaming.error', {
+              requestId,
+              error: typeof parsed.error === 'string' ? parsed.error : 'unknown',
+            })
+            settleTranslation({ translations: {} })
+          }
+        }
+
+        const consumeStream = async () => {
+          while (true) {
+            const { value, done } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            let newlineIndex = buffer.indexOf('\n')
+            while (newlineIndex >= 0) {
+              const line = buffer.slice(0, newlineIndex)
+              buffer = buffer.slice(newlineIndex + 1)
+              processEventLine(line)
+              newlineIndex = buffer.indexOf('\n')
+            }
+          }
+
+          buffer += decoder.decode()
+          const trailing = buffer.trim()
+          if (trailing) processEventLine(trailing)
+
+          if (!settled) {
+            settleTranslation({ translations: {} })
+          }
+          if (!sawDeferredTtsEvent && deferredTtsLanguage) {
+            emitDeferredTts({ ttsLanguage: deferredTtsLanguage })
+          }
+        }
+
+        void consumeStream().catch(() => {
+          logTtsDebug('translate.response.streaming.consume_error', { requestId })
+          if (!settled) {
+            settleTranslation({ translations: {} })
+          }
+        })
+        return await translationReady
+      }
+
       const data = await res.json()
       const ttsAudioBase64 = typeof data.ttsAudioBase64 === 'string' ? data.ttsAudioBase64 : undefined
       logTtsDebug('translate.response', {
@@ -851,6 +982,7 @@ export default function useRealtimeSTT({
       return {
         translations: (data.translations || {}) as Record<string, string>,
         ttsLanguage: typeof data.ttsLanguage === 'string' ? data.ttsLanguage : undefined,
+        ttsDeferred: data.ttsDeferred === true,
         ttsAudioBase64,
         ttsAudioMime: typeof data.ttsAudioMime === 'string' ? data.ttsAudioMime : undefined,
         provider: typeof data.provider === 'string' ? data.provider : undefined,
@@ -1157,19 +1289,41 @@ export default function useRealtimeSTT({
       onTtsRequestedRef.current?.(utteranceId, ttsTargetLang)
     }
 
+    let finalizedTranslations: Record<string, string> | null = null
+    let pendingDeferredTtsPayload: DeferredTtsStreamPayload | null = null
+    const flushDeferredTts = () => {
+      if (!pendingDeferredTtsPayload || !finalizedTranslations) return
+      handleInlineTtsFromTranslate(utteranceId, lang, {
+        translations: finalizedTranslations,
+        ttsLanguage: pendingDeferredTtsPayload.ttsLanguage,
+        ttsAudioBase64: pendingDeferredTtsPayload.ttsAudioBase64,
+        ttsAudioMime: pendingDeferredTtsPayload.ttsAudioMime,
+      })
+      pendingDeferredTtsPayload = null
+    }
+
     void translateViaApi(text, lang, effectiveTargetLanguages, {
       ttsLanguage: ttsTargetLang,
       enableTts: enableTtsRef.current,
+      deferTts: enableTtsRef.current && Boolean(ttsTargetLang),
+      onDeferredTts: (payload) => {
+        pendingDeferredTtsPayload = payload
+        flushDeferredTts()
+      },
       isFinal: true,
       clientMessageId: utteranceId,
       currentTurnPreviousState,
       excludeUtteranceId: utteranceId,
       sttDurationMs: options?.sttDurationMs,
     }).then(result => {
+      finalizedTranslations = result.translations
       if (Object.keys(result.translations).length > 0) {
         applyTranslationToUtterance(utteranceId, result.translations, seq, true)
-        handleInlineTtsFromTranslate(utteranceId, lang, result)
+        if (!result.ttsDeferred) {
+          handleInlineTtsFromTranslate(utteranceId, lang, result)
+        }
       }
+      flushDeferredTts()
 
       const translationLatencyMs = Math.max(0, Date.now() - requestStartedAt)
       const totalDurationMs = (options?.sttDurationMs ?? 0) + translationLatencyMs
@@ -1186,6 +1340,7 @@ export default function useRealtimeSTT({
         metadata: {
           reason: options?.reason || 'unknown',
           hasInlineTts: Boolean(result.ttsAudioBase64),
+          hasDeferredTts: result.ttsDeferred === true,
           singleLanguageMode: isSingleLanguageMode,
         },
         keepalive: true,

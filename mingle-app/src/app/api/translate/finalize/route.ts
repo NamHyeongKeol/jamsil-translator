@@ -93,6 +93,15 @@ function parseFinalizeTestFaultMode(value: unknown): FinalizeTestFaultMode | nul
   return null
 }
 
+function shouldDeferTts(ttsPayload: Record<string, unknown> | null): boolean {
+  if (!ttsPayload) return false
+  if (ttsPayload.defer === true) return true
+  if (typeof ttsPayload.delivery === 'string' && ttsPayload.delivery.trim().toLowerCase() === 'deferred') {
+    return true
+  }
+  return false
+}
+
 function formatSingleRecentTurnForPrompt(label: string, turn: RecentTurnContext): string {
   const ageSuffix = typeof turn.ageMs === 'number'
     ? ` (~${Math.round(turn.ageMs / 1000)}s ago)`
@@ -461,6 +470,7 @@ export async function POST(request: NextRequest) {
   const ttsLanguage = normalizeLang(typeof ttsPayload?.language === 'string' ? ttsPayload.language : '')
   const ttsVoiceId = typeof ttsPayload?.voiceId === 'string' ? ttsPayload.voiceId.trim() : ''
   const enableTts = ttsPayload?.enabled === true
+  const deferTts = shouldDeferTts(ttsPayload)
   const isFinal = body.isFinal === true
   const currentTurnPreviousState = parseCurrentTurnPreviousState(body.currentTurnPreviousState)
   const sessionKeyHint = typeof body.sessionKey === 'string' ? body.sessionKey.trim() : null
@@ -532,7 +542,80 @@ export async function POST(request: NextRequest) {
         responsePayload.usedFallbackFromPreviousState = true
       }
 
-      if (enableTts && ttsLanguage && targetLanguages.includes(ttsLanguage)) {
+      const shouldHandleTts = enableTts && ttsLanguage && targetLanguages.includes(ttsLanguage)
+
+      if (shouldHandleTts && deferTts) {
+        responsePayload.ttsDeferred = true
+        responsePayload.ttsLanguage = ttsLanguage
+        const encoder = new TextEncoder()
+        const stream = new ReadableStream<Uint8Array>({
+          async start(controller) {
+            const pushEvent = (eventPayload: Record<string, unknown>) => {
+              controller.enqueue(encoder.encode(`${JSON.stringify(eventPayload)}\n`))
+            }
+            try {
+              pushEvent({
+                type: 'translation',
+                ...responsePayload,
+              })
+
+              const ttsText = (translations[ttsLanguage] || '').trim()
+              if (ttsText) {
+                const ttsResult = await synthesizeTtsInline({
+                  text: ttsText,
+                  language: ttsLanguage,
+                  requestedVoiceId: ttsVoiceId,
+                })
+                if (ttsResult) {
+                  pushEvent({
+                    type: 'tts',
+                    ttsLanguage,
+                    ttsAudioBase64: ttsResult.audioBase64,
+                    ttsAudioMime: ttsResult.audioMime,
+                    ttsVoiceId: ttsResult.voiceId,
+                  })
+                } else {
+                  pushEvent({
+                    type: 'tts',
+                    ttsLanguage,
+                  })
+                }
+              } else {
+                pushEvent({
+                  type: 'tts',
+                  ttsLanguage,
+                })
+              }
+
+              pushEvent({ type: 'done' })
+            } catch (error) {
+              console.error('[translate/finalize] deferred_tts_stream_error', {
+                sourceLanguage,
+                targetLanguages,
+                ttsLanguage,
+                error: error instanceof Error ? error.message : String(error),
+              })
+              pushEvent({
+                type: 'error',
+                error: 'deferred_tts_stream_failed',
+              })
+            } finally {
+              controller.close()
+            }
+          },
+        })
+        const response = new NextResponse(stream, {
+          headers: {
+            'Content-Type': 'application/x-ndjson; charset=utf-8',
+            'Cache-Control': 'no-cache, no-transform',
+            'X-Accel-Buffering': 'no',
+          },
+        })
+        ensureTrackingContext(request, response, { sessionKeyHint })
+        return response
+      }
+
+      if (shouldHandleTts) {
         const ttsText = (translations[ttsLanguage] || '').trim()
         if (ttsText) {
           const ttsResult = await synthesizeTtsInline({

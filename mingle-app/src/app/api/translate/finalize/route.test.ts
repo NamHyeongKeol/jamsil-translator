@@ -127,6 +127,63 @@ describe('/api/translate/finalize route', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('streams translation first and deferred TTS later when defer flag is enabled', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => '{"ko":"안녕하세요"}',
+        usageMetadata: {
+          promptTokenCount: 5,
+          candidatesTokenCount: 7,
+          totalTokenCount: 12,
+        },
+      },
+    })
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({ voices: [{ voiceId: 'KoVoice' }] }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ))
+      .mockResolvedValueOnce(new Response(
+        JSON.stringify({
+          audioContent: `data:audio/mpeg;base64,${buildBase64Audio('mpeg')}`,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ))
+
+    vi.stubGlobal('fetch', fetchMock)
+    const POST = await importRouteWithEnv()
+
+    const res = await POST(makeJsonRequest({
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguages: ['ko'],
+      tts: {
+        enabled: true,
+        language: 'ko',
+        defer: true,
+      },
+    }) as never)
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('application/x-ndjson')
+
+    const lines = (await res.text())
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+
+    expect(lines[0]?.type).toBe('translation')
+    expect(lines[0]?.translations).toEqual({ ko: '안녕하세요' })
+    expect(lines[0]?.ttsDeferred).toBe(true)
+    expect(lines[0]?.ttsLanguage).toBe('ko')
+    expect(lines[1]?.type).toBe('tts')
+    expect(lines[1]?.ttsLanguage).toBe('ko')
+    expect(typeof lines[1]?.ttsAudioBase64).toBe('string')
+    expect(lines[2]?.type).toBe('done')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it('uses previous-state fallback when provider returns empty response', async () => {
     mockGenerateContent.mockResolvedValue({
       response: {

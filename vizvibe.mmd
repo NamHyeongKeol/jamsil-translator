@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_finalize_immediate_prev_turn_context_boost
+    %% @lastActive: mingle_app_finalize_streaming_translation_then_tts
 
     %% === START ===
     %% @project_start [start, closed]
@@ -520,6 +520,9 @@ flowchart TD
     %% @mingle_app_finalize_immediate_prev_turn_context_boost [ai-task, closed, 2026-02-20, ai]
     mingle_app_finalize_immediate_prev_turn_context_boost("Finalize 직전턴 컨텍스트 강화<br/><sub>recentTurns에 isFinalized와 직전턴 필드를 추가해<br/>확정/미확정 문맥 신뢰도를 프롬프트에서 구분하고<br/>현재턴>동일턴직전상태>직전턴>기타최근턴 순서로<br/>의역 규칙을 재강화해 잘게 분할된 턴 번역을 보강</sub>")
 
+    %% @mingle_app_finalize_streaming_translation_then_tts [ai-task, closed, 2026-02-21, ai]
+    mingle_app_finalize_streaming_translation_then_tts("Finalize 응답 스트리밍 분리 적용<br/><sub>/api/translate/finalize에 NDJSON 스트림 경로를 추가해<br/>번역 이벤트(type=translation)를 먼저 즉시 내려보내고<br/>동일 요청에서 TTS 이벤트(type=tts)를 후속 전달하도록<br/>클라 훅에 defer 플래그/스트림 파서를 연동해 순차 반영</sub>")
+
     %% @mingle_app_translation_bubble_target_snapshot_policy [ai-task, closed, 2026-02-19, ai]
     mingle_app_translation_bubble_target_snapshot_policy("번역 버블 언어 스냅샷 정책 적용<br/><sub>언어 추가/제거가 과거 메시지 버블을 바꾸지 않도록<br/>턴 생성 시점 targetLanguages를 utterance에 스냅샷 저장하고<br/>ChatBubble은 selectedLanguages 대신 utterance 메타데이터로 렌더해<br/>localStorage에 남은 기존 번역 버블도 그대로 유지되게 고정</sub>")
 
@@ -869,6 +872,7 @@ flowchart TD
     mingle_app_stt_leading_noise_chars_expand --> mingle_app_finalize_prompt_minify_for_structured_output
     mingle_app_finalize_prompt_minify_for_structured_output --> mingle_app_recent_turn_context_source_lang_filter_fix
     mingle_app_recent_turn_context_source_lang_filter_fix --> mingle_app_finalize_immediate_prev_turn_context_boost
+    mingle_app_finalize_immediate_prev_turn_context_boost --> mingle_app_finalize_streaming_translation_then_tts
     mingle_app_recent_turn_context_source_lang_filter_fix --> mingle_app_translation_bubble_target_snapshot_policy
     mingle_app_translation_bubble_target_snapshot_policy --> mingle_app_turbopack_root_tailwind_resolution_fix
     mingle_app_turbopack_root_tailwind_resolution_fix --> mingle_app_chat_scroll_overlay_and_threshold_tuning
@@ -934,6 +938,7 @@ flowchart TD
     mingle_app_finalize_prompt_minify_for_structured_output -.-> ultimate_goal
     mingle_app_recent_turn_context_source_lang_filter_fix -.-> ultimate_goal
     mingle_app_finalize_immediate_prev_turn_context_boost -.-> ultimate_goal
+    mingle_app_finalize_streaming_translation_then_tts -.-> ultimate_goal
     mingle_app_translation_bubble_target_snapshot_policy -.-> ultimate_goal
     mingle_app_turbopack_root_tailwind_resolution_fix -.-> ultimate_goal
     mingle_app_chat_scroll_overlay_and_threshold_tuning -.-> ultimate_goal
@@ -990,7 +995,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_finalize_immediate_prev_turn_context_boost
+        mingle_app_finalize_streaming_translation_then_tts
     end
 
     %% === STYLES ===
@@ -1261,7 +1266,8 @@ flowchart TD
     style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_finalize_immediate_prev_turn_context_boost fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_finalize_streaming_translation_then_tts fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
