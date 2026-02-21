@@ -205,7 +205,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     if (typeof window === 'undefined') return false
     return isNativeUiBridgeEnabledFromSearch(window.location.search || '')
   })
-  const [isIosTopTapEnabled] = useState(() => isLikelyIOSPlatform() && !isNativeUiBridgeEnabled)
+  const [isIosTopTapEnabled] = useState(() => isLikelyIOSPlatform())
 
 
   // Persist selected languages

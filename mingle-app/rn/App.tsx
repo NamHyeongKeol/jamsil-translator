@@ -149,9 +149,10 @@ function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
   const numeric = typeof rawStatusBarHeight === 'number'
     ? rawStatusBarHeight
     : Number(rawStatusBarHeight);
-  if (!Number.isFinite(numeric) || numeric <= 0) return 24;
-  // Match the measured status bar region only.
-  return Math.max(20, Math.min(64, Math.ceil(numeric)));
+  if (!Number.isFinite(numeric) || numeric <= 0) return 36;
+  // Keep status-bar tap while also covering the top header inset margin.
+  const expanded = Math.ceil(numeric) + 20;
+  return Math.max(36, Math.min(76, expanded));
 }
 
 function resolveLocaleSegment(): string {
