@@ -80,6 +80,13 @@ URL override (optional):
 - 예: `https://your-app/ko?apiNamespace=mobile/ios/v1`
 - 허용되지 않은 값은 무시되고 env/default를 사용합니다.
 
+Contract test commands:
+
+```bash
+# API namespace allow-list + route wiring
+pnpm test:unit -- src/lib/api-contract.test.ts src/app/api/namespace-routing.contract.test.ts src/lib/rn-api-namespace.test.ts
+```
+
 Fixture scan behavior:
 
 - 폴더 내 파일명은 자유입니다.

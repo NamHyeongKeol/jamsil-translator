@@ -22,6 +22,7 @@ import {
   playNativeTts,
   stopNativeTts,
 } from './src/nativeTts';
+import { validateRnApiNamespace } from './src/apiNamespace';
 
 type RuntimeEnvMap = Record<string, string | undefined>;
 
@@ -59,19 +60,7 @@ function resolveConfiguredUrl(
   }
 }
 
-function normalizeApiNamespace(raw: string): string {
-  return raw.trim().replace(/^\/+/, '').replace(/\/+$/, '')
-}
-
 const RN_RUNTIME_OS = Platform.OS;
-const EXPECTED_API_NAMESPACE_BY_OS: Record<'ios' | 'android', string> = {
-  ios: 'mobile/ios/v1',
-  android: 'mobile/android/v1',
-};
-const EXPECTED_API_NAMESPACE =
-  RN_RUNTIME_OS === 'ios' || RN_RUNTIME_OS === 'android'
-    ? EXPECTED_API_NAMESPACE_BY_OS[RN_RUNTIME_OS]
-    : '';
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
   ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
   ['http:', 'https:'],
@@ -81,13 +70,14 @@ const DEFAULT_WS_URL = resolveConfiguredUrl(
   ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
   ['ws:', 'wss:'],
 ) || 'wss://mingle.up.railway.app';
-const CONFIGURED_API_NAMESPACE = normalizeApiNamespace(readRuntimeEnvValue(['RN_API_NAMESPACE']));
-const VALIDATED_API_NAMESPACE =
-  CONFIGURED_API_NAMESPACE &&
-  EXPECTED_API_NAMESPACE &&
-  CONFIGURED_API_NAMESPACE === EXPECTED_API_NAMESPACE
-    ? CONFIGURED_API_NAMESPACE
-    : '';
+const {
+  expectedApiNamespace: EXPECTED_API_NAMESPACE,
+  configuredApiNamespace: CONFIGURED_API_NAMESPACE,
+  validatedApiNamespace: VALIDATED_API_NAMESPACE,
+} = validateRnApiNamespace({
+  runtimeOs: RN_RUNTIME_OS,
+  configuredApiNamespace: readRuntimeEnvValue(['RN_API_NAMESPACE']),
+});
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {

@@ -1,10 +1,10 @@
 This is the `mingle-app/rn` React Native workspace.
 
 - Root scripts (from `/Users/nam/mingle/mingle-app`):
-  - `pnpm rn:install`
-  - `pnpm rn:pods`
-  - `pnpm rn:start`
-  - `pnpm rn:ios`
+- `pnpm rn:install`
+- `pnpm rn:pods`
+- `pnpm rn:start`
+- `pnpm rn:ios`
 
 RN 앱은 아래 env를 필요로 합니다.
 

@@ -46,3 +46,17 @@ pnpm --dir mingle-landing build:release:web
   1. 1주: 로그에서 legacy 호출 0건 확인
   2. 2주: legacy route에 299 deprecation header 추가
   3. 3주: legacy route 제거
+
+## 6) Contract Test Coverage
+
+- app:
+  - `src/lib/api-contract.test.ts` (allow-list + override guard)
+  - `src/app/api/namespace-routing.contract.test.ts` (legacy/web/mobile 라우트 매핑)
+- landing:
+  - `lib/api-contract.test.ts`
+  - `app/api/namespace-routing.contract.test.ts`
+- rn:
+  - `src/lib/rn-api-namespace.test.ts` (`rn/src/apiNamespace.ts` 검증)
+- CI:
+  - `.github/workflows/namespace-contract-tests.yml`
+  - app namespace matrix: `web/app/v1`, `mobile/ios/v1`, `mobile/android/v1`

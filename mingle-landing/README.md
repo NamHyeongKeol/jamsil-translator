@@ -85,6 +85,12 @@ Release build command:
 pnpm build:release:web
 ```
 
+Contract test commands:
+
+```bash
+pnpm test -- lib/api-contract.test.ts app/api/namespace-routing.contract.test.ts
+```
+
 URL override (optional):
 
 - 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)는 allow-list 값만 반영됩니다.
