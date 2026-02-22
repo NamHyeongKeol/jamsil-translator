@@ -128,13 +128,6 @@ wss.on('connection', (clientWs) => {
             return;
         }
 
-        if (!sonioxSawSpeechInCurrentSegment && sonioxHasPendingTranscript) {
-            // iOS 웹에서 AEC off 상태는 RMS가 매우 낮아도 partial transcript가 쌓일 수 있다.
-            // 이 경우 텍스트 진행 자체를 "발화 진행"으로 간주해 finalize 게이트를 열어준다.
-            sonioxSawSpeechInCurrentSegment = true;
-            sonioxTrailingSilenceMs = 0;
-        }
-
         if (!sonioxSawSpeechInCurrentSegment) return;
         if (sonioxManualFinalizeSent) return;
 
