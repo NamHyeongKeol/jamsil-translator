@@ -24,8 +24,6 @@ import {
 
 const VOLUME_THRESHOLD = 0.05
 const LS_KEY_LANGUAGES = 'mingle_demo_languages'
-const DEFAULT_SELECTED_LANGUAGES = ['en', 'ko', 'ja']
-const MAX_SELECTED_LANGUAGES = 5
 const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='
 // Boost factor applied to TTS playback while STT is active.
 // iOS .playAndRecord reduces speaker output; this compensates in software.
@@ -119,28 +117,6 @@ const FLAG_MAP: Record<string, string> = {
   hi: '🇮🇳', th: '🇹🇭', vi: '🇻🇳', it: '🇮🇹', id: '🇮🇩',
   tr: '🇹🇷', pl: '🇵🇱', nl: '🇳🇱', sv: '🇸🇪', ms: '🇲🇾',
 }
-const SUPPORTED_LANGUAGE_CODES = new Set(Object.keys(FLAG_MAP))
-
-function normalizeLanguageCode(rawLanguage: string): string {
-  return (rawLanguage || '').trim().replace('_', '-').toLowerCase().split('-')[0] || ''
-}
-
-function sanitizeSelectedLanguages(raw: unknown): string[] {
-  const source = Array.isArray(raw) ? raw : []
-  const selected: string[] = []
-  const seen = new Set<string>()
-
-  for (const item of source) {
-    if (typeof item !== 'string') continue
-    const normalized = normalizeLanguageCode(item)
-    if (!normalized || !SUPPORTED_LANGUAGE_CODES.has(normalized) || seen.has(normalized)) continue
-    seen.add(normalized)
-    selected.push(normalized)
-    if (selected.length >= MAX_SELECTED_LANGUAGES) break
-  }
-
-  return selected.length > 0 ? selected : [...DEFAULT_SELECTED_LANGUAGES]
-}
 
 export interface LivePhoneDemoRef {
   startRecording: () => void
@@ -200,12 +176,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   unmuteTtsLabel,
 }, ref) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return [...DEFAULT_SELECTED_LANGUAGES]
+    if (typeof window === 'undefined') return ['en', 'ko', 'ja']
     try {
       const stored = localStorage.getItem(LS_KEY_LANGUAGES)
-      if (!stored) return [...DEFAULT_SELECTED_LANGUAGES]
-      return sanitizeSelectedLanguages(JSON.parse(stored))
-    } catch { return [...DEFAULT_SELECTED_LANGUAGES] }
+      return stored ? JSON.parse(stored) : ['en', 'ko', 'ja']
+    } catch { return ['en', 'ko', 'ja'] }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const { ttsEnabled: isSoundEnabled, setTtsEnabled: setIsSoundEnabled, aecEnabled, setAecEnabled } = useTtsSettings()
@@ -810,13 +785,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [forceStopTtsPlayback])
 
   const handleToggleLanguage = useCallback((code: string) => {
-    const normalized = normalizeLanguageCode(code)
-    if (!normalized || !SUPPORTED_LANGUAGE_CODES.has(normalized)) return
     setSelectedLanguages(prev => {
-      if (prev.includes(normalized)) {
-        return prev.filter(c => c !== normalized)
+      if (prev.includes(code)) {
+        return prev.filter(c => c !== code)
       }
-      return [...prev, normalized]
+      return [...prev, code]
     })
   }, [])
 
@@ -1065,29 +1038,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   // Determine target languages for bouncing dots during partial transcript
   const detectedLang = partialLang || (utterances.length > 0 ? utterances[utterances.length - 1].originalLang : null)
-  const detectedLangNorm = normalizeLanguageCode(detectedLang || '')
-  const partialTranslationByNorm = new Map<string, string>()
-  for (const [rawLang, rawText] of Object.entries(partialTranslations)) {
-    const normalized = normalizeLanguageCode(rawLang)
-    const text = (rawText || '').trim()
-    if (!normalized || !text || partialTranslationByNorm.has(normalized)) continue
-    partialTranslationByNorm.set(normalized, text)
-  }
   const pendingPartialLangs = partialTranscript
-    ? selectedLanguages.filter((language) => {
-      const normalized = normalizeLanguageCode(language)
-      if (!normalized || normalized === detectedLangNorm) return false
-      return !partialTranslationByNorm.has(normalized)
-    })
+    ? selectedLanguages.filter(l => l !== detectedLang && !partialTranslations[l])
     : []
   const availablePartialTranslations = partialTranscript
-    ? selectedLanguages.flatMap((language) => {
-      const normalized = normalizeLanguageCode(language)
-      if (!normalized || normalized === detectedLangNorm) return []
-      const text = partialTranslationByNorm.get(normalized)
-      if (!text) return []
-      return [[language, text] as [string, string]]
-    })
+    ? Object.entries(partialTranslations).filter(([lang]) => selectedLanguages.includes(lang) && lang !== detectedLang)
     : []
 
   const isUsageLimited = typeof usageLimitSec === 'number'
