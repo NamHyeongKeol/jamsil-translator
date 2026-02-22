@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix
+    %% @lastActive: mingle_app_ios_runtime_ws_url_normalization_guard
 
     %% === START ===
     %% @project_start [start, closed]
@@ -742,6 +742,9 @@ flowchart TD
     %% @mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix [ai-task, closed, 2026-02-23, ai]
     mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix("devbox iOS URL 주석 파싱 크래시 수정<br/><sub>xcconfig의 URL을 scheme+host 키로 분리해<br/>// 주석 파싱으로 값이 잘리던 경로를 제거하고<br/>Native 모듈이 scheme/host를 합성한 URL을<br/>비동기 getRuntimeConfig로 JS에 전달해 초기 로드 보강</sub>")
 
+    %% @mingle_app_ios_runtime_ws_url_normalization_guard [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_runtime_ws_url_normalization_guard("iOS WS 런타임 URL 정규화 가드<br/><sub>Info.plist 값에 이중 따옴표/이스케이프가 섞여도<br/>Native/JS 양쪽에서 URL 후보를 정규화해<br/>ws 런타임 값이 누락으로 판정되는 경로를 막고<br/>WebView 오류 오버레이 재노출을 방지</sub>")
+
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
 
@@ -942,6 +945,7 @@ flowchart TD
     mingle_app_rn_env_only_server_url_config --> mingle_app_rn_release_about_blank_crash_fix
     mingle_app_rn_release_about_blank_crash_fix --> mingle_app_ios_runtime_config_xcconfig_bridge
     mingle_app_ios_runtime_config_xcconfig_bridge --> mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix
+    mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix --> mingle_app_ios_runtime_ws_url_normalization_guard
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -1159,11 +1163,12 @@ flowchart TD
     mingle_app_rn_release_about_blank_crash_fix -.-> ultimate_goal
     mingle_app_ios_runtime_config_xcconfig_bridge -.-> ultimate_goal
     mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix -.-> ultimate_goal
+    mingle_app_ios_runtime_ws_url_normalization_guard -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix
+        mingle_app_ios_runtime_ws_url_normalization_guard
     end
 
     %% === STYLES ===
@@ -1466,7 +1471,8 @@ flowchart TD
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_runtime_config_xcconfig_bridge fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_runtime_ws_url_normalization_guard fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

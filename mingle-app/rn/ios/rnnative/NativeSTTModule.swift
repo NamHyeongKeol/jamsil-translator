@@ -245,10 +245,11 @@ class NativeSTTModule: RCTEventEmitter {
             return ""
         }
         var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if value.hasPrefix("\""), value.hasSuffix("\""), value.count >= 2 {
+        while value.hasPrefix("\""), value.hasSuffix("\""), value.count >= 2 {
             value = String(value.dropFirst().dropLast())
         }
         value = value.replacingOccurrences(of: "\\/", with: "/")
+        value = value.replacingOccurrences(of: "\\\"", with: "\"")
         value = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if value.isEmpty || value.hasPrefix("$(") {
             return ""
@@ -264,9 +265,27 @@ class NativeSTTModule: RCTEventEmitter {
         let scheme = Self.readRuntimeConfigValue(schemeKey)
         let host = Self.readRuntimeConfigValue(hostKey)
         if !scheme.isEmpty && !host.isEmpty {
-            return "\(scheme)://\(host)"
+            let combined = "\(scheme)://\(host)"
+            if let parsed = URLComponents(string: combined),
+               let parsedScheme = parsed.scheme,
+               let parsedHost = parsed.host,
+               !parsedScheme.isEmpty,
+               !parsedHost.isEmpty {
+                return combined
+            }
         }
-        return Self.readRuntimeConfigValue(legacyKey)
+        let legacy = Self.readRuntimeConfigValue(legacyKey)
+        if legacy.isEmpty {
+            return ""
+        }
+        if let parsed = URLComponents(string: legacy),
+           let parsedScheme = parsed.scheme,
+           let parsedHost = parsed.host,
+           !parsedScheme.isEmpty,
+           !parsedHost.isEmpty {
+            return legacy
+        }
+        return ""
     }
 
     override func constantsToExport() -> [AnyHashable: Any]! {

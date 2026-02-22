@@ -76,6 +76,14 @@ function readNativeRuntimeValue(
   return '';
 }
 
+function normalizeRuntimeUrlCandidate(raw: string): string {
+  let value = raw.trim();
+  while (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+    value = value.slice(1, -1).trim();
+  }
+  return value.replace(/\\\//g, '/').trim();
+}
+
 function resolveConfiguredUrl(
   sources: {
     nativeKeys?: Array<keyof NativeRuntimeConfig>;
@@ -87,16 +95,17 @@ function resolveConfiguredUrl(
 ): string {
   const raw = readNativeRuntimeValue(sources.nativeKeys || [], runtimeConfig)
     || readRuntimeEnvValue(sources.envKeys || []);
-  if (!raw) return '';
+  const normalizedRaw = raw ? normalizeRuntimeUrlCandidate(raw) : '';
+  if (!normalizedRaw) return '';
 
   try {
-    const parsed = new URL(raw);
+    const parsed = new URL(normalizedRaw);
     if (!allowedProtocols.includes(parsed.protocol)) return '';
     if (!parsed.hostname) return '';
     if (options?.trimTrailingSlash) {
-      return raw.replace(/\/+$/, '');
+      return normalizedRaw.replace(/\/+$/, '');
     }
-    return raw;
+    return normalizedRaw;
   } catch {
     return '';
   }
