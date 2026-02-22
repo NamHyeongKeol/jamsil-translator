@@ -32,7 +32,6 @@ const SONIOX_SILENCE_RMS_THRESHOLD = (() => {
     if (!Number.isFinite(raw)) return 0.008;
     return Math.max(0.001, Math.min(0.05, raw));
 })();
-const SONIOX_FINALIZE_DEBUG_ENABLED = process.env.SONIOX_FINALIZE_DEBUG === '1';
 
 const server = createServer();
 const wss = new WebSocketServer({ server });
@@ -69,23 +68,6 @@ wss.on('connection', (clientWs) => {
     let sonioxTrailingSilenceMs = 0;
     let sonioxManualFinalizeSent = false;
     let sonioxLastManualFinalizeAtMs = 0;
-    let sonioxFinalizeDebugSeq = 0;
-    let sonioxLastRmsDebugAtMs = 0;
-    let sonioxLastSilentDebugAtMs = 0;
-    let sonioxLastBlockReason = '';
-
-    const logSonioxFinalizeDebug = (
-        event: string,
-        payload?: Record<string, unknown>,
-    ) => {
-        if (!SONIOX_FINALIZE_DEBUG_ENABLED) return;
-        sonioxFinalizeDebugSeq += 1;
-        if (payload) {
-            console.log(`[conn:${connId}] [soniox-finalize-debug:${sonioxFinalizeDebugSeq}] ${event}`, payload);
-            return;
-        }
-        console.log(`[conn:${connId}] [soniox-finalize-debug:${sonioxFinalizeDebugSeq}] ${event}`);
-    };
 
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
@@ -121,7 +103,6 @@ wss.on('connection', (clientWs) => {
         sonioxTrailingSilenceMs = 0;
         sonioxManualFinalizeSent = false;
         sonioxLastManualFinalizeAtMs = 0;
-        sonioxLastBlockReason = '';
     };
 
     const maybeTriggerSonioxManualFinalize = (pcmData: Buffer) => {
@@ -141,95 +122,26 @@ wss.on('connection', (clientWs) => {
         const chunkDurationMs = (sampleCount / sonioxSampleRate) * 1000;
         if (!Number.isFinite(chunkDurationMs) || chunkDurationMs <= 0) return;
 
-        if (SONIOX_FINALIZE_DEBUG_ENABLED) {
-            const now = Date.now();
-            if ((now - sonioxLastRmsDebugAtMs) >= 1200) {
-                sonioxLastRmsDebugAtMs = now;
-                logSonioxFinalizeDebug('pcm_snapshot', {
-                    rms,
-                    threshold: SONIOX_SILENCE_RMS_THRESHOLD,
-                    chunkDurationMs,
-                    sawSpeech: sonioxSawSpeechInCurrentSegment,
-                    pendingTranscript: sonioxHasPendingTranscript,
-                    manualFinalizeSent: sonioxManualFinalizeSent,
-                    trailingSilenceMs: sonioxTrailingSilenceMs,
-                    cooldownRemainingMs: Math.max(
-                        0,
-                        SONIOX_MANUAL_FINALIZE_COOLDOWN_MS - (now - sonioxLastManualFinalizeAtMs),
-                    ),
-                });
-            }
-        }
-
         if (rms >= SONIOX_SILENCE_RMS_THRESHOLD) {
-            if (!sonioxSawSpeechInCurrentSegment) {
-                logSonioxFinalizeDebug('speech_detected', { rms });
-            }
             sonioxSawSpeechInCurrentSegment = true;
             sonioxTrailingSilenceMs = 0;
             return;
         }
 
-        if (!sonioxSawSpeechInCurrentSegment) {
-            if (sonioxLastBlockReason !== 'no_speech_seen') {
-                sonioxLastBlockReason = 'no_speech_seen';
-                logSonioxFinalizeDebug('blocked_no_speech_seen', { rms });
-            }
-            return;
-        }
-        if (sonioxManualFinalizeSent) {
-            if (sonioxLastBlockReason !== 'manual_finalize_already_sent') {
-                sonioxLastBlockReason = 'manual_finalize_already_sent';
-                logSonioxFinalizeDebug('blocked_manual_finalize_already_sent');
-            }
-            return;
-        }
+        if (!sonioxSawSpeechInCurrentSegment) return;
+        if (sonioxManualFinalizeSent) return;
 
         sonioxTrailingSilenceMs += chunkDurationMs;
-        if (sonioxTrailingSilenceMs < SONIOX_MANUAL_FINALIZE_SILENCE_MS) {
-            if (SONIOX_FINALIZE_DEBUG_ENABLED) {
-                const now = Date.now();
-                if ((now - sonioxLastSilentDebugAtMs) >= 1200) {
-                    sonioxLastSilentDebugAtMs = now;
-                    logSonioxFinalizeDebug('waiting_silence_window', {
-                        trailingSilenceMs: sonioxTrailingSilenceMs,
-                        requiredSilenceMs: SONIOX_MANUAL_FINALIZE_SILENCE_MS,
-                    });
-                }
-            }
-            return;
-        }
-        if (!sonioxHasPendingTranscript) {
-            if (sonioxLastBlockReason !== 'no_pending_transcript') {
-                sonioxLastBlockReason = 'no_pending_transcript';
-                logSonioxFinalizeDebug('blocked_no_pending_transcript', {
-                    trailingSilenceMs: sonioxTrailingSilenceMs,
-                });
-            }
-            return;
-        }
+        if (sonioxTrailingSilenceMs < SONIOX_MANUAL_FINALIZE_SILENCE_MS) return;
+        if (!sonioxHasPendingTranscript) return;
         const now = Date.now();
-        if ((now - sonioxLastManualFinalizeAtMs) < SONIOX_MANUAL_FINALIZE_COOLDOWN_MS) {
-            if (sonioxLastBlockReason !== 'cooldown') {
-                sonioxLastBlockReason = 'cooldown';
-                logSonioxFinalizeDebug('blocked_cooldown', {
-                    cooldownRemainingMs: SONIOX_MANUAL_FINALIZE_COOLDOWN_MS - (now - sonioxLastManualFinalizeAtMs),
-                });
-            }
-            return;
-        }
+        if ((now - sonioxLastManualFinalizeAtMs) < SONIOX_MANUAL_FINALIZE_COOLDOWN_MS) return;
 
         try {
-            logSonioxFinalizeDebug('send_finalize', {
-                trailingSilenceMs: sonioxTrailingSilenceMs,
-                sawSpeech: sonioxSawSpeechInCurrentSegment,
-                pendingTranscript: sonioxHasPendingTranscript,
-            });
             sttWs.send(JSON.stringify({ type: 'finalize' }));
             sonioxManualFinalizeSent = true;
             sonioxTrailingSilenceMs = 0;
             sonioxLastManualFinalizeAtMs = now;
-            sonioxLastBlockReason = '';
         } catch (error) {
             console.error('Soniox manual finalize send failed:', error);
         }
@@ -905,28 +817,13 @@ wss.on('connection', (clientWs) => {
                     }
 
                     const mergedSnapshot = composeTurnText(finalizedText, latestNonFinalText);
-                    const previousPendingTranscriptState = sonioxHasPendingTranscript;
                     sonioxHasPendingTranscript = mergedSnapshot.length > 0
                         && !(latestNonFinalIsProvisionalCarry && !finalizedText.trim());
-                    if (previousPendingTranscriptState !== sonioxHasPendingTranscript) {
-                        logSonioxFinalizeDebug('pending_transcript_changed', {
-                            previous: previousPendingTranscriptState,
-                            next: sonioxHasPendingTranscript,
-                            mergedSnapshotLength: mergedSnapshot.length,
-                            provisionalCarry: latestNonFinalIsProvisionalCarry,
-                            finalizedLength: finalizedText.trim().length,
-                        });
-                        sonioxLastBlockReason = '';
-                    }
                     const transcriptProgressed = finalizedText !== previousFinalizedText
                         || (latestNonFinalText !== previousNonFinalText && latestNonFinalText.length > 0);
                     if (transcriptProgressed) {
                         // Allow another manual finalize only when transcript actually progressed.
-                        if (sonioxManualFinalizeSent) {
-                            logSonioxFinalizeDebug('reset_manual_finalize_gate_on_progress');
-                        }
                         sonioxManualFinalizeSent = false;
-                        sonioxLastBlockReason = '';
                     }
 
                     // 발화 완료 판단:
