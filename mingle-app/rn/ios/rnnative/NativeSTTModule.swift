@@ -240,6 +240,26 @@ class NativeSTTModule: RCTEventEmitter {
         false
     }
 
+    private static func readRuntimeConfigValue(_ key: String) -> String {
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String else {
+            return ""
+        }
+        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.isEmpty || value.hasPrefix("$(") {
+            return ""
+        }
+        return value
+    }
+
+    override func constantsToExport() -> [AnyHashable: Any]! {
+        return [
+            "runtimeConfig": [
+                "webAppBaseUrl": Self.readRuntimeConfigValue("MingleWebAppBaseURL"),
+                "defaultWsUrl": Self.readRuntimeConfigValue("MingleDefaultWsURL"),
+            ],
+        ]
+    }
+
     override func supportedEvents() -> [String]! {
         ["status", "message", "error", "close"]
     }

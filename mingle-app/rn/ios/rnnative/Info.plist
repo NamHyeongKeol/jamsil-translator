@@ -35,6 +35,10 @@
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Mingle uses your microphone for real-time speech translation.</string>
+	<key>MingleWebAppBaseURL</key>
+	<string>$(MINGLE_WEB_APP_BASE_URL)</string>
+	<key>MingleDefaultWsURL</key>
+	<string>$(MINGLE_DEFAULT_WS_URL)</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIBackgroundModes</key>

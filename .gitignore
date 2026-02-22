@@ -36,6 +36,7 @@ yarn-error.log*
 .devbox.env
 ngrok.mobile.local.yml
 .devbox-cache/
+mingle-app/rn/ios/devbox.runtime.xcconfig
 
 # vercel
 .vercel

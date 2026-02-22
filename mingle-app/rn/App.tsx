@@ -26,6 +26,21 @@ import {
 } from './src/nativeTts';
 
 type RuntimeEnvMap = Record<string, string | undefined>;
+type NativeRuntimeConfig = {
+  webAppBaseUrl?: string;
+  defaultWsUrl?: string;
+};
+
+function readNativeRuntimeConfig(): NativeRuntimeConfig {
+  const nativeSttModule = NativeModules.NativeSTTModule as
+    | { runtimeConfig?: NativeRuntimeConfig }
+    | undefined;
+  const runtimeConfig = nativeSttModule?.runtimeConfig;
+  if (!runtimeConfig || typeof runtimeConfig !== 'object') {
+    return {};
+  }
+  return runtimeConfig;
+}
 
 function readRuntimeEnvValue(keys: string[]): string {
   const env = (globalThis as { process?: { env?: RuntimeEnvMap } }).process?.env;
@@ -41,12 +56,27 @@ function readRuntimeEnvValue(keys: string[]): string {
   return '';
 }
 
+function readNativeRuntimeValue(keys: Array<keyof NativeRuntimeConfig>): string {
+  const runtimeConfig = readNativeRuntimeConfig();
+  for (const key of keys) {
+    const value = runtimeConfig[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
 function resolveConfiguredUrl(
-  keys: string[],
+  sources: {
+    nativeKeys?: Array<keyof NativeRuntimeConfig>;
+    envKeys?: string[];
+  },
   allowedProtocols: string[],
   options?: { trimTrailingSlash?: boolean },
 ): string {
-  const raw = readRuntimeEnvValue(keys);
+  const raw = readNativeRuntimeValue(sources.nativeKeys || [])
+    || readRuntimeEnvValue(sources.envKeys || []);
   if (!raw) return '';
 
   try {
@@ -62,24 +92,30 @@ function resolveConfiguredUrl(
 }
 
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
-  ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
+  {
+    nativeKeys: ['webAppBaseUrl'],
+    envKeys: ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
+  },
   ['http:', 'https:'],
   { trimTrailingSlash: true },
-) || 'https://mingle-app-xi.vercel.app';
+);
 const DEFAULT_WS_URL = resolveConfiguredUrl(
-  ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
+  {
+    nativeKeys: ['defaultWsUrl'],
+    envKeys: ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
+  },
   ['ws:', 'wss:'],
-) || 'wss://mingle.up.railway.app';
+);
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {
-  missingRuntimeConfig.push('RN_WEB_APP_BASE_URL (or NEXT_PUBLIC_SITE_URL)');
+  missingRuntimeConfig.push('MingleWebAppBaseURL(Info.plist) or RN_WEB_APP_BASE_URL');
 }
 if (!DEFAULT_WS_URL) {
-  missingRuntimeConfig.push('RN_DEFAULT_WS_URL (or NEXT_PUBLIC_WS_URL)');
+  missingRuntimeConfig.push('MingleDefaultWsURL(Info.plist) or RN_DEFAULT_WS_URL');
 }
 const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
-  ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}`
+  ? `Missing or invalid runtime config: ${missingRuntimeConfig.join(', ')}`
   : null;
 
 const NATIVE_STT_EVENT = 'mingle:native-stt';
@@ -251,7 +287,7 @@ function App(): React.JSX.Element {
 
     const payloadWsUrl = typeof payload?.wsUrl === 'string' ? payload.wsUrl.trim() : '';
     if (!payloadWsUrl && !DEFAULT_WS_URL) {
-      emitToWeb({ type: 'error', message: 'missing_ws_url_env(RN_DEFAULT_WS_URL or NEXT_PUBLIC_WS_URL)' });
+      emitToWeb({ type: 'error', message: 'missing_ws_url_runtime(MingleDefaultWsURL or RN_DEFAULT_WS_URL)' });
       return;
     }
 
