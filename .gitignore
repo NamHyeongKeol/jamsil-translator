@@ -35,6 +35,7 @@ yarn-error.log*
 .env*
 .devbox.env
 ngrok.mobile.local.yml
+.devbox-cache/
 
 # vercel
 .vercel
