@@ -170,10 +170,22 @@ wss.on('connection', (clientWs) => {
             return;
         }
 
+        if (!sonioxSawSpeechInCurrentSegment && sonioxHasPendingTranscript) {
+            // iOS 일부 환경에서는 입력 RMS가 매우 낮아 threshold를 넘지 못해도
+            // Soniox partial transcript는 정상 수신될 수 있으므로 텍스트 진행 신호를 speech로 인정한다.
+            sonioxSawSpeechInCurrentSegment = true;
+            sonioxTrailingSilenceMs = 0;
+            sonioxLastBlockReason = '';
+            logSonioxFinalizeDebug('speech_inferred_from_pending_transcript');
+        }
+
         if (!sonioxSawSpeechInCurrentSegment) {
             if (sonioxLastBlockReason !== 'no_speech_seen') {
                 sonioxLastBlockReason = 'no_speech_seen';
-                logSonioxFinalizeDebug('blocked_no_speech_seen', { rms });
+                logSonioxFinalizeDebug('blocked_no_speech_seen', {
+                    rms,
+                    pendingTranscript: sonioxHasPendingTranscript,
+                });
             }
             return;
         }
