@@ -404,13 +404,21 @@ ensure_workspace_dependencies() {
 }
 
 ensure_mingle_app_prisma_client() {
-  local prisma_client_dir="$ROOT_DIR/mingle-app/node_modules/.prisma/client"
-  local prisma_client_default="$prisma_client_dir/default.js"
-  local prisma_client_schema="$prisma_client_dir/schema.prisma"
+  local app_dir="$ROOT_DIR/mingle-app"
+  local prisma_runtime_found=""
+  if [[ -d "$app_dir/node_modules" ]]; then
+    prisma_runtime_found="$(
+      find "$app_dir/node_modules" \
+        -type f \
+        -path '*/.prisma/client/default.js' \
+        -print \
+        -quit 2>/dev/null || true
+    )"
+  fi
 
-  if [[ ! -f "$prisma_client_default" || ! -f "$prisma_client_schema" ]]; then
+  if [[ -z "$prisma_runtime_found" ]]; then
     log "generating prisma client: mingle-app"
-    pnpm --dir "$ROOT_DIR/mingle-app" db:generate
+    pnpm --dir "$app_dir" db:generate
   fi
 }
 
