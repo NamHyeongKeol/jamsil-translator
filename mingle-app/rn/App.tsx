@@ -135,9 +135,8 @@ function resolveRuntimeConfig(runtimeConfig?: NativeRuntimeConfig): ResolvedRunt
   if (!webAppBaseUrl) {
     missingRuntimeConfig.push('MingleWebAppScheme/Host(Info.plist) or RN_WEB_APP_BASE_URL');
   }
-  if (!defaultWsUrl) {
-    missingRuntimeConfig.push('MingleDefaultWsScheme/Host(Info.plist) or RN_DEFAULT_WS_URL');
-  }
+  // WS URL is optional at boot because the web layer usually provides
+  // wsUrl in native_stt_start payload. We validate again at start-time.
 
   return {
     webAppBaseUrl,
