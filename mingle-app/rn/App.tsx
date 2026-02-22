@@ -124,10 +124,10 @@ function resolveRuntimeConfig(runtimeConfig?: NativeRuntimeConfig): ResolvedRunt
 
   const missingRuntimeConfig: string[] = [];
   if (!webAppBaseUrl) {
-    missingRuntimeConfig.push('MingleWebAppBaseURL(Info.plist) or RN_WEB_APP_BASE_URL');
+    missingRuntimeConfig.push('MingleWebAppScheme/Host(Info.plist) or RN_WEB_APP_BASE_URL');
   }
   if (!defaultWsUrl) {
-    missingRuntimeConfig.push('MingleDefaultWsURL(Info.plist) or RN_DEFAULT_WS_URL');
+    missingRuntimeConfig.push('MingleDefaultWsScheme/Host(Info.plist) or RN_DEFAULT_WS_URL');
   }
 
   return {
@@ -352,7 +352,7 @@ function App(): React.JSX.Element {
 
     const payloadWsUrl = typeof payload?.wsUrl === 'string' ? payload.wsUrl.trim() : '';
     if (!payloadWsUrl && !runtimeConfig.defaultWsUrl) {
-      emitToWeb({ type: 'error', message: 'missing_ws_url_runtime(MingleDefaultWsURL or RN_DEFAULT_WS_URL)' });
+      emitToWeb({ type: 'error', message: 'missing_ws_url_runtime(MingleDefaultWsScheme/Host or RN_DEFAULT_WS_URL)' });
       return;
     }
 

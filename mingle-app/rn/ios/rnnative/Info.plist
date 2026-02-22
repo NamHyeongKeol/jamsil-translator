@@ -37,8 +37,16 @@
 	<string>Mingle uses your microphone for real-time speech translation.</string>
 	<key>MingleWebAppBaseURL</key>
 	<string>$(MINGLE_WEB_APP_BASE_URL)</string>
+	<key>MingleWebAppScheme</key>
+	<string>$(MINGLE_WEB_APP_SCHEME)</string>
+	<key>MingleWebAppHost</key>
+	<string>$(MINGLE_WEB_APP_HOST)</string>
 	<key>MingleDefaultWsURL</key>
 	<string>$(MINGLE_DEFAULT_WS_URL)</string>
+	<key>MingleDefaultWsScheme</key>
+	<string>$(MINGLE_DEFAULT_WS_SCHEME)</string>
+	<key>MingleDefaultWsHost</key>
+	<string>$(MINGLE_DEFAULT_WS_HOST)</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIBackgroundModes</key>

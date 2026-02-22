@@ -256,11 +256,32 @@ class NativeSTTModule: RCTEventEmitter {
         return value
     }
 
+    private static func readRuntimeConfigURL(
+        schemeKey: String,
+        hostKey: String,
+        legacyKey: String
+    ) -> String {
+        let scheme = Self.readRuntimeConfigValue(schemeKey)
+        let host = Self.readRuntimeConfigValue(hostKey)
+        if !scheme.isEmpty && !host.isEmpty {
+            return "\(scheme)://\(host)"
+        }
+        return Self.readRuntimeConfigValue(legacyKey)
+    }
+
     override func constantsToExport() -> [AnyHashable: Any]! {
         return [
             "runtimeConfig": [
-                "webAppBaseUrl": Self.readRuntimeConfigValue("MingleWebAppBaseURL"),
-                "defaultWsUrl": Self.readRuntimeConfigValue("MingleDefaultWsURL"),
+                "webAppBaseUrl": Self.readRuntimeConfigURL(
+                    schemeKey: "MingleWebAppScheme",
+                    hostKey: "MingleWebAppHost",
+                    legacyKey: "MingleWebAppBaseURL"
+                ),
+                "defaultWsUrl": Self.readRuntimeConfigURL(
+                    schemeKey: "MingleDefaultWsScheme",
+                    hostKey: "MingleDefaultWsHost",
+                    legacyKey: "MingleDefaultWsURL"
+                ),
             ],
         ]
     }
@@ -271,8 +292,16 @@ class NativeSTTModule: RCTEventEmitter {
         rejecter reject: RCTPromiseRejectBlock
     ) {
         resolve([
-            "webAppBaseUrl": Self.readRuntimeConfigValue("MingleWebAppBaseURL"),
-            "defaultWsUrl": Self.readRuntimeConfigValue("MingleDefaultWsURL"),
+            "webAppBaseUrl": Self.readRuntimeConfigURL(
+                schemeKey: "MingleWebAppScheme",
+                hostKey: "MingleWebAppHost",
+                legacyKey: "MingleWebAppBaseURL"
+            ),
+            "defaultWsUrl": Self.readRuntimeConfigURL(
+                schemeKey: "MingleDefaultWsScheme",
+                hostKey: "MingleDefaultWsHost",
+                legacyKey: "MingleDefaultWsURL"
+            ),
         ])
     }
 

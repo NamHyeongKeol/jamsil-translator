@@ -287,7 +287,11 @@
 				);
 				MARKETING_VERSION = 1.0;
 				MINGLE_DEFAULT_WS_URL = "wss:\/\/mingle.up.railway.app";
+				MINGLE_DEFAULT_WS_HOST = "mingle.up.railway.app";
+				MINGLE_DEFAULT_WS_SCHEME = wss;
 				MINGLE_WEB_APP_BASE_URL = "https:\/\/mingle-app-xi.vercel.app";
+				MINGLE_WEB_APP_HOST = "mingle-app-xi.vercel.app";
+				MINGLE_WEB_APP_SCHEME = https;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -320,7 +324,11 @@
 				);
 				MARKETING_VERSION = 1.0;
 				MINGLE_DEFAULT_WS_URL = "wss:\/\/mingle.up.railway.app";
+				MINGLE_DEFAULT_WS_HOST = "mingle.up.railway.app";
+				MINGLE_DEFAULT_WS_SCHEME = wss;
 				MINGLE_WEB_APP_BASE_URL = "https:\/\/mingle-app-xi.vercel.app";
+				MINGLE_WEB_APP_HOST = "mingle-app-xi.vercel.app";
+				MINGLE_WEB_APP_SCHEME = https;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

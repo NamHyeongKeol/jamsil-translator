@@ -732,6 +732,10 @@ EOF
 }
 
 write_rn_ios_runtime_xcconfig() {
+  local site_scheme="${DEVBOX_SITE_URL%%://*}"
+  local site_host="${DEVBOX_SITE_URL#*://}"
+  local ws_scheme="${DEVBOX_RN_WS_URL%%://*}"
+  local ws_host="${DEVBOX_RN_WS_URL#*://}"
   local escaped_site_url="$DEVBOX_SITE_URL"
   local escaped_ws_url="$DEVBOX_RN_WS_URL"
   escaped_site_url="${escaped_site_url//\\/\\\\}"
@@ -746,6 +750,10 @@ write_rn_ios_runtime_xcconfig() {
 // iOS RN runtime endpoints for this worktree/profile.
 MINGLE_WEB_APP_BASE_URL = "$escaped_site_url"
 MINGLE_DEFAULT_WS_URL = "$escaped_ws_url"
+MINGLE_WEB_APP_SCHEME = $site_scheme
+MINGLE_WEB_APP_HOST = $site_host
+MINGLE_DEFAULT_WS_SCHEME = $ws_scheme
+MINGLE_DEFAULT_WS_HOST = $ws_host
 EOF
 }
 
