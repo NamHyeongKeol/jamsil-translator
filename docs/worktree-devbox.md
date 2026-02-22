@@ -58,6 +58,7 @@ scripts/devbox up --profile device --with-ios-install
 - `scripts/devbox bootstrap`
   - main 워크트리의 `mingle-app/.env.local`, `mingle-stt/.env.local`을 현재 워크트리에 시드
   - `mingle-app`, `mingle-stt` 의존성(`pnpm install`) 자동 설치
+  - `mingle-app/node_modules/.prisma/client` 생성물이 없으면 `db:generate` 자동 실행
   - 옵션으로 Vault KV 경로를 주면 해당 키를 비관리 영역에 반영
     - `--vault-app-path <path>`
     - `--vault-stt-path <path>`
@@ -75,6 +76,7 @@ scripts/devbox up --profile device --with-ios-install
 - `scripts/devbox up --profile local|device`
   - `.devbox.env`가 없으면 `init`을 자동 실행(1커맨드 온보딩)
   - 시작 전에 main 워크트리 env 시드와 의존성 설치를 자동 수행
+    (Prisma client 누락 시 `db:generate` 포함)
   - 이전에 저장된 Vault 경로가 있으면 자동으로 env 동기화 수행
   - 필요 시 `--vault-app-path/--vault-stt-path`로 경로를 덮어써 즉시 반영 가능
   - `mingle-stt` + `mingle-app` 동시 실행

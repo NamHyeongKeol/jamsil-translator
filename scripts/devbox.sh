@@ -399,6 +399,19 @@ ensure_workspace_dependencies() {
     log "installing dependencies: mingle-stt"
     pnpm --dir "$ROOT_DIR/mingle-stt" install
   fi
+
+  ensure_mingle_app_prisma_client
+}
+
+ensure_mingle_app_prisma_client() {
+  local prisma_client_dir="$ROOT_DIR/mingle-app/node_modules/.prisma/client"
+  local prisma_client_default="$prisma_client_dir/default.js"
+  local prisma_client_schema="$prisma_client_dir/schema.prisma"
+
+  if [[ ! -f "$prisma_client_default" || ! -f "$prisma_client_schema" ]]; then
+    log "generating prisma client: mingle-app"
+    pnpm --dir "$ROOT_DIR/mingle-app" db:generate
+  fi
 }
 
 ensure_rn_workspace_dependencies() {
