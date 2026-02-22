@@ -131,4 +131,25 @@ describe('use-realtime-stt pure logic', () => {
 
     expect(built).toBeNull()
   })
+
+  it('normalizes region/case target languages to stable base codes', () => {
+    const built = buildFinalizedUtterancePayload({
+      rawText: '안녕하세요',
+      rawLanguage: 'ko-KR',
+      languages: ['EN-US', 'ja-JP', 'en', 'JA', 'ko'],
+      partialTranslations: {
+        en: 'hello',
+        ja: 'こんにちは',
+      },
+      utteranceSerial: 8,
+      nowMs: 1700000001000,
+    })
+
+    expect(built).not.toBeNull()
+    expect(built?.utterance.targetLanguages).toEqual(['en', 'ja'])
+    expect(built?.utterance.translations).toEqual({
+      en: 'hello',
+      ja: 'こんにちは',
+    })
+  })
 })

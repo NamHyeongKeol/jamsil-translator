@@ -136,6 +136,35 @@ function buildTargetLanguagesForUtterance(utterance: Utterance): string[] {
   return targetLanguages
 }
 
+function findValueByNormalizedLanguage<T>(
+  source: Record<string, T> | undefined,
+  rawLanguage: string,
+): T | undefined {
+  if (!source) return undefined
+  const exact = source[rawLanguage]
+  if (exact !== undefined) return exact
+
+  const normalized = normalizeLanguageCode(rawLanguage)
+  if (!normalized) return undefined
+
+  for (const [language, value] of Object.entries(source)) {
+    if (normalizeLanguageCode(language) === normalized) {
+      return value
+    }
+  }
+  return undefined
+}
+
+function getTranslationTextForLanguage(utterance: Utterance, language: string): string {
+  const value = findValueByNormalizedLanguage(utterance.translations, language)
+  return typeof value === 'string' ? value : ''
+}
+
+function getIsFinalizedForLanguage(utterance: Utterance, language: string): boolean {
+  const value = findValueByNormalizedLanguage(utterance.translationFinalized, language)
+  return value !== false
+}
+
 function SpeakingIndicator() {
   return (
     <div className="flex items-end gap-0.5" aria-label="tts-speaking">
@@ -153,14 +182,14 @@ function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: 
   // do not retroactively add/remove bubbles on old messages.
   const targetLangs = buildTargetLanguagesForUtterance(utterance)
   const translationEntries = targetLangs
-    .filter(lang => utterance.translations[lang])
-    .map(lang => ({
+    .map((lang) => ({
       lang,
-      text: utterance.translations[lang],
-      isFinalized: utterance.translationFinalized?.[lang] !== false,
+      text: getTranslationTextForLanguage(utterance, lang),
+      isFinalized: getIsFinalizedForLanguage(utterance, lang),
     }))
+    .filter(({ text }) => text.trim().length > 0)
   const pendingLangs = targetLangs
-    .filter(lang => !utterance.translations[lang])
+    .filter((lang) => !getTranslationTextForLanguage(utterance, lang).trim())
 
   const timestamp = formatTimestamp(utterance.createdAtMs)
 
