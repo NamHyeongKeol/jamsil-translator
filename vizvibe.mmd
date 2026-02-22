@@ -740,7 +740,7 @@ flowchart TD
     mingle_app_ios_runtime_config_xcconfig_bridge("RN iOS 런타임 URL 주입 경로 재정렬<br/><sub>devbox가 ios/devbox.runtime.xcconfig를 생성해<br/>MingleWebAppBaseURL/MingleDefaultWsURL을 주입하고<br/>NativeSTTModule constants로 Info.plist 값을 JS에 전달해<br/>env 누락 시 실서버 fallback되는 경로를 차단</sub>")
 
     %% @mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix [ai-task, closed, 2026-02-23, ai]
-    mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix("devbox iOS URL 주석 파싱 크래시 수정<br/><sub>xcconfig에서 https:// 값의 //가 주석으로 잘리며<br/>Info.plist에 https:·wss:만 들어가던 원인을 확인하고<br/>URL을 \\/ 이스케이프해 주입한 뒤 Native 모듈에서<br/>복원하도록 보강해 앱 시작 크래시를 차단</sub>")
+    mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix("devbox iOS URL 주석 파싱 크래시 수정<br/><sub>xcconfig에서 https:// 값의 //가 주석으로 잘리며<br/>Info.plist에 https:·wss:만 들어가던 원인을 확인하고<br/>URL을 \\/ 이스케이프해 주입한 뒤 Native 모듈에서<br/>비동기 getRuntimeConfig+복원으로 초기 로드 누락을 보강</sub>")
 
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")

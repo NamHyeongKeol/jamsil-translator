@@ -286,8 +286,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				MINGLE_DEFAULT_WS_URL = "wss://mingle.up.railway.app";
-				MINGLE_WEB_APP_BASE_URL = "https://mingle-app-xi.vercel.app";
+				MINGLE_DEFAULT_WS_URL = "wss:\/\/mingle.up.railway.app";
+				MINGLE_WEB_APP_BASE_URL = "https:\/\/mingle-app-xi.vercel.app";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -319,8 +319,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				MINGLE_DEFAULT_WS_URL = "wss://mingle.up.railway.app";
-				MINGLE_WEB_APP_BASE_URL = "https://mingle-app-xi.vercel.app";
+				MINGLE_DEFAULT_WS_URL = "wss:\/\/mingle.up.railway.app";
+				MINGLE_WEB_APP_BASE_URL = "https:\/\/mingle-app-xi.vercel.app";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

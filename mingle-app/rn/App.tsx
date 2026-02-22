@@ -30,6 +30,13 @@ type NativeRuntimeConfig = {
   webAppBaseUrl?: string;
   defaultWsUrl?: string;
 };
+type ResolvedRuntimeConfig = {
+  webAppBaseUrl: string;
+  defaultWsUrl: string;
+  error: string | null;
+};
+
+const RUNTIME_CONFIG_ERROR_PREFIX = 'Missing or invalid runtime config: ';
 
 function readNativeRuntimeConfig(): NativeRuntimeConfig {
   const nativeSttModule = NativeModules.NativeSTTModule as
@@ -56,8 +63,10 @@ function readRuntimeEnvValue(keys: string[]): string {
   return '';
 }
 
-function readNativeRuntimeValue(keys: Array<keyof NativeRuntimeConfig>): string {
-  const runtimeConfig = readNativeRuntimeConfig();
+function readNativeRuntimeValue(
+  keys: Array<keyof NativeRuntimeConfig>,
+  runtimeConfig: NativeRuntimeConfig = readNativeRuntimeConfig(),
+): string {
   for (const key of keys) {
     const value = runtimeConfig[key];
     if (typeof value === 'string' && value.trim().length > 0) {
@@ -74,8 +83,9 @@ function resolveConfiguredUrl(
   },
   allowedProtocols: string[],
   options?: { trimTrailingSlash?: boolean },
+  runtimeConfig?: NativeRuntimeConfig,
 ): string {
-  const raw = readNativeRuntimeValue(sources.nativeKeys || [])
+  const raw = readNativeRuntimeValue(sources.nativeKeys || [], runtimeConfig)
     || readRuntimeEnvValue(sources.envKeys || []);
   if (!raw) return '';
 
@@ -92,32 +102,44 @@ function resolveConfiguredUrl(
   }
 }
 
-const WEB_APP_BASE_URL = resolveConfiguredUrl(
-  {
-    nativeKeys: ['webAppBaseUrl'],
-    envKeys: ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
-  },
-  ['http:', 'https:'],
-  { trimTrailingSlash: true },
-);
-const DEFAULT_WS_URL = resolveConfiguredUrl(
-  {
-    nativeKeys: ['defaultWsUrl'],
-    envKeys: ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
-  },
-  ['ws:', 'wss:'],
-);
+function resolveRuntimeConfig(runtimeConfig?: NativeRuntimeConfig): ResolvedRuntimeConfig {
+  const webAppBaseUrl = resolveConfiguredUrl(
+    {
+      nativeKeys: ['webAppBaseUrl'],
+      envKeys: ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
+    },
+    ['http:', 'https:'],
+    { trimTrailingSlash: true },
+    runtimeConfig,
+  );
+  const defaultWsUrl = resolveConfiguredUrl(
+    {
+      nativeKeys: ['defaultWsUrl'],
+      envKeys: ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
+    },
+    ['ws:', 'wss:'],
+    undefined,
+    runtimeConfig,
+  );
 
-const missingRuntimeConfig: string[] = [];
-if (!WEB_APP_BASE_URL) {
-  missingRuntimeConfig.push('MingleWebAppBaseURL(Info.plist) or RN_WEB_APP_BASE_URL');
+  const missingRuntimeConfig: string[] = [];
+  if (!webAppBaseUrl) {
+    missingRuntimeConfig.push('MingleWebAppBaseURL(Info.plist) or RN_WEB_APP_BASE_URL');
+  }
+  if (!defaultWsUrl) {
+    missingRuntimeConfig.push('MingleDefaultWsURL(Info.plist) or RN_DEFAULT_WS_URL');
+  }
+
+  return {
+    webAppBaseUrl,
+    defaultWsUrl,
+    error: missingRuntimeConfig.length > 0
+      ? `${RUNTIME_CONFIG_ERROR_PREFIX}${missingRuntimeConfig.join(', ')}`
+      : null,
+  };
 }
-if (!DEFAULT_WS_URL) {
-  missingRuntimeConfig.push('MingleDefaultWsURL(Info.plist) or RN_DEFAULT_WS_URL');
-}
-const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
-  ? `Missing or invalid runtime config: ${missingRuntimeConfig.join(', ')}`
-  : null;
+
+const INITIAL_RUNTIME_CONFIG = resolveRuntimeConfig();
 
 const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
@@ -205,7 +227,8 @@ function App(): React.JSX.Element {
   const webViewRef = useRef<WebView>(null);
   const isPageReadyRef = useRef(false);
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
-  const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
+  const [runtimeConfig, setRuntimeConfig] = useState<ResolvedRuntimeConfig>(() => INITIAL_RUNTIME_CONFIG);
+  const [loadError, setLoadError] = useState<string | null>(() => INITIAL_RUNTIME_CONFIG.error);
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
@@ -218,10 +241,51 @@ function App(): React.JSX.Element {
 
   const locale = useMemo(() => resolveLocaleSegment(), []);
   const webUrl = useMemo(() => {
-    if (!WEB_APP_BASE_URL) return '';
+    if (!runtimeConfig.webAppBaseUrl) return '';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
-    return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1&nativeUi=1${debugParams}`;
-  }, [locale]);
+    return `${runtimeConfig.webAppBaseUrl}/${locale}?nativeStt=1&nativeUi=1${debugParams}`;
+  }, [locale, runtimeConfig.webAppBaseUrl]);
+
+  useEffect(() => {
+    const nativeSttModule = NativeModules.NativeSTTModule as
+      | { getRuntimeConfig?: () => Promise<NativeRuntimeConfig> }
+      | undefined;
+    if (!nativeSttModule || typeof nativeSttModule.getRuntimeConfig !== 'function') {
+      return;
+    }
+
+    let active = true;
+    void nativeSttModule.getRuntimeConfig()
+      .then((nativeConfig) => {
+        if (!active) return;
+        const next = resolveRuntimeConfig(nativeConfig);
+        setRuntimeConfig((current) => {
+          if (
+            current.webAppBaseUrl === next.webAppBaseUrl
+            && current.defaultWsUrl === next.defaultWsUrl
+            && current.error === next.error
+          ) {
+            return current;
+          }
+          return next;
+        });
+        setLoadError((current) => {
+          const isRuntimeConfigError = typeof current === 'string'
+            && current.startsWith(RUNTIME_CONFIG_ERROR_PREFIX);
+          if (current === null || isRuntimeConfigError) {
+            return next.error;
+          }
+          return current;
+        });
+      })
+      .catch(() => {
+        // Keep initial runtime config when native bridge lookup fails.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const emitToWeb = useCallback((payload: NativeSttEvent) => {
     if (!isPageReadyRef.current) return;
@@ -287,14 +351,14 @@ function App(): React.JSX.Element {
     }
 
     const payloadWsUrl = typeof payload?.wsUrl === 'string' ? payload.wsUrl.trim() : '';
-    if (!payloadWsUrl && !DEFAULT_WS_URL) {
+    if (!payloadWsUrl && !runtimeConfig.defaultWsUrl) {
       emitToWeb({ type: 'error', message: 'missing_ws_url_runtime(MingleDefaultWsURL or RN_DEFAULT_WS_URL)' });
       return;
     }
 
     const wsUrl = payloadWsUrl
       ? payloadWsUrl
-      : DEFAULT_WS_URL;
+      : runtimeConfig.defaultWsUrl;
     const languages = Array.isArray(payload?.languages)
       ? payload.languages.filter((language): language is string => typeof language === 'string' && language.trim().length > 0)
       : ['ko', 'en', 'th'];
@@ -319,7 +383,7 @@ function App(): React.JSX.Element {
       nativeStatusRef.current = 'failed';
       emitToWeb({ type: 'error', message });
     }
-  }, [emitToWeb, nativeAvailable]);
+  }, [emitToWeb, nativeAvailable, runtimeConfig.defaultWsUrl]);
 
   const handleNativeStop = useCallback(async (payload?: NativeSttStopPayload) => {
     try {

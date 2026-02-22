@@ -265,6 +265,17 @@ class NativeSTTModule: RCTEventEmitter {
         ]
     }
 
+    @objc(getRuntimeConfig:rejecter:)
+    func getRuntimeConfig(
+        _ resolve: RCTPromiseResolveBlock,
+        rejecter reject: RCTPromiseRejectBlock
+    ) {
+        resolve([
+            "webAppBaseUrl": Self.readRuntimeConfigValue("MingleWebAppBaseURL"),
+            "defaultWsUrl": Self.readRuntimeConfigValue("MingleDefaultWsURL"),
+        ])
+    }
+
     override func supportedEvents() -> [String]! {
         ["status", "message", "error", "close"]
     }
