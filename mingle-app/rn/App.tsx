@@ -82,6 +82,7 @@ function resolveConfiguredUrl(
   try {
     const parsed = new URL(raw);
     if (!allowedProtocols.includes(parsed.protocol)) return '';
+    if (!parsed.hostname) return '';
     if (options?.trimTrailingSlash) {
       return raw.replace(/\/+$/, '');
     }

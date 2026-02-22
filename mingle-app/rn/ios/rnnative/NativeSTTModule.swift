@@ -244,7 +244,12 @@ class NativeSTTModule: RCTEventEmitter {
         guard let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String else {
             return ""
         }
-        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.hasPrefix("\""), value.hasSuffix("\""), value.count >= 2 {
+            value = String(value.dropFirst().dropLast())
+        }
+        value = value.replacingOccurrences(of: "\\/", with: "/")
+        value = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if value.isEmpty || value.hasPrefix("$(") {
             return ""
         }
