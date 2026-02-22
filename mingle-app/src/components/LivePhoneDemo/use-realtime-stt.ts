@@ -160,7 +160,7 @@ export function buildTurnTargetLanguagesSnapshot(
     const key = normalizedLanguage || language.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-    targetLanguages.push(language)
+    targetLanguages.push(key)
   }
   return targetLanguages
 }
@@ -769,7 +769,12 @@ export default function useRealtimeSTT({
       totalDurationMs?: number
     },
   ): Promise<TranslateApiResult> => {
-    const langs = targetLanguages.filter(l => l !== sourceLanguage)
+    const sourceLanguageNorm = normalizeLangForCompare(sourceLanguage)
+    const langs = Array.from(new Set(
+      targetLanguages
+        .map((language) => normalizeLangForCompare(language) || (language || '').trim().toLowerCase())
+        .filter((language) => Boolean(language) && language !== sourceLanguageNorm),
+    ))
     if (!text.trim() || langs.length === 0) return { translations: {} }
     const recentTurns = buildRecentTurnContextPayload(options?.excludeUtteranceId)
     try {
@@ -934,10 +939,23 @@ export default function useRealtimeSTT({
       const target = prev[idx]
       const newTranslations = { ...target.translations }
       const newFinalized = { ...(target.translationFinalized || {}) }
+      const languageAlias = new Map<string, string>()
+      const registerAlias = (rawLanguage: string) => {
+        const key = normalizeLangForCompare(rawLanguage)
+        if (!key) return
+        if (!languageAlias.has(key)) {
+          languageAlias.set(key, rawLanguage)
+        }
+      }
+      for (const language of target.targetLanguages || []) registerAlias(language)
+      for (const language of Object.keys(target.translations || {})) registerAlias(language)
+      for (const language of Object.keys(target.translationFinalized || {})) registerAlias(language)
       for (const [lang, text] of Object.entries(translations)) {
         if (text.trim()) {
-          newTranslations[lang] = text.trim()
-          if (markFinalized) newFinalized[lang] = true
+          const normalized = normalizeLangForCompare(lang)
+          const resolvedLanguage = languageAlias.get(normalized) || normalized || lang
+          newTranslations[resolvedLanguage] = text.trim()
+          if (markFinalized) newFinalized[resolvedLanguage] = true
         }
       }
       return [
