@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_prisma_generate_autofix
+    %% @lastActive: mingle_stt_manual_finalize_pending_transcript_fallback
 
     %% === START ===
     %% @project_start [start, closed]
@@ -739,6 +739,9 @@ flowchart TD
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
 
+    %% @mingle_stt_manual_finalize_pending_transcript_fallback [ai-task, closed, 2026-02-22, ai]
+    mingle_stt_manual_finalize_pending_transcript_fallback("AEC off 저레벨 입력 finalize 폴백<br/><sub>iOS 웹에서 AEC off 시 RMS가 임계값 아래로 고정돼<br/>sawSpeech 게이트가 열리지 않던 경로를 보강하고<br/>pending transcript가 존재하면 발화 진행으로 간주해<br/>수동 finalize 타이머가 정상 동작하도록 안정화</sub>")
+
     %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
     mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
 
@@ -990,6 +993,7 @@ flowchart TD
     mingle_stt_front_log_minimal_fields_only --> mingle_stt_final_watermark_and_provisional_carry
     mingle_stt_final_watermark_and_provisional_carry --> mingle_stt_debug_log_cleanup_and_client_marker_boundary
     mingle_stt_debug_log_cleanup_and_client_marker_boundary --> mingle_stt_endpoint_only_frame_and_api_marker_guard
+    mingle_stt_endpoint_only_frame_and_api_marker_guard --> mingle_stt_manual_finalize_pending_transcript_fallback
     mingle_app_tdd_test_harness_plan --> mingle_app_tdd_finalize_clientevent_unit_tests
     mingle_app_tdd_finalize_clientevent_unit_tests --> mingle_app_tdd_finalize_route_mock_integration_tests
     mingle_app_tdd_finalize_route_mock_integration_tests --> mingle_app_tdd_stt_hook_logic_unit_tests
@@ -1148,10 +1152,11 @@ flowchart TD
     mingle_app_vercel_main_branch_only_deploy_guard -.-> ultimate_goal
     mingle_app_rn_release_about_blank_crash_fix -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
+    mingle_stt_manual_finalize_pending_transcript_fallback -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_prisma_generate_autofix
+        mingle_stt_manual_finalize_pending_transcript_fallback
     end
 
     %% === STYLES ===
@@ -1421,7 +1426,7 @@ flowchart TD
     style mingle_worktree_devbox_mobile_build_install_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_ngrok_tunnel_name_collision_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_worktree_devbox_prisma_generate_autofix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_prisma_generate_autofix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1453,6 +1458,7 @@ flowchart TD
     style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_manual_finalize_pending_transcript_fallback fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
