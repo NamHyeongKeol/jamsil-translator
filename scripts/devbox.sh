@@ -1694,23 +1694,29 @@ main() {
     enable_log_capture "$DEVBOX_LOG_FILE"
   fi
 
-  local cmd="${filtered_args[0]:-help}"
-  local -a cmd_args=()
-  if [[ "${#filtered_args[@]}" -gt 1 ]]; then
-    cmd_args=("${filtered_args[@]:1}")
+  local cmd="help"
+  if [[ "${#filtered_args[@]}" -gt 0 ]]; then
+    cmd="${filtered_args[0]}"
+    if [[ "${#filtered_args[@]}" -gt 1 ]]; then
+      set -- "${filtered_args[@]:1}"
+    else
+      set --
+    fi
+  else
+    set --
   fi
 
   case "$cmd" in
-    init) cmd_init "${cmd_args[@]}" ;;
-    bootstrap) cmd_bootstrap "${cmd_args[@]}" ;;
-    profile) cmd_profile "${cmd_args[@]}" ;;
-    profile-local) cmd_profile --profile local "${cmd_args[@]}" ;;
-    profile-device|profile-ngrok) cmd_profile --profile device "${cmd_args[@]}" ;;
-    ngrok-config) cmd_ngrok_config "${cmd_args[@]}" ;;
-    mobile) cmd_mobile "${cmd_args[@]}" ;;
-    up) cmd_up "${cmd_args[@]}" ;;
-    test|test-live) cmd_test "${cmd_args[@]}" ;;
-    status) cmd_status "${cmd_args[@]}" ;;
+    init) cmd_init "$@" ;;
+    bootstrap) cmd_bootstrap "$@" ;;
+    profile) cmd_profile "$@" ;;
+    profile-local) cmd_profile --profile local "$@" ;;
+    profile-device|profile-ngrok) cmd_profile --profile device "$@" ;;
+    ngrok-config) cmd_ngrok_config "$@" ;;
+    mobile) cmd_mobile "$@" ;;
+    up) cmd_up "$@" ;;
+    test|test-live) cmd_test "$@" ;;
+    status) cmd_status "$@" ;;
     help|-h|--help) usage ;;
     *) die "unknown command: $cmd (run: scripts/devbox help)" ;;
   esac
