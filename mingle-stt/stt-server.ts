@@ -68,6 +68,8 @@ wss.on('connection', (clientWs) => {
     let sonioxLastTranscriptProgressAtMs = 0;
     let sonioxManualFinalizeTimer: NodeJS.Timeout | null = null;
     let sonioxManualFinalizeDueAtMs = 0;
+    let sonioxLastObservedTotalAudioProcMs: number | null = null;
+    let sonioxLastObservedTranscriptText = '';
 
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
@@ -80,6 +82,27 @@ wss.on('connection', (clientWs) => {
             sonioxManualFinalizeTimer = null;
         }
         sonioxManualFinalizeDueAtMs = 0;
+    };
+
+    const toFiniteMs = (value: unknown): number | null => {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+        return Math.max(0, Math.round(value));
+    };
+
+    const normalizeSonioxDebugText = (value: unknown): string => {
+        if (typeof value !== 'string') return '';
+        return value
+            .replace(/<\/?(?:end|fin)>/ig, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
+    const firstNonEmptySonioxDebugText = (candidates: unknown[]): string => {
+        for (const candidate of candidates) {
+            const normalized = normalizeSonioxDebugText(candidate);
+            if (normalized) return normalized;
+        }
+        return '';
     };
 
     const buildSonioxManualFinalizeTimerState = (nowMs: number = Date.now()) => {
@@ -110,11 +133,55 @@ wss.on('connection', (clientWs) => {
 
     const logSonioxDebug = (event: string, payload: Record<string, unknown> = {}) => {
         if (!SONIOX_DEBUG_LOG) return;
-        const message = {
+
+        const payloadRecord = payload as Record<string, unknown>;
+        const sonioxTime = (
+            payloadRecord.soniox_time && typeof payloadRecord.soniox_time === 'object'
+        ) ? (payloadRecord.soniox_time as Record<string, unknown>) : null;
+        const snapshot = (
+            payloadRecord.snapshot && typeof payloadRecord.snapshot === 'object'
+        ) ? (payloadRecord.snapshot as Record<string, unknown>) : null;
+        const tokens = (
+            payloadRecord.tokens && typeof payloadRecord.tokens === 'object'
+        ) ? (payloadRecord.tokens as Record<string, unknown>) : null;
+        const timer = (
+            payloadRecord.timer && typeof payloadRecord.timer === 'object'
+        ) ? (payloadRecord.timer as Record<string, unknown>) : null;
+
+        const totalElapsedMs = toFiniteMs(payloadRecord.total_audio_proc_ms)
+            ?? toFiniteMs(sonioxTime?.total_audio_proc_ms);
+        if (totalElapsedMs !== null) {
+            sonioxLastObservedTotalAudioProcMs = totalElapsedMs;
+        }
+
+        const silenceElapsedMs = toFiniteMs(payloadRecord.silence_elapsed_ms)
+            ?? toFiniteMs(payloadRecord.elapsed_since_transcript_progress_ms)
+            ?? toFiniteMs(timer?.transcript_idle_elapsed_ms);
+
+        const compactText = firstNonEmptySonioxDebugText([
+            payloadRecord.text,
+            snapshot?.after,
+            snapshot?.current,
+            snapshot?.endpoint_final_text,
+            tokens?.non_final_text,
+            tokens?.final_text,
+            payloadRecord.pending_text,
+        ]);
+        if (compactText) {
+            sonioxLastObservedTranscriptText = compactText;
+        }
+
+        const message: Record<string, unknown> = {
             ts: new Date().toISOString(),
             event,
-            ...payload,
+            text: compactText || sonioxLastObservedTranscriptText,
+            total_elapsed_ms: totalElapsedMs ?? sonioxLastObservedTotalAudioProcMs,
+            silence_elapsed_ms: silenceElapsedMs,
         };
+        if (typeof payloadRecord.reason === 'string' && payloadRecord.reason.trim()) {
+            message.reason = payloadRecord.reason;
+        }
+
         console.log(`[conn:${connId}][soniox_debug] ${JSON.stringify(message)}`);
     };
 
@@ -139,6 +206,8 @@ wss.on('connection', (clientWs) => {
         sonioxManualFinalizeSent = false;
         sonioxLastManualFinalizeAtMs = 0;
         sonioxLastTranscriptProgressAtMs = 0;
+        sonioxLastObservedTotalAudioProcMs = null;
+        sonioxLastObservedTranscriptText = '';
     };
 
     const resetSonioxSegmentState = () => {
@@ -147,6 +216,7 @@ wss.on('connection', (clientWs) => {
         sonioxManualFinalizeSent = false;
         sonioxLastManualFinalizeAtMs = 0;
         sonioxLastTranscriptProgressAtMs = 0;
+        sonioxLastObservedTranscriptText = '';
     };
 
     const maybeTriggerSonioxManualFinalize = () => {
