@@ -41,6 +41,9 @@ scripts/devbox up --profile device --with-mobile-install
 
 # 8) (선택) iOS만 설치
 scripts/devbox up --profile device --with-ios-install
+
+# 9) (선택) 전체 로그를 파일로 저장
+scripts/devbox --log-file auto up --profile device --with-ios-install
 ```
 
 ## 주요 명령
@@ -88,6 +91,11 @@ scripts/devbox up --profile device --with-ios-install
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
   - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
   - `--with-metro`를 추가하면 RN Metro도 함께 실행
+  - `scripts/devbox --log-file <path|auto> up ...` 형식으로 실행하면
+    devbox 전체 stdout/stderr를 로그 파일로 저장
+    - 상대 경로는 저장소 루트 기준
+    - `auto`는 `.devbox-logs/devbox-<worktree>-<timestamp>.log` 자동 생성
+    - 로그 수집 시 ngrok은 별도 탭 대신 인라인으로 실행되어 한 파일에 합쳐짐
 
 - `scripts/devbox mobile --platform ios|android|all`
   - 현재 워크트리 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로
@@ -124,6 +132,7 @@ scripts/devbox up --profile device --with-ios-install
 - `mingle-app/.env.local` (관리 블록만)
 - `mingle-stt/.env.local` (관리 블록만)
 - `ngrok.mobile.local.yml`
+- `.devbox-logs/` (`--log-file` 사용 시 생성, gitignore)
 
 관리 블록은 아래 마커 사이만 자동 갱신합니다.
 

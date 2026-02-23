@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT_CANON="$(cd "$ROOT_DIR" && pwd -P)"
 LOCAL_TOOLS_BIN="$ROOT_DIR/.tools/bin"
+DEVBOX_LOG_DIR="$ROOT_DIR/.devbox-logs"
 DEVBOX_ENV_FILE="$ROOT_DIR/.devbox.env"
 APP_ENV_FILE="$ROOT_DIR/mingle-app/.env.local"
 STT_ENV_FILE="$ROOT_DIR/mingle-stt/.env.local"
@@ -66,6 +67,7 @@ DEVBOX_TEST_WS_URL=""
 DEVBOX_VAULT_APP_PATH=""
 DEVBOX_VAULT_STT_PATH=""
 DEVBOX_NGROK_API_PORT=""
+DEVBOX_LOG_FILE=""
 
 log() {
   printf '[devbox] %s\n' "$*"
@@ -79,6 +81,7 @@ die() {
 usage() {
   cat <<'EOF'
 Usage:
+  scripts/devbox [--log-file PATH|auto] <command> [options]
   scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--ngrok-api-port N] [--host HOST]
   scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox profile --profile local|device [--host HOST]
@@ -97,6 +100,11 @@ Commands:
   up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
   test         Run mingle-app live integration tests with devbox endpoints.
   status       Print current endpoints for PC/iOS/Android web and app targets.
+
+Global Options:
+  --log-file PATH|auto  Save combined devbox stdout/stderr to PATH.
+                        Relative paths resolve from repository root.
+                        auto -> .devbox-logs/devbox-<worktree>-<timestamp>.log
 EOF
 }
 
@@ -1436,6 +1444,7 @@ cmd_up() {
   local -a pids=()
   local exit_code=0
   local started_ngrok_mode="none"
+  local force_inline_ngrok="${DEVBOX_FORCE_INLINE_NGROK:-0}"
 
   if [[ "$profile" == "device" ]]; then
     write_ngrok_local_config
@@ -1448,11 +1457,15 @@ $(ngrok_plan_capacity_hint)"
       fi
       require_cmd ngrok
       log "starting ngrok for device profile"
-      if launch_ngrok_in_separate_terminal; then
+      if [[ "$force_inline_ngrok" != "1" ]] && launch_ngrok_in_separate_terminal; then
         started_ngrok_mode="separate"
         log "ngrok started in a separate terminal pane/tab"
       else
-        log "separate terminal launch unavailable; falling back to inline ngrok"
+        if [[ "$force_inline_ngrok" == "1" ]]; then
+          log "log capture enabled; forcing inline ngrok launch"
+        else
+          log "separate terminal launch unavailable; falling back to inline ngrok"
+        fi
         (
           cd "$ROOT_DIR"
           scripts/ngrok-start-mobile.sh --log stdout --log-format logfmt
@@ -1581,21 +1594,89 @@ Run:
 EOF
 }
 
+default_log_file_path() {
+  local timestamp worktree
+  timestamp="$(date '+%Y%m%d-%H%M%S')"
+  worktree="${DEVBOX_WORKTREE_NAME:-$(derive_worktree_name)}"
+  worktree="${worktree//[^A-Za-z0-9._-]/-}"
+  printf '%s/devbox-%s-%s.log' "$DEVBOX_LOG_DIR" "$worktree" "$timestamp"
+}
+
+resolve_log_file_path() {
+  local raw_value="$1"
+  local value="$raw_value"
+
+  [[ -n "$value" ]] || die "missing value for --log-file (expected PATH or auto)"
+  if [[ "$value" == "auto" ]]; then
+    value="$(default_log_file_path)"
+  elif [[ "$value" != /* ]]; then
+    value="$ROOT_DIR/$value"
+  fi
+
+  ensure_single_line_value "log file path" "$value"
+  printf '%s' "$value"
+}
+
+enable_log_capture() {
+  local file="$1"
+  local fifo_path
+
+  command -v tee >/dev/null 2>&1 || die "required command not found: tee"
+  mkdir -p "$(dirname "$file")"
+  printf '===== devbox log started %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S %z')" >> "$file"
+  fifo_path="$(mktemp -u "${TMPDIR:-/tmp}/devbox-log.XXXXXX")"
+  mkfifo "$fifo_path"
+  tee -a "$file" < "$fifo_path" &
+  exec > "$fifo_path" 2>&1
+  rm -f "$fifo_path"
+  export DEVBOX_FORCE_INLINE_NGROK=1
+  log "log capture enabled: $file"
+}
+
 main() {
-  local cmd="${1:-help}"
-  shift || true
+  local log_file_option=""
+  local -a filtered_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --log-file)
+        [[ $# -ge 2 ]] || die "missing value for --log-file"
+        log_file_option="$2"
+        shift 2
+        ;;
+      --log-file=*)
+        log_file_option="${1#--log-file=}"
+        shift
+        ;;
+      *)
+        filtered_args+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ -n "$log_file_option" ]]; then
+    DEVBOX_LOG_FILE="$(resolve_log_file_path "$log_file_option")"
+    enable_log_capture "$DEVBOX_LOG_FILE"
+  fi
+
+  local cmd="${filtered_args[0]:-help}"
+  local -a cmd_args=()
+  if [[ "${#filtered_args[@]}" -gt 1 ]]; then
+    cmd_args=("${filtered_args[@]:1}")
+  fi
 
   case "$cmd" in
-    init) cmd_init "$@" ;;
-    bootstrap) cmd_bootstrap "$@" ;;
-    profile) cmd_profile "$@" ;;
-    profile-local) cmd_profile --profile local "$@" ;;
-    profile-device|profile-ngrok) cmd_profile --profile device "$@" ;;
-    ngrok-config) cmd_ngrok_config "$@" ;;
-    mobile) cmd_mobile "$@" ;;
-    up) cmd_up "$@" ;;
-    test|test-live) cmd_test "$@" ;;
-    status) cmd_status "$@" ;;
+    init) cmd_init "${cmd_args[@]}" ;;
+    bootstrap) cmd_bootstrap "${cmd_args[@]}" ;;
+    profile) cmd_profile "${cmd_args[@]}" ;;
+    profile-local) cmd_profile --profile local "${cmd_args[@]}" ;;
+    profile-device|profile-ngrok) cmd_profile --profile device "${cmd_args[@]}" ;;
+    ngrok-config) cmd_ngrok_config "${cmd_args[@]}" ;;
+    mobile) cmd_mobile "${cmd_args[@]}" ;;
+    up) cmd_up "${cmd_args[@]}" ;;
+    test|test-live) cmd_test "${cmd_args[@]}" ;;
+    status) cmd_status "${cmd_args[@]}" ;;
     help|-h|--help) usage ;;
     *) die "unknown command: $cmd (run: scripts/devbox help)" ;;
   esac
