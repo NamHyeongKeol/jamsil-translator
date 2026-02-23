@@ -1652,9 +1652,15 @@ cmd_test() {
     require_cmd pnpm
     (
       cd "$ROOT_DIR/mingle-app"
-      MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
-      MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
-        pnpm test:live "${app_test_args[@]}"
+      if ((${#app_test_args[@]} > 0)); then
+        MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
+        MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
+          pnpm test:live "${app_test_args[@]}"
+      else
+        MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
+        MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
+          pnpm test:live
+      fi
     )
   fi
 
