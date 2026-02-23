@@ -27,7 +27,9 @@ final class AudioCaptureService {
     func requestMicrophonePermission() async -> Bool {
         await withCheckedContinuation { continuation in
             AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                continuation.resume(returning: granted)
+                DispatchQueue.main.async {
+                    continuation.resume(returning: granted)
+                }
             }
         }
     }
