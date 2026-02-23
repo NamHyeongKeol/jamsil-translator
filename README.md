@@ -46,6 +46,8 @@ scripts/devbox status
 - `scripts/devbox bootstrap`은 main 워크트리의 `mingle-app/.env.local`,
   `mingle-stt/.env.local`을 시드하고 필요한 의존성을 자동 설치합니다.
   또한 `@prisma/client` 생성물이 없으면 `db:generate`를 자동 실행합니다.
+  RN 워크스페이스 의존성과 iOS Pods도 자동 점검하며,
+  `Podfile.lock`/`Pods/Manifest.lock` 불일치 시 `pod install`로 자동 동기화합니다.
 - Vault 사용 시 `--vault-app-path`, `--vault-stt-path`로 비관리 env 키를 동기화할 수 있습니다.
   한 번 지정하면 `.devbox.env`에 저장되어 이후 `bootstrap/up`에서 자동 재사용됩니다.
 - `--profile device`는 ngrok(`devbox_web`/`devbox_stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.

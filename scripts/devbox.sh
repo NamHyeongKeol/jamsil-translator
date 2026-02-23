@@ -434,31 +434,60 @@ ensure_rn_workspace_dependencies() {
 }
 
 ensure_ios_pods_if_needed() {
+  local ios_dir="$ROOT_DIR/mingle-app/rn/ios"
   local pods_dir="$ROOT_DIR/mingle-app/rn/ios/Pods"
+  local podfile_lock="$ios_dir/Podfile.lock"
+  local manifest_lock="$ios_dir/Pods/Manifest.lock"
+  local needs_install=0
+  local reason="already synced"
+
   if [[ ! -d "$pods_dir" ]]; then
-    log "installing iOS pods: mingle-app/rn/ios"
-    (
-      cd "$ROOT_DIR/mingle-app/rn"
-      if command -v bundle >/dev/null 2>&1; then
-        local bundle_home="$ROOT_DIR/.devbox-cache/bundle/rn"
-        mkdir -p "$bundle_home"
+    needs_install=1
+    reason="Pods directory missing"
+  elif [[ ! -f "$manifest_lock" ]]; then
+    needs_install=1
+    reason="Pods/Manifest.lock missing"
+  elif [[ ! -f "$podfile_lock" ]]; then
+    needs_install=1
+    reason="Podfile.lock missing"
+  elif ! cmp -s "$podfile_lock" "$manifest_lock"; then
+    needs_install=1
+    reason="Podfile.lock and Manifest.lock out of sync"
+  fi
+
+  if [[ "$needs_install" -eq 0 ]]; then
+    return 0
+  fi
+
+  log "installing iOS pods: mingle-app/rn/ios ($reason)"
+  (
+    cd "$ROOT_DIR/mingle-app/rn"
+    if command -v bundle >/dev/null 2>&1; then
+      local bundle_home="$ROOT_DIR/.devbox-cache/bundle/rn"
+      mkdir -p "$bundle_home"
+      if ! BUNDLE_USER_HOME="$bundle_home" \
+        BUNDLE_PATH="$bundle_home" \
+        BUNDLE_DISABLE_SHARED_GEMS=true \
+        bundle check >/dev/null 2>&1; then
         BUNDLE_USER_HOME="$bundle_home" \
         BUNDLE_PATH="$bundle_home" \
         BUNDLE_DISABLE_SHARED_GEMS=true \
           bundle install
-        (
-          cd ios
-          BUNDLE_USER_HOME="$bundle_home" \
-          BUNDLE_PATH="$bundle_home" \
-          BUNDLE_DISABLE_SHARED_GEMS=true \
-            bundle exec pod install
-        )
-      else
+      fi
+      (
+        cd ios
+        BUNDLE_USER_HOME="$bundle_home" \
+        BUNDLE_PATH="$bundle_home" \
+        BUNDLE_DISABLE_SHARED_GEMS=true \
+          bundle exec pod install
+      )
+    else
+      (
         cd ios
         pod install
-      fi
-    )
-  fi
+      )
+    fi
+  )
 }
 
 upsert_non_managed_env_entry() {
@@ -1219,6 +1248,7 @@ wait_for_any_child_exit() {
 }
 
 cmd_init() {
+  require_cmd pnpm
   local web_port="" stt_port="" metro_port="" ngrok_api_port="" host="127.0.0.1"
 
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
@@ -1271,6 +1301,8 @@ cmd_init() {
 
   seed_env_from_main_worktree
   save_and_refresh
+  ensure_rn_workspace_dependencies
+  ensure_ios_pods_if_needed
 
   log "initialized for worktree: $DEVBOX_WORKTREE_NAME"
   cmd_status
@@ -1297,6 +1329,8 @@ cmd_bootstrap() {
   seed_env_from_main_worktree
   sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
   ensure_workspace_dependencies
+  ensure_rn_workspace_dependencies
+  ensure_ios_pods_if_needed
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
     save_and_refresh
   fi

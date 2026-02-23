@@ -57,10 +57,16 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
   - `mingle-app/.env.local` devbox 관리 블록 갱신
   - `mingle-stt/.env.local` 포트 블록 갱신
   - `ngrok.mobile.local.yml` 생성
+  - RN 워크스페이스 의존성(`mingle-app/rn`) 자동 설치/점검
+  - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
+    불일치/누락 시 `pod install` 자동 동기화
 
 - `scripts/devbox bootstrap`
   - main 워크트리의 `mingle-app/.env.local`, `mingle-stt/.env.local`을 현재 워크트리에 시드
   - `mingle-app`, `mingle-stt` 의존성(`pnpm install`) 자동 설치
+  - `mingle-app/rn` 의존성(`pnpm install`) 자동 설치
+  - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
+    불일치/누락 시 `pod install` 자동 동기화
   - `mingle-app/node_modules/.prisma/client` 생성물이 없으면 `db:generate` 자동 실행
   - 옵션으로 Vault KV 경로를 주면 해당 키를 비관리 영역에 반영
     - `--vault-app-path <path>`
