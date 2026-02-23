@@ -91,6 +91,7 @@ Usage:
   scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
+  scripts/devbox ios-native-build [--ios-configuration Debug|Release] [--ios-coredevice-id ID]
   scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release]
   scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
@@ -101,6 +102,7 @@ Commands:
   bootstrap    Seed env files from main/Vault and install dependencies.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
+  ios-native-build Build mingle-ios only (no install).
   mobile       Build/install RN/native iOS and Android apps (device/simulator).
   up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
   test         Run mingle-app live tests and/or mingle-ios native test build.
@@ -1090,6 +1092,31 @@ run_native_ios_simulator_install() {
   )
 }
 
+run_native_ios_build() {
+  local requested_coredevice_id="${1:-}"
+  local configuration="$2"
+  local api_base_url="${3:-}"
+  local ws_url="${4:-}"
+
+  [[ -x "$MINGLE_IOS_BUILD_SCRIPT" ]] || die "native iOS build script not found: $MINGLE_IOS_BUILD_SCRIPT"
+  require_cmd xcodebuild
+  require_cmd xcodegen
+
+  log "building native iOS app only ($configuration): ${requested_coredevice_id:-generic}"
+  (
+    cd "$MINGLE_IOS_DIR"
+    if [[ -n "$api_base_url" || -n "$ws_url" ]]; then
+      MINGLE_API_BASE_URL="${api_base_url:-}" \
+      MINGLE_WS_URL="${ws_url:-}" \
+      CONFIGURATION="$configuration" \
+        "$MINGLE_IOS_BUILD_SCRIPT" "${requested_coredevice_id:-}"
+    else
+      CONFIGURATION="$configuration" \
+        "$MINGLE_IOS_BUILD_SCRIPT" "${requested_coredevice_id:-}"
+    fi
+  )
+}
+
 run_android_mobile_install() {
   local requested_serial="${1:-}"
   local variant="$2"
@@ -1742,6 +1769,33 @@ $(ngrok_plan_capacity_hint)"
   return "$exit_code"
 }
 
+cmd_ios_native_build() {
+  local ios_configuration="Debug"
+  local ios_coredevice_id=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
+      --ios-coredevice-id) ios_coredevice_id="${2:-}"; shift 2 ;;
+      *) die "unknown option for ios-native-build: $1" ;;
+    esac
+  done
+
+  ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
+
+  local api_base_url=""
+  local ws_url=""
+  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    require_devbox_env
+    api_base_url="$DEVBOX_SITE_URL"
+    ws_url="$DEVBOX_RN_WS_URL"
+  else
+    log "no $DEVBOX_ENV_FILE found; using mingle-ios xcconfig default URLs"
+  fi
+
+  run_native_ios_build "$ios_coredevice_id" "$ios_configuration" "$api_base_url" "$ws_url"
+}
+
 cmd_test() {
   require_devbox_env
   local target="app"
@@ -1832,6 +1886,7 @@ Run:
 - scripts/devbox up --profile device --with-ios-install --ios-runtime native
 - scripts/devbox up --profile local --with-ios-install --ios-runtime native --ios-native-target simulator
 - scripts/devbox up --profile local --with-metro
+- scripts/devbox ios-native-build --ios-configuration Debug
 - scripts/devbox mobile --platform ios --ios-runtime rn
 - scripts/devbox mobile --platform ios --ios-runtime native
 - scripts/devbox mobile --platform ios --ios-runtime native --ios-native-target simulator --ios-simulator-name "iPhone 16"
@@ -1926,6 +1981,7 @@ main() {
     profile-local) cmd_profile --profile local "$@" ;;
     profile-device|profile-ngrok) cmd_profile --profile device "$@" ;;
     ngrok-config) cmd_ngrok_config "$@" ;;
+    ios-native-build|ios-build-native) cmd_ios_native_build "$@" ;;
     mobile) cmd_mobile "$@" ;;
     up) cmd_up "$@" ;;
     test|test-live) cmd_test "$@" ;;

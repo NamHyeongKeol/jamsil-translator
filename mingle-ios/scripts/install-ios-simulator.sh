@@ -83,6 +83,7 @@ pick_first_simulator_legacy() {
 choose_simulator_udid() {
   local requested_name="$1"
   local requested_udid="$2"
+  local count
   local udid=""
 
   if [[ -n "${requested_udid}" ]]; then
@@ -111,7 +112,15 @@ choose_simulator_udid() {
   fi
 
   if [[ -n "${requested_name}" ]]; then
-    udid="$(find_simulator_udid_by_name "${requested_name}")"
+    count="$(find_simulator_candidates_count "${requested_name}")"
+    if [[ "${count}" -gt 1 && "${AUTO_SELECT_SIMULATOR}" != "1" ]]; then
+      echo "Multiple simulators match '${requested_name}'. Specify SIMULATOR_UDID explicitly."
+      print_simulator_candidates "${requested_name}" | sed -n '1,20p'
+      return 1
+    fi
+    if [[ "${count}" -gt 0 ]]; then
+      udid="$(find_simulator_udid_by_name "${requested_name}")"
+    fi
   else
     udid="$(pick_first_simulator_legacy "")"
   fi
@@ -121,7 +130,7 @@ choose_simulator_udid() {
     return 0
   fi
 
-  local count name_count
+  local name_count
   name_count="$(find_simulator_candidates_count "")"
   if [[ "${name_count}" -gt 1 ]]; then
     echo "Multiple simulators found. Specify SIMULATOR_NAME or SIMULATOR_UDID explicitly."
@@ -130,18 +139,10 @@ choose_simulator_udid() {
     return 1
   fi
 
-  if [[ -n "${requested_name}" ]]; then
-    count="$(find_simulator_candidates_count "${requested_name}")"
-    if [[ "${count}" -gt 1 ]]; then
-      echo "Multiple simulators match '${requested_name}'. Specify SIMULATOR_UDID explicitly."
-      print_simulator_candidates "${requested_name}" | sed -n '1,20p'
-      return 1
-    fi
-  fi
-
   if [[ "${AUTO_SELECT_SIMULATOR}" == "1" ]]; then
     udid="$(pick_first_simulator_legacy "${requested_name}")"
     if [[ -n "${udid}" ]]; then
+      printf '%s\n' "${udid}"
       return 0
     fi
     echo "No simulator matched. Check available devices:"

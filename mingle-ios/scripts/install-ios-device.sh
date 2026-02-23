@@ -14,11 +14,7 @@ AUTO_SELECT_DEVICE="${AUTO_SELECT_DEVICE:-0}"
 DEVICE_ID="${1:-${DEVICE_ID:-}}"
 detect_devices() {
   xcrun devicectl list devices 2>/dev/null \
-    | sed -nE 's/.* ([0-9A-F-]{36}) +(connected|available \\(paired\\)).*/\\1|\\0/p'
-}
-
-list_connected_devices() {
-  detect_devices | sed -n 's/\([^|]*\)|.*/\\1/'
+    | sed -nE 's/.* ([0-9A-F-]{36}) +(connected|available \(paired\)).*/\1|\0/p'
 }
 
 print_device_candidates() {
@@ -32,32 +28,39 @@ print_device_candidates() {
 
 select_device() {
   local requested_id="$1"
-  local devices
-  devices="$(detect_devices | sed 's/|.*//')"
+  local -a devices=()
+  local row id _
+  while IFS='|' read -r id _; do
+    [[ -n "${id}" ]] && devices+=("${id}")
+  done < <(detect_devices)
 
   if [[ -n "${requested_id}" ]]; then
-    if [[ "${devices}" == *"${requested_id}"* ]]; then
-      echo "${requested_id}"
-      return 0
-    fi
-    echo "Device not found or not connected: ${requested_id}"
+    local known
+    for known in "${devices[@]}"; do
+      if [[ "${known}" == "${requested_id}" ]]; then
+        echo "${requested_id}"
+        return 0
+      fi
+    done
+    echo "Device not found or not connected: ${requested_id}" >&2
     return 1
   fi
 
+  if [[ "${#devices[@]}" -eq 0 ]]; then
+    return 1
+  fi
+
+  if [[ "${#devices[@]}" -eq 1 ]]; then
+    echo "${devices[0]}"
+    return 0
+  fi
+
   if [[ "${AUTO_SELECT_DEVICE}" == "1" ]]; then
-    local first
-    first="$(printf '%s' "${devices}" | sed -n '1p')"
+    local first="${devices[0]}"
     if [[ -n "${first}" ]]; then
       echo "${first}"
       return 0
     fi
-  fi
-
-  local count
-  count="$(printf '%s' "${devices}" | wc -l | tr -d ' ')"
-  if [[ "${count}" -eq 1 ]]; then
-    echo "${devices}"
-    return 0
   fi
 
   return 1

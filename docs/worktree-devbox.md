@@ -46,10 +46,13 @@ scripts/devbox up --profile device --with-ios-install
 # 9) (선택) iOS 네이티브만 설치
 scripts/devbox mobile --platform ios --ios-runtime native
 
-# 10) (선택) 전체 로그를 파일로 저장
+# 10) (선택) mingle-ios만 빌드(설치 없음)
+scripts/devbox ios-native-build --ios-configuration Debug
+
+# 11) (선택) 전체 로그를 파일로 저장
 scripts/devbox --log-file auto up --profile device --with-ios-install
 
-# 11) (선택) 테스트 실행
+# 12) (선택) 테스트 실행
 scripts/devbox test --target app
 scripts/devbox test --target ios-native
 scripts/devbox test --target all
@@ -122,6 +125,13 @@ scripts/devbox test --target all
   - `--ios-configuration Debug|Release` (기본 Release)
   - `--android-variant debug|release` (기본 release)
   - 연결 기기 미탐지 시 자동 스킵
+
+- `scripts/devbox ios-native-build`
+  - `mingle-ios/scripts/build-ios.sh`를 호출해 네이티브 iOS만 빌드(설치 없음)
+  - `.devbox.env`가 있으면 `MINGLE_API_BASE_URL`, `MINGLE_WS_URL`를 devbox 값으로 주입
+  - `.devbox.env`가 없으면 `mingle-ios/Config/*.xcconfig` 기본 URL을 사용
+  - `--ios-configuration Debug|Release` (기본 Debug)
+  - `--ios-coredevice-id <ID>`를 주면 해당 실기기 타깃으로 빌드
 
 - `scripts/devbox test --target app|ios-native|all`
   - `app`: 현재 devbox 설정값으로 `mingle-app` live integration test 실행
