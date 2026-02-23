@@ -42,6 +42,17 @@ cd mingle-ios
 DEVELOPMENT_TEAM=YOUR_TEAM_ID ./scripts/install-ios-device.sh <DEVICE_ID>
 ```
 
+## iOS 시뮬레이터 설치/실행
+
+```bash
+cd mingle-ios
+./scripts/install-ios-simulator.sh
+# 또는 특정 시뮬레이터 지정
+SIMULATOR_NAME="iPhone 16 Pro" ./scripts/install-ios-simulator.sh
+# 또는 UDID 직접 지정
+./scripts/install-ios-simulator.sh <SIMULATOR_UDID>
+```
+
 실기기 설치 전 필수 조건:
 
 1. Xcode > Settings > Accounts에 Apple ID 로그인
