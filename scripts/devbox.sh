@@ -1478,7 +1478,6 @@ cmd_up() {
   local -a pids=()
   local exit_code=0
   local started_ngrok_mode="none"
-  local force_inline_ngrok="${DEVBOX_FORCE_INLINE_NGROK:-0}"
 
   if [[ "$profile" == "device" ]]; then
     write_ngrok_local_config
@@ -1491,15 +1490,11 @@ $(ngrok_plan_capacity_hint)"
       fi
       require_cmd ngrok
       log "starting ngrok for device profile"
-      if [[ "$force_inline_ngrok" != "1" ]] && launch_ngrok_in_separate_terminal; then
+      if launch_ngrok_in_separate_terminal; then
         started_ngrok_mode="separate"
         log "ngrok started in a separate terminal pane/tab"
       else
-        if [[ "$force_inline_ngrok" == "1" ]]; then
-          log "log capture enabled; forcing inline ngrok launch"
-        else
-          log "separate terminal launch unavailable; falling back to inline ngrok"
-        fi
+        log "separate terminal launch unavailable; falling back to inline ngrok"
         (
           cd "$ROOT_DIR"
           scripts/ngrok-start-mobile.sh --log stdout --log-format logfmt
@@ -1663,7 +1658,6 @@ enable_log_capture() {
   tee -a "$file" < "$fifo_path" &
   exec > "$fifo_path" 2>&1
   rm -f "$fifo_path"
-  export DEVBOX_FORCE_INLINE_NGROK=1
   log "log capture enabled: $file"
 }
 
