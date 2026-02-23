@@ -37,6 +37,14 @@ scripts/devbox up --profile device
 # scripts/devbox up --profile device --with-mobile-install
 # iOS만 설치하려면
 # scripts/devbox up --profile device --with-ios-install
+# iOS 네이티브만 설치하려면
+# scripts/devbox up --profile device --with-ios-install --ios-runtime native
+# 또는 RN + 네이티브를 같이 설치
+# scripts/devbox mobile --platform ios --ios-runtime both
+# 테스트
+scripts/devbox test --target app
+# scripts/devbox test --target ios-native
+# scripts/devbox test --target all
 scripts/devbox status
 ```
 
@@ -52,8 +60,10 @@ scripts/devbox status
 - `scripts/devbox up`은 `.devbox.env`가 없으면 `init`을 자동 실행합니다.
 - `scripts/devbox up --profile device`는 가능한 경우 ngrok을 별도 터미널 탭/패널로 분리 실행합니다
   (불가 환경에서는 기존 인라인 실행으로 자동 폴백).
-- `scripts/devbox mobile --platform ios|android|all`로 기기 연결 시 RN 앱 빌드/설치 자동화를 수행합니다.
+- `scripts/devbox mobile --platform ios|android|all`는 iOS에서 `--ios-runtime rn|native|both`를 지원하며,
+  네이티브 설치 시 `--ios-coredevice-id`로 대상 기기를 지정할 수 있습니다.
 - `scripts/devbox up --profile device --with-mobile-install`으로 서버 준비 + 모바일 설치를 한 번에 실행할 수 있습니다.
+- `scripts/devbox test --target app|ios-native|all`로 live 테스트와 네이티브 iOS 테스트 빌드를 분리/통합 실행할 수 있습니다.
 
 ## Learn More
 

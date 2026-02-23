@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_ios_native_swiftui_workspace
+    %% @lastActive: mingle_worktree_devbox_native_ios_runtime_and_test_path
 
     %% === START ===
     %% @project_start [start, closed]
@@ -1177,18 +1177,23 @@ flowchart TD
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
     mingle_worktree_devbox_env_spacing_normalization --> mingle_ios_native_swiftui_workspace
     mingle_ios_native_swiftui_workspace --> mingle_ios_device_signing_account_setup
+    mingle_ios_native_swiftui_workspace --> mingle_worktree_devbox_native_ios_runtime_and_test_path
     mingle_ios_native_swiftui_workspace -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_runtime_and_test_path -.-> ultimate_goal
     mingle_ios_device_signing_account_setup -.-> ultimate_goal
 
     %% @mingle_ios_native_swiftui_workspace [ai-task, closed]
     mingle_ios_native_swiftui_workspace("mingle-ios 네이티브 분리 구축<br/><sub>기존 mingle-app 코드를 수정하지 않고<br/>SwiftUI + AVAudioEngine + WebSocket으로<br/>STT 워크플로우 파서/번역 연동 iOS 앱을<br/>mingle-ios 폴더에 독립 생성 및 빌드 검증</sub>")
+
+    %% @mingle_worktree_devbox_native_ios_runtime_and_test_path [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_native_ios_runtime_and_test_path("devbox 네이티브 iOS 경로 통합<br/><sub>scripts/devbox에 ios-runtime 분기와<br/>ios-coredevice-id 옵션을 추가해 RN/Native<br/>설치 흐름을 분리하고 mingle-ios URL 주입<br/>test --target ios-native|all 실행 경로를 확장</sub>")
 
     %% @mingle_ios_device_signing_account_setup [human-task, opened]
     mingle_ios_device_signing_account_setup("실기기 서명 계정 연결 필요<br/><sub>Xcode Accounts에 Apple ID를 연결하고<br/>개발 프로비저닝 프로필을 생성해야<br/>install-ios-device 스크립트로 iPhone에<br/>설치/실행을 완료할 수 있음</sub>")
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_ios_native_swiftui_workspace
+        mingle_worktree_devbox_native_ios_runtime_and_test_path
     end
 
     %% === STYLES ===
@@ -1495,7 +1500,8 @@ flowchart TD
     style mingle_app_ios_runtime_ws_url_normalization_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_runtime_ws_boot_validation_relax fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_env_spacing_normalization fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_ios_native_swiftui_workspace fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_ios_native_swiftui_workspace fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_runtime_and_test_path fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_ios_device_signing_account_setup fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

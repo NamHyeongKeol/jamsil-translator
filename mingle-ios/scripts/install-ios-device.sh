@@ -5,7 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${PROJECT_DIR}/.derived-data-device}"
 APP_BUNDLE_ID="${APP_BUNDLE_ID:-com.nam.mingleios}"
-APP_PATH="${DERIVED_DATA_PATH}/Build/Products/Debug-iphoneos/MingleIOS.app"
+CONFIGURATION="${CONFIGURATION:-Debug}"
+APP_PATH="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}-iphoneos/MingleIOS.app"
+MINGLE_API_BASE_URL="${MINGLE_API_BASE_URL:-}"
+MINGLE_WS_URL="${MINGLE_WS_URL:-}"
 
 DEVICE_ID="${1:-${DEVICE_ID:-}}"
 if [[ -z "${DEVICE_ID}" ]]; then
@@ -43,16 +46,24 @@ cd "${PROJECT_DIR}"
 xcodegen generate --spec project.yml > /dev/null
 
 BUILD_LOG="$(mktemp)"
+XCB_ARGS=(
+  -project MingleIOS.xcodeproj
+  -scheme MingleIOS
+  -configuration "${CONFIGURATION}"
+  -derivedDataPath "${DERIVED_DATA_PATH}"
+  -destination "generic/platform=iOS"
+  -allowProvisioningUpdates
+  "DEVELOPMENT_TEAM=${TEAM_ID}"
+)
+if [[ -n "${MINGLE_API_BASE_URL}" ]]; then
+  XCB_ARGS+=("MINGLE_API_BASE_URL=${MINGLE_API_BASE_URL}")
+fi
+if [[ -n "${MINGLE_WS_URL}" ]]; then
+  XCB_ARGS+=("MINGLE_WS_URL=${MINGLE_WS_URL}")
+fi
+
 set +e
-xcodebuild \
-  -project MingleIOS.xcodeproj \
-  -scheme MingleIOS \
-  -configuration Debug \
-  -derivedDataPath "${DERIVED_DATA_PATH}" \
-  -destination "generic/platform=iOS" \
-  -allowProvisioningUpdates \
-  "DEVELOPMENT_TEAM=${TEAM_ID}" \
-  build | tee "${BUILD_LOG}"
+xcodebuild "${XCB_ARGS[@]}" build | tee "${BUILD_LOG}"
 BUILD_EXIT=$?
 set -e
 

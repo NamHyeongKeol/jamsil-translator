@@ -9,6 +9,10 @@ APP_ENV_FILE="$ROOT_DIR/mingle-app/.env.local"
 STT_ENV_FILE="$ROOT_DIR/mingle-stt/.env.local"
 NGROK_LOCAL_CONFIG="$ROOT_DIR/ngrok.mobile.local.yml"
 RN_IOS_RUNTIME_XCCONFIG="$ROOT_DIR/mingle-app/rn/ios/devbox.runtime.xcconfig"
+MINGLE_IOS_DIR="$ROOT_DIR/mingle-ios"
+MINGLE_IOS_BUILD_SCRIPT="$MINGLE_IOS_DIR/scripts/build-ios.sh"
+MINGLE_IOS_INSTALL_SCRIPT="$MINGLE_IOS_DIR/scripts/install-ios-device.sh"
+MINGLE_IOS_TEST_SCRIPT="$MINGLE_IOS_DIR/scripts/test-ios.sh"
 MANAGED_START="# >>> devbox managed (auto)"
 MANAGED_END="# <<< devbox managed (auto)"
 
@@ -83,9 +87,9 @@ Usage:
   scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
-  scripts/devbox mobile [--platform ios|android|all] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release]
-  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
-  scripts/devbox test [vitest args...]
+  scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release]
+  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--ios-runtime rn|native|both] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
   scripts/devbox status
 
 Commands:
@@ -93,9 +97,9 @@ Commands:
   bootstrap    Seed env files from main/Vault and install dependencies.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
-  mobile       Build/install RN app(s) on connected iOS/Android device if available.
+  mobile       Build/install RN/native iOS and Android apps on connected devices.
   up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
-  test         Run mingle-app live integration tests with devbox endpoints.
+  test         Run mingle-app live tests and/or mingle-ios native test build.
   status       Print current endpoints for PC/iOS/Android web and app targets.
 EOF
 }
@@ -893,6 +897,16 @@ normalize_ios_configuration() {
   esac
 }
 
+normalize_ios_runtime() {
+  local raw="${1:-rn}"
+  case "${raw,,}" in
+    rn) printf 'rn' ;;
+    native) printf 'native' ;;
+    both) printf 'both' ;;
+    *) die "invalid --ios-runtime: $raw (expected rn|native|both)" ;;
+  esac
+}
+
 normalize_android_variant() {
   local raw="${1:-release}"
   case "$raw" in
@@ -985,6 +999,25 @@ run_ios_mobile_install() {
   fi
 }
 
+run_native_ios_mobile_install() {
+  local requested_coredevice_id="${1:-}"
+  local configuration="$2"
+
+  [[ -x "$MINGLE_IOS_INSTALL_SCRIPT" ]] || die "native iOS install script not found: $MINGLE_IOS_INSTALL_SCRIPT"
+  require_cmd xcodebuild
+  require_cmd xcrun
+  require_cmd xcodegen
+
+  log "building native iOS app ($configuration) for device: ${requested_coredevice_id:-auto}"
+  (
+    cd "$MINGLE_IOS_DIR"
+    MINGLE_API_BASE_URL="$DEVBOX_SITE_URL" \
+    MINGLE_WS_URL="$DEVBOX_RN_WS_URL" \
+    CONFIGURATION="$configuration" \
+      "$MINGLE_IOS_INSTALL_SCRIPT" "${requested_coredevice_id:-}"
+  )
+}
+
 run_android_mobile_install() {
   local requested_serial="${1:-}"
   local variant="$2"
@@ -1028,15 +1061,20 @@ run_android_mobile_install() {
 }
 
 run_mobile_install_targets() {
-  local do_ios="$1"
-  local do_android="$2"
-  local ios_udid="$3"
-  local android_serial="$4"
-  local ios_configuration="$5"
-  local android_variant="$6"
+  local do_rn_ios="$1"
+  local do_native_ios="$2"
+  local do_android="$3"
+  local ios_udid="$4"
+  local ios_coredevice_id="$5"
+  local android_serial="$6"
+  local ios_configuration="$7"
+  local android_variant="$8"
 
-  if [[ "$do_ios" -eq 1 ]]; then
+  if [[ "$do_rn_ios" -eq 1 ]]; then
     run_ios_mobile_install "$ios_udid" "$ios_configuration"
+  fi
+  if [[ "$do_native_ios" -eq 1 ]]; then
+    run_native_ios_mobile_install "$ios_coredevice_id" "$ios_configuration"
   fi
   if [[ "$do_android" -eq 1 ]]; then
     run_android_mobile_install "$android_serial" "$android_variant"
@@ -1331,7 +1369,9 @@ cmd_mobile() {
   save_and_refresh
 
   local platform="all"
+  local ios_runtime="rn"
   local ios_udid=""
+  local ios_coredevice_id=""
   local android_serial=""
   local ios_configuration="Release"
   local android_variant="release"
@@ -1339,7 +1379,9 @@ cmd_mobile() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --platform) platform="${2:-}"; shift 2 ;;
+      --ios-runtime) ios_runtime="${2:-}"; shift 2 ;;
       --ios-udid) ios_udid="${2:-}"; shift 2 ;;
+      --ios-coredevice-id) ios_coredevice_id="${2:-}"; shift 2 ;;
       --android-serial) android_serial="${2:-}"; shift 2 ;;
       --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
       --android-variant) android_variant="${2:-}"; shift 2 ;;
@@ -1347,21 +1389,31 @@ cmd_mobile() {
     esac
   done
 
+  ios_runtime="$(normalize_ios_runtime "$ios_runtime")"
   ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
   android_variant="$(normalize_android_variant "$android_variant")"
 
-  local do_ios=0
+  local do_rn_ios=0
+  local do_native_ios=0
   local do_android=0
 
   case "$platform" in
     ios)
-      do_ios=1
+      case "$ios_runtime" in
+        rn) do_rn_ios=1 ;;
+        native) do_native_ios=1 ;;
+        both) do_rn_ios=1; do_native_ios=1 ;;
+      esac
       ;;
     android)
       do_android=1
       ;;
     all)
-      do_ios=1
+      case "$ios_runtime" in
+        rn) do_rn_ios=1 ;;
+        native) do_native_ios=1 ;;
+        both) do_rn_ios=1; do_native_ios=1 ;;
+      esac
       do_android=1
       ;;
     *)
@@ -1370,16 +1422,21 @@ cmd_mobile() {
   esac
 
   if [[ -n "$ios_udid" ]]; then
-    do_ios=1
+    do_rn_ios=1
+  fi
+  if [[ -n "$ios_coredevice_id" ]]; then
+    do_native_ios=1
   fi
   if [[ -n "$android_serial" ]]; then
     do_android=1
   fi
 
   run_mobile_install_targets \
-    "$do_ios" \
+    "$do_rn_ios" \
+    "$do_native_ios" \
     "$do_android" \
     "$ios_udid" \
+    "$ios_coredevice_id" \
     "$android_serial" \
     "$ios_configuration" \
     "$android_variant"
@@ -1403,7 +1460,9 @@ cmd_up() {
   local with_metro=0
   local with_ios_install=0
   local with_android_install=0
+  local ios_runtime="rn"
   local ios_udid=""
+  local ios_coredevice_id=""
   local android_serial=""
   local ios_configuration="Release"
   local android_variant="release"
@@ -1416,7 +1475,9 @@ cmd_up() {
       --with-ios-install) with_ios_install=1; shift ;;
       --with-android-install) with_android_install=1; shift ;;
       --with-mobile-install) with_ios_install=1; with_android_install=1; shift ;;
+      --ios-runtime) ios_runtime="${2:-}"; shift 2 ;;
       --ios-udid) ios_udid="${2:-}"; with_ios_install=1; shift 2 ;;
+      --ios-coredevice-id) ios_coredevice_id="${2:-}"; with_ios_install=1; shift 2 ;;
       --android-serial) android_serial="${2:-}"; with_android_install=1; shift 2 ;;
       --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
       --android-variant) android_variant="${2:-}"; shift 2 ;;
@@ -1426,6 +1487,7 @@ cmd_up() {
     esac
   done
 
+  ios_runtime="$(normalize_ios_runtime "$ios_runtime")"
   ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
   android_variant="$(normalize_android_variant "$android_variant")"
 
@@ -1481,10 +1543,38 @@ $(ngrok_plan_capacity_hint)"
   cmd_status
 
   if [[ "$with_ios_install" -eq 1 || "$with_android_install" -eq 1 ]]; then
+    local do_rn_ios=0
+    local do_native_ios=0
+    local do_android=0
+
+    if [[ "$with_ios_install" -eq 1 ]]; then
+      case "$ios_runtime" in
+        rn) do_rn_ios=1 ;;
+        native) do_native_ios=1 ;;
+        both) do_rn_ios=1; do_native_ios=1 ;;
+      esac
+    fi
+
+    if [[ "$with_android_install" -eq 1 ]]; then
+      do_android=1
+    fi
+
+    if [[ -n "$ios_udid" ]]; then
+      do_rn_ios=1
+    fi
+    if [[ -n "$ios_coredevice_id" ]]; then
+      do_native_ios=1
+    fi
+    if [[ -n "$android_serial" ]]; then
+      do_android=1
+    fi
+
     run_mobile_install_targets \
-      "$with_ios_install" \
-      "$with_android_install" \
+      "$do_rn_ios" \
+      "$do_native_ios" \
+      "$do_android" \
       "$ios_udid" \
+      "$ios_coredevice_id" \
       "$android_serial" \
       "$ios_configuration" \
       "$android_variant"
@@ -1534,14 +1624,53 @@ $(ngrok_plan_capacity_hint)"
 
 cmd_test() {
   require_devbox_env
-  require_cmd pnpm
+  local target="app"
+  local ios_configuration="Debug"
+  local -a app_test_args=()
 
-  (
-    cd "$ROOT_DIR/mingle-app"
-    MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
-    MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
-      pnpm test:live "$@"
-  )
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --target) target="${2:-}"; shift 2 ;;
+      --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
+      --) shift; app_test_args+=("$@"); break ;;
+      *) app_test_args+=("$1"); shift ;;
+    esac
+  done
+
+  ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
+
+  local run_app=0
+  local run_ios_native=0
+  case "$target" in
+    app) run_app=1 ;;
+    ios-native) run_ios_native=1 ;;
+    all) run_app=1; run_ios_native=1 ;;
+    *) die "invalid --target: $target (expected app|ios-native|all)" ;;
+  esac
+
+  if [[ "$run_app" -eq 1 ]]; then
+    require_cmd pnpm
+    (
+      cd "$ROOT_DIR/mingle-app"
+      MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
+      MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
+        pnpm test:live "${app_test_args[@]}"
+    )
+  fi
+
+  if [[ "$run_ios_native" -eq 1 ]]; then
+    [[ -x "$MINGLE_IOS_TEST_SCRIPT" ]] || die "native iOS test script not found: $MINGLE_IOS_TEST_SCRIPT"
+    require_cmd xcodebuild
+    require_cmd xcodegen
+    log "running mingle-ios native test build ($ios_configuration)"
+    (
+      cd "$MINGLE_IOS_DIR"
+      MINGLE_API_BASE_URL="$DEVBOX_SITE_URL" \
+      MINGLE_WS_URL="$DEVBOX_RN_WS_URL" \
+      CONFIGURATION="$ios_configuration" \
+        "$MINGLE_IOS_TEST_SCRIPT"
+    )
+  fi
 }
 
 cmd_status() {
@@ -1557,6 +1686,7 @@ PC Web      : $DEVBOX_SITE_URL
 iOS Web     : $DEVBOX_SITE_URL
 Android Web : $DEVBOX_SITE_URL
 iOS App     : RN_WEB_APP_BASE_URL=$DEVBOX_SITE_URL | RN_DEFAULT_WS_URL=$DEVBOX_RN_WS_URL
+iOS Native  : MINGLE_API_BASE_URL=$DEVBOX_SITE_URL | MINGLE_WS_URL=$DEVBOX_RN_WS_URL
 Android App : RN_WEB_APP_BASE_URL=$DEVBOX_SITE_URL | RN_DEFAULT_WS_URL=$DEVBOX_RN_WS_URL
 Live Test   : MINGLE_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL | MINGLE_TEST_WS_URL=$DEVBOX_TEST_WS_URL
 Vault App   : ${DEVBOX_VAULT_APP_PATH:-"(unset)"}
@@ -1573,9 +1703,12 @@ Run:
 - scripts/devbox up --profile local
 - scripts/devbox up --profile device
 - scripts/devbox up --profile device --with-mobile-install
+- scripts/devbox up --profile device --with-ios-install --ios-runtime native
 - scripts/devbox up --profile local --with-metro
-- scripts/devbox mobile --platform ios
+- scripts/devbox mobile --platform ios --ios-runtime rn
+- scripts/devbox mobile --platform ios --ios-runtime native
 - scripts/devbox mobile --platform android
+- scripts/devbox test --target ios-native
 - scripts/devbox profile --profile local --host <LAN_IP>
 - scripts/devbox test
 EOF

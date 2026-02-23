@@ -2,6 +2,37 @@ import XCTest
 @testable import MingleIOS
 
 final class WorkflowParserTests: XCTestCase {
+    func testNormalizeLangForCompare() {
+        XCTAssertEqual(STTWorkflowParser.normalizeLangForCompare(" en_US "), "en")
+        XCTAssertEqual(STTWorkflowParser.normalizeLangForCompare("PT-BR"), "pt")
+        XCTAssertEqual(STTWorkflowParser.normalizeLangForCompare("zh-Hant-TW"), "zh")
+        XCTAssertEqual(STTWorkflowParser.normalizeLangForCompare("   "), "")
+    }
+
+    func testStripSourceLanguageFromTranslations() {
+        let filtered = STTWorkflowParser.stripSourceLanguageFromTranslations(
+            [
+                " en-US ": "self",
+                "KO": " 안녕하세요 ",
+                "ja": " こんにちは ",
+                "": "skip",
+                "fr": "   "
+            ],
+            sourceLanguageRaw: "en"
+        )
+
+        XCTAssertEqual(filtered, ["KO": "안녕하세요", "ja": "こんにちは"])
+    }
+
+    func testBuildTurnTargetLanguagesSnapshotDedupesAndExcludesSource() {
+        let targets = STTWorkflowParser.buildTurnTargetLanguagesSnapshot(
+            languagesRaw: [" en ", "ko", "ja", "KO", "fr-CA", "fr", " ", "EN-us", "ja-JP"],
+            sourceLanguageRaw: "en-US"
+        )
+
+        XCTAssertEqual(targets, ["ko", "ja", "fr-CA"])
+    }
+
     func testNormalizeTurnTextRemovesMarkersAndNoise() {
         let text = STTWorkflowParser.normalizeTurnText(" <fin> ... Hello there ")
         XCTAssertEqual(text, "Hello there")

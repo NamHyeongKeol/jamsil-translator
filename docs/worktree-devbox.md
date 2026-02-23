@@ -9,6 +9,7 @@
 - PC웹/iOS웹/안드웹/iOS앱/안드앱 테스트 URL/WS 자동 동기화
 - 디바이스 테스트용 ngrok 상시 지원
 - live 테스트(`pnpm test:live`) 포트 자동 주입
+- `mingle-ios` 네이티브 빌드/테스트 동시 자동화
 
 ## 빠른 시작
 
@@ -34,13 +35,21 @@ scripts/devbox up --profile local
 scripts/devbox up --profile device
 
 # 6) (선택) 연결된 테스트폰 앱 빌드/설치
-scripts/devbox mobile --platform all
+scripts/devbox mobile --platform all --ios-runtime both
 
 # 7) (선택) 서버+모바일 설치를 한 번에
 scripts/devbox up --profile device --with-mobile-install
 
 # 8) (선택) iOS만 설치
 scripts/devbox up --profile device --with-ios-install
+
+# 9) (선택) iOS 네이티브만 설치
+scripts/devbox mobile --platform ios --ios-runtime native
+
+# 10) (선택) 테스트 실행
+scripts/devbox test --target app
+scripts/devbox test --target ios-native
+scripts/devbox test --target all
 ```
 
 ## 주요 명령
@@ -84,22 +93,27 @@ scripts/devbox up --profile device --with-ios-install
     (실패 시 기존 인라인 실행으로 폴백)
   - `--with-ios-install`, `--with-android-install`, `--with-mobile-install` 옵션으로
     연결된 테스트폰 앱 빌드/설치를 함께 수행
+  - iOS 설치 시 `--ios-runtime rn|native|both`로 RN/네이티브 경로를 선택 가능
+  - 네이티브 설치 대상은 `--ios-coredevice-id <ID>`로 지정 가능
   - 연결된/설치 가능한 기기가 없으면 해당 플랫폼 설치 단계는 자동 스킵
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
   - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
   - `--with-metro`를 추가하면 RN Metro도 함께 실행
 
 - `scripts/devbox mobile --platform ios|android|all`
-  - 현재 워크트리 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로
-    RN iOS/Android 빌드/설치를 수행
-  - `--ios-udid`, `--android-serial`로 대상 기기 지정 가능
+  - iOS는 `--ios-runtime rn|native|both`로 RN/네이티브(또는 동시) 설치를 선택
+  - RN iOS는 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로 빌드/설치
+  - 네이티브 iOS는 devbox URL(`MINGLE_API_BASE_URL`, `MINGLE_WS_URL`)을 주입해 설치
+  - `--ios-udid`, `--ios-coredevice-id`, `--android-serial`로 대상 기기 지정 가능
   - `--ios-configuration Debug|Release` (기본 Release)
   - `--android-variant debug|release` (기본 release)
   - 연결 기기 미탐지 시 자동 스킵
 
-- `scripts/devbox test`
-  - 현재 devbox 설정값으로 `mingle-app` live integration test 실행
-  - 내부적으로 `MINGLE_TEST_API_BASE_URL`, `MINGLE_TEST_WS_URL`를 자동 주입
+- `scripts/devbox test --target app|ios-native|all`
+  - `app`: 현재 devbox 설정값으로 `mingle-app` live integration test 실행
+  - `ios-native`: `mingle-ios/scripts/test-ios.sh`를 통해 네이티브 iOS test build 실행
+  - `all`: 두 테스트를 순서대로 실행
+  - iOS는 `--ios-configuration Debug|Release` 지정 가능
 
 ## ngrok 연동
 
