@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_ios_native_chat_ui_parity_refresh
+    %% @lastActive: mingle_ios_native_livephonedemo_ui_full_parity
 
     %% === START ===
     %% @project_start [start, closed]
@@ -1189,6 +1189,7 @@ flowchart TD
     mingle_ios_native_stop_finalize_parity_hardening --> mingle_ios_native_install_path_hardening
     mingle_ios_native_install_path_hardening --> mingle_worktree_devbox_ios_native_build_command
     mingle_worktree_devbox_ios_native_build_command --> mingle_ios_native_chat_ui_parity_refresh
+    mingle_ios_native_chat_ui_parity_refresh --> mingle_ios_native_livephonedemo_ui_full_parity
     mingle_ios_native_swiftui_workspace -.-> ultimate_goal
     mingle_worktree_devbox_native_ios_runtime_and_test_path -.-> ultimate_goal
     mingle_worktree_devbox_native_ios_simulator_mobile_command -.-> ultimate_goal
@@ -1196,6 +1197,7 @@ flowchart TD
     mingle_ios_native_stop_finalize_parity_hardening -.-> ultimate_goal
     mingle_worktree_devbox_ios_native_build_command -.-> ultimate_goal
     mingle_ios_native_chat_ui_parity_refresh -.-> ultimate_goal
+    mingle_ios_native_livephonedemo_ui_full_parity -.-> ultimate_goal
     mingle_ios_device_signing_account_setup -.-> ultimate_goal
 
     %% @mingle_ios_native_swiftui_workspace [ai-task, closed]
@@ -1222,12 +1224,15 @@ flowchart TD
     %% @mingle_ios_native_chat_ui_parity_refresh [ai-task, closed, 2026-02-23, ai]
     mingle_ios_native_chat_ui_parity_refresh("mingle-ios 채팅 UI/UX 패리티 적용<br/><sub>설정 폼 리스트 중심 화면을 교체해<br/>턴별 카드(원문/번역 분리) 타임라인을 구성하고<br/>하단 중앙 재생 버튼으로 STT 시작/중지를 연결해<br/>하이브리드 앱과 유사한 사용 흐름을 네이티브에 이식</sub>")
 
+    %% @mingle_ios_native_livephonedemo_ui_full_parity [ai-task, closed, 2026-02-23, ai]
+    mingle_ios_native_livephonedemo_ui_full_parity("mingle-ios LivePhoneDemo UI 완성<br/><sub>버블 폭/좌측 정렬/모서리 형태를<br/>웹 LivePhoneDemo 규칙에 맞춰 재구성하고<br/>하단 컨트롤 바의 사용량/버튼 비율과<br/>pending 도트 애니메이션을 동일 UX로 보정</sub>")
+
     %% @mingle_ios_device_signing_account_setup [human-task, opened]
     mingle_ios_device_signing_account_setup("실기기 서명 계정 연결 필요<br/><sub>Xcode Accounts에 Apple ID를 연결하고<br/>개발 프로비저닝 프로필을 생성해야<br/>install-ios-device 스크립트로 iPhone에<br/>설치/실행을 완료할 수 있음</sub>")
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_ios_native_chat_ui_parity_refresh
+        mingle_ios_native_livephonedemo_ui_full_parity
     end
 
     %% === STYLES ===
@@ -1542,7 +1547,8 @@ flowchart TD
     style mingle_ios_native_stop_finalize_parity_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_ios_native_install_path_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_ios_native_build_command fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_ios_native_chat_ui_parity_refresh fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_ios_native_chat_ui_parity_refresh fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_livephonedemo_ui_full_parity fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_ios_device_signing_account_setup fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
