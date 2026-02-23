@@ -1390,6 +1390,21 @@ cmd_mobile() {
   fi
   require_devbox_env
   require_cmd pnpm
+
+  local active_profile="${DEVBOX_PROFILE:-local}"
+  local active_host="${DEVBOX_LOCAL_HOST:-127.0.0.1}"
+  case "$active_profile" in
+    device)
+      # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
+      apply_profile "device"
+      ;;
+    local)
+      apply_profile "local" "$active_host"
+      ;;
+    *)
+      die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device)"
+      ;;
+  esac
   save_and_refresh
 
   local platform="all"

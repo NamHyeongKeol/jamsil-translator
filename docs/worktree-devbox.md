@@ -107,6 +107,9 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
     - ngrok이 별도 탭/패널에서 실행되면 ngrok 로그는 해당 탭/패널에서 확인
 
 - `scripts/devbox mobile --platform ios|android|all`
+  - 실행 시작 시 `.devbox.env`의 현재 프로필(local/device)을 다시 적용해
+    최신 URL/WS 값을 먼저 재동기화한 뒤 빌드/설치를 수행
+    (device 프로필은 ngrok inspector에서 최신 터널 URL 재조회)
   - 현재 워크트리 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로
     RN iOS/Android 빌드/설치를 수행
   - `--ios-udid`, `--android-serial`로 대상 기기 지정 가능
