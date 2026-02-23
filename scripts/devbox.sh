@@ -1020,7 +1020,12 @@ run_ios_mobile_install() {
       log "iOS uninstall skipped (app may not be installed)"
   fi
 
-  [[ -f "$RN_IOS_RUNTIME_XCCONFIG" ]] || write_rn_ios_runtime_xcconfig
+  if [[ "$with_clean_install" -eq 1 ]]; then
+    log "cleaning iOS build artifacts for consistent runtime injection: $derived_data_path"
+    rm -rf "$derived_data_path"
+  fi
+
+  write_rn_ios_runtime_xcconfig
 
   mkdir -p "$(dirname "$derived_data_path")"
 
@@ -1106,6 +1111,64 @@ run_mobile_install_targets() {
   if [[ "$do_android" -eq 1 ]]; then
     run_android_mobile_install "$android_serial" "$android_variant"
   fi
+}
+
+stop_existing_ngrok_by_inspector_port() {
+  local inspector_port="$1"
+  local name_patterns=(
+    "ngrok.start.*devbox_web.*devbox_stt"
+    "scripts/ngrok-start-mobile.sh .*devbox_web.*devbox_stt"
+    "ngrok.*devbox.mobile.local.yml"
+  )
+  local pids=""
+  local kill_pids=""
+  local candidate=""
+  local pid=""
+  local unique_pids=""
+
+  [[ -n "$inspector_port" ]] || return 0
+  [[ "$inspector_port" =~ ^[0-9]+$ ]] || return 0
+
+  if command -v lsof >/dev/null 2>&1; then
+    pids="$(lsof -tiTCP:"$inspector_port" -sTCP:LISTEN 2>/dev/null || true)"
+  fi
+  if [[ -z "$pids" ]] && command -v pgrep >/dev/null 2>&1; then
+    local pattern
+    for pattern in "${name_patterns[@]}"; do
+      while IFS= read -r candidate; do
+        [[ -n "$candidate" ]] || continue
+        if ! printf '%s\n' "$pids" | grep -Fxq "$candidate"; then
+          pids="${pids}${pids:+$'\n'}$candidate"
+        fi
+      done < <(pgrep -f "$pattern" 2>/dev/null || true)
+    done
+  fi
+
+  unique_pids="$(printf '%s' "$pids" | awk 'NF {print $1}' | awk '!seen[$0]++')"
+  pids="$unique_pids"
+  kill_pids="$unique_pids"
+  if [[ -z "$pids" ]]; then
+    return 0
+  fi
+
+  log "stopping existing ngrok processes on inspector port $inspector_port"
+  printf '%s\n' "$pids" | while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill "$pid" >/dev/null 2>&1 || true
+  done
+
+  local elapsed=0
+  while (( elapsed < 5 )); do
+    pids="$(lsof -tiTCP:"$inspector_port" -sTCP:LISTEN 2>/dev/null || true)"
+    [[ -z "$pids" ]] && return 0
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  printf '%s\n' "$kill_pids" | while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill -9 "$pid" >/dev/null 2>&1 || true
+  done
 }
 
 try_read_ngrok_urls() {
@@ -1401,26 +1464,12 @@ cmd_mobile() {
 
   local active_profile="${DEVBOX_PROFILE:-local}"
   local active_host="${DEVBOX_LOCAL_HOST:-127.0.0.1}"
-  case "$active_profile" in
-    device)
-      # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
-      apply_profile "device"
-      ;;
-    local)
-      apply_profile "local" "$active_host"
-      ;;
-    *)
-      die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device)"
-      ;;
-  esac
-  save_and_refresh
-
+  local with_ios_clean_install=0
   local platform="all"
   local ios_udid=""
   local android_serial=""
   local ios_configuration="Release"
   local android_variant="release"
-  local with_ios_clean_install=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1433,6 +1482,25 @@ cmd_mobile() {
       *) die "unknown option for mobile: $1" ;;
     esac
   done
+
+  # parse arguments first so clean-install flag is available
+  # for profile-level behavior below.
+  case "$active_profile" in
+    device)
+      if [[ "$with_ios_clean_install" -eq 1 ]]; then
+        stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+      fi
+      # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
+      apply_profile "device"
+      ;;
+    local)
+      apply_profile "local" "$active_host"
+      ;;
+    *)
+      die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device)"
+      ;;
+  esac
+  save_and_refresh
 
   ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
   android_variant="$(normalize_android_variant "$android_variant")"
@@ -1528,6 +1596,9 @@ cmd_up() {
   local started_ngrok_mode="none"
 
   if [[ "$profile" == "device" ]]; then
+    if [[ "$with_ios_clean_install" -eq 1 ]]; then
+      stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+    fi
     write_ngrok_local_config
 
     if ! try_read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"; then

@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_mobile_profile_resync_before_install
+    %% @lastActive: mingle_worktree_devbox_ngrok_stale_profile_refresh_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -757,6 +757,9 @@ flowchart TD
     %% @mingle_worktree_devbox_mobile_profile_resync_before_install [ai-task, closed, 2026-02-23, ai]
     mingle_worktree_devbox_mobile_profile_resync_before_install("devbox mobile URL 재동기화 가드<br/><sub>mobile 명령이 기존 .devbox.env 값으로만<br/>빌드되어 이전 ngrok URL이 앱에 박히던 경로를<br/>실행 시작 시 profile 재적용으로 최신 URL/WS를<br/>반영한 뒤 빌드하도록 고정해 오프라인 URL 재발 방지</sub>")
 
+    %% @mingle_worktree_devbox_ngrok_stale_profile_refresh_fix [ai-task, closed, 2026-02-23, nam]
+    mingle_worktree_devbox_ngrok_stale_profile_refresh_fix("ngrok 과거 터널 링크 방지 보강<br/><sub>up/mobile 실행 시 stale ngrok를 프로세스명과<br/>포트 기준으로 선제 종료하고 새 링크가 확정되도록<br/>with-ios-clean-install 분기에서 정리 로직 강제 실행<br/>iOS xcconfig를 매번 재생성해 런타임 URL 주입을 최신화</sub>")
+
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
 
@@ -970,6 +973,7 @@ flowchart TD
     mingle_app_ios_runtime_ws_boot_validation_relax --> mingle_worktree_devbox_env_spacing_normalization
     mingle_worktree_devbox_env_spacing_normalization --> mingle_worktree_devbox_nextauth_default_env_guard
     mingle_worktree_devbox_nextauth_default_env_guard --> mingle_worktree_devbox_mobile_profile_resync_before_install
+    mingle_worktree_devbox_mobile_profile_resync_before_install --> mingle_worktree_devbox_ngrok_stale_profile_refresh_fix
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -1193,12 +1197,13 @@ flowchart TD
     mingle_worktree_devbox_env_spacing_normalization -.-> ultimate_goal
     mingle_worktree_devbox_nextauth_default_env_guard -.-> ultimate_goal
     mingle_worktree_devbox_mobile_profile_resync_before_install -.-> ultimate_goal
+    mingle_worktree_devbox_ngrok_stale_profile_refresh_fix -.-> ultimate_goal
     mingle_stt_soniox_compact_debug_log_fields -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_mobile_profile_resync_before_install
+        mingle_worktree_devbox_ngrok_stale_profile_refresh_fix
     end
 
     %% === STYLES ===
@@ -1514,7 +1519,8 @@ flowchart TD
     style mingle_stt_text_progress_silence_finalize_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_nextauth_default_env_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_soniox_compact_debug_log_fields fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_worktree_devbox_mobile_profile_resync_before_install fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_mobile_profile_resync_before_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ngrok_stale_profile_refresh_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
