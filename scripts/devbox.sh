@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT_CANON="$(cd "$ROOT_DIR" && pwd -P)"
 LOCAL_TOOLS_BIN="$ROOT_DIR/.tools/bin"
+DEVBOX_LOG_DIR="$ROOT_DIR/.devbox-logs"
 DEVBOX_ENV_FILE="$ROOT_DIR/.devbox.env"
 APP_ENV_FILE="$ROOT_DIR/mingle-app/.env.local"
 STT_ENV_FILE="$ROOT_DIR/mingle-stt/.env.local"
@@ -71,6 +72,7 @@ DEVBOX_TEST_WS_URL=""
 DEVBOX_VAULT_APP_PATH=""
 DEVBOX_VAULT_STT_PATH=""
 DEVBOX_NGROK_API_PORT=""
+DEVBOX_LOG_FILE=""
 
 log() {
   printf '[devbox] %s\n' "$*"
@@ -84,6 +86,7 @@ die() {
 usage() {
   cat <<'EOF'
 Usage:
+  scripts/devbox [--log-file PATH|auto] <command> [options]
   scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--ngrok-api-port N] [--host HOST]
   scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox profile --profile local|device [--host HOST]
@@ -102,6 +105,11 @@ Commands:
   up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
   test         Run mingle-app live tests and/or mingle-ios native test build.
   status       Print current endpoints for PC/iOS/Android web and app targets.
+
+Global Options:
+  --log-file PATH|auto  Save combined devbox stdout/stderr to PATH.
+                        Relative paths resolve from repository root.
+                        auto -> .devbox-logs/devbox-<worktree>-<timestamp>.log
 EOF
 }
 
@@ -431,31 +439,60 @@ ensure_rn_workspace_dependencies() {
 }
 
 ensure_ios_pods_if_needed() {
+  local ios_dir="$ROOT_DIR/mingle-app/rn/ios"
   local pods_dir="$ROOT_DIR/mingle-app/rn/ios/Pods"
+  local podfile_lock="$ios_dir/Podfile.lock"
+  local manifest_lock="$ios_dir/Pods/Manifest.lock"
+  local needs_install=0
+  local reason="already synced"
+
   if [[ ! -d "$pods_dir" ]]; then
-    log "installing iOS pods: mingle-app/rn/ios"
-    (
-      cd "$ROOT_DIR/mingle-app/rn"
-      if command -v bundle >/dev/null 2>&1; then
-        local bundle_home="$ROOT_DIR/.devbox-cache/bundle/rn"
-        mkdir -p "$bundle_home"
+    needs_install=1
+    reason="Pods directory missing"
+  elif [[ ! -f "$manifest_lock" ]]; then
+    needs_install=1
+    reason="Pods/Manifest.lock missing"
+  elif [[ ! -f "$podfile_lock" ]]; then
+    needs_install=1
+    reason="Podfile.lock missing"
+  elif ! cmp -s "$podfile_lock" "$manifest_lock"; then
+    needs_install=1
+    reason="Podfile.lock and Manifest.lock out of sync"
+  fi
+
+  if [[ "$needs_install" -eq 0 ]]; then
+    return 0
+  fi
+
+  log "installing iOS pods: mingle-app/rn/ios ($reason)"
+  (
+    cd "$ROOT_DIR/mingle-app/rn"
+    if command -v bundle >/dev/null 2>&1; then
+      local bundle_home="$ROOT_DIR/.devbox-cache/bundle/rn"
+      mkdir -p "$bundle_home"
+      if ! BUNDLE_USER_HOME="$bundle_home" \
+        BUNDLE_PATH="$bundle_home" \
+        BUNDLE_DISABLE_SHARED_GEMS=true \
+        bundle check >/dev/null 2>&1; then
         BUNDLE_USER_HOME="$bundle_home" \
         BUNDLE_PATH="$bundle_home" \
         BUNDLE_DISABLE_SHARED_GEMS=true \
           bundle install
-        (
-          cd ios
-          BUNDLE_USER_HOME="$bundle_home" \
-          BUNDLE_PATH="$bundle_home" \
-          BUNDLE_DISABLE_SHARED_GEMS=true \
-            bundle exec pod install
-        )
-      else
+      fi
+      (
+        cd ios
+        BUNDLE_USER_HOME="$bundle_home" \
+        BUNDLE_PATH="$bundle_home" \
+        BUNDLE_DISABLE_SHARED_GEMS=true \
+          bundle exec pod install
+      )
+    else
+      (
         cd ios
         pod install
-      fi
-    )
-  fi
+      )
+    fi
+  )
 }
 
 upsert_non_managed_env_entry() {
@@ -1291,6 +1328,7 @@ wait_for_any_child_exit() {
 }
 
 cmd_init() {
+  require_cmd pnpm
   local web_port="" stt_port="" metro_port="" ngrok_api_port="" host="127.0.0.1"
 
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
@@ -1343,6 +1381,8 @@ cmd_init() {
 
   seed_env_from_main_worktree
   save_and_refresh
+  ensure_rn_workspace_dependencies
+  ensure_ios_pods_if_needed
 
   log "initialized for worktree: $DEVBOX_WORKTREE_NAME"
   cmd_status
@@ -1369,6 +1409,8 @@ cmd_bootstrap() {
   seed_env_from_main_worktree
   sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
   ensure_workspace_dependencies
+  ensure_rn_workspace_dependencies
+  ensure_ios_pods_if_needed
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
     save_and_refresh
   fi
@@ -1800,9 +1842,82 @@ Run:
 EOF
 }
 
+default_log_file_path() {
+  local timestamp worktree
+  timestamp="$(date '+%Y%m%d-%H%M%S')"
+  worktree="${DEVBOX_WORKTREE_NAME:-$(derive_worktree_name)}"
+  worktree="${worktree//[^A-Za-z0-9._-]/-}"
+  printf '%s/devbox-%s-%s.log' "$DEVBOX_LOG_DIR" "$worktree" "$timestamp"
+}
+
+resolve_log_file_path() {
+  local raw_value="$1"
+  local value="$raw_value"
+
+  [[ -n "$value" ]] || die "missing value for --log-file (expected PATH or auto)"
+  if [[ "$value" == "auto" ]]; then
+    value="$(default_log_file_path)"
+  elif [[ "$value" != /* ]]; then
+    value="$ROOT_DIR/$value"
+  fi
+
+  ensure_single_line_value "log file path" "$value"
+  printf '%s' "$value"
+}
+
+enable_log_capture() {
+  local file="$1"
+  local fifo_path
+
+  command -v tee >/dev/null 2>&1 || die "required command not found: tee"
+  mkdir -p "$(dirname "$file")"
+  printf '===== devbox log started %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S %z')" >> "$file"
+  fifo_path="$(mktemp -u "${TMPDIR:-/tmp}/devbox-log.XXXXXX")"
+  mkfifo "$fifo_path"
+  tee -a "$file" < "$fifo_path" &
+  exec > "$fifo_path" 2>&1
+  rm -f "$fifo_path"
+  log "log capture enabled: $file"
+}
+
 main() {
-  local cmd="${1:-help}"
-  shift || true
+  local log_file_option=""
+  local -a filtered_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --log-file)
+        [[ $# -ge 2 ]] || die "missing value for --log-file"
+        log_file_option="$2"
+        shift 2
+        ;;
+      --log-file=*)
+        log_file_option="${1#--log-file=}"
+        shift
+        ;;
+      *)
+        filtered_args+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ -n "$log_file_option" ]]; then
+    DEVBOX_LOG_FILE="$(resolve_log_file_path "$log_file_option")"
+    enable_log_capture "$DEVBOX_LOG_FILE"
+  fi
+
+  local cmd="help"
+  if [[ "${#filtered_args[@]}" -gt 0 ]]; then
+    cmd="${filtered_args[0]}"
+    if [[ "${#filtered_args[@]}" -gt 1 ]]; then
+      set -- "${filtered_args[@]:1}"
+    else
+      set --
+    fi
+  else
+    set --
+  fi
 
   case "$cmd" in
     init) cmd_init "$@" ;;

@@ -46,7 +46,10 @@ scripts/devbox up --profile device --with-ios-install
 # 9) (선택) iOS 네이티브만 설치
 scripts/devbox mobile --platform ios --ios-runtime native
 
-# 10) (선택) 테스트 실행
+# 10) (선택) 전체 로그를 파일로 저장
+scripts/devbox --log-file auto up --profile device --with-ios-install
+
+# 11) (선택) 테스트 실행
 scripts/devbox test --target app
 scripts/devbox test --target ios-native
 scripts/devbox test --target all
@@ -63,10 +66,16 @@ scripts/devbox test --target all
   - `mingle-app/.env.local` devbox 관리 블록 갱신
   - `mingle-stt/.env.local` 포트 블록 갱신
   - `ngrok.mobile.local.yml` 생성
+  - RN 워크스페이스 의존성(`mingle-app/rn`) 자동 설치/점검
+  - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
+    불일치/누락 시 `pod install` 자동 동기화
 
 - `scripts/devbox bootstrap`
   - main 워크트리의 `mingle-app/.env.local`, `mingle-stt/.env.local`을 현재 워크트리에 시드
   - `mingle-app`, `mingle-stt` 의존성(`pnpm install`) 자동 설치
+  - `mingle-app/rn` 의존성(`pnpm install`) 자동 설치
+  - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
+    불일치/누락 시 `pod install` 자동 동기화
   - `mingle-app/node_modules/.prisma/client` 생성물이 없으면 `db:generate` 자동 실행
   - 옵션으로 Vault KV 경로를 주면 해당 키를 비관리 영역에 반영
     - `--vault-app-path <path>`
@@ -99,6 +108,11 @@ scripts/devbox test --target all
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
   - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
   - `--with-metro`를 추가하면 RN Metro도 함께 실행
+  - `scripts/devbox --log-file <path|auto> up ...` 형식으로 실행하면
+    devbox 전체 stdout/stderr를 로그 파일로 저장
+    - 상대 경로는 저장소 루트 기준
+    - `auto`는 `.devbox-logs/devbox-<worktree>-<timestamp>.log` 자동 생성
+    - ngrok이 별도 탭/패널에서 실행되면 ngrok 로그는 해당 탭/패널에서 확인
 
 - `scripts/devbox mobile --platform ios|android|all`
   - iOS는 `--ios-runtime rn|native|both`로 RN/네이티브(또는 동시) 설치를 선택
@@ -138,6 +152,7 @@ scripts/devbox test --target all
 - `mingle-app/.env.local` (관리 블록만)
 - `mingle-stt/.env.local` (관리 블록만)
 - `ngrok.mobile.local.yml`
+- `.devbox-logs/` (`--log-file` 사용 시 생성, gitignore)
 
 관리 블록은 아래 마커 사이만 자동 갱신합니다.
 
