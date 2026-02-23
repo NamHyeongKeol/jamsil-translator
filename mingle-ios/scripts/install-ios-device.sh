@@ -68,7 +68,16 @@ BUILD_EXIT=$?
 set -e
 
 if [[ ${BUILD_EXIT} -ne 0 ]]; then
-  if rg -q "No Accounts|No profiles" "${BUILD_LOG}"; then
+  signing_error_detected=0
+  if command -v rg >/dev/null 2>&1; then
+    if rg -q "No Accounts|No profiles" "${BUILD_LOG}"; then
+      signing_error_detected=1
+    fi
+  elif grep -Eq "No Accounts|No profiles" "${BUILD_LOG}"; then
+    signing_error_detected=1
+  fi
+
+  if [[ "${signing_error_detected}" -eq 1 ]]; then
     echo
     echo "Signing prerequisites are missing."
     echo "1) Open Xcode > Settings > Accounts and sign in with Apple ID"
