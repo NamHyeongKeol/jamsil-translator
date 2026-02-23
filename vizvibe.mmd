@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_stt_text_progress_silence_finalize_plan
+    %% @lastActive: mingle_worktree_devbox_nextauth_default_env_guard
 
     %% === START ===
     %% @project_start [start, closed]
@@ -751,6 +751,9 @@ flowchart TD
     %% @mingle_worktree_devbox_env_spacing_normalization [ai-task, closed, 2026-02-23, ai]
     mingle_worktree_devbox_env_spacing_normalization("devbox env 빈 줄 누적 정리<br/><sub>managed block 갱신과 vault key 업서트 시<br/>앞쪽 빈 줄이 계속 쌓이던 경로를 수정하고<br/>.env.local 계열 파일을 무공백 포맷으로<br/>항상 자동 정리하도록 spacing 규칙을 고정</sub>")
 
+    %% @mingle_worktree_devbox_nextauth_default_env_guard [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_nextauth_default_env_guard("devbox NextAuth 기본값 가드 추가<br/><sub>auth 미사용 로컬 환경에서 매번 뜨던<br/>NEXTAUTH_URL/NEXTAUTH_SECRET 경고를 줄이기 위해<br/>devbox managed block에 NEXTAUTH_URL을 반영하고<br/>secret 미설정 시 기본 secret을 자동 주입하도록 보강</sub>")
+
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
 
@@ -958,6 +961,7 @@ flowchart TD
     mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix --> mingle_app_ios_runtime_ws_url_normalization_guard
     mingle_app_ios_runtime_ws_url_normalization_guard --> mingle_app_ios_runtime_ws_boot_validation_relax
     mingle_app_ios_runtime_ws_boot_validation_relax --> mingle_worktree_devbox_env_spacing_normalization
+    mingle_worktree_devbox_env_spacing_normalization --> mingle_worktree_devbox_nextauth_default_env_guard
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -1179,11 +1183,12 @@ flowchart TD
     mingle_app_ios_runtime_ws_url_normalization_guard -.-> ultimate_goal
     mingle_app_ios_runtime_ws_boot_validation_relax -.-> ultimate_goal
     mingle_worktree_devbox_env_spacing_normalization -.-> ultimate_goal
+    mingle_worktree_devbox_nextauth_default_env_guard -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_stt_text_progress_silence_finalize_plan
+        mingle_worktree_devbox_nextauth_default_env_guard
     end
 
     %% === STYLES ===
@@ -1496,7 +1501,8 @@ flowchart TD
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_tuning_300ms_0006 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_retune_200ms_0008 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_stt_text_progress_silence_finalize_plan fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_stt_text_progress_silence_finalize_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_nextauth_default_env_guard fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

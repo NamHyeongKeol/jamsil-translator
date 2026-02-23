@@ -24,6 +24,7 @@ APP_MANAGED_KEYS=(
   DEVBOX_STT_PORT
   DEVBOX_METRO_PORT
   NEXT_PUBLIC_SITE_URL
+  NEXTAUTH_URL
   RN_WEB_APP_BASE_URL
   NEXT_PUBLIC_WS_PORT
   NEXT_PUBLIC_WS_URL
@@ -746,6 +747,7 @@ DEVBOX_WEB_PORT=$DEVBOX_WEB_PORT
 DEVBOX_STT_PORT=$DEVBOX_STT_PORT
 DEVBOX_METRO_PORT=$DEVBOX_METRO_PORT
 NEXT_PUBLIC_SITE_URL=$DEVBOX_SITE_URL
+NEXTAUTH_URL=$DEVBOX_SITE_URL
 RN_WEB_APP_BASE_URL=$DEVBOX_SITE_URL
 NEXT_PUBLIC_WS_PORT=$DEVBOX_STT_PORT
 NEXT_PUBLIC_WS_URL=$DEVBOX_PUBLIC_WS_URL
@@ -756,6 +758,23 @@ EOF
 )"
 
   upsert_managed_block "$APP_ENV_FILE" "$block"
+}
+
+build_devbox_nextauth_secret() {
+  local checksum
+  checksum="$(printf '%s' "${ROOT_CANON}|${DEVBOX_WORKTREE_NAME}|${DEVBOX_WEB_PORT}" | cksum | awk '{print $1}')"
+  printf 'devbox-nextauth-%s-%s' "$DEVBOX_WORKTREE_NAME" "$checksum"
+}
+
+ensure_devbox_nextauth_secret() {
+  local existing_nextauth_secret existing_auth_secret
+  existing_nextauth_secret="$(read_env_value_from_file NEXTAUTH_SECRET "$APP_ENV_FILE")"
+  existing_auth_secret="$(read_env_value_from_file AUTH_SECRET "$APP_ENV_FILE")"
+  if [[ -n "$existing_nextauth_secret" || -n "$existing_auth_secret" ]]; then
+    return 0
+  fi
+
+  upsert_non_managed_env_entry "$APP_ENV_FILE" "NEXTAUTH_SECRET" "$(build_devbox_nextauth_secret)"
 }
 
 write_stt_env_block() {
@@ -815,6 +834,7 @@ EOF
 
 refresh_runtime_files() {
   write_app_env_block
+  ensure_devbox_nextauth_secret
   write_stt_env_block
   write_ngrok_local_config
   write_rn_ios_runtime_xcconfig
