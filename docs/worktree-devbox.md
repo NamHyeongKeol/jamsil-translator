@@ -101,7 +101,7 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
     devbox 전체 stdout/stderr를 로그 파일로 저장
     - 상대 경로는 저장소 루트 기준
     - `auto`는 `.devbox-logs/devbox-<worktree>-<timestamp>.log` 자동 생성
-    - 로그 수집 시 ngrok은 별도 탭 대신 인라인으로 실행되어 한 파일에 합쳐짐
+    - ngrok이 별도 탭/패널에서 실행되면 ngrok 로그는 해당 탭/패널에서 확인
 
 - `scripts/devbox mobile --platform ios|android|all`
   - 현재 워크트리 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로

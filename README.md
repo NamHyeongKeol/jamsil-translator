@@ -58,7 +58,7 @@ scripts/devbox status
   (불가 환경에서는 기존 인라인 실행으로 자동 폴백).
 - `scripts/devbox --log-file PATH up ...`를 사용하면 devbox 전체 stdout/stderr를 파일로 저장합니다.
   `PATH`가 상대경로면 저장소 루트 기준이며, `auto`를 주면 `.devbox-logs/`에 타임스탬프 파일을 생성합니다.
-  로그 수집 시에는 ngrok도 인라인 실행으로 강제되어 한 파일에서 함께 확인할 수 있습니다.
+  ngrok이 별도 터미널에서 실행되면 ngrok 로그는 해당 터미널에서 확인합니다.
   `.devbox-logs/` 폴더는 gitignore 처리되어 로그가 커밋되지 않습니다.
 - `scripts/devbox mobile --platform ios|android|all`로 기기 연결 시 RN 앱 빌드/설치 자동화를 수행합니다.
 - `scripts/devbox up --profile device --with-mobile-install`으로 서버 준비 + 모바일 설치를 한 번에 실행할 수 있습니다.
