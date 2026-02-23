@@ -42,6 +42,9 @@ scripts/devbox up --profile device --with-mobile-install
 # 8) (선택) iOS만 설치
 scripts/devbox up --profile device --with-ios-install
 
+# 8-1) (선택) 기존 iOS 앱 삭제 후 재설치
+scripts/devbox up --profile device --with-ios-install --with-ios-clean-install
+
 # 9) (선택) 전체 로그를 파일로 저장
 scripts/devbox --log-file auto up --profile device --with-ios-install
 ```
@@ -94,9 +97,10 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
   - `mingle-stt` + `mingle-app` 동시 실행
   - `device` 프로필에서 ngrok이 없으면 iTerm/Terminal에 별도 탭/패널로 ngrok 실행 시도
     (실패 시 기존 인라인 실행으로 폴백)
-  - `--with-ios-install`, `--with-android-install`, `--with-mobile-install` 옵션으로
-    연결된 테스트폰 앱 빌드/설치를 함께 수행
+- `--with-ios-install`, `--with-android-install`, `--with-mobile-install`, `--with-ios-clean-install` 옵션으로
+  연결된 테스트폰 앱 빌드/설치를 함께 수행
   - 연결된/설치 가능한 기기가 없으면 해당 플랫폼 설치 단계는 자동 스킵
+- `--with-ios-clean-install`은 기존 iOS 앱 번들을 삭제한 뒤 재설치합니다.
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
   - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
   - `--with-metro`를 추가하면 RN Metro도 함께 실행

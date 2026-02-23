@@ -87,8 +87,8 @@ Usage:
   scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
-  scripts/devbox mobile [--platform ios|android|all] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release]
-  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox mobile [--platform ios|android|all] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install]
+  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [vitest args...]
   scripts/devbox status
 
@@ -992,6 +992,7 @@ resolve_android_application_id() {
 run_ios_mobile_install() {
   local requested_udid="${1:-}"
   local configuration="$2"
+  local with_clean_install="${3:-0}"
   local udid="$requested_udid"
 
   if [[ -z "$udid" ]]; then
@@ -1012,6 +1013,12 @@ run_ios_mobile_install() {
   local app_path="$derived_data_path/Build/Products/${configuration}-iphoneos/rnnative.app"
   local bundle_id
   bundle_id="$(resolve_ios_bundle_id)"
+
+  if [[ "$with_clean_install" -eq 1 && -n "$bundle_id" ]]; then
+    log "uninstalling existing iOS app before reinstall: $bundle_id"
+    xcrun devicectl device uninstall app --device "$udid" "$bundle_id" || \
+      log "iOS uninstall skipped (app may not be installed)"
+  fi
 
   [[ -f "$RN_IOS_RUNTIME_XCCONFIG" ]] || write_rn_ios_runtime_xcconfig
 
@@ -1091,9 +1098,10 @@ run_mobile_install_targets() {
   local android_serial="$4"
   local ios_configuration="$5"
   local android_variant="$6"
+  local with_ios_clean_install="$7"
 
   if [[ "$do_ios" -eq 1 ]]; then
-    run_ios_mobile_install "$ios_udid" "$ios_configuration"
+    run_ios_mobile_install "$ios_udid" "$ios_configuration" "$with_ios_clean_install"
   fi
   if [[ "$do_android" -eq 1 ]]; then
     run_android_mobile_install "$android_serial" "$android_variant"
@@ -1412,6 +1420,7 @@ cmd_mobile() {
   local android_serial=""
   local ios_configuration="Release"
   local android_variant="release"
+  local with_ios_clean_install=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1420,6 +1429,7 @@ cmd_mobile() {
       --android-serial) android_serial="${2:-}"; shift 2 ;;
       --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
       --android-variant) android_variant="${2:-}"; shift 2 ;;
+      --with-ios-clean-install) with_ios_clean_install=1; shift ;;
       *) die "unknown option for mobile: $1" ;;
     esac
   done
@@ -1459,7 +1469,8 @@ cmd_mobile() {
     "$ios_udid" \
     "$android_serial" \
     "$ios_configuration" \
-    "$android_variant"
+    "$android_variant" \
+    "$with_ios_clean_install"
 
   log "mobile build/install complete"
 }
@@ -1480,6 +1491,7 @@ cmd_up() {
   local with_metro=0
   local with_ios_install=0
   local with_android_install=0
+  local with_ios_clean_install=0
   local ios_udid=""
   local android_serial=""
   local ios_configuration="Release"
@@ -1493,6 +1505,7 @@ cmd_up() {
       --with-ios-install) with_ios_install=1; shift ;;
       --with-android-install) with_android_install=1; shift ;;
       --with-mobile-install) with_ios_install=1; with_android_install=1; shift ;;
+      --with-ios-clean-install) with_ios_clean_install=1; shift ;;
       --ios-udid) ios_udid="${2:-}"; with_ios_install=1; shift 2 ;;
       --android-serial) android_serial="${2:-}"; with_android_install=1; shift 2 ;;
       --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
@@ -1564,7 +1577,8 @@ $(ngrok_plan_capacity_hint)"
       "$ios_udid" \
       "$android_serial" \
       "$ios_configuration" \
-      "$android_variant"
+      "$android_variant" \
+      "$with_ios_clean_install"
   fi
 
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
