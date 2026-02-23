@@ -1,4 +1,5 @@
 import * as PrismaClientPackage from "@prisma/client";
+import { ensureDatabaseSchemaParam } from "./database-url";
 
 type PrismaClientLike = import("@prisma/client").PrismaClient;
 
@@ -24,7 +25,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function prismaClientSingleton() {
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = ensureDatabaseSchemaParam(process.env.DATABASE_URL, "app");
   if (databaseUrl) {
     return new ResolvedPrismaClientCtor({
       datasources: {

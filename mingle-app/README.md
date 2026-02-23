@@ -155,6 +155,9 @@ Set `DATABASE_URL` with `?schema=app`:
 postgresql://USER:PASSWORD@HOST:6543/postgres?schema=app
 ```
 
+If `DATABASE_URL` misses `schema`, app runtime automatically appends `schema=app`.
+An explicit schema value (for example `schema=public`) is respected as-is.
+
 Create Prisma artifacts:
 
 ```bash

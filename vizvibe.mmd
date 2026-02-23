@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_ios_native_stop_finalize_parity_hardening
+    %% @lastActive: mingle_app_database_schema_guard_autofix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -429,6 +429,9 @@ flowchart TD
 
     %% @mingle_app_prisma_client_build_fix [ai-task, closed, 2026-02-16, ai]
     mingle_app_prisma_client_build_fix("mingle-app Prisma 빌드 오류 복구<br/><sub>Vercel TypeScript 단계에서 발생한<br/>@prisma/client PrismaClient export 오류를<br/>런타임 안전 로딩 + build 전 prisma generate<br/>강제로 보정해 프로덕션 빌드를 정상화</sub>")
+
+    %% @mingle_app_database_schema_guard_autofix [ai-task, closed, 2026-02-23, ai]
+    mingle_app_database_schema_guard_autofix("mingle-app DB schema 가드 자동보정<br/><sub>mingle-landing과 동일 DB를 공유하되<br/>mingle-app은 app 스키마를 강제 유지하도록<br/>DATABASE_URL에 schema 누락 시 자동 보정하고<br/>단위테스트로 URL 파라미터 회귀를 고정</sub>")
 
     %% @mingle_app_rn_workspace_alignment [ai-task, closed, 2026-02-16, ai]
     mingle_app_rn_workspace_alignment("mingle-app 내부 RN 워크스페이스 정렬<br/><sub>분리 생성된 RN 프로젝트를 mingle-app/rn으로 고정하고<br/>nightly 의존성을 RN 0.84 안정 버전으로 핀 고정했으며<br/>iOS NativeSTTModule(AVAudioEngine+WS) 베이스를 추가해<br/>웹/Capacitor와 병행 가능한 네이티브 경로를 같은 저장소에 통합</sub>")
@@ -942,8 +945,9 @@ flowchart TD
     backend_frontend_boundary_audit --> backend_vercel_change_scope
     backend_vercel_change_scope --> mingle_app_db_schema_prisma_init
     mingle_app_db_schema_prisma_init --> mingle_app_prisma_client_build_fix
+    mingle_app_prisma_client_build_fix --> mingle_app_database_schema_guard_autofix
     mingle_app_prisma_client_build_fix --> mingle_app_local_db_psql_reset_path
-    mingle_app_prisma_client_build_fix --> mingle_app_rn_workspace_alignment
+    mingle_app_database_schema_guard_autofix --> mingle_app_rn_workspace_alignment
     mingle_app_rn_workspace_alignment --> mingle_app_capacitor_path_removal
     mingle_app_capacitor_path_removal --> mingle_app_vercel_rn_typecheck_scope_fix
     mingle_app_vercel_rn_typecheck_scope_fix --> mingle_app_rn_webview_native_stt_bridge
@@ -1167,6 +1171,7 @@ flowchart TD
     mingle_stt_front_log_minimal_fields_only -.-> ultimate_goal
     mingle_stt_final_watermark_and_provisional_carry -.-> ultimate_goal
     mingle_stt_debug_log_cleanup_and_client_marker_boundary -.-> ultimate_goal
+    mingle_app_database_schema_guard_autofix -.-> ultimate_goal
     mingle_app_vercel_main_branch_only_deploy_guard -.-> ultimate_goal
     mingle_app_rn_release_about_blank_crash_fix -.-> ultimate_goal
     mingle_app_ios_runtime_config_xcconfig_bridge -.-> ultimate_goal
@@ -1198,7 +1203,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_ios_native_stop_finalize_parity_hardening
+        mingle_app_database_schema_guard_autofix
     end
 
     %% === STYLES ===
@@ -1397,6 +1402,7 @@ flowchart TD
     style backend_vercel_change_scope fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_db_schema_prisma_init fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_prisma_client_build_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_database_schema_guard_autofix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_rn_workspace_alignment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_capacitor_path_removal fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_rn_typecheck_scope_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1507,7 +1513,7 @@ flowchart TD
     style mingle_worktree_devbox_env_spacing_normalization fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_ios_native_swiftui_workspace fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_native_ios_runtime_and_test_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_ios_native_stop_finalize_parity_hardening fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_ios_native_stop_finalize_parity_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_ios_device_signing_account_setup fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
