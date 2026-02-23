@@ -188,7 +188,6 @@ final class AppViewModel: ObservableObject {
                 if self.isRecording {
                     let pendingText = self.partialTranscript
                     let pendingLanguage = self.partialLanguage
-                    self.connectionStatus = "idle"
                     self.teardownRecording(setIdleStatus: false)
                     if !pendingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         self.handleFinalizedRawTurn(
@@ -200,6 +199,15 @@ final class AppViewModel: ObservableObject {
                             setPendingLocalFinalizeForMerge: false
                         )
                     }
+
+                    let closeReason = reason?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    if closeReason.isEmpty {
+                        self.lastErrorMessage = "연결이 종료되었습니다."
+                    } else {
+                        self.lastErrorMessage = closeReason
+                    }
+                    self.connectionStatus = "error"
+                    return
                 }
                 if let reason, !reason.isEmpty {
                     self.lastErrorMessage = reason

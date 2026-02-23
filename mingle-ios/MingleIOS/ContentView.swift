@@ -439,8 +439,8 @@ struct ContentView: View {
             }
         }
         .buttonStyle(.plain)
-        .disabled(isConnecting || isError)
-        .opacity((isConnecting || isError) ? 0.56 : 1)
+        .disabled(isConnecting)
+        .opacity(isConnecting ? 0.56 : 1)
     }
 
     private var rightControlArea: some View {

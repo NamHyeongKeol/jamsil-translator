@@ -50,7 +50,7 @@ final class STTWebSocketClient {
         task.resume()
         onConnected?()
 
-        receiveLoop()
+        receiveLoop(for: task)
         sendEncodable(config)
     }
 
@@ -68,39 +68,57 @@ final class STTWebSocketClient {
     }
 
     func disconnect() {
-        isDisconnecting = true
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
+        if let task = webSocketTask {
+            isDisconnecting = true
+            task.cancel(with: .goingAway, reason: nil)
+        } else {
+            isDisconnecting = false
+        }
         webSocketTask = nil
         session?.invalidateAndCancel()
         session = nil
     }
 
-    private func receiveLoop() {
-        guard let task = webSocketTask else { return }
+    private func receiveLoop(for task: URLSessionWebSocketTask) {
+        guard task === webSocketTask else { return }
 
         task.receive { [weak self] result in
-            guard let self else { return }
-
-            switch result {
-            case let .success(message):
-                switch message {
-                case let .string(text):
-                    self.onRawMessage?(text)
-                case let .data(data):
-                    let text = String(data: data, encoding: .utf8) ?? ""
-                    self.onRawMessage?(text)
-                @unknown default:
-                    self.onError?("Unsupported websocket message")
+            Task { @MainActor in
+                guard let self else { return }
+                guard task === self.webSocketTask else {
+                    // Ignore stale callbacks from previous websocket sessions.
+                    return
                 }
-                self.receiveLoop()
+                self.handleReceiveResult(result, for: task)
+            }
+        }
+    }
 
-            case let .failure(error):
-                if self.isDisconnecting {
-                    self.isDisconnecting = false
-                    self.onClosed?(nil)
-                } else {
-                    self.onClosed?(error.localizedDescription)
-                }
+    private func handleReceiveResult(
+        _ result: Result<URLSessionWebSocketTask.Message, Error>,
+        for task: URLSessionWebSocketTask
+    ) {
+        guard task === webSocketTask else { return }
+
+        switch result {
+        case let .success(message):
+            switch message {
+            case let .string(text):
+                onRawMessage?(text)
+            case let .data(data):
+                let text = String(data: data, encoding: .utf8) ?? ""
+                onRawMessage?(text)
+            @unknown default:
+                onError?("Unsupported websocket message")
+            }
+            receiveLoop(for: task)
+
+        case let .failure(error):
+            if isDisconnecting {
+                isDisconnecting = false
+                onClosed?(nil)
+            } else {
+                onClosed?(error.localizedDescription)
             }
         }
     }
@@ -117,7 +135,11 @@ final class STTWebSocketClient {
 
             task.send(.string(text)) { [weak self] error in
                 if let error {
-                    self?.onError?(error.localizedDescription)
+                    Task { @MainActor in
+                        guard let self else { return }
+                        guard task === self.webSocketTask else { return }
+                        self.onError?(error.localizedDescription)
+                    }
                 }
             }
         } catch {
