@@ -468,7 +468,10 @@ upsert_non_managed_env_entry() {
   formatted="$(format_env_value_for_dotenv "$value")"
 
   if [[ -f "$file" && -s "$file" ]]; then
-    printf '\n%s=%s\n' "$key" "$formatted" >> "$file"
+    if [[ "$(tail -c 1 "$file" 2>/dev/null || true)" != $'\n' ]]; then
+      printf '\n' >> "$file"
+    fi
+    printf '%s=%s\n' "$key" "$formatted" >> "$file"
   else
     printf '%s=%s\n' "$key" "$formatted" > "$file"
   fi
@@ -506,6 +509,7 @@ sync_env_from_vault_path() {
     '
   )
 
+  normalize_file_spacing "$file"
   log "synced ${count} keys from vault (${target})"
 }
 
@@ -548,6 +552,19 @@ remove_managed_block() {
   fi
 }
 
+normalize_file_spacing() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+
+  local tmp
+  tmp="$(mktemp)"
+
+  # .env-like files are easiest to read with no blank lines.
+  awk 'NF { print }' "$file" > "$tmp"
+
+  mv "$tmp" "$file"
+}
+
 upsert_managed_block() {
   local file="$1"
   local block="$2"
@@ -564,6 +581,7 @@ upsert_managed_block() {
     printf '%s\n%s\n%s\n' "$MANAGED_START" "$block" "$MANAGED_END" > "$file"
   fi
 
+  normalize_file_spacing "$file"
   rm -f "$tmp"
 }
 
@@ -585,6 +603,7 @@ strip_env_keys() {
   done
 
   mv "$src" "$file"
+  normalize_file_spacing "$file"
 }
 
 write_devbox_env() {
