@@ -18,8 +18,8 @@ const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen';
 const FIREWORKS_WS_URL = 'wss://audio-streaming.api.fireworks.ai/v1/audio/transcriptions/streaming';
 const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
 const SONIOX_MANUAL_FINALIZE_SILENCE_MS = (() => {
-    const raw = Number(process.env.SONIOX_MANUAL_FINALIZE_SILENCE_MS || '200');
-    if (!Number.isFinite(raw)) return 200;
+    const raw = Number(process.env.SONIOX_MANUAL_FINALIZE_SILENCE_MS || '250');
+    if (!Number.isFinite(raw)) return 250;
     return Math.max(100, Math.min(1000, Math.floor(raw)));
 })();
 const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
@@ -833,13 +833,15 @@ wss.on('connection', (clientWs) => {
                         latestNonFinalText = '';
                     }
 
+                    const previousMergedSnapshot = composeTurnText(previousFinalizedText, previousNonFinalText);
                     const mergedSnapshot = composeTurnText(finalizedText, latestNonFinalText);
+                    const previousMergedTextForIdle = stripEndpointMarkers(previousMergedSnapshot);
+                    const mergedTextForIdle = stripEndpointMarkers(mergedSnapshot);
                     sonioxHasPendingTranscript = mergedSnapshot.length > 0
                         && !(latestNonFinalIsProvisionalCarry && !finalizedText.trim());
-                    const transcriptProgressed = finalizedText !== previousFinalizedText
-                        || (latestNonFinalText !== previousNonFinalText && latestNonFinalText.length > 0);
-                    if (transcriptProgressed) {
-                        // Allow another manual finalize only when transcript actually progressed.
+                    const transcriptAdded = mergedTextForIdle.length > previousMergedTextForIdle.length;
+                    if (transcriptAdded) {
+                        // Re-arm manual finalize only when transcript text is added.
                         sonioxManualFinalizeSent = false;
                         scheduleSonioxManualFinalizeFromTranscriptProgress();
                     } else if (!sonioxHasPendingTranscript) {
