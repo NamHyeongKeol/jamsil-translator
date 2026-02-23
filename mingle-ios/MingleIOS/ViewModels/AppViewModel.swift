@@ -19,14 +19,29 @@ final class AppViewModel: ObservableObject {
     private let sttSocketClient = STTWebSocketClient()
     private let translateAPIClient = TranslateAPIClient()
 
+    private struct PendingLocalFinalize {
+        let utteranceId: String
+        let text: String
+        let language: String
+        let expiresAtMs: Int64
+    }
+
     private var partialTranslations: [String: String] = [:]
     private var utteranceSerial = 0
     private var usageTimer: Timer?
     private var sessionKey = AppViewModel.createSessionKey()
+    private var isStopping = false
+    private var stopFinalizeDedup: (signature: String, expiresAtMs: Int64)?
+    private var pendingLocalFinalize: PendingLocalFinalize?
+    private var stopAckTimeoutTask: Task<Void, Never>?
 
     private static let storageApiBaseURL = "mingle_ios_api_base_url"
     private static let storageWsURL = "mingle_ios_ws_url"
     private static let storageLanguages = "mingle_ios_languages_csv"
+    private static let finalDuplicateWindowMs: Int64 = 5_000
+    private static let stopFinalizeDedupeWindowMs: Int64 = 5_000
+    private static let pendingFinalizeMergeWindowMs: Int64 = 15_000
+    private static let stopAckTimeoutNs: UInt64 = 1_500_000_000
 
     init() {
         let defaults = UserDefaults.standard
@@ -46,7 +61,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func startRecording() {
-        guard !isRecording else { return }
+        guard !isRecording, !isStopping else { return }
 
         let languages = normalizedLanguages()
         if languages.isEmpty {
@@ -107,13 +122,36 @@ final class AppViewModel: ObservableObject {
     }
 
     func stopRecording() {
-        guard isRecording else { return }
+        guard isRecording, !isStopping else { return }
+
+        isStopping = true
+        connectionStatus = "stopping"
+
+        usageTimer?.invalidate()
+        usageTimer = nil
+        audioCaptureService.stop()
+        volumeLevel = 0
+        isRecording = false
+
+        let pendingText = partialTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pendingLanguage = partialLanguage
+
+        if !pendingText.isEmpty {
+            handleFinalizedRawTurn(
+                rawText: pendingText,
+                rawLanguage: pendingLanguage,
+                previousStateSourceLanguage: pendingLanguage,
+                previousStateSourceText: pendingText,
+                preferPendingFinalizeText: true,
+                setPendingLocalFinalizeForMerge: true
+            )
+        }
 
         sttSocketClient.sendStopRecording(
-            pendingText: partialTranscript,
-            pendingLanguage: partialLanguage
+            pendingText: pendingText,
+            pendingLanguage: pendingLanguage
         )
-        teardownRecording(setIdleStatus: true)
+        scheduleStopAckTimeout()
     }
 
     func clearHistory() {
@@ -142,9 +180,26 @@ final class AppViewModel: ObservableObject {
         sttSocketClient.onClosed = { [weak self] reason in
             guard let self else { return }
             Task { @MainActor in
+                if self.isStopping {
+                    self.completeStoppingFlow()
+                    return
+                }
+
                 if self.isRecording {
+                    let pendingText = self.partialTranscript
+                    let pendingLanguage = self.partialLanguage
                     self.connectionStatus = "idle"
                     self.teardownRecording(setIdleStatus: false)
+                    if !pendingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        self.handleFinalizedRawTurn(
+                            rawText: pendingText,
+                            rawLanguage: pendingLanguage,
+                            previousStateSourceLanguage: pendingLanguage,
+                            previousStateSourceText: pendingText,
+                            preferPendingFinalizeText: false,
+                            setPendingLocalFinalizeForMerge: false
+                        )
+                    }
                 }
                 if let reason, !reason.isEmpty {
                     self.lastErrorMessage = reason
@@ -172,9 +227,8 @@ final class AppViewModel: ObservableObject {
         case let .transcript(transcript):
             handleTranscript(transcript)
 
-        case .stopRecordingAck:
-            // stop_recording_ack is currently used as transport-level confirmation.
-            break
+        case let .stopRecordingAck(ack):
+            handleStopRecordingAck(ack)
 
         case let .usage(finalAudioSec, _):
             if let finalAudioSec {
@@ -187,48 +241,201 @@ final class AppViewModel: ObservableObject {
     }
 
     private func handleTranscript(_ transcript: ParsedSttTranscriptMessage) {
+        if isStopping, !transcript.isFinal {
+            return
+        }
+
         if transcript.isFinal {
-            if transcript.text.isEmpty {
-                clearPartialState()
-                return
-            }
-
-            utteranceSerial += 1
-            let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
-            let finalizedPayload = STTWorkflowParser.buildFinalizedUtterancePayload(
-                input: BuildFinalizedUtterancePayloadInput(
-                    rawText: transcript.rawText,
-                    rawLanguage: transcript.language,
-                    languages: normalizedLanguages(),
-                    partialTranslations: partialTranslations,
-                    utteranceSerial: utteranceSerial,
-                    nowMs: nowMs,
-                    previousStateSourceLanguage: transcript.language,
-                    previousStateSourceText: transcript.rawText
-                )
+            handleFinalizedRawTurn(
+                rawText: transcript.rawText,
+                rawLanguage: transcript.language,
+                previousStateSourceLanguage: partialLanguage,
+                previousStateSourceText: partialTranscript,
+                preferPendingFinalizeText: isStopping,
+                setPendingLocalFinalizeForMerge: false
             )
-
-            clearPartialState()
-            guard let finalizedPayload else {
-                return
-            }
-
-            utterances.append(finalizedPayload.utterance)
-
-            Task { @MainActor in
-                await translateFinalTurn(
-                    utteranceId: finalizedPayload.utteranceId,
-                    text: finalizedPayload.text,
-                    sourceLanguage: finalizedPayload.language,
-                    targetLanguages: finalizedPayload.utterance.targetLanguages,
-                    currentTurnPreviousState: finalizedPayload.currentTurnPreviousState
-                )
-            }
             return
         }
 
         partialTranscript = transcript.text
         partialLanguage = transcript.language
+    }
+
+    private func handleStopRecordingAck(_ ack: ParsedStopRecordingAckMessage) {
+        if let finalTurn = ack.finalTurn {
+            handleFinalizedRawTurn(
+                rawText: finalTurn.rawText,
+                rawLanguage: finalTurn.language,
+                previousStateSourceLanguage: finalTurn.language,
+                previousStateSourceText: finalTurn.rawText,
+                preferPendingFinalizeText: true,
+                setPendingLocalFinalizeForMerge: false
+            )
+        }
+
+        completeStoppingFlow()
+    }
+
+    private func scheduleStopAckTimeout() {
+        stopAckTimeoutTask?.cancel()
+        stopAckTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.stopAckTimeoutNs)
+            guard let self else { return }
+            await MainActor.run {
+                self.completeStoppingFlow()
+            }
+        }
+    }
+
+    private func completeStoppingFlow() {
+        guard isStopping else { return }
+
+        stopAckTimeoutTask?.cancel()
+        stopAckTimeoutTask = nil
+        isStopping = false
+        pendingLocalFinalize = nil
+
+        sttSocketClient.disconnect()
+        connectionStatus = "idle"
+        clearPartialState()
+    }
+
+    private func handleFinalizedRawTurn(
+        rawText: String,
+        rawLanguage: String,
+        previousStateSourceLanguage: String?,
+        previousStateSourceText: String?,
+        preferPendingFinalizeText: Bool,
+        setPendingLocalFinalizeForMerge: Bool
+    ) {
+        let text = STTWorkflowParser.normalizeTurnText(rawText)
+        if text.isEmpty {
+            clearPartialState()
+            return
+        }
+
+        let languageRaw = rawLanguage.trimmingCharacters(in: .whitespacesAndNewlines)
+        let language = languageRaw.isEmpty ? "unknown" : languageRaw
+        let nowMs = Self.nowMs()
+        let signature = "\(language)::\(text)"
+
+        if let dedupe = stopFinalizeDedup {
+            if nowMs < dedupe.expiresAtMs, dedupe.signature == signature {
+                stopFinalizeDedup = nil
+                clearPartialState()
+                return
+            }
+            if nowMs >= dedupe.expiresAtMs {
+                stopFinalizeDedup = nil
+            }
+        }
+
+        if isLikelyRecentDuplicateFinal(text: text, language: language, nowMs: nowMs) {
+            clearPartialState()
+            pendingLocalFinalize = nil
+            return
+        }
+
+        if mergeWithPendingLocalFinalizeIfNeeded(
+            text: text,
+            language: language,
+            nowMs: nowMs,
+            preferPendingText: preferPendingFinalizeText
+        ) {
+            clearPartialState()
+            return
+        }
+
+        utteranceSerial += 1
+        let finalizedPayload = STTWorkflowParser.buildFinalizedUtterancePayload(
+            input: BuildFinalizedUtterancePayloadInput(
+                rawText: rawText,
+                rawLanguage: language,
+                languages: normalizedLanguages(),
+                partialTranslations: partialTranslations,
+                utteranceSerial: utteranceSerial,
+                nowMs: nowMs,
+                previousStateSourceLanguage: previousStateSourceLanguage ?? language,
+                previousStateSourceText: previousStateSourceText ?? rawText
+            )
+        )
+
+        clearPartialState()
+        guard let finalizedPayload else {
+            return
+        }
+
+        utterances.append(finalizedPayload.utterance)
+        if setPendingLocalFinalizeForMerge {
+            stopFinalizeDedup = (
+                signature: "\(finalizedPayload.language)::\(finalizedPayload.text)",
+                expiresAtMs: nowMs + Self.stopFinalizeDedupeWindowMs
+            )
+            pendingLocalFinalize = PendingLocalFinalize(
+                utteranceId: finalizedPayload.utteranceId,
+                text: finalizedPayload.text,
+                language: finalizedPayload.language,
+                expiresAtMs: nowMs + Self.pendingFinalizeMergeWindowMs
+            )
+        } else {
+            pendingLocalFinalize = nil
+        }
+
+        Task { @MainActor in
+            await translateFinalTurn(
+                utteranceId: finalizedPayload.utteranceId,
+                text: finalizedPayload.text,
+                sourceLanguage: finalizedPayload.language,
+                targetLanguages: finalizedPayload.utterance.targetLanguages,
+                currentTurnPreviousState: finalizedPayload.currentTurnPreviousState
+            )
+        }
+    }
+
+    private func isLikelyRecentDuplicateFinal(text: String, language: String, nowMs: Int64) -> Bool {
+        guard let lastUtterance = utterances.last else { return false }
+        if (nowMs - lastUtterance.createdAtMs) > Self.finalDuplicateWindowMs { return false }
+
+        let lastLanguage = STTWorkflowParser.normalizeLangForCompare(lastUtterance.originalLang)
+        let currentLanguage = STTWorkflowParser.normalizeLangForCompare(language)
+        if lastLanguage != currentLanguage { return false }
+
+        let lastText = STTWorkflowParser.normalizeTurnText(lastUtterance.originalText)
+        return lastText == text
+    }
+
+    private func mergeWithPendingLocalFinalizeIfNeeded(
+        text: String,
+        language: String,
+        nowMs: Int64,
+        preferPendingText: Bool
+    ) -> Bool {
+        guard let pending = pendingLocalFinalize else { return false }
+        if nowMs >= pending.expiresAtMs {
+            pendingLocalFinalize = nil
+            return false
+        }
+
+        if STTWorkflowParser.normalizeLangForCompare(pending.language)
+            != STTWorkflowParser.normalizeLangForCompare(language) {
+            return false
+        }
+
+        if !text.starts(with: pending.text), !pending.text.starts(with: text) {
+            return false
+        }
+
+        guard let index = utterances.firstIndex(where: { $0.id == pending.utteranceId }) else {
+            pendingLocalFinalize = nil
+            return false
+        }
+
+        let mergedText = preferPendingText
+            ? pending.text
+            : (text.count >= pending.text.count ? text : pending.text)
+        utterances[index].originalText = mergedText
+        pendingLocalFinalize = nil
+        return true
     }
 
     private func translateFinalTurn(
@@ -364,6 +571,11 @@ final class AppViewModel: ObservableObject {
     }
 
     private func teardownRecording(setIdleStatus: Bool) {
+        stopAckTimeoutTask?.cancel()
+        stopAckTimeoutTask = nil
+        isStopping = false
+        pendingLocalFinalize = nil
+
         usageTimer?.invalidate()
         usageTimer = nil
 
@@ -390,6 +602,10 @@ final class AppViewModel: ObservableObject {
         defaults.set(apiBaseURL, forKey: Self.storageApiBaseURL)
         defaults.set(wsURL, forKey: Self.storageWsURL)
         defaults.set(languagesCSV, forKey: Self.storageLanguages)
+    }
+
+    private static func nowMs() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
     }
 
     private static func createSessionKey() -> String {

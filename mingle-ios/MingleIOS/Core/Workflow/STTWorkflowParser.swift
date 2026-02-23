@@ -7,10 +7,21 @@ struct ParsedSttTranscriptMessage: Equatable {
     let isFinal: Bool
 }
 
+struct ParsedStopFinalTurnMessage: Equatable {
+    let rawText: String
+    let text: String
+    let language: String
+}
+
+struct ParsedStopRecordingAckMessage: Equatable {
+    let finalized: Bool
+    let finalTurn: ParsedStopFinalTurnMessage?
+}
+
 enum SttServerEvent: Equatable {
     case ready
     case transcript(ParsedSttTranscriptMessage)
-    case stopRecordingAck(finalized: Bool)
+    case stopRecordingAck(ParsedStopRecordingAckMessage)
     case usage(finalAudioSec: Double?, totalAudioSec: Double?)
     case unsupported
 }
@@ -48,8 +59,29 @@ enum STTWorkflowParser {
         }
 
         if let type = root["type"] as? String, type == "stop_recording_ack" {
-            let finalized = ((root["data"] as? [String: Any])?["finalized"] as? Bool) == true
-            return .stopRecordingAck(finalized: finalized)
+            let data = root["data"] as? [String: Any]
+            let finalized = (data?["finalized"] as? Bool) == true
+
+            var finalTurn: ParsedStopFinalTurnMessage?
+            if let finalTurnRaw = data?["final_turn"] as? [String: Any] {
+                let rawText = (finalTurnRaw["text"] as? String) ?? ""
+                let text = normalizeTurnText(rawText)
+                let language = ((finalTurnRaw["language"] as? String) ?? "unknown")
+                if !text.isEmpty {
+                    finalTurn = ParsedStopFinalTurnMessage(
+                        rawText: rawText,
+                        text: text,
+                        language: language
+                    )
+                }
+            }
+
+            return .stopRecordingAck(
+                ParsedStopRecordingAckMessage(
+                    finalized: finalized,
+                    finalTurn: finalTurn
+                )
+            )
         }
 
         if let type = root["type"] as? String, type == "usage" {

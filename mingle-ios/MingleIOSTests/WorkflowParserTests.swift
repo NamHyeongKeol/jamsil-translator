@@ -63,6 +63,31 @@ final class WorkflowParserTests: XCTestCase {
         }
     }
 
+    func testParseStopRecordingAckWithFinalTurn() {
+        let json = """
+        {
+          "type": "stop_recording_ack",
+          "data": {
+            "finalized": true,
+            "final_turn": {
+              "text": " <end> see you soon",
+              "language": "en-US"
+            }
+          }
+        }
+        """
+
+        let event = STTWorkflowParser.parseServerEvent(jsonText: json)
+        switch event {
+        case let .stopRecordingAck(ack):
+            XCTAssertTrue(ack.finalized)
+            XCTAssertEqual(ack.finalTurn?.text, "see you soon")
+            XCTAssertEqual(ack.finalTurn?.language, "en-US")
+        default:
+            XCTFail("Expected stop_recording_ack event")
+        }
+    }
+
     func testBuildFinalizedUtterancePayloadFiltersSourceLanguage() {
         let payload = STTWorkflowParser.buildFinalizedUtterancePayload(
             input: BuildFinalizedUtterancePayloadInput(

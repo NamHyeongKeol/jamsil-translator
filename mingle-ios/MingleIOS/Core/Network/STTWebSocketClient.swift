@@ -19,7 +19,7 @@ private struct AudioChunkPayload: Encodable {
 private struct StopRecordingPayload: Encodable {
     struct StopData: Encodable {
         let pending_text: String
-        let pending_lang: String
+        let pending_language: String
     }
 
     let type: String = "stop_recording"
@@ -31,6 +31,7 @@ final class STTWebSocketClient {
     private var webSocketTask: URLSessionWebSocketTask?
     private var session: URLSession?
     private let encoder = JSONEncoder()
+    private var isDisconnecting = false
 
     var onRawMessage: ((String) -> Void)?
     var onConnected: (() -> Void)?
@@ -39,6 +40,7 @@ final class STTWebSocketClient {
 
     func connect(url: URL, config: STTConfigPayload) {
         disconnect()
+        isDisconnecting = false
 
         let session = URLSession(configuration: .default)
         let task = session.webSocketTask(with: url)
@@ -60,12 +62,13 @@ final class STTWebSocketClient {
     func sendStopRecording(pendingText: String, pendingLanguage: String) {
         let payload = StopRecordingPayload(data: .init(
             pending_text: pendingText,
-            pending_lang: pendingLanguage
+            pending_language: pendingLanguage
         ))
         sendEncodable(payload)
     }
 
     func disconnect() {
+        isDisconnecting = true
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
         session?.invalidateAndCancel()
@@ -92,7 +95,12 @@ final class STTWebSocketClient {
                 self.receiveLoop()
 
             case let .failure(error):
-                self.onClosed?(error.localizedDescription)
+                if self.isDisconnecting {
+                    self.isDisconnecting = false
+                    self.onClosed?(nil)
+                } else {
+                    self.onClosed?(error.localizedDescription)
+                }
             }
         }
     }
