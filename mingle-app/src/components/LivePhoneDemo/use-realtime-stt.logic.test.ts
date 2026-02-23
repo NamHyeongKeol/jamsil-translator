@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFinalizedUtterancePayload,
+  canUseDeferredTtsStreaming,
   getWsUrl,
+  parseDeferredTranslateNdjsonResponse,
   parseSttTranscriptMessage,
 } from './use-realtime-stt'
 
@@ -130,5 +132,62 @@ describe('use-realtime-stt pure logic', () => {
     })
 
     expect(built).toBeNull()
+  })
+
+  it('detects deferred streaming capability by runtime globals', () => {
+    expect(canUseDeferredTtsStreaming()).toBe(true)
+    vi.stubGlobal('ReadableStream', undefined as unknown as typeof ReadableStream)
+    expect(canUseDeferredTtsStreaming()).toBe(false)
+  })
+
+  it('parses NDJSON stream and emits deferred TTS payload after translation', async () => {
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('{"type":"translation","translations":{"ko":"안녕하세요"},"provider":"gemini","model":"test","ttsDeferred":true,"ttsLanguage":"ko"}\n'))
+        controller.enqueue(encoder.encode('{"type":"tts","ttsLanguage":"ko","ttsAudioBase64":"YWJj","ttsAudioMime":"audio/mpeg"}\n{"type":"done"}\n'))
+        controller.close()
+      },
+    })
+    const response = new Response(stream, {
+      headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' },
+    })
+    const deferredTts: Array<{ ttsLanguage?: string, ttsAudioBase64?: string }> = []
+
+    const result = await parseDeferredTranslateNdjsonResponse({
+      response,
+      onDeferredTts: (payload) => deferredTts.push({
+        ttsLanguage: payload.ttsLanguage,
+        ttsAudioBase64: payload.ttsAudioBase64,
+      }),
+    })
+
+    expect(result.translations).toEqual({ ko: '안녕하세요' })
+    expect(result.provider).toBe('gemini')
+    expect(result.model).toBe('test')
+    expect(result.ttsDeferred).toBe(true)
+    expect(deferredTts).toEqual([
+      { ttsLanguage: 'ko', ttsAudioBase64: 'YWJj' },
+    ])
+  })
+
+  it('falls back to response.text() parsing when stream body is unavailable', async () => {
+    const response = {
+      body: null,
+      text: async () => [
+        '{"type":"translation","translations":{"ko":"반갑습니다"},"provider":"gemini","model":"fallback","ttsDeferred":true,"ttsLanguage":"ko"}',
+        '{"type":"done"}',
+      ].join('\n'),
+    } as unknown as Response
+    const deferredTts: Array<{ ttsLanguage?: string }> = []
+
+    const result = await parseDeferredTranslateNdjsonResponse({
+      response,
+      onDeferredTts: (payload) => deferredTts.push({ ttsLanguage: payload.ttsLanguage }),
+    })
+
+    expect(result.translations).toEqual({ ko: '반갑습니다' })
+    expect(result.ttsDeferred).toBe(true)
+    expect(deferredTts).toEqual([{ ttsLanguage: 'ko' }])
   })
 })
