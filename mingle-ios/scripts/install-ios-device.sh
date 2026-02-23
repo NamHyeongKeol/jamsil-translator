@@ -9,26 +9,79 @@ CONFIGURATION="${CONFIGURATION:-Debug}"
 APP_PATH="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}-iphoneos/MingleIOS.app"
 MINGLE_API_BASE_URL="${MINGLE_API_BASE_URL:-}"
 MINGLE_WS_URL="${MINGLE_WS_URL:-}"
+AUTO_SELECT_DEVICE="${AUTO_SELECT_DEVICE:-0}"
 
 DEVICE_ID="${1:-${DEVICE_ID:-}}"
-if [[ -z "${DEVICE_ID}" ]]; then
-  for _ in 1 2 3; do
-    DEVICE_ID="$(
-      xcrun devicectl list devices 2>/dev/null \
-      | sed -nE 's/.* ([0-9A-F-]{36}) +(connected|available \\(paired\\)).*/\1/p' \
-      | head -n 1
-    )"
-    if [[ -n "${DEVICE_ID}" ]]; then
-      break
+detect_devices() {
+  xcrun devicectl list devices 2>/dev/null \
+    | sed -nE 's/.* ([0-9A-F-]{36}) +(connected|available \\(paired\\)).*/\\1|\\0/p'
+}
+
+list_connected_devices() {
+  detect_devices | sed -n 's/\([^|]*\)|.*/\\1/'
+}
+
+print_device_candidates() {
+  local max="${1:-0}"
+  if [[ "${max}" -gt 0 ]]; then
+    detect_devices | sed 's/.*|/ - /' | sed -n "1,${max}p"
+  else
+    detect_devices | sed 's/.*|/ - /'
+  fi
+}
+
+select_device() {
+  local requested_id="$1"
+  local devices
+  devices="$(detect_devices | sed 's/|.*//')"
+
+  if [[ -n "${requested_id}" ]]; then
+    if [[ "${devices}" == *"${requested_id}"* ]]; then
+      echo "${requested_id}"
+      return 0
     fi
-    sleep 2
-  done
+    echo "Device not found or not connected: ${requested_id}"
+    return 1
+  fi
+
+  if [[ "${AUTO_SELECT_DEVICE}" == "1" ]]; then
+    local first
+    first="$(printf '%s' "${devices}" | sed -n '1p')"
+    if [[ -n "${first}" ]]; then
+      echo "${first}"
+      return 0
+    fi
+  fi
+
+  local count
+  count="$(printf '%s' "${devices}" | wc -l | tr -d ' ')"
+  if [[ "${count}" -eq 1 ]]; then
+    echo "${devices}"
+    return 0
+  fi
+
+  return 1
+}
+
+if [[ -z "${DEVICE_ID}" ]]; then
+  if ! DEVICE_ID="$(select_device "")"; then
+    for _ in 1 2 3; do
+      DEVICE_ID="$(select_device "" || true)"
+      if [[ -n "${DEVICE_ID}" ]]; then
+        break
+      fi
+      sleep 2
+    done
+  fi
 fi
 
 if [[ -z "${DEVICE_ID}" ]]; then
   echo "No connected iPhone found. Connect/unlock iPhone and retry."
+  echo "Available connected devices:"
+  print_device_candidates 20
   echo "You can pass a CoreDevice ID manually:"
   echo "  ./scripts/install-ios-device.sh <COREDEVICE_ID>"
+  echo "Or choose auto selection with AUTO_SELECT_DEVICE=1 if exactly one device exists."
   exit 1
 fi
 

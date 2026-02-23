@@ -14,6 +14,7 @@ MINGLE_WS_URL="${MINGLE_WS_URL:-}"
 SIMULATOR_UDID="${1:-${SIMULATOR_UDID:-}}"
 APP_PATH="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}-iphonesimulator/MingleIOS.app"
 SIMCTL_DEVICES_LIST=""
+AUTO_SELECT_SIMULATOR="${AUTO_SELECT_SIMULATOR:-0}"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -29,7 +30,7 @@ find_simulator_udid_by_name() {
       line = $0
       sub(/^[[:space:]]+/, "", line)
       if (index(line, name " (") != 1) next
-      if (line !~ /\(Booted\)|\(Shutdown\)/) next
+      if (line !~ /\(Booted\)|\(Shutdown\)|\(Shutdown \(SimDiskImageMounting\)\)/) next
       if (match(line, /\([0-9A-F-]+\)/)) {
         udid = substr(line, RSTART + 1, RLENGTH - 2)
         print udid
@@ -39,13 +40,37 @@ find_simulator_udid_by_name() {
   '
 }
 
-find_first_iphone_simulator_udid() {
-  printf '%s\n' "${SIMCTL_DEVICES_LIST}" | awk '
+print_simulator_candidates() {
+  local name_filter="${1:-}"
+  printf '%s\n' "${SIMCTL_DEVICES_LIST}" | awk -v name_filter="$name_filter" '
     {
       line = $0
       sub(/^[[:space:]]+/, "", line)
-      if (index(line, "iPhone ") != 1) next
-      if (line !~ /\(Booted\)|\(Shutdown\)/) next
+      if (line !~ /\(Booted\)|\(Shutdown\)|\(Shutdown \(SimDiskImageMounting\)\)/) next
+      if (length(name_filter) > 0 && index(line, name_filter " (") != 1) next
+      if (line !~ /iPhone / && line !~ /iPad /) next
+      if (match(line, /\([0-9A-F-]+\)/)) {
+        udid = substr(line, RSTART + 1, RLENGTH - 2)
+        print line " :: " udid
+      }
+    }
+  '
+}
+
+find_simulator_candidates_count() {
+  local name_filter="${1:-}"
+  print_simulator_candidates "$name_filter" | wc -l | tr -d ' '
+}
+
+pick_first_simulator_legacy() {
+  local filter="${1:-}"
+  printf '%s\n' "${SIMCTL_DEVICES_LIST}" | awk -v filter="$filter" '
+    {
+      line = $0
+      sub(/^[[:space:]]+/, "", line)
+      if (length(filter) > 0 && index(line, filter " (") != 1) next
+      if (line !~ /\(Booted\)|\(Shutdown\)|\(Shutdown \(SimDiskImageMounting\)\)/) next
+      if (line !~ /iPhone / && line !~ /iPad /) next
       if (match(line, /\([0-9A-F-]+\)/)) {
         udid = substr(line, RSTART + 1, RLENGTH - 2)
         print udid
@@ -53,6 +78,78 @@ find_first_iphone_simulator_udid() {
       }
     }
   '
+}
+
+choose_simulator_udid() {
+  local requested_name="$1"
+  local requested_udid="$2"
+  local udid=""
+
+  if [[ -n "${requested_udid}" ]]; then
+    local matched
+    matched="$(printf '%s\n' "${SIMCTL_DEVICES_LIST}" | awk -v udid="${requested_udid}" '
+      {
+        line = $0
+        sub(/^[[:space:]]+/, "", line)
+        if (line !~ /\(Booted\)|\(Shutdown\)|\(Shutdown \(SimDiskImageMounting\)\)/) next
+        if (line !~ /iPhone / && line !~ /iPad /) next
+        if (match(line, /\([0-9A-F-]+\)/)) {
+          candidate = substr(line, RSTART + 1, RLENGTH - 2)
+          if (candidate == udid) {
+            print candidate
+            exit
+          }
+        }
+      }
+    ')"
+    if [[ -z "${matched}" ]]; then
+      echo "SIMULATOR_UDID '${requested_udid}' is not available."
+      return 1
+    fi
+    printf '%s\n' "${requested_udid}"
+    return 0
+  fi
+
+  if [[ -n "${requested_name}" ]]; then
+    udid="$(find_simulator_udid_by_name "${requested_name}")"
+  else
+    udid="$(pick_first_simulator_legacy "")"
+  fi
+
+  if [[ -n "${udid}" ]]; then
+    printf '%s\n' "${udid}"
+    return 0
+  fi
+
+  local count name_count
+  name_count="$(find_simulator_candidates_count "")"
+  if [[ "${name_count}" -gt 1 ]]; then
+    echo "Multiple simulators found. Specify SIMULATOR_NAME or SIMULATOR_UDID explicitly."
+    echo "Available simulators:"
+    print_simulator_candidates "" | sed -n '1,20p'
+    return 1
+  fi
+
+  if [[ -n "${requested_name}" ]]; then
+    count="$(find_simulator_candidates_count "${requested_name}")"
+    if [[ "${count}" -gt 1 ]]; then
+      echo "Multiple simulators match '${requested_name}'. Specify SIMULATOR_UDID explicitly."
+      print_simulator_candidates "${requested_name}" | sed -n '1,20p'
+      return 1
+    fi
+  fi
+
+  if [[ "${AUTO_SELECT_SIMULATOR}" == "1" ]]; then
+    udid="$(pick_first_simulator_legacy "${requested_name}")"
+    if [[ -n "${udid}" ]]; then
+      return 0
+    fi
+    echo "No simulator matched. Check available devices:"
+    print_simulator_candidates "${requested_name}" | sed -n '1,20p'
+    return 1
+  fi
+
+  return 1
 }
 
 require_cmd xcodegen
@@ -70,10 +167,9 @@ SIMCTL_DEVICES_LIST="$(cat "${simctl_output_file}")"
 rm -f "${simctl_output_file}"
 
 if [[ -z "${SIMULATOR_UDID}" ]]; then
-  SIMULATOR_UDID="$(find_simulator_udid_by_name "${SIMULATOR_NAME}")"
-fi
-if [[ -z "${SIMULATOR_UDID}" ]]; then
-  SIMULATOR_UDID="$(find_first_iphone_simulator_udid)"
+  if ! SIMULATOR_UDID="$(choose_simulator_udid "${SIMULATOR_NAME}" "")"; then
+    exit 1
+  fi
 fi
 
 if [[ -z "${SIMULATOR_UDID}" ]]; then
