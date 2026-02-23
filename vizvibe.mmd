@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_ios_runtime_ws_boot_validation_relax
+    %% @lastActive: mingle_stt_text_progress_silence_finalize_plan
 
     %% === START ===
     %% @project_start [start, closed]
@@ -766,6 +766,9 @@ flowchart TD
     %% @mingle_stt_silence_retune_200ms_0008 [ai-task, closed, 2026-02-21, ai]
     mingle_stt_silence_retune_200ms_0008("Soniox 무음 튜닝 200ms/0.008 재적용<br/><sub>최근 발화 경계 체감을 다시 빠르게 맞추기 위해<br/>수동 finalize 기본값을 300ms/0.006에서<br/>200ms와 0.008로 되돌려 짧은 무음에서<br/>턴 확정 반응성을 높이도록 재조정</sub>")
 
+    %% @mingle_stt_text_progress_silence_finalize_plan [ai-task, opened, 2026-02-23, ai]
+    mingle_stt_text_progress_silence_finalize_plan("Soniox 텍스트정체 finalize 설계<br/><sub>AEC off에서 RMS가 낮아도 partial은 진행되는<br/>실환경 이슈를 기준으로 무음 판정을 재정의하고<br/>250ms 동안 텍스트 추가가 없으면 finalize 요청하는<br/>서버 타이머 기반 경로로 교체 방향을 확정</sub>")
+
     %% @mingle_stt_marker_token_visibility_debug_toggle [ai-task, closed, 2026-02-19, ai]
     mingle_stt_marker_token_visibility_debug_toggle("Soniox 특수토큰 표시 디버그 모드<br/><sub>앱 화면에서 <end>/<fin> 토큰 유입 시점을<br/>직접 확인할 수 있도록 final/forced/pending 경로의<br/>토큰 제거 치환을 임시 주석 처리해<br/>원문 토큰이 그대로 보이게 서버를 보정</sub>")
 
@@ -921,6 +924,7 @@ flowchart TD
     mingle_stt_finalize_heuristic_removed --> mingle_stt_silence_200ms_manual_finalize
     mingle_stt_silence_200ms_manual_finalize --> mingle_stt_silence_tuning_300ms_0006
     mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_silence_retune_200ms_0008
+    mingle_stt_silence_retune_200ms_0008 --> mingle_stt_text_progress_silence_finalize_plan
     mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_marker_token_visibility_debug_toggle
     mingle_stt_marker_token_visibility_debug_toggle --> mingle_stt_endpoint_detection_disabled_experiment
     mingle_stt_endpoint_detection_disabled_experiment --> mingle_stt_endpoint_delay_param_guard_fix
@@ -1144,6 +1148,7 @@ flowchart TD
     mingle_stt_silence_200ms_manual_finalize -.-> ultimate_goal
     mingle_stt_silence_tuning_300ms_0006 -.-> ultimate_goal
     mingle_stt_silence_retune_200ms_0008 -.-> ultimate_goal
+    mingle_stt_text_progress_silence_finalize_plan -.-> ultimate_goal
     mingle_stt_marker_token_visibility_debug_toggle -.-> ultimate_goal
     mingle_stt_endpoint_detection_disabled_experiment -.-> ultimate_goal
     mingle_stt_endpoint_delay_param_guard_fix -.-> ultimate_goal
@@ -1173,7 +1178,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_ios_runtime_ws_boot_validation_relax
+        mingle_stt_text_progress_silence_finalize_plan
     end
 
     %% === STYLES ===
@@ -1485,6 +1490,7 @@ flowchart TD
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_tuning_300ms_0006 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_retune_200ms_0008 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_text_progress_silence_finalize_plan fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
