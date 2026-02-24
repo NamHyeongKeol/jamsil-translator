@@ -110,18 +110,16 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
             self.currentPlaybackId = playbackId
             self.currentUtteranceId = rawUtteranceId.isEmpty ? nil : rawUtteranceId
 
-            // Ensure audio session is active for playback.
-            // NativeSTTModule normally keeps it active, but if STT stopped
-            // before all TTS items played we still need a valid session.
+            // Ensure .playAndRecord with .default mode for full-volume TTS.
+            // After STT stops it may leave the session in .voiceChat mode (quiet).
+            // Always reconfigure to .default when STT is not running (coordinator
+            // snapshot shows stt==0).  When STT IS running it has already set the
+            // mode (.voiceChat or .default depending on AEC).
             let session = AVAudioSession.sharedInstance()
-            NSLog(
-                "[NativeTTSModule] prepare playbackId=%@ category=%@ mode=%@ outputs=[%@]",
-                playbackId,
-                session.category.rawValue,
-                session.mode.rawValue,
-                self.resolveOutputRouteLabel()
-            )
-            if session.category != .playAndRecord {
+            let owners = MingleAudioSessionCoordinator.shared.snapshot()
+            let needsReconfigure = session.category != .playAndRecord
+                || (owners.stt == 0 && session.mode != .default)
+            if needsReconfigure {
                 do {
                     try session.setCategory(
                         .playAndRecord,
@@ -129,6 +127,7 @@ class NativeTTSModule: RCTEventEmitter, AVAudioPlayerDelegate {
                         options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
                     )
                     try session.setActive(true, options: [])
+                    NSLog("[NativeTTSModule] reconfigured session to .default mode for TTS")
                 } catch {
                     NSLog("[NativeTTSModule] session fallback failed: %@", error.localizedDescription)
                 }
