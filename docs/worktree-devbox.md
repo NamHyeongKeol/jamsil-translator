@@ -94,6 +94,8 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
   - `.devbox.env`가 없으면 `init`을 자동 실행(1커맨드 온보딩)
   - 의존성 설치를 자동 수행(Prisma client 누락 시 `db:generate` 포함)
   - `up`은 기본적으로 `.env.local` 자동 시드/동기화를 수행하지 않음
+  - 저장된 Vault 경로가 있으면 비관리 키(API key 등)를
+    서버 프로세스 환경변수로 런타임 주입(파일 미기록)
   - Vault 비관리키를 파일에 반영하려면 `bootstrap`을 명시적으로 실행
     (`--vault-app-path/--vault-stt-path` 지원)
   - `mingle-stt` + `mingle-app` 동시 실행

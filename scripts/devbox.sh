@@ -574,6 +574,44 @@ sync_env_from_vault_paths() {
   sync_env_from_vault_path "stt" "$stt_path" "$STT_ENV_FILE"
 }
 
+write_runtime_env_from_vault_path() {
+  local target="$1"
+  local path="$2"
+  local file="$3"
+
+  : > "$file"
+  [[ -n "$path" ]] || return 0
+
+  require_cmd vault
+  require_cmd jq
+  log "loading ${target} runtime env from vault path: $path"
+
+  local payload
+  payload="$(vault kv get -format=json "$path")" || die "failed to read vault path: $path"
+
+  local line key value count formatted
+  count=0
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    key="${line%%$'\t'*}"
+    value="${line#*$'\t'}"
+    is_valid_env_key "$key" || continue
+    if is_managed_key_for_target "$target" "$key"; then
+      continue
+    fi
+    ensure_single_line_value "$key" "$value"
+    formatted="$(format_env_value_for_dotenv "$value")"
+    printf '%s=%s\n' "$key" "$formatted" >> "$file"
+    count=$((count + 1))
+  done < <(
+    printf '%s' "$payload" | jq -r '
+      ((.data.data // .data // {}) | to_entries[]? | [.key, (.value | if type=="string" then . else tojson end)] | @tsv)
+    '
+  )
+
+  log "loaded ${count} runtime keys from vault (${target})"
+}
+
 resolve_vault_paths() {
   local app_override="${1:-}"
   local stt_override="${2:-}"
@@ -1670,6 +1708,12 @@ cmd_up() {
 
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
   log "stateless mode: skipping automatic vault -> .env.local sync (use scripts/devbox bootstrap when needed)"
+  local runtime_app_env_file=""
+  local runtime_stt_env_file=""
+  runtime_app_env_file="$(mktemp "${TMPDIR:-/tmp}/devbox-app-runtime-env.XXXXXX")"
+  runtime_stt_env_file="$(mktemp "${TMPDIR:-/tmp}/devbox-stt-runtime-env.XXXXXX")"
+  write_runtime_env_from_vault_path "app" "$DEVBOX_VAULT_APP_PATH" "$runtime_app_env_file"
+  write_runtime_env_from_vault_path "stt" "$DEVBOX_VAULT_STT_PATH" "$runtime_stt_env_file"
   ensure_workspace_dependencies
 
   local -a pids=()
@@ -1757,18 +1801,31 @@ $(ngrok_plan_capacity_hint)"
 
   if [[ "$profile" == "device" && "$device_app_env" == "prod" ]]; then
     log "device app env is prod; skipping mingle-app/mingle-stt/ngrok runtime startup"
+    rm -f "$runtime_app_env_file" "$runtime_stt_env_file"
     return 0
   fi
 
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
   (
     cd "$ROOT_DIR/mingle-stt"
+    if [[ -s "$runtime_stt_env_file" ]]; then
+      set -a
+      # shellcheck disable=SC1090
+      . "$runtime_stt_env_file"
+      set +a
+    fi
     PORT="$DEVBOX_STT_PORT" pnpm dev
   ) &
   pids+=("$!")
 
   (
     cd "$ROOT_DIR/mingle-app"
+    if [[ -s "$runtime_app_env_file" ]]; then
+      set -a
+      # shellcheck disable=SC1090
+      . "$runtime_app_env_file"
+      set +a
+    fi
     pnpm exec next dev --port "$DEVBOX_WEB_PORT"
   ) &
   pids+=("$!")
@@ -1778,10 +1835,18 @@ $(ngrok_plan_capacity_hint)"
     log "starting Metro(port=$DEVBOX_METRO_PORT)"
     (
       cd "$ROOT_DIR/mingle-app"
+      if [[ -s "$runtime_app_env_file" ]]; then
+        set -a
+        # shellcheck disable=SC1090
+        . "$runtime_app_env_file"
+        set +a
+      fi
       node scripts/run-with-env-local.mjs pnpm --dir rn start --port "$DEVBOX_METRO_PORT"
     ) &
     pids+=("$!")
   fi
+
+  rm -f "$runtime_app_env_file" "$runtime_stt_env_file"
 
   if [[ "$started_ngrok_mode" == "inline" ]]; then
     log "ngrok is running with this process group (Ctrl+C to stop all)"
