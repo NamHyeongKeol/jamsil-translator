@@ -29,8 +29,6 @@ scripts/devbox init
 scripts/devbox bootstrap
 # Vault를 쓰면 (선택)
 # scripts/devbox bootstrap --vault-app-path secret/mingle-app/dev --vault-stt-path secret/mingle-stt/dev
-# 또는 첫 실행부터 한 번에
-# scripts/devbox up --profile device --vault-app-path secret/mingle-app/dev --vault-stt-path secret/mingle-stt/dev
 scripts/devbox up --profile local
 scripts/devbox up --profile device
 scripts/devbox up --profile device --device-app-env dev
@@ -51,8 +49,9 @@ scripts/devbox status
   RN 워크스페이스 의존성과 iOS Pods도 자동 점검하며,
   `Podfile.lock`/`Pods/Manifest.lock` 불일치 시 `pod install`로 자동 동기화합니다.
 - Vault 사용 시 `--vault-app-path`, `--vault-stt-path`로 비관리 env 키를 동기화할 수 있습니다.
-  한 번 지정하면 `.devbox.env`에 저장되어 이후 `bootstrap/up`에서 자동 재사용됩니다.
+  한 번 지정하면 `.devbox.env`에 저장되어 이후 `bootstrap`에서 자동 재사용됩니다.
 - devbox 기본 동작은 `.env.local` 관리블록 갱신 없이(stateless) ngrok/xcconfig 기준으로 동작합니다.
+- `scripts/devbox up`/`init`/`mobile`은 기본적으로 `.env.local`을 자동 동기화하지 않습니다.
 - `--profile device`는 ngrok(`devbox_web`/`devbox_stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
 - `--profile device`에서 `--device-app-env dev|prod`를 주면 모바일 앱 빌드 URL을
   `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 읽어 주입합니다.

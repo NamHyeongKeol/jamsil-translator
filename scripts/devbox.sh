@@ -1448,7 +1448,6 @@ cmd_init() {
   DEVBOX_NGROK_API_PORT="$ngrok_api_port"
   set_local_profile_values "$host"
 
-  seed_env_from_main_worktree
   save_and_refresh
   ensure_rn_workspace_dependencies
   ensure_ios_pods_if_needed
@@ -1631,7 +1630,6 @@ cmd_up() {
   require_cmd pnpm
   local vault_app_override=""
   local vault_stt_override=""
-  seed_env_from_main_worktree
 
   local profile="local"
   local host=""
@@ -1671,11 +1669,7 @@ cmd_up() {
   android_variant="$(normalize_android_variant "$android_variant")"
 
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
-  if [[ "$profile" == "device" && "$device_app_env" == "prod" ]]; then
-    log "device app env is prod; skipping vault -> .env.local sync"
-  else
-    sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
-  fi
+  log "stateless mode: skipping automatic vault -> .env.local sync (use scripts/devbox bootstrap when needed)"
   ensure_workspace_dependencies
 
   local -a pids=()

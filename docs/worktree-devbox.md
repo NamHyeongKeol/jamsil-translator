@@ -59,8 +59,6 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
   - `.devbox.env` 생성
   - git worktree 목록 기준으로 이미 할당된 포트를 회피해 기본 포트 자동 선택
     (`web/stt/metro` + `ngrok inspector`)
-  - 현재 워크트리 `.env.local`에 비관리 키가 없으면 main 워크트리의
-    `mingle-app/.env.local`, `mingle-stt/.env.local`을 시드
   - `ngrok.mobile.local.yml` 생성
   - RN 워크스페이스 의존성(`mingle-app/rn`) 자동 설치/점검
   - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
@@ -94,11 +92,10 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
 
 - `scripts/devbox up --profile local|device`
   - `.devbox.env`가 없으면 `init`을 자동 실행(1커맨드 온보딩)
-  - 시작 전에 main 워크트리 env 시드와 의존성 설치를 자동 수행
-    (Prisma client 누락 시 `db:generate` 포함)
-  - 이전에 저장된 Vault 경로가 있으면 자동으로 env 동기화 수행
-    (`--device-app-env prod`일 때는 동기화 생략)
-  - 필요 시 `--vault-app-path/--vault-stt-path`로 경로를 덮어써 즉시 반영 가능
+  - 의존성 설치를 자동 수행(Prisma client 누락 시 `db:generate` 포함)
+  - `up`은 기본적으로 `.env.local` 자동 시드/동기화를 수행하지 않음
+  - Vault 비관리키를 파일에 반영하려면 `bootstrap`을 명시적으로 실행
+    (`--vault-app-path/--vault-stt-path` 지원)
   - `mingle-stt` + `mingle-app` 동시 실행
   - `device` 프로필에서 ngrok이 없으면 iTerm/Terminal에 별도 탭/패널로 ngrok 실행 시도
     (실패 시 기존 인라인 실행으로 폴백)
