@@ -62,9 +62,6 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
 scripts/devbox test --target app
 scripts/devbox test --target ios-native
 scripts/devbox test --target all
-
-# 14) (권장) 로컬 서버 + 네이티브 iOS 시뮬레이터 클린 재설치 한 번에
-scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --ios-runtime native --ios-native-target simulator --ios-simulator-udid <UDID> --ios-configuration Debug
 ```
 
 ## 주요 명령
@@ -141,7 +138,6 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
   - `--ios-udid`, `--ios-coredevice-id`, `--android-serial`로 대상 기기 지정 가능
   - `--ios-configuration Debug|Release` (기본 Release)
   - `--android-variant debug|release` (기본 release)
-  - `--with-ios-clean-install`은 RN뿐 아니라 네이티브 iOS 설치에서도 기존 앱을 먼저 삭제
   - 연결 기기 미탐지 시 자동 스킵
 
 - `scripts/devbox ios-native-build`
