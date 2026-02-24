@@ -1766,11 +1766,15 @@ cmd_mobile() {
   ios_native_target="$(normalize_ios_native_target "$ios_native_target")"
   case "$active_profile" in
     device)
-      if [[ "$with_ios_clean_install" -eq 1 ]]; then
-        stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+      if [[ "$device_app_env" == "prod" ]]; then
+        log "device app env is prod; skipping ngrok profile refresh"
+      else
+        if [[ "$with_ios_clean_install" -eq 1 ]]; then
+          stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+        fi
+        # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
+        apply_profile "device"
       fi
-      # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
-      apply_profile "device"
       ;;
     local)
       apply_profile "local" "$active_host"
@@ -1928,52 +1932,60 @@ cmd_up() {
   local started_ngrok_mode="none"
 
   if [[ "$profile" == "device" ]]; then
-    if [[ "$with_ios_clean_install" -eq 1 ]]; then
-      stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
-    fi
-    write_ngrok_local_config
+    if [[ "$device_app_env" == "prod" ]]; then
+      log "device app env is prod; skipping ngrok startup/check"
+    else
+      if [[ "$with_ios_clean_install" -eq 1 ]]; then
+        stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+      fi
+      write_ngrok_local_config
 
-    if ! try_read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"; then
-      if [[ "$NGROK_LAST_ERROR_KIND" == "tunnel_mismatch" ]]; then
-        die "running ngrok tunnels do not match this worktree ports(web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT) or are not https/wss (inspector port=$DEVBOX_NGROK_API_PORT).
+      if ! try_read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"; then
+        if [[ "$NGROK_LAST_ERROR_KIND" == "tunnel_mismatch" ]]; then
+          die "running ngrok tunnels do not match this worktree ports(web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT) or are not https/wss (inspector port=$DEVBOX_NGROK_API_PORT).
 $NGROK_LAST_ERROR
 $(ngrok_plan_capacity_hint)"
-      fi
-      require_cmd ngrok
-      log "starting ngrok for device profile"
-      if launch_ngrok_in_separate_terminal; then
-        started_ngrok_mode="separate"
-        log "ngrok started in a separate terminal pane/tab"
-      else
-        log "separate terminal launch unavailable; falling back to inline ngrok"
-        (
-          cd "$ROOT_DIR"
-          scripts/ngrok-start-mobile.sh --log stdout --log-format logfmt
-        ) &
-        pids+=("$!")
-        started_ngrok_mode="inline"
-      fi
+        fi
+        require_cmd ngrok
+        log "starting ngrok for device profile"
+        if launch_ngrok_in_separate_terminal; then
+          started_ngrok_mode="separate"
+          log "ngrok started in a separate terminal pane/tab"
+        else
+          log "separate terminal launch unavailable; falling back to inline ngrok"
+          (
+            cd "$ROOT_DIR"
+            scripts/ngrok-start-mobile.sh --log stdout --log-format logfmt
+          ) &
+          pids+=("$!")
+          started_ngrok_mode="inline"
+        fi
 
-      if ! wait_for_ngrok_tunnels "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT" 20; then
-        if [[ "$started_ngrok_mode" == "inline" ]]; then
-          cleanup_processes "${pids[@]}"
-        fi
-        if [[ -n "$NGROK_LAST_ERROR" ]]; then
-          die "$NGROK_LAST_ERROR
+        if ! wait_for_ngrok_tunnels "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT" 20; then
+          if [[ "$started_ngrok_mode" == "inline" ]]; then
+            cleanup_processes "${pids[@]}"
+          fi
+          if [[ -n "$NGROK_LAST_ERROR" ]]; then
+            die "$NGROK_LAST_ERROR
+$(ngrok_plan_capacity_hint)"
+          fi
+          die "ngrok inspector(port=$DEVBOX_NGROK_API_PORT) did not expose matching web/stt tunnels within 20s.
 $(ngrok_plan_capacity_hint)"
         fi
-        die "ngrok inspector(port=$DEVBOX_NGROK_API_PORT) did not expose matching web/stt tunnels within 20s.
-$(ngrok_plan_capacity_hint)"
+      else
+        started_ngrok_mode="reused"
       fi
-    else
-      started_ngrok_mode="reused"
     fi
   elif [[ -n "$device_app_env" ]]; then
     die "--device-app-env is only supported with --profile device"
   fi
 
-  apply_profile "$profile" "$host"
-  cmd_status
+  if [[ "$profile" == "device" && "$device_app_env" == "prod" ]]; then
+    log "device app env is prod; skipping device profile URL sync"
+  else
+    apply_profile "$profile" "$host"
+    cmd_status
+  fi
 
   if [[ "$profile" == "device" && -n "$device_app_env" ]]; then
     local device_app_env_payload=""
@@ -2035,6 +2047,11 @@ $(ngrok_plan_capacity_hint)"
       "$with_ios_clean_install" \
       "$mobile_site_override" \
       "$mobile_ws_override"
+  fi
+
+  if [[ "$profile" == "device" && "$device_app_env" == "prod" ]]; then
+    log "device app env is prod; skipping mingle-app/mingle-stt/ngrok runtime startup"
+    return 0
   fi
 
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"

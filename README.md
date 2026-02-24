@@ -67,6 +67,7 @@ scripts/devbox status
 - `--profile device`는 ngrok(`devbox_web`/`devbox_stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
 - `--profile device`에서 `--device-app-env dev|prod`를 주면 모바일 앱 빌드 URL을
   `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 읽어 주입합니다.
+  `--device-app-env prod`에서는 `up` 실행 시 ngrok/로컬 서버 기동을 생략합니다.
 - 워크트리마다 ngrok inspector 포트를 분리(`DEVBOX_NGROK_API_PORT`)해 동시 실행 충돌을 줄였습니다.
 - `--profile device`는 현재 워크트리 포트와 일치하는 `https/wss` 터널만 허용합니다.
 - `scripts/devbox up`은 `.devbox.env`가 없으면 `init`을 자동 실행합니다.
