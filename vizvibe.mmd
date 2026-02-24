@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_runtime_vault_env_injection
+    %% @lastActive: mingle_ios_native_audio_tap_safety_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -1250,6 +1250,7 @@ flowchart TD
     mingle_worktree_devbox_ios_native_build_command --> mingle_ios_native_chat_ui_parity_refresh
     mingle_ios_native_chat_ui_parity_refresh --> mingle_ios_native_livephonedemo_ui_full_parity
     mingle_ios_native_livephonedemo_ui_full_parity --> mingle_ios_native_ws_stale_callback_guard_and_retry_recovery
+    mingle_ios_native_ws_stale_callback_guard_and_retry_recovery --> mingle_ios_native_audio_tap_safety_fix
     mingle_ios_native_swiftui_workspace -.-> ultimate_goal
     mingle_worktree_devbox_native_ios_runtime_and_test_path -.-> ultimate_goal
     mingle_worktree_devbox_native_ios_simulator_mobile_command -.-> ultimate_goal
@@ -1259,6 +1260,7 @@ flowchart TD
     mingle_ios_native_chat_ui_parity_refresh -.-> ultimate_goal
     mingle_ios_native_livephonedemo_ui_full_parity -.-> ultimate_goal
     mingle_ios_native_ws_stale_callback_guard_and_retry_recovery -.-> ultimate_goal
+    mingle_ios_native_audio_tap_safety_fix -.-> ultimate_goal
     mingle_worktree_devbox_ios_native_uninstall_command -.-> ultimate_goal
     mingle_worktree_devbox_native_ios_clean_install_apply -.-> ultimate_goal
     mingle_ios_device_signing_account_setup -.-> ultimate_goal
@@ -1293,6 +1295,9 @@ flowchart TD
     %% @mingle_ios_native_ws_stale_callback_guard_and_retry_recovery [ai-task, closed, 2026-02-24, ai]
     mingle_ios_native_ws_stale_callback_guard_and_retry_recovery("mingle-ios 재생 재시도 레이스 안정화<br/><sub>크래시 로그를 기반으로 마이크 권한 콜백의<br/>메인 액터 격리 위반 경로를 점검/정리하고<br/>이전 WebSocket 세션의 stale close 이벤트가<br/>신규 녹음을 끊지 않도록 세션 가드를 추가</sub>")
 
+    %% @mingle_ios_native_audio_tap_safety_fix [ai-task, closed, 2026-02-25, ai]
+    mingle_ios_native_audio_tap_safety_fix("mingle-ios 재생 직후 CFRelease 트랩 완화<br/><sub>재생 버튼 직후 AudioSession 경로에서 발생한<br/>CFRelease(NULL) 런타임 트랩을 기준으로<br/>오디오 탭 설치 상태를 추적해 removeTap 호출을<br/>조건화하고 inputFormat 기반 재설치로 경합을 완화</sub>")
+
     %% @mingle_worktree_devbox_ios_native_uninstall_command [ai-task, closed, 2026-02-24, ai]
     mingle_worktree_devbox_ios_native_uninstall_command("devbox iOS 네이티브 uninstall 명령 추가<br/><sub>scripts/devbox ios-native-uninstall을 도입해<br/>시뮬레이터/실기기에서 bundle id 기준 제거를 지원하고<br/>simulator 이름/UDID, device id 옵션을 분리해<br/>삭제 후 재설치 워크플로우를 한 도구로 통합</sub>")
 
@@ -1304,7 +1309,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_runtime_vault_env_injection
+        mingle_ios_native_audio_tap_safety_fix
     end
 
     %% === STYLES ===
@@ -1629,6 +1634,7 @@ flowchart TD
     style mingle_ios_native_chat_ui_parity_refresh fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_ios_native_livephonedemo_ui_full_parity fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_ios_native_ws_stale_callback_guard_and_retry_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_audio_tap_safety_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_ios_native_uninstall_command fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_native_ios_clean_install_apply fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_ios_device_signing_account_setup fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
@@ -1659,7 +1665,7 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_worktree_devbox_runtime_vault_env_injection fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_ios_native_audio_tap_safety_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

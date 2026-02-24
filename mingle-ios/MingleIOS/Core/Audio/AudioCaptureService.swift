@@ -20,6 +20,7 @@ final class AudioCaptureService: @unchecked Sendable {
     private var currentSampleRate: Double = 16_000
     private var currentOnAudioChunk: (@Sendable (String) -> Void)?
     private var currentOnRmsLevel: (@Sendable (Float) -> Void)?
+    private var tapInstalled = false
 
     var sampleRate: Double {
         currentSampleRate
@@ -47,7 +48,7 @@ final class AudioCaptureService: @unchecked Sendable {
         if #available(iOS 17.0, *) {
             try? inputNode.setVoiceProcessingEnabled(aecEnabled)
         }
-        let inputFormat = inputNode.outputFormat(forBus: 0)
+        let inputFormat = inputNode.inputFormat(forBus: 0)
         currentSampleRate = inputFormat.sampleRate
 
         let monoFormat = AVAudioFormat(
@@ -61,7 +62,7 @@ final class AudioCaptureService: @unchecked Sendable {
             throw AudioCaptureError.inputNodeUnavailable
         }
 
-        inputNode.removeTap(onBus: 0)
+        safelyRemoveTap()
         installTap(format: captureFormat)
 
         do {
@@ -75,7 +76,7 @@ final class AudioCaptureService: @unchecked Sendable {
     }
 
     func stop() {
-        audioEngine.inputNode.removeTap(onBus: 0)
+        safelyRemoveTap()
         if audioEngine.isRunning {
             audioEngine.stop()
         }
@@ -106,7 +107,7 @@ final class AudioCaptureService: @unchecked Sendable {
         }
 
         // 2. Remove tap, stop engine, reset (clears AEC calibration state)
-        audioEngine.inputNode.removeTap(onBus: 0)
+        safelyRemoveTap()
         if audioEngine.isRunning {
             audioEngine.stop()
         }
@@ -168,6 +169,13 @@ final class AudioCaptureService: @unchecked Sendable {
             let rms = Self.rms(from: samples)
             onRms(rms)
         }
+        tapInstalled = true
+    }
+
+    private func safelyRemoveTap() {
+        guard tapInstalled else { return }
+        audioEngine.inputNode.removeTap(onBus: 0)
+        tapInstalled = false
     }
 
     private static func floatBufferToInt16PCM(_ samples: UnsafeBufferPointer<Float>) -> Data {
