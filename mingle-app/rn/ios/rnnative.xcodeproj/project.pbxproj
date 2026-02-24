@@ -285,7 +285,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				MINGLE_DEFAULT_WS_HOST = mingle.up.railway.app;
 				MINGLE_DEFAULT_WS_SCHEME = wss;
 				MINGLE_DEFAULT_WS_URL = "wss://mingle.up.railway.app";
@@ -322,7 +322,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				MINGLE_DEFAULT_WS_HOST = mingle.up.railway.app;
 				MINGLE_DEFAULT_WS_SCHEME = wss;
 				MINGLE_DEFAULT_WS_URL = "wss://mingle.up.railway.app";

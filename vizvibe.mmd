@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_ios_dynamic_aec_mode_toggle
+    %% @lastActive: mingle_app_rn_ios_appstore_submission_checklist_run
 
     %% === START ===
     %% @project_start [start, closed]
@@ -471,6 +471,9 @@ flowchart TD
 
     %% @mingle_app_ios_dynamic_aec_mode_toggle [ai-task, closed, 2026-02-25, ai]
     mingle_app_ios_dynamic_aec_mode_toggle("iOS AEC 동적 모드 전환<br/><sub>AEC ON 시 .voiceChat 모드로 시스템 AEC 활성화<br/>AEC OFF 및 STT 미사용 시 .default 모드로 전체 볼륨 복구<br/>에코 제거와 쾌적한 출력을 상태에 맞춰 동적 대응</sub>")
+
+    %% @mingle_app_rn_ios_appstore_submission_checklist_run [ai-task, closed, 2026-02-25, ai]
+    mingle_app_rn_ios_appstore_submission_checklist_run("RN iOS App Store 체크리스트 실행<br/><sub>RN deps/Pods 동기화와 Release 빌드를<br/>CLI로 재검증하고 버전을 1.0.0/1로 확정,<br/>Info.plist 권한키 정리 상태를 재확인했으며<br/>archive 차단 지점과 후속 작업을 문서화</sub>")
 
     %% @mingle_app_ios_splash_cleanup [ai-task, closed, 2026-02-17, ai]
     mingle_app_ios_splash_cleanup("iOS 스플래시 화면 정리<br/><sub>LaunchScreen.storyboard에서 RN 기본 템플릿의<br/>rnnative 텍스트와 Powered by React Native를 제거하고<br/>깔끔한 흰 화면으로 교체해 브랜드 이미지 정리</sub>")
@@ -1018,7 +1021,8 @@ flowchart TD
     opencode_oh_my_setup --> opencode_codex_oauth_pending
     tts_echo_reference_filter_research --> mingle_app_ios_stt_tts_resilience_diagnostics
     mingle_app_ios_stt_tts_resilience_diagnostics --> mingle_app_ios_dynamic_aec_mode_toggle
-    mingle_app_ios_dynamic_aec_mode_toggle --> mingle_app_ios_splash_cleanup
+    mingle_app_ios_dynamic_aec_mode_toggle --> mingle_app_rn_ios_appstore_submission_checklist_run
+    mingle_app_rn_ios_appstore_submission_checklist_run --> mingle_app_ios_splash_cleanup
     mingle_app_ios_splash_cleanup --> mingle_app_partial_translation_threshold_tune
     mingle_app_partial_translation_threshold_tune --> mingle_app_tts_global_state
     mingle_app_tts_global_state --> mingle_app_aec_toggle
@@ -1128,6 +1132,7 @@ flowchart TD
     mingle_app_og_image_locale_redirect_fix -.-> ultimate_goal
     mingle_app_ios_splash_cleanup -.-> ultimate_goal
     mingle_app_ios_dynamic_aec_mode_toggle -.-> ultimate_goal
+    mingle_app_rn_ios_appstore_submission_checklist_run -.-> ultimate_goal
     mingle_app_aec_toggle -.-> ultimate_goal
     mingle_app_echo_icon_and_canvas_400_restore -.-> ultimate_goal
     mingle_app_bottom_bar_usage_left_alignment -.-> ultimate_goal
@@ -1240,7 +1245,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_ios_dynamic_aec_mode_toggle
+        mingle_app_rn_ios_appstore_submission_checklist_run
     end
 
     %% === STYLES ===
@@ -1452,6 +1457,8 @@ flowchart TD
     style mingle_app_web_client_event_logging_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_og_image_locale_redirect_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_stt_tts_resilience_diagnostics fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_dynamic_aec_mode_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_ios_appstore_submission_checklist_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_splash_cleanup fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_partial_translation_threshold_tune fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tts_global_state fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1581,7 +1588,7 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_app_ios_dynamic_aec_mode_toggle fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_rn_ios_appstore_submission_checklist_run fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_worktree_devbox_runtime_vault_env_injection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
