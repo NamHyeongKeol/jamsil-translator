@@ -34,8 +34,8 @@ private let translatedBubbleMaxWidthRatio: CGFloat = 0.80
 
 struct ContentView: View {
     @StateObject private var viewModel = AppViewModel()
-    @AppStorage("mingle_ios_tts_enabled") private var isSoundEnabled = true
-    @AppStorage("mingle_ios_aec_enabled") private var isAecEnabled = true
+    @AppStorage("mingle_ios_tts_enabled") private var isSoundEnabled = false
+    @AppStorage("mingle_ios_aec_enabled") private var isAecEnabled = false
     @State private var activeSheet: ActiveSheet?
 
     private enum ActiveSheet: Int, Identifiable {
@@ -61,6 +61,12 @@ struct ContentView: View {
             case .backend:
                 backendSettingsSheet
             }
+        }
+        .onAppear {
+            viewModel.ttsEnabled = isSoundEnabled
+        }
+        .onChange(of: isSoundEnabled) { newValue in
+            viewModel.ttsEnabled = newValue
         }
     }
 

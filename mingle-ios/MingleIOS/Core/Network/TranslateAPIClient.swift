@@ -1,5 +1,11 @@
 import Foundation
 
+struct TTSRequestPayload: Encodable {
+    let enabled: Bool
+    let language: String
+    let voiceId: String?
+}
+
 struct TranslateFinalizeRequest: Encodable {
     let text: String
     let sourceLanguage: String
@@ -9,12 +15,17 @@ struct TranslateFinalizeRequest: Encodable {
     let immediatePreviousTurn: RecentTurnContextPayload?
     let currentTurnPreviousState: CurrentTurnPreviousStatePayload?
     let sessionKey: String
+    let tts: TTSRequestPayload?
 }
 
 struct TranslateFinalizeResponse: Decodable {
     let translations: [String: String]
     let provider: String?
     let model: String?
+    let ttsAudioBase64: String?
+    let ttsAudioMime: String?
+    let ttsLanguage: String?
+    let ttsVoiceId: String?
 }
 
 enum TranslateAPIClientError: LocalizedError {

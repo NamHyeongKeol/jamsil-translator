@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 
 @MainActor
@@ -14,10 +15,12 @@ final class AppViewModel: ObservableObject {
     @Published var usageSec: Int = 0
     @Published var providerLabel: String = ""
     @Published var lastErrorMessage: String?
+    var ttsEnabled: Bool = false
 
     private let audioCaptureService = AudioCaptureService()
     private let sttSocketClient = STTWebSocketClient()
     private let translateAPIClient = TranslateAPIClient()
+    private var ttsAudioPlayer: AVAudioPlayer?
 
     private struct PendingLocalFinalize {
         let utteranceId: String
@@ -461,6 +464,13 @@ final class AppViewModel: ObservableObject {
         let recentTurns = buildRecentTurnContext(nowMs: nowMs, excludeUtteranceId: utteranceId)
         let immediatePreviousTurn = recentTurns.last
 
+        let ttsPayload: TTSRequestPayload?
+        if ttsEnabled, let ttsLang = targetLanguages.first {
+            ttsPayload = TTSRequestPayload(enabled: true, language: ttsLang, voiceId: nil)
+        } else {
+            ttsPayload = nil
+        }
+
         let request = TranslateFinalizeRequest(
             text: text,
             sourceLanguage: sourceLanguage,
@@ -469,7 +479,8 @@ final class AppViewModel: ObservableObject {
             recentTurns: recentTurns,
             immediatePreviousTurn: immediatePreviousTurn,
             currentTurnPreviousState: currentTurnPreviousState,
-            sessionKey: sessionKey
+            sessionKey: sessionKey,
+            tts: ttsPayload
         )
 
         do {
@@ -482,6 +493,10 @@ final class AppViewModel: ObservableObject {
 
             if let provider = response.provider, let model = response.model {
                 providerLabel = "\(provider) · \(model)"
+            }
+
+            if ttsEnabled, let base64Audio = response.ttsAudioBase64, !base64Audio.isEmpty {
+                playTTSAudio(base64: base64Audio)
             }
         } catch {
             lastErrorMessage = error.localizedDescription
@@ -504,6 +519,17 @@ final class AppViewModel: ObservableObject {
         for (language, translatedText) in filtered {
             utterances[index].translations[language] = translatedText
             utterances[index].translationFinalized[language] = true
+        }
+    }
+
+    private func playTTSAudio(base64: String) {
+        guard let data = Data(base64Encoded: base64), !data.isEmpty else { return }
+        do {
+            let player = try AVAudioPlayer(data: data)
+            ttsAudioPlayer = player
+            player.play()
+        } catch {
+            // TTS playback failed silently.
         }
     }
 
