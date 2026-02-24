@@ -15,8 +15,7 @@ enum AudioCaptureError: LocalizedError {
     }
 }
 
-@MainActor
-final class AudioCaptureService {
+final class AudioCaptureService: @unchecked Sendable {
     private let audioEngine = AVAudioEngine()
     private var currentSampleRate: Double = 16_000
 
@@ -27,16 +26,14 @@ final class AudioCaptureService {
     func requestMicrophonePermission() async -> Bool {
         await withCheckedContinuation { continuation in
             AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                DispatchQueue.main.async {
-                    continuation.resume(returning: granted)
-                }
+                continuation.resume(returning: granted)
             }
         }
     }
 
     func start(
-        onAudioChunk: @escaping (String) -> Void,
-        onRmsLevel: @escaping (Float) -> Void
+        onAudioChunk: @Sendable @escaping (String) -> Void,
+        onRmsLevel: @Sendable @escaping (Float) -> Void
     ) throws {
         let session = AVAudioSession.sharedInstance()
         do {
