@@ -237,6 +237,22 @@ read_env_value_from_file() {
   awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file"
 }
 
+read_env_value_from_vault() {
+  local path="$1"
+  local key="$2"
+  local value
+
+  [[ -n "$path" ]] || return 1
+  [[ -n "$key" ]] || return 1
+
+  require_cmd vault
+  require_cmd jq
+
+  value="$(vault kv get -format=json "$path" 2>/dev/null | jq -r --arg key "$key" '.data.data[$key] // ""')"
+  [[ "$value" == "null" ]] && value=""
+  [[ -n "$value" ]] && printf '%s' "$value"
+}
+
 derive_worktree_name() {
   local branch fallback hash
   branch="$(git -C "$ROOT_DIR" branch --show-current 2>/dev/null || true)"
@@ -1290,8 +1306,20 @@ set_prod_profile_values() {
     [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_file NEXT_PUBLIC_WS_URL "$fallback_file")"
   fi
 
-  [[ -n "$site_url" ]] || die "missing production site url for prod profile: define RN_WEB_APP_BASE_URL, MINGLE_WEB_APP_BASE_URL, or NEXT_PUBLIC_SITE_URL in $APP_ENV_FILE or $fallback_file"
-  [[ -n "$ws_url" ]] || die "missing production ws url for prod profile: define RN_DEFAULT_WS_URL, MINGLE_DEFAULT_WS_URL, or NEXT_PUBLIC_WS_URL in $APP_ENV_FILE or $fallback_file"
+  if [[ -z "$site_url" && -n "$DEVBOX_VAULT_APP_PATH" ]]; then
+    site_url="$(read_env_value_from_vault "$DEVBOX_VAULT_APP_PATH" RN_WEB_APP_BASE_URL)"
+    [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$DEVBOX_VAULT_APP_PATH" MINGLE_WEB_APP_BASE_URL)"
+    [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$DEVBOX_VAULT_APP_PATH" NEXT_PUBLIC_SITE_URL)"
+  fi
+
+  if [[ -z "$ws_url" && -n "$DEVBOX_VAULT_APP_PATH" ]]; then
+    ws_url="$(read_env_value_from_vault "$DEVBOX_VAULT_APP_PATH" RN_DEFAULT_WS_URL)"
+    [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$DEVBOX_VAULT_APP_PATH" MINGLE_DEFAULT_WS_URL)"
+    [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$DEVBOX_VAULT_APP_PATH" NEXT_PUBLIC_WS_URL)"
+  fi
+
+  [[ -n "$site_url" ]] || die "missing production site url for prod profile: define RN_WEB_APP_BASE_URL, MINGLE_WEB_APP_BASE_URL, or NEXT_PUBLIC_SITE_URL in $APP_ENV_FILE, $fallback_file, or secret path in DEVBOX_VAULT_APP_PATH"
+  [[ -n "$ws_url" ]] || die "missing production ws url for prod profile: define RN_DEFAULT_WS_URL, MINGLE_DEFAULT_WS_URL, or NEXT_PUBLIC_WS_URL in $APP_ENV_FILE, $fallback_file, or secret path in DEVBOX_VAULT_APP_PATH"
 
   DEVBOX_PROFILE="prod"
   DEVBOX_LOCAL_HOST="127.0.0.1"

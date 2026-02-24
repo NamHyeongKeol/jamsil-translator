@@ -93,9 +93,11 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`, `RN_DEFAULT_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
 - `scripts/devbox profile --profile prod`
-- `mingle-app/.env.local` 또는 `mingle-app/.env`에서
-    `RN_WEB_APP_BASE_URL`/`MINGLE_WEB_APP_BASE_URL`/`NEXT_PUBLIC_SITE_URL`,
-    `RN_DEFAULT_WS_URL`/`MINGLE_DEFAULT_WS_URL`/`NEXT_PUBLIC_WS_URL`를 읽어 현재 프로필로 설정
+- `mingle-app/.env.local` 또는 `mingle-app/.env`에서 먼저 찾고,
+  `RN_WEB_APP_BASE_URL`/`MINGLE_WEB_APP_BASE_URL`/`NEXT_PUBLIC_SITE_URL`,
+  `RN_DEFAULT_WS_URL`/`MINGLE_DEFAULT_WS_URL`/`NEXT_PUBLIC_WS_URL`를 읽어 현재 프로필로 설정
+  - `--vault-app-path`가 지정된 경우 Vault 경로도 동일 우선순위에 포함해 읽어
+    설정값을 덮어쓰지 않고 주입 전용 값으로 사용합니다.
   - `--vault-app-path/--vault-stt-path`로 `.env.local` 동기화 후 실행하면
     Vault에 저장된 프로덕션 URL을 자동 반영
 
