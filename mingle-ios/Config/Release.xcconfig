@@ -1,0 +1,2 @@
+MINGLE_API_BASE_URL = https://app.mingle.so
+MINGLE_WS_URL = wss://stt.mingle.so

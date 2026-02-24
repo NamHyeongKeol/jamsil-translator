@@ -9,6 +9,7 @@
 - PC웹/iOS웹/안드웹/iOS앱/안드앱 테스트 URL/WS 자동 동기화
 - 디바이스 테스트용 ngrok 상시 지원
 - live 테스트(`pnpm test:live`) 포트 자동 주입
+- `mingle-ios` 네이티브 빌드/테스트 동시 자동화
 
 ## 빠른 시작
 
@@ -38,7 +39,7 @@ scripts/devbox up --profile device --device-app-env dev
 scripts/devbox up --profile device --device-app-env prod
 
 # 6) (선택) 연결된 테스트폰 앱 빌드/설치
-scripts/devbox mobile --platform all
+scripts/devbox mobile --platform all --ios-runtime both
 
 # 7) (선택) 서버+모바일 설치를 한 번에
 scripts/devbox up --profile device --with-mobile-install
@@ -49,8 +50,25 @@ scripts/devbox up --profile device --with-ios-install
 # 8-1) (선택) 기존 iOS 앱 삭제 후 재설치
 scripts/devbox up --profile device --with-ios-install --with-ios-clean-install
 
-# 9) (선택) 전체 로그를 파일로 저장
+# 9) (선택) iOS 네이티브만 설치
+scripts/devbox mobile --platform ios --ios-runtime native
+
+# 10) (선택) mingle-ios만 빌드(설치 없음)
+scripts/devbox ios-native-build --ios-configuration Debug
+
+# 11) (선택) mingle-ios 앱만 제거
+scripts/devbox ios-native-uninstall --ios-native-target simulator --ios-simulator-udid <UDID>
+
+# 12) (선택) 전체 로그를 파일로 저장
 scripts/devbox --log-file auto up --profile device --with-ios-install
+
+# 13) (선택) 테스트 실행
+scripts/devbox test --target app
+scripts/devbox test --target ios-native
+scripts/devbox test --target all
+
+# 14) (권장) 로컬 서버 + 네이티브 iOS 시뮬레이터 클린 재설치 한 번에
+scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --ios-runtime native --ios-native-target simulator --ios-simulator-udid <UDID> --ios-configuration Debug
 ```
 
 ## 주요 명령
@@ -85,8 +103,10 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`, `RN_DEFAULT_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
 - `scripts/devbox up --profile device --device-app-env dev|prod`
-  - 모바일 앱 빌드 URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`)을
+  - 모바일 앱 빌드 URL을
     `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 직접 읽어 주입
+    - RN: `RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL` (fallback: `MINGLE_WEB_APP_BASE_URL`, `MINGLE_DEFAULT_WS_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`)
+    - Native iOS: `MINGLE_API_BASE_URL`, `MINGLE_WS_URL` (RN/NEXT_PUBLIC 키도 fallback으로 허용)
   - `--device-app-env prod`면 ngrok 및 로컬 서버(mingle-app/mingle-stt) 기동을 생략
   - `--device-app-env dev`면 기존 device(ngrok) 흐름을 그대로 사용
 
@@ -101,10 +121,12 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
   - `mingle-stt` + `mingle-app` 동시 실행
   - `device` 프로필에서 ngrok이 없으면 iTerm/Terminal에 별도 탭/패널로 ngrok 실행 시도
     (실패 시 기존 인라인 실행으로 폴백)
-- `--with-ios-install`, `--with-android-install`, `--with-mobile-install`, `--with-ios-clean-install` 옵션으로
-  연결된 테스트폰 앱 빌드/설치를 함께 수행
+  - `--with-ios-install`, `--with-android-install`, `--with-mobile-install`, `--with-ios-clean-install` 옵션으로
+    연결된 테스트폰 앱 빌드/설치를 함께 수행
+  - iOS 설치 시 `--ios-runtime rn|native|both`로 RN/네이티브 경로를 선택 가능
+  - 네이티브 설치 대상은 `--ios-coredevice-id <ID>`로 지정 가능
   - 연결된/설치 가능한 기기가 없으면 해당 플랫폼 설치 단계는 자동 스킵
-- `--with-ios-clean-install`은 기존 iOS 앱 번들을 삭제한 뒤 재설치합니다.
+  - `--with-ios-clean-install`은 기존 iOS 앱 번들을 삭제한 뒤 재설치합니다.
   - `--profile device`면 ngrok이 없을 경우 함께 기동 후 터널 URL을 자동 반영
   - 이미 떠 있는 ngrok 터널이 다른 포트/프로토콜이면 즉시 실패(오접속 방지)
   - `--with-metro`를 추가하면 RN Metro도 함께 실행
@@ -118,17 +140,29 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
   - 실행 시작 시 `.devbox.env`의 현재 프로필(local/device)을 다시 적용해
     최신 URL/WS 값을 먼저 재동기화한 뒤 빌드/설치를 수행
     (device 프로필은 ngrok inspector에서 최신 터널 URL 재조회)
+  - iOS는 `--ios-runtime rn|native|both`로 RN/네이티브(또는 동시) 설치를 선택
   - `--device-app-env dev|prod`를 주면 앱 빌드 URL만 Vault 경로에서 덮어씁니다.
-  - 현재 워크트리 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로
-    RN iOS/Android 빌드/설치를 수행
-  - `--ios-udid`, `--android-serial`로 대상 기기 지정 가능
+  - RN iOS/Android는 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로
+    빌드/설치를 수행
+  - 네이티브 iOS는 devbox URL(`MINGLE_API_BASE_URL`, `MINGLE_WS_URL`)을 주입해 설치
+  - `--ios-udid`, `--ios-coredevice-id`, `--android-serial`로 대상 기기 지정 가능
   - `--ios-configuration Debug|Release` (기본 Release)
   - `--android-variant debug|release` (기본 release)
+  - `--with-ios-clean-install`은 RN뿐 아니라 네이티브 iOS 설치에서도 기존 앱을 먼저 삭제
   - 연결 기기 미탐지 시 자동 스킵
 
-- `scripts/devbox test`
-  - 현재 devbox 설정값으로 `mingle-app` live integration test 실행
-  - 내부적으로 `MINGLE_TEST_API_BASE_URL`, `MINGLE_TEST_WS_URL`를 자동 주입
+- `scripts/devbox ios-native-build`
+  - `mingle-ios/scripts/build-ios.sh`를 호출해 네이티브 iOS만 빌드(설치 없음)
+  - `.devbox.env`가 있으면 `MINGLE_API_BASE_URL`, `MINGLE_WS_URL`를 devbox 값으로 주입
+  - `.devbox.env`가 없으면 `mingle-ios/Config/*.xcconfig` 기본 URL을 사용
+  - `--ios-configuration Debug|Release` (기본 Debug)
+  - `--ios-coredevice-id <ID>`를 주면 해당 실기기 타깃으로 빌드
+
+- `scripts/devbox test --target app|ios-native|all`
+  - `app`: 현재 devbox 설정값으로 `mingle-app` live integration test 실행
+  - `ios-native`: `mingle-ios/scripts/test-ios.sh`를 통해 네이티브 iOS test build 실행
+  - `all`: 두 테스트를 순서대로 실행
+  - iOS는 `--ios-configuration Debug|Release` 지정 가능
 
 ## ngrok 연동
 
