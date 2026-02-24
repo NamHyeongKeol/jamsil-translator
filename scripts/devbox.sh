@@ -94,8 +94,8 @@ Usage:
   scripts/devbox ngrok-config
   scripts/devbox ios-native-build [--ios-configuration Debug|Release] [--ios-coredevice-id ID]
   scripts/devbox ios-native-uninstall [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-coredevice-id ID] [--bundle-id ID]
-  scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install]
-  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod]
+  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--device-app-env dev|prod] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
   scripts/devbox status
 
@@ -244,6 +244,22 @@ read_env_value_from_file() {
   local key="$1"
   local file="$2"
   awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file"
+}
+
+read_env_value_from_vault() {
+  local path="$1"
+  local key="$2"
+  local value
+
+  [[ -n "$path" ]] || return 1
+  [[ -n "$key" ]] || return 1
+
+  require_cmd vault
+  require_cmd jq
+
+  value="$(vault kv get -format=json "$path" 2>/dev/null | jq -r --arg key "$key" '.data.data[$key] // ""')"
+  [[ "$value" == "null" ]] && value=""
+  [[ -n "$value" ]] && printf '%s' "$value"
 }
 
 derive_worktree_name() {
@@ -1293,30 +1309,41 @@ run_mobile_install_targets() {
   local ios_simulator_name="${10}"
   local ios_simulator_udid="${11}"
   local with_ios_clean_install="${12:-0}"
+  local app_site_override="${13:-}"
+  local app_ws_override="${14:-}"
   local native_ios_bundle_id="com.nam.mingleios"
 
-  if [[ "$do_rn_ios" -eq 1 ]]; then
-    run_ios_mobile_install "$ios_udid" "$ios_configuration" "$with_ios_clean_install"
-  fi
-  if [[ "$do_native_ios" -eq 1 ]]; then
-    if [[ "$ios_native_target" == "simulator" ]]; then
-      run_native_ios_simulator_install \
-        "$ios_simulator_name" \
-        "$ios_simulator_udid" \
-        "$ios_configuration" \
-        "$with_ios_clean_install" \
-        "$native_ios_bundle_id"
-    else
-      run_native_ios_mobile_install \
-        "$ios_coredevice_id" \
-        "$ios_configuration" \
-        "$with_ios_clean_install" \
-        "$native_ios_bundle_id"
+  (
+    if [[ -n "$app_site_override" ]]; then
+      DEVBOX_SITE_URL="$app_site_override"
     fi
-  fi
-  if [[ "$do_android" -eq 1 ]]; then
-    run_android_mobile_install "$android_serial" "$android_variant"
-  fi
+    if [[ -n "$app_ws_override" ]]; then
+      DEVBOX_RN_WS_URL="$app_ws_override"
+    fi
+
+    if [[ "$do_rn_ios" -eq 1 ]]; then
+      run_ios_mobile_install "$ios_udid" "$ios_configuration" "$with_ios_clean_install"
+    fi
+    if [[ "$do_native_ios" -eq 1 ]]; then
+      if [[ "$ios_native_target" == "simulator" ]]; then
+        run_native_ios_simulator_install \
+          "$ios_simulator_name" \
+          "$ios_simulator_udid" \
+          "$ios_configuration" \
+          "$with_ios_clean_install" \
+          "$native_ios_bundle_id"
+      else
+        run_native_ios_mobile_install \
+          "$ios_coredevice_id" \
+          "$ios_configuration" \
+          "$with_ios_clean_install" \
+          "$native_ios_bundle_id"
+      fi
+    fi
+    if [[ "$do_android" -eq 1 ]]; then
+      run_android_mobile_install "$android_serial" "$android_variant"
+    fi
+  )
 }
 
 stop_existing_ngrok_by_inspector_port() {
@@ -1467,6 +1494,38 @@ set_device_profile_values() {
 
   validate_https_url "ngrok web url" "$DEVBOX_SITE_URL"
   validate_wss_url "ngrok stt url" "$DEVBOX_RN_WS_URL"
+}
+
+resolve_device_app_env_override() {
+  local mode="$1"
+  local path=""
+  local site_url=""
+  local ws_url=""
+
+  case "$mode" in
+    dev|prod)
+      path="secret/mingle-app/$mode"
+      ;;
+    *)
+      die "invalid --device-app-env: $mode (expected dev|prod)"
+      ;;
+  esac
+
+  site_url="$(read_env_value_from_vault "$path" RN_WEB_APP_BASE_URL || true)"
+  [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$path" MINGLE_WEB_APP_BASE_URL || true)"
+  [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$path" NEXT_PUBLIC_SITE_URL || true)"
+
+  ws_url="$(read_env_value_from_vault "$path" RN_DEFAULT_WS_URL || true)"
+  [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$path" MINGLE_DEFAULT_WS_URL || true)"
+  [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$path" NEXT_PUBLIC_WS_URL || true)"
+
+  [[ -n "$site_url" ]] || die "missing RN_WEB_APP_BASE_URL/MINGLE_WEB_APP_BASE_URL/NEXT_PUBLIC_SITE_URL in vault path: $path"
+  [[ -n "$ws_url" ]] || die "missing RN_DEFAULT_WS_URL/MINGLE_DEFAULT_WS_URL/NEXT_PUBLIC_WS_URL in vault path: $path"
+
+  validate_http_url "device app env site url" "$site_url"
+  validate_ws_url "device app env ws url" "$ws_url"
+
+  printf '%s\n%s\n%s\n' "$path" "$site_url" "$ws_url"
 }
 
 save_and_refresh() {
@@ -1671,6 +1730,7 @@ cmd_mobile() {
   local active_profile="${DEVBOX_PROFILE:-local}"
   local active_host="${DEVBOX_LOCAL_HOST:-127.0.0.1}"
   local with_ios_clean_install=0
+  local device_app_env=""
   local platform="all"
   local ios_runtime="rn"
   local ios_native_target="device"
@@ -1681,6 +1741,8 @@ cmd_mobile() {
   local android_serial=""
   local ios_configuration="Release"
   local android_variant="release"
+  local mobile_site_override=""
+  local mobile_ws_override=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1695,6 +1757,7 @@ cmd_mobile() {
       --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
       --android-variant) android_variant="${2:-}"; shift 2 ;;
       --with-ios-clean-install) with_ios_clean_install=1; shift ;;
+      --device-app-env) device_app_env="${2:-}"; shift 2 ;;
       *) die "unknown option for mobile: $1" ;;
     esac
   done
@@ -1717,6 +1780,17 @@ cmd_mobile() {
       ;;
   esac
   save_and_refresh
+
+  if [[ -n "$device_app_env" ]]; then
+    [[ "$active_profile" == "device" ]] || die "--device-app-env is only supported when DEVBOX_PROFILE=device"
+    local device_app_env_payload=""
+    local device_app_env_path=""
+    device_app_env_payload="$(resolve_device_app_env_override "$device_app_env")"
+    device_app_env_path="$(printf '%s\n' "$device_app_env_payload" | sed -n '1p')"
+    mobile_site_override="$(printf '%s\n' "$device_app_env_payload" | sed -n '2p')"
+    mobile_ws_override="$(printf '%s\n' "$device_app_env_payload" | sed -n '3p')"
+    log "device app env override: $device_app_env (${device_app_env_path:-})"
+  fi
   ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
   android_variant="$(normalize_android_variant "$android_variant")"
 
@@ -1778,7 +1852,9 @@ cmd_mobile() {
     "$ios_native_target" \
     "$ios_simulator_name" \
     "$ios_simulator_udid" \
-    "$with_ios_clean_install"
+    "$with_ios_clean_install" \
+    "$mobile_site_override" \
+    "$mobile_ws_override"
 
   log "mobile build/install complete"
 }
@@ -1804,11 +1880,14 @@ cmd_up() {
   local ios_simulator_name="iPhone 16"
   local ios_simulator_udid=""
   local with_ios_clean_install=0
+  local device_app_env=""
   local ios_udid=""
   local ios_coredevice_id=""
   local android_serial=""
   local ios_configuration="Release"
   local android_variant="release"
+  local mobile_site_override=""
+  local mobile_ws_override=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -1828,6 +1907,7 @@ cmd_up() {
       --android-serial) android_serial="${2:-}"; with_android_install=1; shift 2 ;;
       --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
       --android-variant) android_variant="${2:-}"; shift 2 ;;
+      --device-app-env) device_app_env="${2:-}"; shift 2 ;;
       --vault-app-path) vault_app_override="${2:-}"; shift 2 ;;
       --vault-stt-path) vault_stt_override="${2:-}"; shift 2 ;;
       *) die "unknown option for up: $1" ;;
@@ -1888,10 +1968,22 @@ $(ngrok_plan_capacity_hint)"
     else
       started_ngrok_mode="reused"
     fi
+  elif [[ -n "$device_app_env" ]]; then
+    die "--device-app-env is only supported with --profile device"
   fi
 
   apply_profile "$profile" "$host"
   cmd_status
+
+  if [[ "$profile" == "device" && -n "$device_app_env" ]]; then
+    local device_app_env_payload=""
+    local device_app_env_path=""
+    device_app_env_payload="$(resolve_device_app_env_override "$device_app_env")"
+    device_app_env_path="$(printf '%s\n' "$device_app_env_payload" | sed -n '1p')"
+    mobile_site_override="$(printf '%s\n' "$device_app_env_payload" | sed -n '2p')"
+    mobile_ws_override="$(printf '%s\n' "$device_app_env_payload" | sed -n '3p')"
+    log "device app env override: $device_app_env (${device_app_env_path:-})"
+  fi
 
   if [[ "$with_ios_install" -eq 1 || "$with_android_install" -eq 1 ]]; then
     local do_rn_ios=0
@@ -1940,7 +2032,9 @@ $(ngrok_plan_capacity_hint)"
       "$ios_native_target" \
       "$ios_simulator_name" \
       "$ios_simulator_udid" \
-      "$with_ios_clean_install"
+      "$with_ios_clean_install" \
+      "$mobile_site_override" \
+      "$mobile_ws_override"
   fi
 
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
@@ -2146,6 +2240,8 @@ Files:
 Run:
 - scripts/devbox up --profile local
 - scripts/devbox up --profile device
+- scripts/devbox up --profile device --device-app-env dev --with-ios-install
+- scripts/devbox up --profile device --device-app-env prod --with-ios-install
 - scripts/devbox up --profile device --with-mobile-install
 - scripts/devbox up --profile device --with-ios-install --ios-runtime native
 - scripts/devbox up --profile local --with-ios-install --ios-runtime native --ios-native-target simulator

@@ -34,6 +34,10 @@ scripts/devbox up --profile local
 # 5) 디바이스 프로필로 서버+ngrok 실행
 scripts/devbox up --profile device
 
+# 5-b) 디바이스 앱 빌드 URL을 Vault dev/prod로 선택
+scripts/devbox up --profile device --device-app-env dev
+scripts/devbox up --profile device --device-app-env prod
+
 # 6) (선택) 연결된 테스트폰 앱 빌드/설치
 scripts/devbox mobile --platform all --ios-runtime both
 
@@ -105,6 +109,10 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
   - 현재 워크트리 ngrok inspector(`DEVBOX_NGROK_API_PORT`)에서 `devbox_web`, `devbox_stt` 터널 URL을 읽어
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`, `RN_DEFAULT_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
+- `scripts/devbox up --profile device --device-app-env dev|prod`
+  - 모바일 앱 빌드 URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`)을
+    `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 직접 읽어 주입
+  - 서버 프로세스(mingle-app/mingle-stt)는 기존 device(ngrok) 흐름 그대로 유지
 
 - `scripts/devbox up --profile local|device`
   - `.devbox.env`가 없으면 `init`을 자동 실행(1커맨드 온보딩)
@@ -135,6 +143,7 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
     최신 URL/WS 값을 먼저 재동기화한 뒤 빌드/설치를 수행
     (device 프로필은 ngrok inspector에서 최신 터널 URL 재조회)
   - iOS는 `--ios-runtime rn|native|both`로 RN/네이티브(또는 동시) 설치를 선택
+  - `--device-app-env dev|prod`를 주면 앱 빌드 URL만 Vault 경로에서 덮어씁니다.
   - RN iOS/Android는 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로
     빌드/설치를 수행
   - 네이티브 iOS는 devbox URL(`MINGLE_API_BASE_URL`, `MINGLE_WS_URL`)을 주입해 설치
