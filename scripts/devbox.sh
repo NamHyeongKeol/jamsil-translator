@@ -94,8 +94,8 @@ Usage:
   scripts/devbox ngrok-config
   scripts/devbox ios-native-build [--ios-configuration Debug|Release] [--ios-coredevice-id ID]
   scripts/devbox ios-native-uninstall [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-coredevice-id ID] [--bundle-id ID]
-  scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release]
-  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install]
+  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
   scripts/devbox status
 
@@ -1087,6 +1087,7 @@ $(printf '%s\n' "$candidates" | sed -n '1,20p')"
 run_ios_mobile_install() {
   local requested_udid="${1:-}"
   local configuration="$2"
+  local with_clean_install="${3:-0}"
   local udid="$requested_udid"
 
   if [[ -z "$udid" ]]; then
@@ -1108,7 +1109,18 @@ run_ios_mobile_install() {
   local bundle_id
   bundle_id="$(resolve_ios_bundle_id)"
 
-  [[ -f "$RN_IOS_RUNTIME_XCCONFIG" ]] || write_rn_ios_runtime_xcconfig
+  if [[ "$with_clean_install" -eq 1 && -n "$bundle_id" ]]; then
+    log "uninstalling existing iOS app before reinstall: $bundle_id"
+    xcrun devicectl device uninstall app --device "$udid" "$bundle_id" || \
+      log "iOS uninstall skipped (app may not be installed)"
+  fi
+
+  if [[ "$with_clean_install" -eq 1 ]]; then
+    log "cleaning iOS build artifacts for consistent runtime injection: $derived_data_path"
+    rm -rf "$derived_data_path"
+  fi
+
+  write_rn_ios_runtime_xcconfig
 
   mkdir -p "$(dirname "$derived_data_path")"
 
@@ -1256,9 +1268,10 @@ run_mobile_install_targets() {
   local ios_native_target="$9"
   local ios_simulator_name="${10}"
   local ios_simulator_udid="${11}"
+  local with_ios_clean_install="${12:-0}"
 
   if [[ "$do_rn_ios" -eq 1 ]]; then
-    run_ios_mobile_install "$ios_udid" "$ios_configuration"
+    run_ios_mobile_install "$ios_udid" "$ios_configuration" "$with_ios_clean_install"
   fi
   if [[ "$do_native_ios" -eq 1 ]]; then
     if [[ "$ios_native_target" == "simulator" ]]; then
@@ -1270,6 +1283,64 @@ run_mobile_install_targets() {
   if [[ "$do_android" -eq 1 ]]; then
     run_android_mobile_install "$android_serial" "$android_variant"
   fi
+}
+
+stop_existing_ngrok_by_inspector_port() {
+  local inspector_port="$1"
+  local name_patterns=(
+    "ngrok.start.*devbox_web.*devbox_stt"
+    "scripts/ngrok-start-mobile.sh .*devbox_web.*devbox_stt"
+    "ngrok.*devbox.mobile.local.yml"
+  )
+  local pids=""
+  local kill_pids=""
+  local candidate=""
+  local pid=""
+  local unique_pids=""
+
+  [[ -n "$inspector_port" ]] || return 0
+  [[ "$inspector_port" =~ ^[0-9]+$ ]] || return 0
+
+  if command -v lsof >/dev/null 2>&1; then
+    pids="$(lsof -tiTCP:"$inspector_port" -sTCP:LISTEN 2>/dev/null || true)"
+  fi
+  if [[ -z "$pids" ]] && command -v pgrep >/dev/null 2>&1; then
+    local pattern
+    for pattern in "${name_patterns[@]}"; do
+      while IFS= read -r candidate; do
+        [[ -n "$candidate" ]] || continue
+        if ! printf '%s\n' "$pids" | grep -Fxq "$candidate"; then
+          pids="${pids}${pids:+$'\n'}$candidate"
+        fi
+      done < <(pgrep -f "$pattern" 2>/dev/null || true)
+    done
+  fi
+
+  unique_pids="$(printf '%s' "$pids" | awk 'NF {print $1}' | awk '!seen[$0]++')"
+  pids="$unique_pids"
+  kill_pids="$unique_pids"
+  if [[ -z "$pids" ]]; then
+    return 0
+  fi
+
+  log "stopping existing ngrok processes on inspector port $inspector_port"
+  printf '%s\n' "$pids" | while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill "$pid" >/dev/null 2>&1 || true
+  done
+
+  local elapsed=0
+  while (( elapsed < 5 )); do
+    pids="$(lsof -tiTCP:"$inspector_port" -sTCP:LISTEN 2>/dev/null || true)"
+    [[ -z "$pids" ]] && return 0
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  printf '%s\n' "$kill_pids" | while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill -9 "$pid" >/dev/null 2>&1 || true
+  done
 }
 
 try_read_ngrok_urls() {
@@ -1565,20 +1636,7 @@ cmd_mobile() {
 
   local active_profile="${DEVBOX_PROFILE:-local}"
   local active_host="${DEVBOX_LOCAL_HOST:-127.0.0.1}"
-  case "$active_profile" in
-    device)
-      # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
-      apply_profile "device"
-      ;;
-    local)
-      apply_profile "local" "$active_host"
-      ;;
-    *)
-      die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device)"
-      ;;
-  esac
-  save_and_refresh
-
+  local with_ios_clean_install=0
   local platform="all"
   local ios_runtime="rn"
   local ios_native_target="device"
@@ -1602,12 +1660,29 @@ cmd_mobile() {
       --android-serial) android_serial="${2:-}"; shift 2 ;;
       --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
       --android-variant) android_variant="${2:-}"; shift 2 ;;
+      --with-ios-clean-install) with_ios_clean_install=1; shift ;;
       *) die "unknown option for mobile: $1" ;;
     esac
   done
 
   ios_runtime="$(normalize_ios_runtime "$ios_runtime")"
   ios_native_target="$(normalize_ios_native_target "$ios_native_target")"
+  case "$active_profile" in
+    device)
+      if [[ "$with_ios_clean_install" -eq 1 ]]; then
+        stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+      fi
+      # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
+      apply_profile "device"
+      ;;
+    local)
+      apply_profile "local" "$active_host"
+      ;;
+    *)
+      die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device)"
+      ;;
+  esac
+  save_and_refresh
   ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
   android_variant="$(normalize_android_variant "$android_variant")"
 
@@ -1668,7 +1743,8 @@ cmd_mobile() {
     "$android_variant" \
     "$ios_native_target" \
     "$ios_simulator_name" \
-    "$ios_simulator_udid"
+    "$ios_simulator_udid" \
+    "$with_ios_clean_install"
 
   log "mobile build/install complete"
 }
@@ -1693,6 +1769,7 @@ cmd_up() {
   local ios_native_target="device"
   local ios_simulator_name="iPhone 16"
   local ios_simulator_udid=""
+  local with_ios_clean_install=0
   local ios_udid=""
   local ios_coredevice_id=""
   local android_serial=""
@@ -1711,6 +1788,7 @@ cmd_up() {
       --ios-native-target) ios_native_target="${2:-}"; with_ios_install=1; shift 2 ;;
       --ios-simulator-name) ios_simulator_name="${2:-}"; with_ios_install=1; shift 2 ;;
       --ios-simulator-udid) ios_simulator_udid="${2:-}"; with_ios_install=1; shift 2 ;;
+      --with-ios-clean-install) with_ios_clean_install=1; shift ;;
       --ios-udid) ios_udid="${2:-}"; with_ios_install=1; shift 2 ;;
       --ios-coredevice-id) ios_coredevice_id="${2:-}"; with_ios_install=1; shift 2 ;;
       --android-serial) android_serial="${2:-}"; with_android_install=1; shift 2 ;;
@@ -1736,6 +1814,9 @@ cmd_up() {
   local started_ngrok_mode="none"
 
   if [[ "$profile" == "device" ]]; then
+    if [[ "$with_ios_clean_install" -eq 1 ]]; then
+      stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+    fi
     write_ngrok_local_config
 
     if ! try_read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"; then
@@ -1824,7 +1905,8 @@ $(ngrok_plan_capacity_hint)"
       "$android_variant" \
       "$ios_native_target" \
       "$ios_simulator_name" \
-      "$ios_simulator_udid"
+      "$ios_simulator_udid" \
+      "$with_ios_clean_install"
   fi
 
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
