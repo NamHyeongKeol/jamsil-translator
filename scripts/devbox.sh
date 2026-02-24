@@ -1567,11 +1567,13 @@ cmd_mobile() {
 
   if [[ -n "$device_app_env" ]]; then
     [[ "$active_profile" == "device" ]] || die "--device-app-env is only supported when DEVBOX_PROFILE=device"
-    local -a device_app_env_values=()
-    mapfile -t device_app_env_values < <(resolve_device_app_env_override "$device_app_env")
-    mobile_site_override="${device_app_env_values[1]:-}"
-    mobile_ws_override="${device_app_env_values[2]:-}"
-    log "device app env override: $device_app_env (${device_app_env_values[0]:-})"
+    local device_app_env_payload=""
+    local device_app_env_path=""
+    device_app_env_payload="$(resolve_device_app_env_override "$device_app_env")"
+    device_app_env_path="$(printf '%s\n' "$device_app_env_payload" | sed -n '1p')"
+    mobile_site_override="$(printf '%s\n' "$device_app_env_payload" | sed -n '2p')"
+    mobile_ws_override="$(printf '%s\n' "$device_app_env_payload" | sed -n '3p')"
+    log "device app env override: $device_app_env (${device_app_env_path:-})"
   fi
 
   ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
@@ -1722,11 +1724,13 @@ $(ngrok_plan_capacity_hint)"
   cmd_status
 
   if [[ "$profile" == "device" && -n "$device_app_env" ]]; then
-    local -a device_app_env_values=()
-    mapfile -t device_app_env_values < <(resolve_device_app_env_override "$device_app_env")
-    mobile_site_override="${device_app_env_values[1]:-}"
-    mobile_ws_override="${device_app_env_values[2]:-}"
-    log "device app env override: $device_app_env (${device_app_env_values[0]:-})"
+    local device_app_env_payload=""
+    local device_app_env_path=""
+    device_app_env_payload="$(resolve_device_app_env_override "$device_app_env")"
+    device_app_env_path="$(printf '%s\n' "$device_app_env_payload" | sed -n '1p')"
+    mobile_site_override="$(printf '%s\n' "$device_app_env_payload" | sed -n '2p')"
+    mobile_ws_override="$(printf '%s\n' "$device_app_env_payload" | sed -n '3p')"
+    log "device app env override: $device_app_env (${device_app_env_path:-})"
   fi
 
   if [[ "$with_ios_install" -eq 1 || "$with_android_install" -eq 1 ]]; then
