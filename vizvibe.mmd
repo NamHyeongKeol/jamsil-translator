@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_ios_notch_tap_margin_decouple
+    %% @lastActive: mingle_ios_team_override_auto_detect_removal_fix
 
     %% === START ===
     %% @project_start [start, closed]
@@ -430,6 +430,9 @@ flowchart TD
     %% @mingle_app_prisma_client_build_fix [ai-task, closed, 2026-02-16, ai]
     mingle_app_prisma_client_build_fix("mingle-app Prisma 빌드 오류 복구<br/><sub>Vercel TypeScript 단계에서 발생한<br/>@prisma/client PrismaClient export 오류를<br/>런타임 안전 로딩 + build 전 prisma generate<br/>강제로 보정해 프로덕션 빌드를 정상화</sub>")
 
+    %% @mingle_app_database_schema_guard_autofix [ai-task, closed, 2026-02-23, ai]
+    mingle_app_database_schema_guard_autofix("mingle-app DB schema 가드 자동보정<br/><sub>mingle-landing과 동일 DB를 공유하되<br/>mingle-app은 app 스키마를 강제 유지하도록<br/>DATABASE_URL에 schema 누락 시 자동 보정하고<br/>단위테스트로 URL 파라미터 회귀를 고정</sub>")
+
     %% @mingle_app_rn_workspace_alignment [ai-task, closed, 2026-02-16, ai]
     mingle_app_rn_workspace_alignment("mingle-app 내부 RN 워크스페이스 정렬<br/><sub>분리 생성된 RN 프로젝트를 mingle-app/rn으로 고정하고<br/>nightly 의존성을 RN 0.84 안정 버전으로 핀 고정했으며<br/>iOS NativeSTTModule(AVAudioEngine+WS) 베이스를 추가해<br/>웹/Capacitor와 병행 가능한 네이티브 경로를 같은 저장소에 통합</sub>")
 
@@ -468,6 +471,9 @@ flowchart TD
 
     %% @mingle_app_ios_stt_tts_resilience_diagnostics [ai-task, opened, 2026-02-16, ai]
     mingle_app_ios_stt_tts_resilience_diagnostics("iOS STT/TTS 동시 재생 안정화<br/><sub>NativeTTSModule(AVAudioPlayer) 도입으로<br/>TTS를 native .playAndRecord 세션 안에서 재생하여<br/>STT 지속성 확보 완료. iOS AEC 재활성화 실험 결과<br/>볼륨 감소+불안정한 에코 제거로 롤백하고 AEC OFF 유지.<br/>에코는 감수하되 STT 연속성과 정상 볼륨을 우선</sub>")
+
+    %% @mingle_app_ios_dynamic_aec_mode_toggle [ai-task, closed, 2026-02-25, ai]
+    mingle_app_ios_dynamic_aec_mode_toggle("iOS AEC 동적 모드 전환<br/><sub>AEC ON 시 .voiceChat 모드로 시스템 AEC 활성화<br/>AEC OFF 및 STT 미사용 시 .default 모드로 전체 볼륨 복구<br/>에코 제거와 쾌적한 출력을 상태에 맞춰 동적 대응</sub>")
 
     %% @mingle_app_ios_splash_cleanup [ai-task, closed, 2026-02-17, ai]
     mingle_app_ios_splash_cleanup("iOS 스플래시 화면 정리<br/><sub>LaunchScreen.storyboard에서 RN 기본 템플릿의<br/>rnnative 텍스트와 Powered by React Native를 제거하고<br/>깔끔한 흰 화면으로 교체해 브랜드 이미지 정리</sub>")
@@ -595,6 +601,57 @@ flowchart TD
     %% @mingle_app_tdd_nonstraight_main_merge_guard [ai-task, closed, 2026-02-21, ai]
     mingle_app_tdd_nonstraight_main_merge_guard("비정형 main merge 테스트 실행 분기<br/><sub>PR 연계가 있더라도 parent 2+ 이면서<br/>표준 'Merge pull request #' 형태가 아니면<br/>비정형 머지로 간주해 post-merge 테스트를 실행하고<br/>표준 PR 머지 커밋만 재실행 스킵으로 유지</sub>")
 
+    %% @mingle_worktree_devbox_local_device_automation [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_local_device_automation("워크트리 로컬 테스트 Devbox 자동화<br/><sub>mingle-app과 mingle-stt를 워크트리별<br/>자동 포트로 분리하고 .env.local/로컬 ngrok<br/>설정을 일괄 생성하는 scripts/devbox를 추가해<br/>local/device 프로필과 5타깃 status 출력까지 통합</sub>")
+
+    %% @mingle_worktree_devbox_bootstrap_env_seed_and_auto_install [ai-task, closed, 2026-02-22, ai]
+    mingle_worktree_devbox_bootstrap_env_seed_and_auto_install("Devbox 부트스트랩 자동화 보강<br/><sub>워크트리 env에 비관리 키가 비어 있으면<br/>main 워크트리의 mingle-app/.env.local과<br/>mingle-stt/.env.local을 자동 시드하고<br/>node_modules 누락 시 pnpm install까지 자동 처리</sub>")
+
+    %% @mingle_worktree_devbox_vault_secret_sync_option [ai-task, closed, 2026-02-22, ai]
+    mingle_worktree_devbox_vault_secret_sync_option("Devbox Vault 시크릿 동기화 옵션 추가<br/><sub>bootstrap/up 명령에 Vault KV 경로 옵션을 넣어<br/>mingle-app/mingle-stt 비관리 env 키를<br/>main 파일 복사에 의존하지 않고 원격 소스에서<br/>가져오도록 경로를 확장하고 문서화까지 완료</sub>")
+
+    %% @mingle_worktree_devbox_vault_path_persist_and_auto_sync [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_vault_path_persist_and_auto_sync("Devbox Vault 경로 저장 자동화<br/><sub>bootstrap/up에서 전달한 Vault app/stt 경로를<br/>.devbox.env에 저장해 이후 실행에서 재사용하고<br/>옵션 없이도 env 동기화가 자동 수행되도록<br/>status 출력과 문서까지 함께 정합성 보강</sub>")
+
+    %% @mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up("Devbox ngrok 격리/원커맨드 실행 보강<br/><sub>워크트리별 DEVBOX_NGROK_API_PORT를 할당해<br/>ngrok inspector 충돌 없이 profile/up이 동작하고<br/>up 실행 시 .devbox.env가 없으면 init 자동 수행으로<br/>서버2+인프라 준비를 단일 명령 흐름으로 단순화</sub>")
+
+    %% @mingle_worktree_devbox_device_split_ngrok_terminal_launch [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_device_split_ngrok_terminal_launch("Devbox device ngrok 로그 분리 실행<br/><sub>up --profile device에서 ngrok 기동이 필요하면<br/>iTerm은 분할 패널, Terminal은 새 탭/윈도우로<br/>ngrok을 별도 실행해 서버 로그와 분리하고<br/>불가 환경에서는 인라인 실행으로 자동 폴백</sub>")
+
+    %% @mingle_worktree_devbox_mobile_build_install_automation [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_mobile_build_install_automation("Devbox 모바일 빌드/설치 자동화 추가<br/><sub>mobile 명령과 up 옵션에서 연결된 기기를 감지해<br/>iOS/Android 빌드와 설치를 자동 실행하고<br/>기기 미연결 시 플랫폼별 설치 단계를 자동 스킵해<br/>워크트리 테스트 준비를 단일 흐름으로 통합</sub>")
+
+    %% @mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization("Devbox 모바일 의존성/번들 안정화<br/><sub>RN Android gradle-plugin 누락으로 실패하던 경로를<br/>rn devDependency와 설치 체크를 통해 보완하고<br/>iOS pod 준비 시 로컬 bundle 경로를 강제해<br/>권한/전역 gem 환경 차이로 인한 실패를 완화</sub>")
+
+    %% @mingle_worktree_devbox_ngrok_tunnel_name_collision_fix [ai-task, closed, 2026-02-22, ai]
+    mingle_worktree_devbox_ngrok_tunnel_name_collision_fix("Devbox ngrok 터널명 충돌 수정<br/><sub>전역 ngrok.yml의 web/stt(3000/3001)와<br/>워크트리 로컬 설정명이 충돌해 포워딩이 엉키던 문제를<br/>devbox_web/devbox_stt 전용 이름으로 분리해<br/>워크트리 포트(예:3478/5478)로만 고정되게 보강</sub>")
+
+    %% @mingle_worktree_devbox_prisma_generate_autofix [ai-task, closed, 2026-02-22, ai]
+    mingle_worktree_devbox_prisma_generate_autofix("Devbox Prisma generate 자동 복구 추가<br/><sub>워크트리에서 @prisma/client 생성물이 누락되면<br/>/api/translate/finalize가 500으로 깨지던 경로를<br/>bootstrap/up 단계에서 db:generate를 자동 실행해<br/>node_modules/.prisma/client 누락 상태를 즉시 복구</sub>")
+
+    %% @mingle_worktree_devbox_prod_profile [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_prod_profile("Devbox prod 프로필 URL 주입<br/><sub>실서버 React Native 빌드용으로<br/>RN_WEB_APP_BASE_URL와 RN_DEFAULT_WS_URL를<br/>.env.local/.env에서 읽어 프로필 반영<br/>릴리스 빌드 재설치 전 URL를 동기화</sub>")
+
+    %% @mingle_worktree_devbox_device_app_env_vault_switch [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_device_app_env_vault_switch("Device 앱 env 선택 옵션 전환<br/><sub>devbox prod 프로필을 제거하고<br/>device 프로필에 --device-app-env<br/>dev/prod 옵션을 추가해 Vault 경로를<br/>앱 빌드 URL 소스로 직접 선택하게 변경</sub>")
+
+    %% @mingle_worktree_device_prod_skip_runtime_start [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_device_prod_skip_runtime_start("Device prod 앱설치 시 서버 기동 생략<br/><sub>up --profile device에서 --device-app-env=prod면<br/>ngrok 시작/검증과 mingle-app/mingle-stt 실행을<br/>건너뛰고 Vault prod URL 주입 빌드만 수행하도록<br/>실기기 재설치 플로우를 단순화해 대기시간을 절감</sub>")
+
+    %% @mingle_worktree_devbox_native_device_app_env_vault_key_fallback [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_native_device_app_env_vault_key_fallback("device-app-env 네이티브 키 fallback 보강<br/><sub>secret/mingle-app/dev|prod 주입 경로에서<br/>RN_WEB_APP_BASE_URL/RN_DEFAULT_WS_URL 우선 뒤<br/>MINGLE_API_BASE_URL/MINGLE_WS_URL를 fallback으로<br/>허용해 mingle-ios 네이티브 설치도 동일 정책 정렬</sub>")
+
+    %% @mingle_worktree_devbox_stateless_default [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_stateless_default("Devbox stateless 기본 동작 전환<br/><sub>runtime refresh에서 .env.local 관리블록 갱신을<br/>기본 비활성화하고 ngrok/xcconfig 갱신에 집중해<br/>dev/prod 빌드 시 파일 의존도를 낮추며<br/>Vault 기반 주입 플로우를 기본 경로로 정렬</sub>")
+
+    %% @mingle_worktree_devbox_no_env_sync_on_up_init [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_no_env_sync_on_up_init("Devbox up/init env 동기화 완전 분리<br/><sub>init/up 기본 경로에서 .env.local 시드와<br/>Vault 자동 동기화를 제거하고 bootstrap만<br/>명시적 파일 동기화 엔트리로 남겨<br/>dev 실행 시 .env.local 비터치 기본값을 확정</sub>")
+
+    %% @mingle_worktree_devbox_runtime_vault_env_injection [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_runtime_vault_env_injection("Devbox 서버 런타임 Vault env 주입<br/><sub>up 기본 흐름에서 .env.local 비터치를 유지한 채<br/>Vault app/stt 비관리 키를 프로세스 env로 주입해<br/>dev 실행 시 API key 등 민감값을 파일 기록 없이<br/>서버/메트로가 즉시 참조하도록 실행 경로를 보강</sub>")
+
     %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
 
@@ -706,6 +763,45 @@ flowchart TD
     %% @mingle_app_rn_release_about_blank_crash_fix [ai-task, closed, 2026-02-20, ai]
     mingle_app_rn_release_about_blank_crash_fix("RN Release 즉시 크래시 복구<br/><sub>실기기 Release 실행 시 env 미설정으로<br/>about:blank WebView URI가 들어가며<br/>NSInvalidArgumentException으로 종료되던<br/>경로를 prod URL fallback+html fallback으로 차단</sub>")
 
+    %% @mingle_app_ios_runtime_config_xcconfig_bridge [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_runtime_config_xcconfig_bridge("RN iOS 런타임 URL 주입 경로 재정렬<br/><sub>devbox가 ios/devbox.runtime.xcconfig를 생성해<br/>MingleWebAppBaseURL/MingleDefaultWsURL을 주입하고<br/>NativeSTTModule constants로 Info.plist 값을 JS에 전달해<br/>env 누락 시 실서버 fallback되는 경로를 차단</sub>")
+
+    %% @mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix("devbox iOS URL 주석 파싱 크래시 수정<br/><sub>xcconfig의 URL을 scheme+host 키로 분리해<br/>// 주석 파싱으로 값이 잘리던 경로를 제거하고<br/>Native 모듈이 scheme/host를 합성한 URL을<br/>비동기 getRuntimeConfig로 JS에 전달해 초기 로드 보강</sub>")
+
+    %% @mingle_app_ios_runtime_ws_url_normalization_guard [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_runtime_ws_url_normalization_guard("iOS WS 런타임 URL 정규화 가드<br/><sub>Info.plist 값에 이중 따옴표/이스케이프가 섞여도<br/>Native/JS 양쪽에서 URL 후보를 정규화해<br/>ws 런타임 값이 누락으로 판정되는 경로를 막고<br/>WebView 오류 오버레이 재노출을 방지</sub>")
+
+    %% @mingle_app_ios_runtime_ws_boot_validation_relax [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_runtime_ws_boot_validation_relax("iOS 부팅시 WS 필수 검증 완화<br/><sub>앱 초기 로드에서 WS URL 누락을 치명 오류로<br/>표시하던 오버레이 조건을 제거해 false alarm을 차단하고<br/>실제 STT 시작 시점에 payload wsUrl/runtime fallback으로<br/>최종 검증하도록 체크 지점을 역할에 맞게 분리</sub>")
+
+    %% @mingle_worktree_devbox_env_spacing_normalization [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_env_spacing_normalization("devbox env 빈 줄 누적 정리<br/><sub>managed block 갱신과 vault key 업서트 시<br/>앞쪽 빈 줄이 계속 쌓이던 경로를 수정하고<br/>.env.local 계열 파일을 무공백 포맷으로<br/>항상 자동 정리하도록 spacing 규칙을 고정</sub>")
+
+    %% @mingle_worktree_devbox_nextauth_default_env_guard [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_nextauth_default_env_guard("devbox NextAuth 기본값 가드 추가<br/><sub>auth 미사용 로컬 환경에서 매번 뜨던<br/>NEXTAUTH_URL/NEXTAUTH_SECRET 경고를 줄이기 위해<br/>devbox managed block에 NEXTAUTH_URL을 반영하고<br/>secret 미설정 시 기본 secret을 자동 주입하도록 보강</sub>")
+
+    %% @mingle_worktree_devbox_mobile_profile_resync_before_install [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_mobile_profile_resync_before_install("devbox mobile URL 재동기화 가드<br/><sub>mobile 명령이 기존 .devbox.env 값으로만<br/>빌드되어 이전 ngrok URL이 앱에 박히던 경로를<br/>실행 시작 시 profile 재적용으로 최신 URL/WS를<br/>반영한 뒤 빌드하도록 고정해 오프라인 URL 재발 방지</sub>")
+
+    %% @mingle_worktree_devbox_ngrok_stale_profile_refresh_fix [ai-task, closed, 2026-02-23, nam]
+    mingle_worktree_devbox_ngrok_stale_profile_refresh_fix("ngrok 과거 터널 링크 방지 보강<br/><sub>up/mobile 실행 시 stale ngrok를 프로세스명과<br/>포트 기준으로 선제 종료하고 새 링크가 확정되도록<br/>with-ios-clean-install 분기에서 정리 로직 강제 실행<br/>iOS xcconfig를 매번 재생성해 런타임 URL 주입을 최신화</sub>")
+
+    %% @mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive("devbox mobile clean-install ngrok 유지<br/><sub>device profile에서 up으로 이미 띄운 ngrok를<br/>mobile --with-ios-clean-install 실행 시<br/>강제 종료하지 않도록 mobile 경로 로직을 조정해<br/>2단계 설치 플로우에서 터널 단절을 방지</sub>")
+
+    %% @mingle_worktree_devbox_native_ios_auto_device_selection_parity [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_native_ios_auto_device_selection_parity("devbox 네이티브 iOS 자동 기기선택 정렬<br/><sub>mingle-ios 실기기 설치에서 --ios-coredevice-id 없이<br/>실행할 때 RN과 동일하게 자동 감지로 진행되도록<br/>devicectl 기반 우선 선택 + install 스크립트 auto-select를<br/>적용해 수동 deviceId 입력 의존을 완화</sub>")
+
+    %% @mingle_ios_signing_bundle_id_override_support [ai-task, closed, 2026-02-24, ai]
+    mingle_ios_signing_bundle_id_override_support("mingle-ios 번들ID 오버라이드 경로 추가<br/><sub>실기기/시뮬레이터 설치와 native 빌드 경로에서<br/>APP_BUNDLE_ID/MINGLE_IOS_BUNDLE_ID를 인자로 받아<br/>개인 Team 기준 고유 bundle id로 프로비저닝 생성이<br/>가능하도록 devbox 및 iOS 스크립트 인자를 확장</sub>")
+
+    %% @mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix [ai-task, closed, 2026-02-24, ai]
+    mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix("devbox dev URL 해석/Team 유지 보강<br/><sub>--device-app-env dev가 vault 경로를 강제 조회해<br/>설치 전 단계에서 실패하던 로직을 런타임 ngrok URL<br/>우선 해석으로 전환하고, iOS 스크립트의 xcodegen 실행을<br/>조건부로 바꿔 Xcode 수동 Team 설정이 덮어쓰기되지 않게 보강</sub>")
+
+    %% @mingle_ios_team_override_auto_detect_removal_fix [ai-task, closed, 2026-02-24, ai]
+    mingle_ios_team_override_auto_detect_removal_fix("mingle-ios Team 강제 주입 경로 제거<br/><sub>install-ios-device가 keychain 첫 인증서 Team을<br/>자동 선택해 Xcode 계정 Team과 충돌하던 경로를 제거하고<br/>명시 입력 또는 프로젝트에 저장된 Team만 사용하도록 바꿔<br/>잘못된 Team(None/미등록)으로 실패하던 실기기 빌드를 완화</sub>")
+
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
 
@@ -723,6 +819,15 @@ flowchart TD
 
     %% @mingle_stt_silence_retune_200ms_0008 [ai-task, closed, 2026-02-21, ai]
     mingle_stt_silence_retune_200ms_0008("Soniox 무음 튜닝 200ms/0.008 재적용<br/><sub>최근 발화 경계 체감을 다시 빠르게 맞추기 위해<br/>수동 finalize 기본값을 300ms/0.006에서<br/>200ms와 0.008로 되돌려 짧은 무음에서<br/>턴 확정 반응성을 높이도록 재조정</sub>")
+
+    %% @mingle_stt_text_progress_silence_finalize_plan [ai-task, closed, 2026-02-23, ai]
+    mingle_stt_text_progress_silence_finalize_plan("Soniox 텍스트정체 finalize 구현<br/><sub>RMS 기반 무음 측정 경로를 제거하고<br/>실시간 텍스트 추가 정체 시간을 기준으로<br/>SONIOX_MANUAL_FINALIZE_SILENCE_MS 만료 시<br/>서버가 Soniox finalize를 요청하도록 전환</sub>")
+
+    %% @mingle_stt_soniox_compact_debug_log_fields [ai-task, closed, 2026-02-23, ai]
+    mingle_stt_soniox_compact_debug_log_fields("Soniox 디버그 로그 compact 포맷화<br/><sub>프레임 로그 payload를 전부 출력하던 경로를<br/>text/total_elapsed_ms/silence_elapsed_ms 중심으로<br/>압축해 로컬 재현 시 핵심 타이밍을 즉시 읽고<br/>250ms 기준 무음 판정 흐름을 빠르게 확인 가능하게 정리</sub>")
+
+    %% @mingle_stt_soniox_debug_logging_removed [ai-task, closed, 2026-02-23, ai]
+    mingle_stt_soniox_debug_logging_removed("Soniox 디버그 로그 출력 제거<br/><sub>rms/silence 타이밍 로그와 Soniox frame 로그를 삭제해<br/>운영 콘솔 노이즈를 없애고 finalize 판정로직만 유지<br/>토큰 기반 finalize 경로와 기존 종료 트래픽은 그대로 보존</sub>")
 
     %% @mingle_stt_marker_token_visibility_debug_toggle [ai-task, closed, 2026-02-19, ai]
     mingle_stt_marker_token_visibility_debug_toggle("Soniox 특수토큰 표시 디버그 모드<br/><sub>앱 화면에서 <end>/<fin> 토큰 유입 시점을<br/>직접 확인할 수 있도록 final/forced/pending 경로의<br/>토큰 제거 치환을 임시 주석 처리해<br/>원문 토큰이 그대로 보이게 서버를 보정</sub>")
@@ -879,6 +984,9 @@ flowchart TD
     mingle_stt_finalize_heuristic_removed --> mingle_stt_silence_200ms_manual_finalize
     mingle_stt_silence_200ms_manual_finalize --> mingle_stt_silence_tuning_300ms_0006
     mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_silence_retune_200ms_0008
+    mingle_stt_silence_retune_200ms_0008 --> mingle_stt_text_progress_silence_finalize_plan
+    mingle_stt_text_progress_silence_finalize_plan --> mingle_stt_soniox_compact_debug_log_fields
+    mingle_stt_soniox_compact_debug_log_fields --> mingle_stt_soniox_debug_logging_removed
     mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_marker_token_visibility_debug_toggle
     mingle_stt_marker_token_visibility_debug_toggle --> mingle_stt_endpoint_detection_disabled_experiment
     mingle_stt_endpoint_detection_disabled_experiment --> mingle_stt_endpoint_delay_param_guard_fix
@@ -897,13 +1005,27 @@ flowchart TD
     backend_frontend_boundary_audit --> backend_vercel_change_scope
     backend_vercel_change_scope --> mingle_app_db_schema_prisma_init
     mingle_app_db_schema_prisma_init --> mingle_app_prisma_client_build_fix
+    mingle_app_prisma_client_build_fix --> mingle_app_database_schema_guard_autofix
     mingle_app_prisma_client_build_fix --> mingle_app_local_db_psql_reset_path
-    mingle_app_prisma_client_build_fix --> mingle_app_rn_workspace_alignment
+    mingle_app_database_schema_guard_autofix --> mingle_app_rn_workspace_alignment
     mingle_app_rn_workspace_alignment --> mingle_app_capacitor_path_removal
     mingle_app_capacitor_path_removal --> mingle_app_vercel_rn_typecheck_scope_fix
     mingle_app_vercel_rn_typecheck_scope_fix --> mingle_app_rn_webview_native_stt_bridge
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_env_only_server_url_config
     mingle_app_rn_env_only_server_url_config --> mingle_app_rn_release_about_blank_crash_fix
+    mingle_app_rn_release_about_blank_crash_fix --> mingle_app_ios_runtime_config_xcconfig_bridge
+    mingle_app_ios_runtime_config_xcconfig_bridge --> mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix
+    mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix --> mingle_app_ios_runtime_ws_url_normalization_guard
+    mingle_app_ios_runtime_ws_url_normalization_guard --> mingle_app_ios_runtime_ws_boot_validation_relax
+    mingle_app_ios_runtime_ws_boot_validation_relax --> mingle_worktree_devbox_env_spacing_normalization
+    mingle_worktree_devbox_env_spacing_normalization --> mingle_worktree_devbox_nextauth_default_env_guard
+    mingle_worktree_devbox_nextauth_default_env_guard --> mingle_worktree_devbox_mobile_profile_resync_before_install
+    mingle_worktree_devbox_mobile_profile_resync_before_install --> mingle_worktree_devbox_ngrok_stale_profile_refresh_fix
+    mingle_worktree_devbox_ngrok_stale_profile_refresh_fix --> mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive
+    mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive --> mingle_worktree_devbox_native_ios_auto_device_selection_parity
+    mingle_worktree_devbox_native_ios_auto_device_selection_parity --> mingle_ios_signing_bundle_id_override_support
+    mingle_ios_signing_bundle_id_override_support --> mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix
+    mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix --> mingle_ios_team_override_auto_detect_removal_fix
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -919,7 +1041,8 @@ flowchart TD
     project_start --> opencode_oh_my_setup
     opencode_oh_my_setup --> opencode_codex_oauth_pending
     tts_echo_reference_filter_research --> mingle_app_ios_stt_tts_resilience_diagnostics
-    mingle_app_ios_stt_tts_resilience_diagnostics --> mingle_app_ios_splash_cleanup
+    mingle_app_ios_stt_tts_resilience_diagnostics --> mingle_app_ios_dynamic_aec_mode_toggle
+    mingle_app_ios_dynamic_aec_mode_toggle --> mingle_app_ios_splash_cleanup
     mingle_app_ios_splash_cleanup --> mingle_app_partial_translation_threshold_tune
     mingle_app_partial_translation_threshold_tune --> mingle_app_tts_global_state
     mingle_app_tts_global_state --> mingle_app_aec_toggle
@@ -979,6 +1102,26 @@ flowchart TD
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_tdd_pr_only_trigger_without_post_merge_run
     mingle_app_tdd_pr_only_trigger_without_post_merge_run --> mingle_app_tdd_main_push_direct_guard
     mingle_app_tdd_main_push_direct_guard --> mingle_app_tdd_nonstraight_main_merge_guard
+    mingle_app_tdd_live_stt_finalize_integration_automation --> mingle_worktree_devbox_local_device_automation
+    mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_worktree_devbox_local_device_automation
+    mingle_worktree_devbox_local_device_automation --> mingle_worktree_devbox_bootstrap_env_seed_and_auto_install
+    mingle_worktree_devbox_bootstrap_env_seed_and_auto_install --> mingle_worktree_devbox_vault_secret_sync_option
+    mingle_worktree_devbox_vault_secret_sync_option --> mingle_worktree_devbox_vault_path_persist_and_auto_sync
+    mingle_worktree_devbox_vault_path_persist_and_auto_sync --> mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up
+    mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up --> mingle_worktree_devbox_device_split_ngrok_terminal_launch
+    mingle_worktree_devbox_device_split_ngrok_terminal_launch --> mingle_worktree_devbox_mobile_build_install_automation
+    mingle_worktree_devbox_mobile_build_install_automation --> mingle_app_ios_runtime_config_xcconfig_bridge
+    mingle_worktree_devbox_mobile_build_install_automation --> mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix
+    mingle_worktree_devbox_mobile_build_install_automation --> mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization
+    mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization --> mingle_worktree_devbox_ngrok_tunnel_name_collision_fix
+    mingle_worktree_devbox_ngrok_tunnel_name_collision_fix --> mingle_worktree_devbox_prisma_generate_autofix
+    mingle_worktree_devbox_prisma_generate_autofix --> mingle_worktree_devbox_prod_profile
+    mingle_worktree_devbox_prod_profile --> mingle_worktree_devbox_device_app_env_vault_switch
+    mingle_worktree_devbox_device_app_env_vault_switch --> mingle_worktree_device_prod_skip_runtime_start
+    mingle_worktree_device_prod_skip_runtime_start --> mingle_worktree_devbox_native_device_app_env_vault_key_fallback
+    mingle_worktree_devbox_native_device_app_env_vault_key_fallback --> mingle_worktree_devbox_stateless_default
+    mingle_worktree_devbox_stateless_default --> mingle_worktree_devbox_no_env_sync_on_up_init
+    mingle_worktree_devbox_no_env_sync_on_up_init --> mingle_worktree_devbox_runtime_vault_env_injection
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
     mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_top_tap_regression_hotfix
     mingle_app_ios_top_tap_regression_hotfix --> mingle_app_ios_top_tap_pr9_reaudit_hardening
@@ -1008,6 +1151,7 @@ flowchart TD
     mingle_app_web_client_event_logging_fix -.-> ultimate_goal
     mingle_app_og_image_locale_redirect_fix -.-> ultimate_goal
     mingle_app_ios_splash_cleanup -.-> ultimate_goal
+    mingle_app_ios_dynamic_aec_mode_toggle -.-> ultimate_goal
     mingle_app_aec_toggle -.-> ultimate_goal
     mingle_app_echo_icon_and_canvas_400_restore -.-> ultimate_goal
     mingle_app_bottom_bar_usage_left_alignment -.-> ultimate_goal
@@ -1053,6 +1197,16 @@ flowchart TD
     mingle_app_tdd_pr_only_trigger_without_post_merge_run -.-> ultimate_goal
     mingle_app_tdd_main_push_direct_guard -.-> ultimate_goal
     mingle_app_tdd_nonstraight_main_merge_guard -.-> ultimate_goal
+    mingle_worktree_devbox_local_device_automation -.-> ultimate_goal
+    mingle_worktree_devbox_bootstrap_env_seed_and_auto_install -.-> ultimate_goal
+    mingle_worktree_devbox_vault_secret_sync_option -.-> ultimate_goal
+    mingle_worktree_devbox_vault_path_persist_and_auto_sync -.-> ultimate_goal
+    mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up -.-> ultimate_goal
+    mingle_worktree_devbox_device_split_ngrok_terminal_launch -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_build_install_automation -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization -.-> ultimate_goal
+    mingle_worktree_devbox_ngrok_tunnel_name_collision_fix -.-> ultimate_goal
+    mingle_worktree_devbox_prisma_generate_autofix -.-> ultimate_goal
     mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
     mingle_app_ios_top_tap_regression_hotfix -.-> ultimate_goal
     mingle_app_ios_top_tap_pr9_reaudit_hardening -.-> ultimate_goal
@@ -1075,6 +1229,7 @@ flowchart TD
     mingle_stt_silence_200ms_manual_finalize -.-> ultimate_goal
     mingle_stt_silence_tuning_300ms_0006 -.-> ultimate_goal
     mingle_stt_silence_retune_200ms_0008 -.-> ultimate_goal
+    mingle_stt_text_progress_silence_finalize_plan -.-> ultimate_goal
     mingle_stt_marker_token_visibility_debug_toggle -.-> ultimate_goal
     mingle_stt_endpoint_detection_disabled_experiment -.-> ultimate_goal
     mingle_stt_endpoint_delay_param_guard_fix -.-> ultimate_goal
@@ -1094,13 +1249,97 @@ flowchart TD
     mingle_stt_front_log_minimal_fields_only -.-> ultimate_goal
     mingle_stt_final_watermark_and_provisional_carry -.-> ultimate_goal
     mingle_stt_debug_log_cleanup_and_client_marker_boundary -.-> ultimate_goal
+    mingle_app_database_schema_guard_autofix -.-> ultimate_goal
     mingle_app_vercel_main_branch_only_deploy_guard -.-> ultimate_goal
     mingle_app_rn_release_about_blank_crash_fix -.-> ultimate_goal
+    mingle_app_ios_runtime_config_xcconfig_bridge -.-> ultimate_goal
+    mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix -.-> ultimate_goal
+    mingle_app_ios_runtime_ws_url_normalization_guard -.-> ultimate_goal
+    mingle_app_ios_runtime_ws_boot_validation_relax -.-> ultimate_goal
+    mingle_worktree_devbox_env_spacing_normalization -.-> ultimate_goal
+    mingle_worktree_devbox_nextauth_default_env_guard -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_profile_resync_before_install -.-> ultimate_goal
+    mingle_worktree_devbox_ngrok_stale_profile_refresh_fix -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_auto_device_selection_parity -.-> ultimate_goal
+    mingle_ios_signing_bundle_id_override_support -.-> ultimate_goal
+    mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix -.-> ultimate_goal
+    mingle_ios_team_override_auto_detect_removal_fix -.-> ultimate_goal
+    mingle_stt_soniox_debug_logging_removed -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
+    mingle_worktree_devbox_env_spacing_normalization --> mingle_ios_native_swiftui_workspace
+    mingle_ios_native_swiftui_workspace --> mingle_ios_device_signing_account_setup
+    mingle_ios_native_swiftui_workspace --> mingle_worktree_devbox_native_ios_runtime_and_test_path
+    mingle_worktree_devbox_native_ios_runtime_and_test_path --> mingle_worktree_devbox_native_ios_simulator_mobile_command
+    mingle_worktree_devbox_native_ios_simulator_mobile_command --> mingle_worktree_devbox_main_merge_conflict_resolution
+    mingle_worktree_devbox_native_ios_runtime_and_test_path --> mingle_ios_native_stop_finalize_parity_hardening
+    mingle_ios_native_stop_finalize_parity_hardening --> mingle_ios_native_install_path_hardening
+    mingle_ios_native_install_path_hardening --> mingle_worktree_devbox_ios_native_build_command
+    mingle_worktree_devbox_ios_native_build_command --> mingle_worktree_devbox_ios_native_uninstall_command
+    mingle_worktree_devbox_ios_native_uninstall_command --> mingle_worktree_devbox_native_ios_clean_install_apply
+    mingle_worktree_devbox_ios_native_build_command --> mingle_ios_native_chat_ui_parity_refresh
+    mingle_ios_native_chat_ui_parity_refresh --> mingle_ios_native_livephonedemo_ui_full_parity
+    mingle_ios_native_livephonedemo_ui_full_parity --> mingle_ios_native_ws_stale_callback_guard_and_retry_recovery
+    mingle_ios_native_ws_stale_callback_guard_and_retry_recovery --> mingle_ios_native_audio_tap_safety_fix
+    mingle_ios_native_swiftui_workspace -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_runtime_and_test_path -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_simulator_mobile_command -.-> ultimate_goal
+    mingle_worktree_devbox_main_merge_conflict_resolution -.-> ultimate_goal
+    mingle_ios_native_stop_finalize_parity_hardening -.-> ultimate_goal
+    mingle_worktree_devbox_ios_native_build_command -.-> ultimate_goal
+    mingle_ios_native_chat_ui_parity_refresh -.-> ultimate_goal
+    mingle_ios_native_livephonedemo_ui_full_parity -.-> ultimate_goal
+    mingle_ios_native_ws_stale_callback_guard_and_retry_recovery -.-> ultimate_goal
+    mingle_ios_native_audio_tap_safety_fix -.-> ultimate_goal
+    mingle_worktree_devbox_ios_native_uninstall_command -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_clean_install_apply -.-> ultimate_goal
+    mingle_ios_device_signing_account_setup -.-> ultimate_goal
+
+    %% @mingle_ios_native_swiftui_workspace [ai-task, closed]
+    mingle_ios_native_swiftui_workspace("mingle-ios 네이티브 분리 구축<br/><sub>기존 mingle-app 코드를 수정하지 않고<br/>SwiftUI + AVAudioEngine + WebSocket으로<br/>STT 워크플로우 파서/번역 연동 iOS 앱을<br/>mingle-ios 폴더에 독립 생성 및 빌드 검증</sub>")
+
+    %% @mingle_worktree_devbox_native_ios_runtime_and_test_path [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_native_ios_runtime_and_test_path("devbox 네이티브 iOS 경로 통합<br/><sub>scripts/devbox에 ios-runtime 분기와<br/>ios-coredevice-id 옵션을 추가해 RN/Native<br/>설치 흐름을 분리하고 mingle-ios URL 주입<br/>test --target ios-native|all 실행 경로를 확장</sub>")
+
+    %% @mingle_worktree_devbox_native_ios_simulator_mobile_command [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_native_ios_simulator_mobile_command("devbox iOS 시뮬레이터 설치 명령 추가<br/><sub>mobile/up에 ios-native-target 옵션을 도입해<br/>native 경로를 device/simulator로 선택 분기하고<br/>mingle-ios install-ios-simulator 스크립트로<br/>빌드/설치/실행까지 한 명령으로 연결</sub>")
+
+    %% @mingle_worktree_devbox_main_merge_conflict_resolution [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_main_merge_conflict_resolution("devbox main 변경 동기화 머지<br/><sub>main에 추가된 --log-file 및<br/>devbox 스크립트/문서 변경을<br/>현재 브랜치로 머지하고 README와<br/>가이드 충돌을 양쪽 기능 보존으로 정리</sub>")
+
+    %% @mingle_ios_native_stop_finalize_parity_hardening [ai-task, closed, 2026-02-23, ai]
+    mingle_ios_native_stop_finalize_parity_hardening("iOS stop/finalize 정합성 보강<br/><sub>vizvibe closed 이슈 중 stop/final 관련을<br/>Swift 네이티브 파이프라인에 동일 반영하고<br/>ack final_turn 파싱·로컬 final 병합·중복 차단,<br/>stopping partial 게이트와 타임아웃 종료를 고정</sub>")
+
+    %% @mingle_ios_native_install_path_hardening [ai-task, closed, 2026-02-23, ai]
+    mingle_ios_native_install_path_hardening("iOS 네이티브 설치 경로 하드닝<br/><sub>Info.plist ATS 전역 예외를 제거하고<br/>localhost/127.0.0.1 예외로 범위를 제한했으며<br/>실기기/시뮬레이터 자동 선택은<br/>복수 후보 시 실패로 전환해 ID 명시를 유도</sub>")
+
+    %% @mingle_worktree_devbox_ios_native_build_command [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_ios_native_build_command("devbox mingle-ios 전용 빌드 명령 추가<br/><sub>scripts/devbox ios-native-build를 도입해<br/>설치 없이 native iOS 빌드만 실행 가능하게 하고<br/>.devbox.env 유무에 따라 URL 주입/기본값을 분기해<br/>시뮬레이터 점유 없이 빌드 워크플로우를 분리</sub>")
+
+    %% @mingle_ios_native_chat_ui_parity_refresh [ai-task, closed, 2026-02-23, ai]
+    mingle_ios_native_chat_ui_parity_refresh("mingle-ios 채팅 UI/UX 패리티 적용<br/><sub>설정 폼 리스트 중심 화면을 교체해<br/>턴별 카드(원문/번역 분리) 타임라인을 구성하고<br/>하단 중앙 재생 버튼으로 STT 시작/중지를 연결해<br/>하이브리드 앱과 유사한 사용 흐름을 네이티브에 이식</sub>")
+
+    %% @mingle_ios_native_livephonedemo_ui_full_parity [ai-task, closed, 2026-02-23, ai]
+    mingle_ios_native_livephonedemo_ui_full_parity("mingle-ios LivePhoneDemo UI 완성<br/><sub>버블 폭/좌측 정렬/모서리 형태를<br/>웹 LivePhoneDemo 규칙에 맞춰 재구성하고<br/>하단 컨트롤 바의 사용량/버튼 비율과<br/>pending 도트 애니메이션을 동일 UX로 보정</sub>")
+
+    %% @mingle_ios_native_ws_stale_callback_guard_and_retry_recovery [ai-task, closed, 2026-02-24, ai]
+    mingle_ios_native_ws_stale_callback_guard_and_retry_recovery("mingle-ios 재생 재시도 레이스 안정화<br/><sub>크래시 로그를 기반으로 마이크 권한 콜백의<br/>메인 액터 격리 위반 경로를 점검/정리하고<br/>이전 WebSocket 세션의 stale close 이벤트가<br/>신규 녹음을 끊지 않도록 세션 가드를 추가</sub>")
+
+    %% @mingle_ios_native_audio_tap_safety_fix [ai-task, closed, 2026-02-25, ai]
+    mingle_ios_native_audio_tap_safety_fix("mingle-ios 재생 직후 CFRelease 트랩 완화<br/><sub>재생 버튼 직후 AudioSession 경로에서 발생한<br/>CFRelease(NULL) 런타임 트랩을 기준으로<br/>오디오 탭 설치 상태를 추적해 removeTap 호출을<br/>조건화하고 inputFormat 기반 재설치로 경합을 완화</sub>")
+
+    %% @mingle_worktree_devbox_ios_native_uninstall_command [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_ios_native_uninstall_command("devbox iOS 네이티브 uninstall 명령 추가<br/><sub>scripts/devbox ios-native-uninstall을 도입해<br/>시뮬레이터/실기기에서 bundle id 기준 제거를 지원하고<br/>simulator 이름/UDID, device id 옵션을 분리해<br/>삭제 후 재설치 워크플로우를 한 도구로 통합</sub>")
+
+    %% @mingle_worktree_devbox_native_ios_clean_install_apply [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_native_ios_clean_install_apply("devbox clean-install 네이티브 경로 반영<br/><sub>--with-ios-clean-install 플래그를 RN 전용에서<br/>native iOS 설치 경로(시뮬레이터/실기기)까지 확장해<br/>기존 앱을 먼저 제거한 뒤 빌드/설치를 이어서 수행해<br/>서버 미기동/구버전 잔존으로 인한 재현 오차를 축소</sub>")
+
+    %% @mingle_ios_device_signing_account_setup [human-task, opened]
+    mingle_ios_device_signing_account_setup("실기기 서명 계정 연결 필요<br/><sub>Xcode Accounts에 Apple ID를 연결하고<br/>개발 프로비저닝 프로필을 생성해야<br/>install-ios-device 스크립트로 iPhone에<br/>설치/실행을 완료할 수 있음</sub>")
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_ios_notch_tap_margin_decouple
+        mingle_ios_team_override_auto_detect_removal_fix
     end
 
     %% === STYLES ===
@@ -1299,6 +1538,7 @@ flowchart TD
     style backend_vercel_change_scope fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_db_schema_prisma_init fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_prisma_client_build_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_database_schema_guard_autofix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_workspace_alignment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_capacitor_path_removal fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_vercel_rn_typecheck_scope_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1361,10 +1601,27 @@ flowchart TD
     style mingle_app_tdd_pr_only_trigger_without_post_merge_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_main_push_direct_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_tdd_nonstraight_main_merge_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_local_device_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_bootstrap_env_seed_and_auto_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_vault_secret_sync_option fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_vault_path_persist_and_auto_sync fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_device_split_ngrok_terminal_launch fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_build_install_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ngrok_tunnel_name_collision_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_prisma_generate_autofix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_prod_profile fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_device_app_env_vault_switch fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_device_prod_skip_runtime_start fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_native_device_app_env_vault_key_fallback fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_stateless_default fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_no_env_sync_on_up_init fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_runtime_vault_env_injection fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
-    style mingle_app_ios_notch_tap_margin_decouple fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_notch_tap_margin_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
     style vercel_app_landing_main_branch_deploy_gate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style vercel_deployment_enabled_double_star_pattern_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1392,12 +1649,42 @@ flowchart TD
     style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_runtime_config_xcconfig_bridge fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_runtime_ws_url_normalization_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_runtime_ws_boot_validation_relax fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_env_spacing_normalization fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_swiftui_workspace fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_runtime_and_test_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_simulator_mobile_command fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_main_merge_conflict_resolution fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_stop_finalize_parity_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_install_path_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ios_native_build_command fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_chat_ui_parity_refresh fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_livephonedemo_ui_full_parity fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_ws_stale_callback_guard_and_retry_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_audio_tap_safety_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ios_native_uninstall_command fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_clean_install_apply fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_ios_device_signing_account_setup fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
     style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_tuning_300ms_0006 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_silence_retune_200ms_0008 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_text_progress_silence_finalize_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_nextauth_default_env_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_soniox_compact_debug_log_fields fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_soniox_debug_logging_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_profile_resync_before_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ngrok_stale_profile_refresh_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_auto_device_selection_parity fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_signing_bundle_id_override_support fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_team_override_auto_detect_removal_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1413,6 +1700,8 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
+    style mingle_ios_team_override_auto_detect_removal_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_runtime_vault_env_injection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

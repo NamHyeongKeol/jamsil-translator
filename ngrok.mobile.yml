@@ -1,8 +1,8 @@
 version: "3"
 tunnels:
-  web:
+  devbox_web:
     addr: 3000
     proto: http
-  stt:
+  devbox_stt:
     addr: 3001
     proto: http

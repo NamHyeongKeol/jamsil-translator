@@ -15,6 +15,15 @@ RN 앱은 아래 env를 필요로 합니다.
 RN WebView는 `apiNamespace` 쿼리로 웹에 전달합니다.
 값이 없거나 플랫폼 기준값과 다르면 WebView를 로드하지 않고 오류를 표시합니다.
 
+iOS 런타임 URL은 `Info.plist`의 아래 키를 우선 사용합니다.
+
+- `MingleWebAppBaseURL`
+- `MingleDefaultWsURL`
+
+`scripts/devbox`는 iOS 디바이스 빌드 시 `rn/ios/devbox.runtime.xcconfig`를 생성/주입해
+위 값을 워크트리/ngrok URL로 덮어씁니다. devbox를 쓰지 않는 일반 빌드는
+Xcode 프로젝트 기본값(프로덕션 URL)을 사용합니다.
+
 This project was bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started

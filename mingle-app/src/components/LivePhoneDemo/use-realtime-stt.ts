@@ -21,10 +21,6 @@ const LS_KEY_STT_DEBUG = 'mingle_stt_debug'
 const NATIVE_STT_QUERY_KEY = 'nativeStt'
 const NATIVE_STT_EVENT = 'mingle:native-stt'
 const RECENT_TURN_CONTEXT_WINDOW_MS = 10_000
-// Keep this window intentionally short.
-// Soniox can emit true duplicate finals in a burst, but a long window
-// can swallow legitimate repeated short phrases when non-final signals are sparse.
-const FINAL_DUPLICATE_WINDOW_MS = 700
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
@@ -495,7 +491,7 @@ export default function useRealtimeSTT({
   const enableTtsRef = useRef(enableTts)
   enableTtsRef.current = enableTts
   const stopFinalizeDedupRef = useRef<{ sig: string, expiresAt: number }>({ sig: '', expiresAt: 0 })
-  const pendingLocalFinalizeRef = useRef<{ utteranceId: string, text: string, lang: string, expiresAt: number } | null>(null)
+
   const finalizedTtsSignatureRef = useRef<Map<string, string>>(new Map())
   // Monotonically increasing sequence number for translation requests.
   // Responses with a seq lower than the latest applied seq are discarded,
@@ -511,7 +507,7 @@ export default function useRealtimeSTT({
   const lastPartialTranslationStateRef = useRef<CurrentTurnPreviousStatePayload | null>(null)
   const sessionKeyRef = useRef('')
   const turnStartedAtRef = useRef<number | null>(null)
-  const sawNonFinalSinceLastFinalRef = useRef(false)
+
   const hasActiveSessionRef = useRef(false)
   const useNativeSttRef = useRef(false)
   const nativeStopRequestedRef = useRef(false)
@@ -949,26 +945,7 @@ export default function useRealtimeSTT({
     })
   }, [])
 
-  const isLikelyRecentDuplicateFinal = useCallback((
-    text: string,
-    lang: string,
-    now: number,
-    options?: { requireNoTurnStart?: boolean, requireNoNonFinalSinceLastFinal?: boolean },
-  ): boolean => {
-    if (options?.requireNoTurnStart && turnStartedAtRef.current !== null) {
-      return false
-    }
-    if (options?.requireNoNonFinalSinceLastFinal && sawNonFinalSinceLastFinalRef.current) {
-      return false
-    }
-    const lastUtterance = utterancesRef.current[utterancesRef.current.length - 1]
-    if (!lastUtterance) return false
-    const lastCreatedAt = inferUtteranceCreatedAtMs(lastUtterance)
-    if (lastCreatedAt === null || (now - lastCreatedAt) > FINAL_DUPLICATE_WINDOW_MS) return false
-    if (normalizeLangForCompare(lastUtterance.originalLang) !== normalizeLangForCompare(lang)) return false
-    const normalizedLastText = normalizeSttTurnText(lastUtterance.originalText)
-    return normalizedLastText === text
-  }, [])
+
 
   const finalizePendingLocally = useCallback((rawText: string, rawLang: string): LocalFinalizeResult | null => {
     const text = normalizeSttTurnText(rawText)
@@ -1019,14 +996,7 @@ export default function useRealtimeSTT({
     partialTranscriptRef.current = ''
     setPartialLang(null)
     partialLangRef.current = null
-    sawNonFinalSinceLastFinalRef.current = false
     lastPartialTranslationStateRef.current = null
-    pendingLocalFinalizeRef.current = {
-      utteranceId: localPayload.utteranceId,
-      text: localPayload.text,
-      lang: localPayload.language,
-      expiresAt: localPayload.createdAtMs + 15000,
-    }
     return {
       utteranceId: localPayload.utteranceId,
       text: localPayload.text,
@@ -1388,38 +1358,6 @@ export default function useRealtimeSTT({
         }
         stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
 
-        if (isLikelyRecentDuplicateFinal(text, lang, now, { requireNoNonFinalSinceLastFinal: true })) {
-          clearPartialBuffers()
-          pendingLocalFinalizeRef.current = null
-          return
-        }
-
-        const pendingLocal = pendingLocalFinalizeRef.current
-        if (
-          pendingLocal
-          && now < pendingLocal.expiresAt
-          && pendingLocal.lang === lang
-          && (
-            text.startsWith(pendingLocal.text)
-            || pendingLocal.text.startsWith(text)
-          )
-        ) {
-          const mergedText = isStoppingRef.current
-            ? pendingLocal.text
-            : (text.length >= pendingLocal.text.length ? text : pendingLocal.text)
-          setUtterances(prev => prev.map((utteranceItem) => {
-            if (utteranceItem.id !== pendingLocal.utteranceId) return utteranceItem
-            return {
-              ...utteranceItem,
-              originalText: mergedText,
-            }
-          }))
-          pendingLocalFinalizeRef.current = null
-          sawNonFinalSinceLastFinalRef.current = false
-          clearPartialBuffers()
-          return
-        }
-
         utteranceIdRef.current += 1
         const finalizedPayload = buildFinalizedUtterancePayload({
           rawText,
@@ -1433,7 +1371,6 @@ export default function useRealtimeSTT({
         })
         if (!finalizedPayload) {
           clearPartialBuffers()
-          pendingLocalFinalizeRef.current = null
           return
         }
         const fallbackCurrentTurnPreviousState = (
@@ -1445,18 +1382,7 @@ export default function useRealtimeSTT({
           && Object.keys(finalizedPayload.currentTurnPreviousState.translations).length > 0
         ) ? finalizedPayload.currentTurnPreviousState : (fallbackCurrentTurnPreviousState || finalizedPayload.currentTurnPreviousState)
         setUtterances(u => [...u, finalizedPayload.utterance])
-        sawNonFinalSinceLastFinalRef.current = false
         clearPartialBuffers()
-        // Track this server-finalized utterance so that if Soniox sends a second
-        // is_final for the same speech (e.g. partial-token final followed by
-        // full-sentence final), the two can be merged instead of producing a
-        // duplicate utterance + duplicate TTS.
-        pendingLocalFinalizeRef.current = {
-          utteranceId: finalizedPayload.utteranceId,
-          text: finalizedPayload.text,
-          lang: finalizedPayload.language,
-          expiresAt: finalizedPayload.createdAtMs + 15000,
-        }
 
         finalizeTurnWithTranslation(
           {
@@ -1483,12 +1409,9 @@ export default function useRealtimeSTT({
         partialTranscriptRef.current = text
         setPartialLang(lang)
         partialLangRef.current = lang
-        if (text) {
-          sawNonFinalSinceLastFinalRef.current = true
-        }
       }
     }
-  }, [clearPartialBuffers, finalizeTurnWithTranslation, isLikelyRecentDuplicateFinal, languages, logClientEvent, normalizedUsageLimitSec, startAudioProcessing, stopRecordingGracefully])
+  }, [clearPartialBuffers, finalizeTurnWithTranslation, languages, logClientEvent, normalizedUsageLimitSec, startAudioProcessing, stopRecordingGracefully])
 
   const startRecording = useCallback(async () => {
     if (isStoppingRef.current) return
@@ -1515,9 +1438,7 @@ export default function useRealtimeSTT({
     try {
       setConnectionStatus('connecting')
       stopFinalizeDedupRef.current = { sig: '', expiresAt: 0 }
-      pendingLocalFinalizeRef.current = null
       turnStartedAtRef.current = null
-      sawNonFinalSinceLastFinalRef.current = false
       lastPartialTranslationStateRef.current = null
       hasActiveSessionRef.current = false
       setPartialTranscript('')
