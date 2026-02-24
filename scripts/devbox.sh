@@ -849,9 +849,8 @@ EOF
 }
 
 refresh_runtime_files() {
-  write_app_env_block
-  ensure_devbox_nextauth_secret
-  write_stt_env_block
+  # Default runtime refresh is stateless for app/stt dotenv files.
+  # Keep ngrok/xcconfig outputs up-to-date for current run/install.
   write_ngrok_local_config
   write_rn_ios_runtime_xcconfig
 }
@@ -1672,7 +1671,11 @@ cmd_up() {
   android_variant="$(normalize_android_variant "$android_variant")"
 
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
-  sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
+  if [[ "$profile" == "device" && "$device_app_env" == "prod" ]]; then
+    log "device app env is prod; skipping vault -> .env.local sync"
+  else
+    sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
+  fi
   ensure_workspace_dependencies
 
   local -a pids=()

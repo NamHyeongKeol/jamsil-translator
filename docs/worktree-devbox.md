@@ -61,14 +61,10 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
     (`web/stt/metro` + `ngrok inspector`)
   - 현재 워크트리 `.env.local`에 비관리 키가 없으면 main 워크트리의
     `mingle-app/.env.local`, `mingle-stt/.env.local`을 시드
-  - `mingle-app/.env.local` devbox 관리 블록 갱신
-    (`NEXTAUTH_URL` 포함)
-  - `mingle-stt/.env.local` 포트 블록 갱신
   - `ngrok.mobile.local.yml` 생성
   - RN 워크스페이스 의존성(`mingle-app/rn`) 자동 설치/점검
   - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
     불일치/누락 시 `pod install` 자동 동기화
-  - `NEXTAUTH_SECRET`/`AUTH_SECRET`이 모두 없으면 devbox 기본 secret 자동 주입
 
 - `scripts/devbox bootstrap`
   - main 워크트리의 `mingle-app/.env.local`, `mingle-stt/.env.local`을 현재 워크트리에 시드
@@ -76,12 +72,11 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
   - `mingle-app/rn` 의존성(`pnpm install`) 자동 설치
   - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
     불일치/누락 시 `pod install` 자동 동기화
-  - `NEXTAUTH_SECRET`/`AUTH_SECRET`이 모두 없으면 devbox 기본 secret 자동 주입
   - `mingle-app/node_modules/.prisma/client` 생성물이 없으면 `db:generate` 자동 실행
   - 옵션으로 Vault KV 경로를 주면 해당 키를 비관리 영역에 반영
     - `--vault-app-path <path>`
     - `--vault-stt-path <path>`
-  - `.devbox.env`가 있으면 전달한 Vault 경로를 저장하고(devbox 관리 블록 포함) 재적용
+  - `.devbox.env`가 있으면 전달한 Vault 경로를 저장하고 재적용
 
 - `scripts/devbox profile --profile local --host <LAN_IP>`
   - 같은 네트워크에서 실기기 직접 접속할 때 사용
@@ -102,6 +97,7 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
   - 시작 전에 main 워크트리 env 시드와 의존성 설치를 자동 수행
     (Prisma client 누락 시 `db:generate` 포함)
   - 이전에 저장된 Vault 경로가 있으면 자동으로 env 동기화 수행
+    (`--device-app-env prod`일 때는 동기화 생략)
   - 필요 시 `--vault-app-path/--vault-stt-path`로 경로를 덮어써 즉시 반영 가능
   - `mingle-stt` + `mingle-app` 동시 실행
   - `device` 프로필에서 ngrok이 없으면 iTerm/Terminal에 별도 탭/패널로 ngrok 실행 시도
@@ -155,17 +151,10 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
 ## 생성/수정 파일
 
 - `.devbox.env`
-- `mingle-app/.env.local` (관리 블록만)
-- `mingle-stt/.env.local` (관리 블록만)
+- `mingle-app/.env.local` (필요 시 시드/Vault 비관리키 동기화)
+- `mingle-stt/.env.local` (필요 시 시드/Vault 비관리키 동기화)
 - `ngrok.mobile.local.yml`
 - `.devbox-logs/` (`--log-file` 사용 시 생성, gitignore)
-
-관리 블록은 아래 마커 사이만 자동 갱신합니다.
-
-```text
-# >>> devbox managed (auto)
-# <<< devbox managed (auto)
-```
 
 ## Vault 사용 전제
 

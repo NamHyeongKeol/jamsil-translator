@@ -50,10 +50,9 @@ scripts/devbox status
   또한 `@prisma/client` 생성물이 없으면 `db:generate`를 자동 실행합니다.
   RN 워크스페이스 의존성과 iOS Pods도 자동 점검하며,
   `Podfile.lock`/`Pods/Manifest.lock` 불일치 시 `pod install`로 자동 동기화합니다.
-  NextAuth 경고 완화를 위해 `NEXTAUTH_URL`을 현재 devbox URL로 맞추고,
-  `NEXTAUTH_SECRET`/`AUTH_SECRET`이 모두 비어 있으면 devbox 전용 기본 secret을 자동 주입합니다.
 - Vault 사용 시 `--vault-app-path`, `--vault-stt-path`로 비관리 env 키를 동기화할 수 있습니다.
   한 번 지정하면 `.devbox.env`에 저장되어 이후 `bootstrap/up`에서 자동 재사용됩니다.
+- devbox 기본 동작은 `.env.local` 관리블록 갱신 없이(stateless) ngrok/xcconfig 기준으로 동작합니다.
 - `--profile device`는 ngrok(`devbox_web`/`devbox_stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
 - `--profile device`에서 `--device-app-env dev|prod`를 주면 모바일 앱 빌드 URL을
   `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 읽어 주입합니다.
