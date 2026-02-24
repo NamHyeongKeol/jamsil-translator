@@ -94,7 +94,8 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
 - `scripts/devbox up --profile device --device-app-env dev|prod`
   - 모바일 앱 빌드 URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`)을
     `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 직접 읽어 주입
-  - 서버 프로세스(mingle-app/mingle-stt)는 기존 device(ngrok) 흐름 그대로 유지
+  - `--device-app-env prod`면 ngrok 및 로컬 서버(mingle-app/mingle-stt) 기동을 생략
+  - `--device-app-env dev`면 기존 device(ngrok) 흐름을 그대로 사용
 
 - `scripts/devbox up --profile local|device`
   - `.devbox.env`가 없으면 `init`을 자동 실행(1커맨드 온보딩)
