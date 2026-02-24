@@ -221,14 +221,63 @@ function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
   return Math.max(20, Math.min(64, Math.ceil(numeric)));
 }
 
+function normalizeLocaleCode(rawLocale: string): string {
+  const candidate = rawLocale.trim();
+  if (!candidate) return '';
+  const base = candidate.split(/[-_]/)[0]?.toLowerCase() || '';
+  return base;
+}
+
 function resolveLocaleSegment(): string {
-  try {
-    const locale = Intl.DateTimeFormat().resolvedOptions().locale || 'ko';
-    const code = locale.split('-')[0]?.toLowerCase() || 'ko';
-    return SUPPORTED_LOCALES.has(code) ? code : 'ko';
-  } catch {
-    return 'ko';
+  const candidates: string[] = [];
+
+  const settingsManager = (NativeModules as {
+    SettingsManager?: {
+      settings?: {
+        AppleLanguages?: unknown;
+        AppleLocale?: unknown;
+      };
+    };
+  }).SettingsManager;
+  const nativeSettings = settingsManager?.settings;
+  const appleLanguages = nativeSettings?.AppleLanguages;
+  if (Array.isArray(appleLanguages)) {
+    for (const value of appleLanguages) {
+      if (typeof value === 'string' && value.trim()) {
+        candidates.push(value);
+      }
+    }
   }
+  if (typeof nativeSettings?.AppleLocale === 'string' && nativeSettings.AppleLocale.trim()) {
+    candidates.push(nativeSettings.AppleLocale);
+  }
+
+  const i18nManager = (NativeModules as {
+    I18nManager?: {
+      localeIdentifier?: unknown;
+    };
+  }).I18nManager;
+  if (typeof i18nManager?.localeIdentifier === 'string' && i18nManager.localeIdentifier.trim()) {
+    candidates.push(i18nManager.localeIdentifier);
+  }
+
+  try {
+    const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale;
+    if (typeof intlLocale === 'string' && intlLocale.trim()) {
+      candidates.push(intlLocale);
+    }
+  } catch {
+    // Ignore Intl lookup failures and fallback to defaults below.
+  }
+
+  for (const localeCandidate of candidates) {
+    const code = normalizeLocaleCode(localeCandidate);
+    if (SUPPORTED_LOCALES.has(code)) {
+      return code;
+    }
+  }
+
+  return 'ko';
 }
 
 function App(): React.JSX.Element {

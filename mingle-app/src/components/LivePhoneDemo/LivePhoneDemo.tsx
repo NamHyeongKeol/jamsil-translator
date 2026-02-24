@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight, ChevronDown } from 'lucide-react'
+import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight, ChevronDown, Menu, LogOut, Trash2 } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
@@ -132,6 +132,12 @@ interface LivePhoneDemoProps {
   connectionFailedLabel: string
   muteTtsLabel: string
   unmuteTtsLabel: string
+  menuLabel: string
+  logoutLabel: string
+  deleteAccountLabel: string
+  onLogout: () => void
+  onDeleteAccount: () => void
+  isAuthActionPending?: boolean
 }
 
 const TTS_AUDIO_WAIT_TIMEOUT_MS = 3000
@@ -174,6 +180,12 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   connectionFailedLabel,
   muteTtsLabel,
   unmuteTtsLabel,
+  menuLabel,
+  logoutLabel,
+  deleteAccountLabel,
+  onLogout,
+  onDeleteAccount,
+  isAuthActionPending = false,
 }, ref) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
     if (typeof window === 'undefined') return ['en', 'ko', 'ja']
@@ -183,6 +195,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { return ['en', 'ko', 'ja'] }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const { ttsEnabled: isSoundEnabled, setTtsEnabled: setIsSoundEnabled, aecEnabled, setAecEnabled } = useTtsSettings()
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const utterancesRef = useRef<Utterance[]>([])
@@ -202,6 +215,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const processTtsQueueRef = useRef<() => void>(() => {})
   const stopClickResumeTimerIdsRef = useRef<number[]>([])
   const langSelectorButtonRef = useRef<HTMLButtonElement | null>(null)
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const menuPanelRef = useRef<HTMLDivElement | null>(null)
   const [isNativeUiBridgeEnabled] = useState(() => {
     if (typeof window === 'undefined') return false
     return isNativeUiBridgeEnabledFromSearch(window.location.search || '')
@@ -219,6 +234,31 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       localStorage.setItem(LS_KEY_LANGUAGES, JSON.stringify(selectedLanguages))
     } catch { /* ignore */ }
   }, [selectedLanguages])
+
+  useEffect(() => {
+    if (!menuOpen) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (!target) return
+      if (menuButtonRef.current?.contains(target)) return
+      if (menuPanelRef.current?.contains(target)) return
+      setMenuOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [menuOpen])
 
   const ensureAudioPlayer = useCallback(() => {
     if (playerAudioRef.current) return playerAudioRef.current
@@ -1086,31 +1126,84 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           <span className="text-[2.05rem] font-extrabold leading-[1.08] bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
             Mingle
           </span>
-          <div className="relative flex items-center gap-1.5">
-            <button
-              ref={langSelectorButtonRef}
-              onClick={() => !isActive && setLangSelectorOpen(o => !o)}
-              disabled={isActive}
-              className="flex items-center gap-1 disabled:opacity-60"
-            >
-              {selectedLanguages.map((lang) => (
-                <span
-                  key={lang}
-                  className="text-[1.35rem]"
-                  title={lang.toUpperCase()}
+          <div className="relative flex items-center gap-1">
+            <div className="relative mr-1.5">
+              <button
+                ref={langSelectorButtonRef}
+                onClick={() => {
+                  if (isActive) return
+                  setMenuOpen(false)
+                  setLangSelectorOpen(o => !o)
+                }}
+                disabled={isActive}
+                className="flex items-center gap-1 disabled:opacity-60"
+              >
+                {selectedLanguages.map((lang) => (
+                  <span
+                    key={lang}
+                    className="text-[1.35rem]"
+                    title={lang.toUpperCase()}
+                  >
+                    {FLAG_MAP[lang] || '🌐'}
+                  </span>
+                ))}
+              </button>
+              <LanguageSelector
+                isOpen={langSelectorOpen}
+                onClose={() => setLangSelectorOpen(false)}
+                selectedLanguages={selectedLanguages}
+                onToggleLanguage={handleToggleLanguage}
+                disabled={isActive}
+                triggerRef={langSelectorButtonRef}
+              />
+            </div>
+            <div className="relative">
+              <button
+                ref={menuButtonRef}
+                type="button"
+                onClick={() => {
+                  setLangSelectorOpen(false)
+                  setMenuOpen(o => !o)
+                }}
+                disabled={isAuthActionPending}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label={menuLabel}
+                aria-expanded={menuOpen}
+              >
+                <Menu size={16} strokeWidth={2} />
+              </button>
+              {menuOpen && (
+                <div
+                  ref={menuPanelRef}
+                  className="absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg"
                 >
-                  {FLAG_MAP[lang] || '🌐'}
-                </span>
-              ))}
-            </button>
-            <LanguageSelector
-              isOpen={langSelectorOpen}
-              onClose={() => setLangSelectorOpen(false)}
-              selectedLanguages={selectedLanguages}
-              onToggleLanguage={handleToggleLanguage}
-              disabled={isActive}
-              triggerRef={langSelectorButtonRef}
-            />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onLogout()
+                    }}
+                    disabled={isAuthActionPending}
+                    className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <LogOut size={15} strokeWidth={2} />
+                    <span>{logoutLabel}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onDeleteAccount()
+                    }}
+                    disabled={isAuthActionPending}
+                    className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 size={15} strokeWidth={2} />
+                    <span>{deleteAccountLabel}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

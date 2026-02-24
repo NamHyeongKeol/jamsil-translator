@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_ios_team_override_auto_detect_removal_fix
+    %% @lastActive: mingle_app_rn_social_auth_gate_and_menu
 
     %% === START ===
     %% @project_start [start, closed]
@@ -120,6 +120,9 @@ flowchart TD
 
     %% @google_oauth_login [ai-task, closed]
     google_oauth_login("구글 로그인 적용<br/><sub>Google OAuth Provider를 연결하여<br/>소셜 로그인 진입을 구현하고<br/>계정 연동/세션 유지 시나리오를 검증</sub>")
+
+    %% @mingle_app_rn_social_auth_gate_and_menu [ai-task, closed, 2026-02-24, ai]
+    mingle_app_rn_social_auth_gate_and_menu("mingle-app RN 로그인 게이트/메뉴 적용<br/><sub>NextAuth에 Apple Provider를 추가하고<br/>비로그인 시 Apple/Google 화면을 먼저 노출해<br/>로그인 후 번역기 홈 접근만 허용했으며<br/>햄버거 메뉴에 로그아웃/회원탈퇴를 연결</sub>")
 
     %% @capacitor_app_build [ai-task, closed]
     capacitor_app_build("Capacitor 앱 빌드 검증<br/><sub>웹 앱을 Capacitor로 패키징하여<br/>iOS/Android 네이티브 빌드 파이프라인과<br/>런타임 동작 가능성을 점검</sub>")
@@ -915,6 +918,7 @@ flowchart TD
     chat_invite_feature --> instagram_crawling
     next_auth_adoption --> google_oauth_login
     next_i18n_adoption --> mobile_app_development
+    google_oauth_login --> mingle_app_rn_social_auth_gate_and_menu
     google_oauth_login --> mobile_app_development
     translator_feature_build --> mobile_app_development
     mobile_app_development --> capacitor_app_build
@@ -1011,6 +1015,7 @@ flowchart TD
     mingle_app_rn_workspace_alignment --> mingle_app_capacitor_path_removal
     mingle_app_capacitor_path_removal --> mingle_app_vercel_rn_typecheck_scope_fix
     mingle_app_vercel_rn_typecheck_scope_fix --> mingle_app_rn_webview_native_stt_bridge
+    mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_social_auth_gate_and_menu
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_env_only_server_url_config
     mingle_app_rn_env_only_server_url_config --> mingle_app_rn_release_about_blank_crash_fix
     mingle_app_rn_release_about_blank_crash_fix --> mingle_app_ios_runtime_config_xcconfig_bridge
@@ -1265,6 +1270,7 @@ flowchart TD
     mingle_ios_signing_bundle_id_override_support -.-> ultimate_goal
     mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix -.-> ultimate_goal
     mingle_ios_team_override_auto_detect_removal_fix -.-> ultimate_goal
+    mingle_app_rn_social_auth_gate_and_menu -.-> ultimate_goal
     mingle_stt_soniox_debug_logging_removed -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
     mingle_worktree_devbox_env_spacing_normalization --> mingle_ios_native_swiftui_workspace
@@ -1339,7 +1345,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_ios_team_override_auto_detect_removal_fix
+        mingle_app_rn_social_auth_gate_and_menu
     end
 
     %% === STYLES ===
@@ -1685,6 +1691,7 @@ flowchart TD
     style mingle_ios_signing_bundle_id_override_support fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_ios_team_override_auto_detect_removal_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_social_auth_gate_and_menu fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1700,7 +1707,7 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_ios_team_override_auto_detect_removal_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_rn_social_auth_gate_and_menu fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_worktree_devbox_runtime_vault_env_injection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

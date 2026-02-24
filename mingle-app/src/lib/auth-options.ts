@@ -1,7 +1,10 @@
 import type { NextAuthOptions } from "next-auth";
+import AppleProvider from "next-auth/providers/apple";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
+const appleClientId = process.env.AUTH_APPLE_ID;
+const appleClientSecret = process.env.AUTH_APPLE_SECRET;
 const googleClientId = process.env.AUTH_GOOGLE_ID;
 const googleClientSecret = process.env.AUTH_GOOGLE_SECRET;
 
@@ -29,6 +32,15 @@ const providers: NextAuthOptions["providers"] = [
   }),
 ];
 
+if (appleClientId && appleClientSecret) {
+  providers.unshift(
+    AppleProvider({
+      clientId: appleClientId,
+      clientSecret: appleClientSecret,
+    }),
+  );
+}
+
 if (googleClientId && googleClientSecret) {
   providers.unshift(
     GoogleProvider({
@@ -36,6 +48,10 @@ if (googleClientId && googleClientSecret) {
       clientSecret: googleClientSecret,
     }),
   );
+}
+
+export function isAppleOAuthConfigured(): boolean {
+  return Boolean(appleClientId && appleClientSecret);
 }
 
 export function isGoogleOAuthConfigured(): boolean {
