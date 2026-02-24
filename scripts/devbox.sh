@@ -1807,10 +1807,8 @@ cmd_mobile() {
       if [[ "$device_app_env" == "prod" ]]; then
         log "device app env is prod; skipping ngrok profile refresh"
       else
-        if [[ "$with_ios_clean_install" -eq 1 ]]; then
-          stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
-        fi
         # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
+        # Keep existing ngrok alive so mobile clean-install can run while `devbox up --profile device` is active.
         apply_profile "device"
       fi
       ;;
