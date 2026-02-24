@@ -1152,11 +1152,24 @@ run_ios_mobile_install() {
 run_native_ios_mobile_install() {
   local requested_coredevice_id="${1:-}"
   local configuration="$2"
+  local with_clean_install="${3:-0}"
+  local bundle_id="${4:-com.nam.mingleios}"
 
   [[ -x "$MINGLE_IOS_INSTALL_SCRIPT" ]] || die "native iOS install script not found: $MINGLE_IOS_INSTALL_SCRIPT"
   require_cmd xcodebuild
   require_cmd xcrun
   require_cmd xcodegen
+
+  local coredevice_id="$requested_coredevice_id"
+  if [[ -z "$coredevice_id" ]]; then
+    coredevice_id="$(detect_ios_device_udid || true)"
+  fi
+
+  if [[ "$with_clean_install" -eq 1 && -n "$bundle_id" && -n "$coredevice_id" ]]; then
+    log "uninstalling existing native iOS app before reinstall: $bundle_id"
+    xcrun devicectl device uninstall app --device "$coredevice_id" "$bundle_id" || \
+      log "native iOS uninstall skipped (app may not be installed)"
+  fi
 
   log "building native iOS app ($configuration) for device: ${requested_coredevice_id:-auto}"
   (
@@ -1172,11 +1185,22 @@ run_native_ios_simulator_install() {
   local simulator_name="${1:-iPhone 16}"
   local simulator_udid="${2:-}"
   local configuration="$3"
+  local with_clean_install="${4:-0}"
+  local bundle_id="${5:-com.nam.mingleios}"
 
   [[ -x "$MINGLE_IOS_SIMULATOR_INSTALL_SCRIPT" ]] || die "native iOS simulator script not found: $MINGLE_IOS_SIMULATOR_INSTALL_SCRIPT"
   require_cmd xcodebuild
   require_cmd xcrun
   require_cmd xcodegen
+
+  if [[ "$with_clean_install" -eq 1 && -n "$bundle_id" ]]; then
+    local target_simulator_udid
+    target_simulator_udid="$(resolve_ios_simulator_udid_for_uninstall "$simulator_name" "$simulator_udid")"
+    log "uninstalling existing native iOS app before reinstall: $bundle_id"
+    xcrun simctl uninstall "$target_simulator_udid" "$bundle_id" || \
+      log "native iOS simulator uninstall skipped (app may not be installed)"
+    simulator_udid="$target_simulator_udid"
+  fi
 
   log "building native iOS app ($configuration) for simulator: ${simulator_udid:-$simulator_name}"
   (
@@ -1269,15 +1293,25 @@ run_mobile_install_targets() {
   local ios_simulator_name="${10}"
   local ios_simulator_udid="${11}"
   local with_ios_clean_install="${12:-0}"
+  local native_ios_bundle_id="com.nam.mingleios"
 
   if [[ "$do_rn_ios" -eq 1 ]]; then
     run_ios_mobile_install "$ios_udid" "$ios_configuration" "$with_ios_clean_install"
   fi
   if [[ "$do_native_ios" -eq 1 ]]; then
     if [[ "$ios_native_target" == "simulator" ]]; then
-      run_native_ios_simulator_install "$ios_simulator_name" "$ios_simulator_udid" "$ios_configuration"
+      run_native_ios_simulator_install \
+        "$ios_simulator_name" \
+        "$ios_simulator_udid" \
+        "$ios_configuration" \
+        "$with_ios_clean_install" \
+        "$native_ios_bundle_id"
     else
-      run_native_ios_mobile_install "$ios_coredevice_id" "$ios_configuration"
+      run_native_ios_mobile_install \
+        "$ios_coredevice_id" \
+        "$ios_configuration" \
+        "$with_ios_clean_install" \
+        "$native_ios_bundle_id"
     fi
   fi
   if [[ "$do_android" -eq 1 ]]; then
