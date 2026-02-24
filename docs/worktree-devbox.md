@@ -110,8 +110,10 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`, `RN_DEFAULT_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
 - `scripts/devbox up --profile device --device-app-env dev|prod`
-  - 모바일 앱 빌드 URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`)을
+  - 모바일 앱 빌드 URL을
     `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 직접 읽어 주입
+    - RN: `RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL` (fallback: `MINGLE_WEB_APP_BASE_URL`, `MINGLE_DEFAULT_WS_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`)
+    - Native iOS: `MINGLE_API_BASE_URL`, `MINGLE_WS_URL` (RN/NEXT_PUBLIC 키도 fallback으로 허용)
   - `--device-app-env prod`면 ngrok 및 로컬 서버(mingle-app/mingle-stt) 기동을 생략
   - `--device-app-env dev`면 기존 device(ngrok) 흐름을 그대로 사용
 
