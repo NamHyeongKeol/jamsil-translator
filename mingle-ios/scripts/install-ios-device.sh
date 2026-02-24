@@ -100,13 +100,8 @@ if [[ -z "${DEVICE_ID}" ]]; then
 fi
 
 TEAM_ID="${DEVELOPMENT_TEAM:-}"
-if [[ -z "${TEAM_ID}" ]]; then
-  TEAM_ID="$(security find-identity -v -p codesigning | sed -nE 's/.*\(([A-Z0-9]{10})\)"$/\1/p' | head -n 1)"
-fi
-
-if [[ -z "${TEAM_ID}" ]]; then
-  echo "No Apple Development signing identity found."
-  exit 1
+if [[ -z "${TEAM_ID}" && -f "${PROJECT_DIR}/MingleIOS.xcodeproj/project.pbxproj" ]]; then
+  TEAM_ID="$(awk -F'= ' '/DEVELOPMENT_TEAM = /{gsub(/;$/, "", $2); print $2; exit}' "${PROJECT_DIR}/MingleIOS.xcodeproj/project.pbxproj" || true)"
 fi
 
 cd "${PROJECT_DIR}"
@@ -120,9 +115,11 @@ XCB_ARGS=(
   -derivedDataPath "${DERIVED_DATA_PATH}"
   -destination "generic/platform=iOS"
   -allowProvisioningUpdates
-  "DEVELOPMENT_TEAM=${TEAM_ID}"
   "PRODUCT_BUNDLE_IDENTIFIER=${APP_BUNDLE_ID}"
 )
+if [[ -n "${TEAM_ID}" ]]; then
+  XCB_ARGS+=("DEVELOPMENT_TEAM=${TEAM_ID}")
+fi
 if [[ -n "${MINGLE_API_BASE_URL}" ]]; then
   XCB_ARGS+=("MINGLE_API_BASE_URL=${MINGLE_API_BASE_URL}")
 fi
@@ -150,7 +147,11 @@ if [[ ${BUILD_EXIT} -ne 0 ]]; then
     echo "Signing prerequisites are missing."
     echo "1) Open Xcode > Settings > Accounts and sign in with Apple ID"
     echo "2) Connect/unlock iPhone and trust this Mac"
-    echo "3) Re-run: APP_BUNDLE_ID=${APP_BUNDLE_ID} DEVELOPMENT_TEAM=${TEAM_ID} ./scripts/install-ios-device.sh ${DEVICE_ID}"
+    if [[ -n "${TEAM_ID}" ]]; then
+      echo "3) Re-run: APP_BUNDLE_ID=${APP_BUNDLE_ID} DEVELOPMENT_TEAM=${TEAM_ID} ./scripts/install-ios-device.sh ${DEVICE_ID}"
+    else
+      echo "3) Re-run: APP_BUNDLE_ID=${APP_BUNDLE_ID} DEVELOPMENT_TEAM=<YOUR_TEAM_ID> ./scripts/install-ios-device.sh ${DEVICE_ID}"
+    fi
   fi
   exit ${BUILD_EXIT}
 fi
