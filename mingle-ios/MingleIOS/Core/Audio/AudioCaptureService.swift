@@ -18,6 +18,8 @@ enum AudioCaptureError: LocalizedError {
 final class AudioCaptureService: @unchecked Sendable {
     private let audioEngine = AVAudioEngine()
     private var currentSampleRate: Double = 16_000
+    private var currentOnAudioChunk: (@Sendable (String) -> Void)?
+    private var currentOnRmsLevel: (@Sendable (Float) -> Void)?
 
     var sampleRate: Double {
         currentSampleRate
@@ -36,19 +38,15 @@ final class AudioCaptureService: @unchecked Sendable {
         onAudioChunk: @Sendable @escaping (String) -> Void,
         onRmsLevel: @Sendable @escaping (Float) -> Void
     ) throws {
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(
-                .playAndRecord,
-                mode: aecEnabled ? .voiceChat : .default,
-                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
-            )
-            try session.setActive(true)
-        } catch {
-            throw AudioCaptureError.failedToStartEngine(error.localizedDescription)
-        }
+        currentOnAudioChunk = onAudioChunk
+        currentOnRmsLevel = onRmsLevel
+
+        try configureAudioSession(aecEnabled: aecEnabled)
 
         let inputNode = audioEngine.inputNode
+        if #available(iOS 17.0, *) {
+            try? inputNode.setVoiceProcessingEnabled(aecEnabled)
+        }
         let inputFormat = inputNode.outputFormat(forBus: 0)
         currentSampleRate = inputFormat.sampleRate
 
@@ -64,19 +62,7 @@ final class AudioCaptureService: @unchecked Sendable {
         }
 
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 2048, format: captureFormat) { buffer, _ in
-            guard let channelData = buffer.floatChannelData?[0] else { return }
-            let frameLength = Int(buffer.frameLength)
-            if frameLength == 0 { return }
-
-            let samples = UnsafeBufferPointer(start: channelData, count: frameLength)
-            let pcmData = Self.floatBufferToInt16PCM(samples)
-            let base64 = pcmData.base64EncodedString()
-            onAudioChunk(base64)
-
-            let rms = Self.rms(from: samples)
-            onRmsLevel(rms)
-        }
+        installTap(format: captureFormat)
 
         do {
             if !audioEngine.isRunning {
@@ -93,6 +79,8 @@ final class AudioCaptureService: @unchecked Sendable {
         if audioEngine.isRunning {
             audioEngine.stop()
         }
+        currentOnAudioChunk = nil
+        currentOnRmsLevel = nil
 
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -101,12 +89,84 @@ final class AudioCaptureService: @unchecked Sendable {
         }
     }
 
+    /// Hot-swap AEC mode mid-session: reconfigure audio session, reset engine,
+    /// reinstall tap, and restart — matching the RN NativeSTTModule.setAec pattern.
     func updateAecMode(enabled: Bool) {
-        let session = AVAudioSession.sharedInstance()
+        guard audioEngine.isRunning else {
+            // Not running — just update session mode for next start().
+            try? AVAudioSession.sharedInstance().setMode(enabled ? .voiceChat : .default)
+            return
+        }
+
+        // 1. Reconfigure audio session with new mode
         do {
-            try session.setMode(enabled ? .voiceChat : .default)
+            try configureAudioSession(aecEnabled: enabled)
         } catch {
-            // Ignore mode change failures.
+            // Continue anyway — the old mode might still work.
+        }
+
+        // 2. Remove tap, stop engine, reset (clears AEC calibration state)
+        audioEngine.inputNode.removeTap(onBus: 0)
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+        audioEngine.reset()
+
+        // 3. Update voice processing flag (iOS 17+)
+        let inputNode = audioEngine.inputNode
+        if #available(iOS 17.0, *) {
+            try? inputNode.setVoiceProcessingEnabled(enabled)
+        }
+
+        // 4. Reinstall tap with fresh format + restart engine
+        let inputFormat = inputNode.inputFormat(forBus: 0)
+        currentSampleRate = inputFormat.sampleRate
+
+        let monoFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: inputFormat.sampleRate,
+            channels: 1,
+            interleaved: false
+        )
+
+        if let captureFormat = monoFormat {
+            installTap(format: captureFormat)
+        }
+
+        do {
+            audioEngine.prepare()
+            try audioEngine.start()
+        } catch {
+            // Engine restart failed — recording will be broken.
+        }
+    }
+
+    // MARK: - Private
+
+    private func configureAudioSession(aecEnabled: Bool) throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(
+            .playAndRecord,
+            mode: aecEnabled ? .voiceChat : .default,
+            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+        )
+        try session.setActive(true)
+    }
+
+    private func installTap(format: AVAudioFormat) {
+        guard let onChunk = currentOnAudioChunk, let onRms = currentOnRmsLevel else { return }
+        audioEngine.inputNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
+            guard let channelData = buffer.floatChannelData?[0] else { return }
+            let frameLength = Int(buffer.frameLength)
+            if frameLength == 0 { return }
+
+            let samples = UnsafeBufferPointer(start: channelData, count: frameLength)
+            let pcmData = Self.floatBufferToInt16PCM(samples)
+            let base64 = pcmData.base64EncodedString()
+            onChunk(base64)
+
+            let rms = Self.rms(from: samples)
+            onRms(rms)
         }
     }
 
