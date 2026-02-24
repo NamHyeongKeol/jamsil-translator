@@ -1046,6 +1046,29 @@ normalize_android_variant() {
 
 detect_ios_device_udid() {
   command -v xcrun >/dev/null 2>&1 || return 1
+  local coredevice_id=""
+  coredevice_id="$(
+    xcrun devicectl list devices 2>/dev/null | awk '
+      /connected|available \(paired\)/ {
+        if (match($0, /[0-9A-F-]{36}/)) {
+          id = substr($0, RSTART, RLENGTH)
+          if ($0 ~ / connected/) {
+            print id
+            exit
+          }
+          if (first == "") first = id
+        }
+      }
+      END {
+        if (first != "") print first
+      }
+    ' | head -n 1
+  )"
+  if [[ -n "$coredevice_id" ]]; then
+    printf '%s' "$coredevice_id"
+    return 0
+  fi
+
   xcrun xctrace list devices 2>/dev/null | \
     sed -nE '/Simulator/d; s/^.*\([^)]*\)[[:space:]]+\(([A-Fa-f0-9-]{8,})\)$/\1/p' | \
     head -n 1
@@ -1229,8 +1252,9 @@ run_native_ios_mobile_install() {
     cd "$MINGLE_IOS_DIR"
     MINGLE_API_BASE_URL="$DEVBOX_SITE_URL" \
     MINGLE_WS_URL="$DEVBOX_RN_WS_URL" \
+    AUTO_SELECT_DEVICE=1 \
     CONFIGURATION="$configuration" \
-      "$MINGLE_IOS_INSTALL_SCRIPT" "${requested_coredevice_id:-}"
+      "$MINGLE_IOS_INSTALL_SCRIPT" "${coredevice_id:-}"
   )
 }
 

@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive
+    %% @lastActive: mingle_worktree_devbox_native_ios_auto_device_selection_parity
 
     %% === START ===
     %% @project_start [start, closed]
@@ -787,6 +787,9 @@ flowchart TD
     %% @mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive [ai-task, closed, 2026-02-24, ai]
     mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive("devbox mobile clean-install ngrok 유지<br/><sub>device profile에서 up으로 이미 띄운 ngrok를<br/>mobile --with-ios-clean-install 실행 시<br/>강제 종료하지 않도록 mobile 경로 로직을 조정해<br/>2단계 설치 플로우에서 터널 단절을 방지</sub>")
 
+    %% @mingle_worktree_devbox_native_ios_auto_device_selection_parity [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_native_ios_auto_device_selection_parity("devbox 네이티브 iOS 자동 기기선택 정렬<br/><sub>mingle-ios 실기기 설치에서 --ios-coredevice-id 없이<br/>실행할 때 RN과 동일하게 자동 감지로 진행되도록<br/>devicectl 기반 우선 선택 + install 스크립트 auto-select를<br/>적용해 수동 deviceId 입력 의존을 완화</sub>")
+
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
 
@@ -1007,6 +1010,7 @@ flowchart TD
     mingle_worktree_devbox_nextauth_default_env_guard --> mingle_worktree_devbox_mobile_profile_resync_before_install
     mingle_worktree_devbox_mobile_profile_resync_before_install --> mingle_worktree_devbox_ngrok_stale_profile_refresh_fix
     mingle_worktree_devbox_ngrok_stale_profile_refresh_fix --> mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive
+    mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive --> mingle_worktree_devbox_native_ios_auto_device_selection_parity
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -1240,6 +1244,7 @@ flowchart TD
     mingle_worktree_devbox_mobile_profile_resync_before_install -.-> ultimate_goal
     mingle_worktree_devbox_ngrok_stale_profile_refresh_fix -.-> ultimate_goal
     mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_auto_device_selection_parity -.-> ultimate_goal
     mingle_stt_soniox_debug_logging_removed -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
     mingle_worktree_devbox_env_spacing_normalization --> mingle_ios_native_swiftui_workspace
@@ -1314,7 +1319,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive
+        mingle_worktree_devbox_native_ios_auto_device_selection_parity
     end
 
     %% === STYLES ===
@@ -1656,6 +1661,7 @@ flowchart TD
     style mingle_worktree_devbox_mobile_profile_resync_before_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_ngrok_stale_profile_refresh_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_auto_device_selection_parity fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1671,7 +1677,7 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_native_ios_auto_device_selection_parity fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
