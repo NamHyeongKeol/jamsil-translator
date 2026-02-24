@@ -79,6 +79,15 @@ URL override (optional):
 - 예: `https://your-app/ko?apiNamespace=ios/v1.0.0`
 - 허용되지 않은 값은 무시되고 env/default를 사용합니다.
 
+### iOS Client Version Policy
+
+- 앱 시작 시 `POST /api/ios/v1.0.0/client/version-policy`를 호출합니다.
+- 요청: `clientVersion`(`x.y.z`), `clientBuild`
+- 응답 `action`:
+  - `force_update`: 강제 업데이트 화면
+  - `recommend_update`: 권장 업데이트 알림
+  - `none`: 표시 없음
+
 Contract test commands:
 
 ```bash
@@ -230,6 +239,15 @@ RN 앱 URL은 하드코딩하지 않고 환경변수로만 읽습니다.
 - `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
 - `RN_API_NAMESPACE` (iOS 권장: `ios/v1.0.0`)
 - iOS에서 `RN_API_NAMESPACE`가 `ios/v1.0.0`과 불일치하면 WebView를 로드하지 않고 오류를 표시합니다.
+- `RN_CLIENT_VERSION` (optional, fallback: `CFBundleShortVersionString`)
+- `RN_CLIENT_BUILD` (optional, fallback: `CFBundleVersion`)
+
+서버 환경변수(optional):
+
+- `IOS_CLIENT_MIN_SUPPORTED_VERSION` (default: `1.0.0`)
+- `IOS_CLIENT_RECOMMENDED_BELOW_VERSION`
+- `IOS_CLIENT_LATEST_VERSION`
+- `IOS_APPSTORE_URL`
 
 루트 `pnpm rn:start|ios|android` 스크립트는 `.env.local`을 먼저 로드한 뒤 RN CLI를 실행합니다.
 

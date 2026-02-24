@@ -17,6 +17,7 @@
 - `translate/finalize`
 - `tts/inworld`
 - `log/client-event`
+- `client/version-policy` (iOS 앱 시작 시 버전 정책 확인)
 
 ## Controller Separation
 
@@ -38,3 +39,17 @@ iOS v1.0.0 컨트롤러는 legacy 컨트롤러와 동일 코드를 사용합니�
   - 그 외 값은 무시
 
 클라이언트는 `buildClientApiPath`로만 API 경로를 생성합니다.
+
+## iOS Client Version Policy
+
+- iOS 앱 시작 시 `POST /api/ios/v1.0.0/client/version-policy` 호출
+- 요청: `clientVersion`(`x.y.z`), `clientBuild`
+- 응답 `action`:
+  - `force_update`
+  - `recommend_update`
+  - `none`
+- 서버 env:
+  - `IOS_CLIENT_MIN_SUPPORTED_VERSION` (default `1.0.0`)
+  - `IOS_CLIENT_RECOMMENDED_BELOW_VERSION` (optional)
+  - `IOS_CLIENT_LATEST_VERSION` (optional)
+  - `IOS_APPSTORE_URL` (optional)

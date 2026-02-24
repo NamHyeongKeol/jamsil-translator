@@ -8,6 +8,13 @@
 | iOS App (versioned) | `/api/ios/v1.0.0/{path}` | `RN_API_NAMESPACE=ios/v1.0.0` |
 | Android App (legacy) | `/api/{path}` | `RN_API_NAMESPACE=` (optional) |
 
+iOS version policy env (optional):
+
+- `IOS_CLIENT_MIN_SUPPORTED_VERSION`
+- `IOS_CLIENT_RECOMMENDED_BELOW_VERSION`
+- `IOS_CLIENT_LATEST_VERSION`
+- `IOS_APPSTORE_URL`
+
 ## 2) Build Commands
 
 ```bash
@@ -34,3 +41,4 @@ pnpm --dir mingle-app build:release:android
 - `src/lib/api-contract.test.ts`
 - `src/lib/rn-api-namespace.test.ts`
 - `src/app/api/namespace-routing.contract.test.ts`
+- `src/app/api/client/version-policy/route.test.ts`

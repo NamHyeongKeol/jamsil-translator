@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
+  Linking,
   NativeModules,
   Platform,
   Pressable,
@@ -27,6 +29,24 @@ import {
 import { validateRnApiNamespace } from './src/apiNamespace';
 
 type RuntimeEnvMap = Record<string, string | undefined>;
+type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none';
+type VersionGateState =
+  | { status: 'checking' }
+  | { status: 'ready' }
+  | {
+      status: 'force_update';
+      updateUrl: string;
+      message: string;
+      clientVersion: string;
+      latestVersion: string;
+    };
+type VersionPolicyResponse = {
+  action: VersionPolicyAction;
+  updateUrl?: string;
+  message?: string;
+  latestVersion?: string;
+  clientVersion?: string;
+};
 
 function readRuntimeEnvValue(keys: string[]): string {
   const env = (globalThis as { process?: { env?: RuntimeEnvMap } }).process?.env;
@@ -160,6 +180,14 @@ type NativeUiEvent = {
   source: string;
 };
 
+function normalizeClientVersion(raw: string): string {
+  return raw.trim().replace(/^v/i, '');
+}
+
+function buildIosVersionPolicyUrl(baseUrl: string): string {
+  return `${baseUrl}/api/ios/v1.0.0/client/version-policy`;
+}
+
 function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
   const numeric = typeof rawStatusBarHeight === 'number'
     ? rawStatusBarHeight
@@ -184,6 +212,12 @@ function App(): React.JSX.Element {
   const isPageReadyRef = useRef(false);
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
+  const [versionGate, setVersionGate] = useState<VersionGateState>(() => (
+    Platform.OS === 'ios' && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
+      ? { status: 'checking' }
+      : { status: 'ready' }
+  ));
+  const recommendPromptShownRef = useRef(false);
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
@@ -203,6 +237,106 @@ function App(): React.JSX.Element {
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${locale}?nativeStt=1&nativeUi=1${apiNamespaceQuery}${debugParams}`;
   }, [locale]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
+      return;
+    }
+
+    let active = true;
+    const nativeRuntimeConfig = (NativeModules.NativeSTTModule as
+      | {
+          runtimeConfig?: {
+            clientVersion?: string;
+            clientBuild?: string;
+          };
+        }
+      | undefined)?.runtimeConfig;
+    const envClientVersion = readRuntimeEnvValue(['RN_CLIENT_VERSION']);
+    const envClientBuild = readRuntimeEnvValue(['RN_CLIENT_BUILD']);
+    const clientVersion = normalizeClientVersion(
+      envClientVersion
+      || nativeRuntimeConfig?.clientVersion
+      || '',
+    );
+    const clientBuild = envClientBuild || nativeRuntimeConfig?.clientBuild || '';
+
+    void fetch(buildIosVersionPolicyUrl(WEB_APP_BASE_URL), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientVersion,
+        clientBuild,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`version_policy_status_${response.status}`);
+        }
+        return response.json() as Promise<VersionPolicyResponse>;
+      })
+      .then((policy) => {
+        if (!active) return;
+
+        if (policy.action === 'force_update') {
+          setVersionGate({
+            status: 'force_update',
+            updateUrl: typeof policy.updateUrl === 'string' ? policy.updateUrl : '',
+            message: typeof policy.message === 'string' && policy.message.trim()
+              ? policy.message.trim()
+              : '최신 버전으로 업데이트가 필요합니다.',
+            clientVersion: typeof policy.clientVersion === 'string' ? policy.clientVersion : clientVersion,
+            latestVersion: typeof policy.latestVersion === 'string' ? policy.latestVersion : '',
+          });
+          return;
+        }
+
+        setVersionGate({ status: 'ready' });
+        if (policy.action === 'recommend_update' && !recommendPromptShownRef.current) {
+          recommendPromptShownRef.current = true;
+          const updateUrl = typeof policy.updateUrl === 'string' ? policy.updateUrl : '';
+          const message = typeof policy.message === 'string' && policy.message.trim()
+            ? policy.message.trim()
+            : '새 버전 업데이트를 권장합니다.';
+          if (updateUrl) {
+            Alert.alert(
+              '업데이트 권장',
+              message,
+              [
+                { text: '나중에', style: 'cancel' },
+                {
+                  text: '업데이트',
+                  onPress: () => {
+                    void Linking.openURL(updateUrl);
+                  },
+                },
+              ],
+            );
+          } else {
+            Alert.alert('업데이트 권장', message);
+          }
+        }
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        if (__DEV__) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.log(`[VersionPolicy] bypass due to error: ${message}`);
+        }
+        setVersionGate({ status: 'ready' });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleForceUpdatePress = useCallback(() => {
+    if (versionGate.status !== 'force_update') return;
+    const updateUrl = versionGate.updateUrl.trim();
+    if (!updateUrl) return;
+    void Linking.openURL(updateUrl);
+  }, [versionGate]);
 
   const emitToWeb = useCallback((payload: NativeSttEvent) => {
     if (!isPageReadyRef.current) return;
@@ -485,24 +619,56 @@ function App(): React.JSX.Element {
           style={[styles.iosTopTapOverlay, { height: iosTopTapOverlayHeight }]}
         />
       ) : null}
-      <WebView
-        ref={webViewRef}
-        source={webUrl
-          ? { uri: webUrl }
-          : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
-        originWhitelist={['*']}
-        javaScriptEnabled
-        domStorageEnabled
-        allowsInlineMediaPlayback
-        mediaPlaybackRequiresUserAction={false}
-        setSupportMultipleWindows={false}
-        allowsBackForwardNavigationGestures={false}
-        onMessage={handleWebMessage}
-        onLoadEnd={handleLoadEnd}
-        onError={handleLoadError}
-        style={styles.webView}
-      />
-      {loadError ? (
+      {versionGate.status === 'ready' ? (
+        <WebView
+          ref={webViewRef}
+          source={webUrl
+            ? { uri: webUrl }
+            : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
+          originWhitelist={['*']}
+          javaScriptEnabled
+          domStorageEnabled
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+          setSupportMultipleWindows={false}
+          allowsBackForwardNavigationGestures={false}
+          onMessage={handleWebMessage}
+          onLoadEnd={handleLoadEnd}
+          onError={handleLoadError}
+          style={styles.webView}
+        />
+      ) : (
+        <View style={styles.webView} />
+      )}
+      {versionGate.status === 'checking' ? (
+        <View style={styles.versionOverlay}>
+          <Text style={styles.versionTitle}>버전 확인 중</Text>
+          <Text style={styles.versionDescription}>최신 업데이트 정책을 확인하고 있습니다.</Text>
+        </View>
+      ) : null}
+      {versionGate.status === 'force_update' ? (
+        <View style={styles.versionOverlay}>
+          <Text style={styles.versionTitle}>업데이트 필요</Text>
+          <Text style={styles.versionDescription}>{versionGate.message}</Text>
+          {versionGate.clientVersion || versionGate.latestVersion ? (
+            <Text style={styles.versionMeta}>
+              현재 {versionGate.clientVersion || 'unknown'} / 최신 {versionGate.latestVersion || 'unknown'}
+            </Text>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Update now"
+            onPress={handleForceUpdatePress}
+            style={({ pressed }) => [
+              styles.updateButton,
+              pressed ? styles.updateButtonPressed : null,
+            ]}
+          >
+            <Text style={styles.updateButtonText}>업데이트</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {versionGate.status === 'ready' && loadError ? (
         <View style={styles.errorOverlay}>
           <Text style={styles.errorTitle}>WebView Load Failed</Text>
           <Text style={styles.errorDescription}>{loadError}</Text>
@@ -549,6 +715,47 @@ const styles = StyleSheet.create({
     color: '#d1d5db',
     fontSize: 12,
     lineHeight: 16,
+  },
+  versionOverlay: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    backgroundColor: 'rgba(17, 24, 39, 0.94)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  versionTitle: {
+    color: '#f9fafb',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  versionDescription: {
+    color: '#d1d5db',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  versionMeta: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  updateButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  updateButtonPressed: {
+    opacity: 0.85,
+  },
+  updateButtonText: {
+    color: '#f9fafb',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
 

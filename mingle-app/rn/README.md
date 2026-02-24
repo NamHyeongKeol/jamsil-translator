@@ -11,9 +11,14 @@ RN 앱은 아래 env를 필요로 합니다.
 - `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
 - `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
 - `RN_API_NAMESPACE` (iOS 권장: `ios/v1.0.0`)
+- `RN_CLIENT_VERSION` (optional, fallback: `CFBundleShortVersionString`)
+- `RN_CLIENT_BUILD` (optional, fallback: `CFBundleVersion`)
 
 RN WebView는 `apiNamespace` 쿼리로 웹에 전달합니다.
 값이 없거나 플랫폼 기준값과 다르면 WebView를 로드하지 않고 오류를 표시합니다.
+
+iOS 앱은 시작 시 `/api/ios/v1.0.0/client/version-policy`를 호출해
+`force_update | recommend_update | none` 정책을 반영합니다.
 
 iOS 런타임 URL은 `Info.plist`의 아래 키를 우선 사용합니다.
 
