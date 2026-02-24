@@ -64,9 +64,13 @@ struct ContentView: View {
         }
         .onAppear {
             viewModel.ttsEnabled = isSoundEnabled
+            viewModel.updateAec(enabled: isAecEnabled)
         }
         .onChange(of: isSoundEnabled) { newValue in
             viewModel.ttsEnabled = newValue
+        }
+        .onChange(of: isAecEnabled) { newValue in
+            viewModel.updateAec(enabled: newValue)
         }
     }
 

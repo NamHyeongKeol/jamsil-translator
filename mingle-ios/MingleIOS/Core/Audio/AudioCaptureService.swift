@@ -32,6 +32,7 @@ final class AudioCaptureService: @unchecked Sendable {
     }
 
     func start(
+        aecEnabled: Bool,
         onAudioChunk: @Sendable @escaping (String) -> Void,
         onRmsLevel: @Sendable @escaping (Float) -> Void
     ) throws {
@@ -39,7 +40,7 @@ final class AudioCaptureService: @unchecked Sendable {
         do {
             try session.setCategory(
                 .playAndRecord,
-                mode: .voiceChat,
+                mode: aecEnabled ? .voiceChat : .default,
                 options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
             )
             try session.setActive(true)
@@ -97,6 +98,15 @@ final class AudioCaptureService: @unchecked Sendable {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         } catch {
             // Ignore deactivation failures.
+        }
+    }
+
+    func updateAecMode(enabled: Bool) {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setMode(enabled ? .voiceChat : .default)
+        } catch {
+            // Ignore mode change failures.
         }
     }
 

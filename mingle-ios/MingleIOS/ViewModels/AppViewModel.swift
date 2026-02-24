@@ -16,6 +16,14 @@ final class AppViewModel: ObservableObject {
     @Published var providerLabel: String = ""
     @Published var lastErrorMessage: String?
     var ttsEnabled: Bool = false
+    var aecEnabled: Bool = false
+
+    func updateAec(enabled: Bool) {
+        aecEnabled = enabled
+        if isRecording {
+            audioCaptureService.updateAecMode(enabled: enabled)
+        }
+    }
 
     private let audioCaptureService = AudioCaptureService()
     private let sttSocketClient = STTWebSocketClient()
@@ -93,6 +101,7 @@ final class AppViewModel: ObservableObject {
 
             do {
                 try audioCaptureService.start(
+                    aecEnabled: aecEnabled,
                     onAudioChunk: { [weak self] base64 in
                         guard let self else { return }
                         Task { @MainActor in
@@ -483,23 +492,44 @@ final class AppViewModel: ObservableObject {
             tts: ttsPayload
         )
 
-        do {
-            let response = try await translateAPIClient.finalize(
-                apiBaseURL: apiBaseURL,
-                payload: request
-            )
+        let maxRetries = 2
+        var lastError: Error?
 
-            applyFinalTranslations(response.translations, to: utteranceId)
-
-            if let provider = response.provider, let model = response.model {
-                providerLabel = "\(provider) · \(model)"
+        for attempt in 0...maxRetries {
+            if attempt > 0 {
+                try? await Task.sleep(nanoseconds: 500_000_000)
             }
 
-            if ttsEnabled, let base64Audio = response.ttsAudioBase64, !base64Audio.isEmpty {
-                playTTSAudio(base64: base64Audio)
+            do {
+                let response = try await translateAPIClient.finalize(
+                    apiBaseURL: apiBaseURL,
+                    payload: request
+                )
+
+                applyFinalTranslations(response.translations, to: utteranceId)
+
+                if let provider = response.provider, let model = response.model {
+                    providerLabel = "\(provider) · \(model)"
+                }
+
+                if ttsEnabled, let base64Audio = response.ttsAudioBase64, !base64Audio.isEmpty {
+                    playTTSAudio(base64: base64Audio)
+                }
+                return
+            } catch let error as TranslateAPIClientError {
+                lastError = error
+                if case let .server(statusCode, _) = error, statusCode == 502 {
+                    continue
+                }
+                break
+            } catch {
+                lastError = error
+                break
             }
-        } catch {
-            lastErrorMessage = error.localizedDescription
+        }
+
+        if let lastError {
+            lastErrorMessage = lastError.localizedDescription
         }
     }
 
