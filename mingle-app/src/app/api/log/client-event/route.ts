@@ -1,7 +1,4 @@
-import { legacyApiGoneResponse } from '@/server/api/versioning/legacy-route'
+import { postLogClientEventForLegacy } from '@/server/api/controllers/legacy/log-client-event-controller'
 
 export const runtime = 'nodejs'
-
-export async function POST() {
-  return legacyApiGoneResponse('/api/web/app/v1/log/client-event')
-}
+export const POST = postLogClientEventForLegacy

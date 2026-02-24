@@ -4,8 +4,8 @@
 
 ## mingle-app
 
-- Preview/Production (web app):
-  - `NEXT_PUBLIC_API_NAMESPACE=web/app/v1`
+- Preview/Production (legacy web app):
+  - `NEXT_PUBLIC_API_NAMESPACE=`
 
 ## mingle-landing
 
@@ -17,9 +17,9 @@
 RN은 WebView URL에 query로 namespace를 주입합니다.
 
 - iOS build env:
-  - `RN_API_NAMESPACE=mobile/ios/v1`
+  - `RN_API_NAMESPACE=ios/v1.0.0`
 - Android build env:
-  - `RN_API_NAMESPACE=mobile/android/v1`
+  - `RN_API_NAMESPACE=`
 
 ## Optional CLI pattern
 

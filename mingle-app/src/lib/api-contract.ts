@@ -1,8 +1,7 @@
-const DEFAULT_API_NAMESPACE = 'web/app/v1'
+const DEFAULT_API_NAMESPACE = ''
 const ALLOWED_API_NAMESPACES = new Set([
-  'web/app/v1',
-  'mobile/ios/v1',
-  'mobile/android/v1',
+  '',
+  'ios/v1.0.0',
 ])
 
 function normalizeApiNamespace(raw: string): string {
@@ -36,5 +35,6 @@ const queryNamespace = readApiNamespaceFromLocation()
 export const clientApiNamespace = queryNamespace || envNamespace || DEFAULT_API_NAMESPACE
 
 export function buildClientApiPath(endpoint: `/${string}`): string {
-  return `/api/${clientApiNamespace}${endpoint}`
+  const namespacePrefix = clientApiNamespace ? `/${clientApiNamespace}` : ''
+  return `/api${namespacePrefix}${endpoint}`
 }

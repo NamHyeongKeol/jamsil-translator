@@ -31,33 +31,33 @@ describe('api-contract namespace guard', () => {
   it('uses default namespace when nothing is configured', async () => {
     const contract = await loadApiContractModule()
 
-    expect(contract.clientApiNamespace).toBe('web/app/v1')
-    expect(contract.buildClientApiPath('/translate/finalize')).toBe('/api/web/app/v1/translate/finalize')
+    expect(contract.clientApiNamespace).toBe('')
+    expect(contract.buildClientApiPath('/translate/finalize')).toBe('/api/translate/finalize')
   })
 
   it('accepts only allowed env namespace values', async () => {
-    process.env.NEXT_PUBLIC_API_NAMESPACE = 'mobile/ios/v1'
+    process.env.NEXT_PUBLIC_API_NAMESPACE = 'ios/v1.0.0'
     const contract = await loadApiContractModule()
-    expect(contract.clientApiNamespace).toBe('mobile/ios/v1')
+    expect(contract.clientApiNamespace).toBe('ios/v1.0.0')
   })
 
   it('ignores invalid env namespace values', async () => {
-    process.env.NEXT_PUBLIC_API_NAMESPACE = 'web/app/v9'
+    process.env.NEXT_PUBLIC_API_NAMESPACE = 'ios/v9.0.0'
     const contract = await loadApiContractModule()
-    expect(contract.clientApiNamespace).toBe('web/app/v1')
+    expect(contract.clientApiNamespace).toBe('')
   })
 
   it('allows query override only when value is allow-listed', async () => {
-    process.env.NEXT_PUBLIC_API_NAMESPACE = 'web/app/v1'
-    stubWindowSearch('?apiNamespace=mobile%2Fandroid%2Fv1')
+    process.env.NEXT_PUBLIC_API_NAMESPACE = ''
+    stubWindowSearch('?apiNamespace=ios%2Fv1.0.0')
     const contract = await loadApiContractModule()
-    expect(contract.clientApiNamespace).toBe('mobile/android/v1')
+    expect(contract.clientApiNamespace).toBe('ios/v1.0.0')
   })
 
   it('ignores invalid query override values', async () => {
-    process.env.NEXT_PUBLIC_API_NAMESPACE = 'mobile/ios/v1'
+    process.env.NEXT_PUBLIC_API_NAMESPACE = 'ios/v1.0.0'
     stubWindowSearch('?apiNs=unknown%2Fnamespace')
     const contract = await loadApiContractModule()
-    expect(contract.clientApiNamespace).toBe('mobile/ios/v1')
+    expect(contract.clientApiNamespace).toBe('ios/v1.0.0')
   })
 })

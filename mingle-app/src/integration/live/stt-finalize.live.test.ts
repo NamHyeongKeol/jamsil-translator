@@ -35,7 +35,7 @@ const STREAM_SEND_DELAY_MS = readEnvInt('MINGLE_TEST_STREAM_SEND_DELAY_MS', STRE
 
 const API_BASE_URL = readEnvString('MINGLE_TEST_API_BASE_URL', 'http://127.0.0.1:3000')
 const API_NAMESPACE = normalizeApiNamespace(
-  readEnvString('MINGLE_TEST_API_NAMESPACE', 'web/app/v1'),
+  readEnvString('MINGLE_TEST_API_NAMESPACE', ''),
 )
 const STT_WS_URL = readEnvString('MINGLE_TEST_WS_URL', 'ws://127.0.0.1:3001')
 const STT_MODEL = readEnvString('MINGLE_TEST_STT_MODEL', 'soniox')

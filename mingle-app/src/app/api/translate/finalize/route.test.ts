@@ -55,19 +55,19 @@ async function importRouteWithEnv() {
   process.env.INWORLD_TTS_DEFAULT_VOICE_ID = 'Ashley'
   process.env.INWORLD_TTS_MODEL_ID = 'inworld-tts-1.5-mini'
 
-  const mod = await import('@/app/api/web/app/v1/translate/finalize/route')
+  const mod = await import('@/app/api/translate/finalize/route')
   return mod.POST
 }
 
 function makeJsonRequest(body: unknown, headers?: Record<string, string>): Request {
-  return new Request('http://localhost:3000/api/web/app/v1/translate/finalize', {
+  return new Request('http://localhost:3000/api/translate/finalize', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(headers || {}) },
     body: JSON.stringify(body),
   })
 }
 
-describe('/api/web/app/v1/translate/finalize route', () => {
+describe('/api/translate/finalize route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ensureTrackingContextMock.mockReturnValue({

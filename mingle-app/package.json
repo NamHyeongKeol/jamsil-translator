@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "build:release:web": "NEXT_PUBLIC_API_NAMESPACE=web/app/v1 pnpm build",
-    "build:release:ios": "NEXT_PUBLIC_API_NAMESPACE=mobile/ios/v1 pnpm build",
-    "build:release:android": "NEXT_PUBLIC_API_NAMESPACE=mobile/android/v1 pnpm build",
+    "build:release:web": "NEXT_PUBLIC_API_NAMESPACE= pnpm build",
+    "build:release:ios": "NEXT_PUBLIC_API_NAMESPACE=ios/v1.0.0 pnpm build",
+    "build:release:android": "NEXT_PUBLIC_API_NAMESPACE= pnpm build",
     "build:release:all": "pnpm build:release:web && pnpm build:release:ios && pnpm build:release:android",
     "rn:install": "pnpm --dir rn install",
     "rn:pods": "cd rn/ios && (bundle exec pod install || pod install)",
