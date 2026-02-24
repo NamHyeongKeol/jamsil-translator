@@ -33,6 +33,11 @@ scripts/devbox up --profile local
 # 5) 디바이스 프로필로 서버+ngrok 실행
 scripts/devbox up --profile device
 
+# 5-b) 실서버 프로필로 앱 빌드용 URL 주입
+scripts/devbox up --profile prod \
+  --vault-app-path secret/mingle-app/prod \
+  --vault-stt-path secret/mingle-stt/prod
+
 # 6) (선택) 연결된 테스트폰 앱 빌드/설치
 scripts/devbox mobile --platform all
 
@@ -87,8 +92,14 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
   - 현재 워크트리 ngrok inspector(`DEVBOX_NGROK_API_PORT`)에서 `devbox_web`, `devbox_stt` 터널 URL을 읽어
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`, `RN_DEFAULT_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
+- `scripts/devbox profile --profile prod`
+- `mingle-app/.env.local` 또는 `mingle-app/.env`에서
+    `RN_WEB_APP_BASE_URL`/`MINGLE_WEB_APP_BASE_URL`/`NEXT_PUBLIC_SITE_URL`,
+    `RN_DEFAULT_WS_URL`/`MINGLE_DEFAULT_WS_URL`/`NEXT_PUBLIC_WS_URL`를 읽어 현재 프로필로 설정
+  - `--vault-app-path/--vault-stt-path`로 `.env.local` 동기화 후 실행하면
+    Vault에 저장된 프로덕션 URL을 자동 반영
 
-- `scripts/devbox up --profile local|device`
+- `scripts/devbox up --profile local|device|prod`
   - `.devbox.env`가 없으면 `init`을 자동 실행(1커맨드 온보딩)
   - 시작 전에 main 워크트리 env 시드와 의존성 설치를 자동 수행
     (Prisma client 누락 시 `db:generate` 포함)
@@ -111,7 +122,7 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
     - ngrok이 별도 탭/패널에서 실행되면 ngrok 로그는 해당 탭/패널에서 확인
 
 - `scripts/devbox mobile --platform ios|android|all`
-  - 실행 시작 시 `.devbox.env`의 현재 프로필(local/device)을 다시 적용해
+  - 실행 시작 시 `.devbox.env`의 현재 프로필(local/device/prod)을 다시 적용해
     최신 URL/WS 값을 먼저 재동기화한 뒤 빌드/설치를 수행
     (device 프로필은 ngrok inspector에서 최신 터널 URL 재조회)
   - 현재 워크트리 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로

@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_ios_release_reinstall_with_env_blocked
+    %% @lastActive: mingle_worktree_devbox_prod_profile
 
     %% === START ===
     %% @project_start [start, closed]
@@ -625,6 +625,9 @@ flowchart TD
     %% @mingle_worktree_devbox_prisma_generate_autofix [ai-task, closed, 2026-02-22, ai]
     mingle_worktree_devbox_prisma_generate_autofix("Devbox Prisma generate 자동 복구 추가<br/><sub>워크트리에서 @prisma/client 생성물이 누락되면<br/>/api/translate/finalize가 500으로 깨지던 경로를<br/>bootstrap/up 단계에서 db:generate를 자동 실행해<br/>node_modules/.prisma/client 누락 상태를 즉시 복구</sub>")
 
+    %% @mingle_worktree_devbox_prod_profile [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_prod_profile("Devbox prod 프로필 URL 주입<br/><sub>실서버 React Native 빌드용으로<br/>RN_WEB_APP_BASE_URL와 RN_DEFAULT_WS_URL를<br/>.env.local/.env에서 읽어 프로필 반영<br/>릴리스 빌드 재설치 전 URL를 동기화</sub>")
+
     %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
 
@@ -1069,6 +1072,7 @@ flowchart TD
     mingle_worktree_devbox_mobile_build_install_automation --> mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization
     mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization --> mingle_worktree_devbox_ngrok_tunnel_name_collision_fix
     mingle_worktree_devbox_ngrok_tunnel_name_collision_fix --> mingle_worktree_devbox_prisma_generate_autofix
+    mingle_worktree_devbox_prisma_generate_autofix --> mingle_worktree_devbox_prod_profile
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
     mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_top_tap_regression_hotfix
     mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_release_reinstall_with_env_blocked
@@ -1211,7 +1215,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_ios_release_reinstall_with_env_blocked
+        mingle_worktree_devbox_prod_profile
     end
 
     %% === STYLES ===
@@ -1482,6 +1486,7 @@ flowchart TD
     style mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_ngrok_tunnel_name_collision_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_prisma_generate_autofix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_prod_profile fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_release_reinstall_with_env_blocked fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
     style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1546,7 +1551,7 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_app_ios_release_reinstall_with_env_blocked fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_prod_profile fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

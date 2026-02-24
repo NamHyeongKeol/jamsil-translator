@@ -85,17 +85,17 @@ Usage:
   scripts/devbox [--log-file PATH|auto] <command> [options]
   scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--ngrok-api-port N] [--host HOST]
   scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
-  scripts/devbox profile --profile local|device [--host HOST]
+  scripts/devbox profile --profile local|device|prod [--host HOST]
   scripts/devbox ngrok-config
   scripts/devbox mobile [--platform ios|android|all] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install]
-  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox up [--profile local|device|prod] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-udid UDID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [vitest args...]
   scripts/devbox status
 
 Commands:
   init         Generate worktree-specific ports/config/env files.
   bootstrap    Seed env files from main/Vault and install dependencies.
-  profile      Apply local/device profile to managed env files.
+  profile      Apply local/device/prod profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
   mobile       Build/install RN app(s) on connected iOS/Android device if available.
   up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
@@ -1263,6 +1263,48 @@ set_device_profile_values() {
   validate_wss_url "ngrok stt url" "$DEVBOX_RN_WS_URL"
 }
 
+set_prod_profile_values() {
+  local site_url=""
+  local ws_url=""
+  local fallback_file="$ROOT_DIR/mingle-app/.env"
+
+  if [[ -f "$APP_ENV_FILE" ]]; then
+    site_url="$(read_env_value_from_file RN_WEB_APP_BASE_URL "$APP_ENV_FILE")"
+    [[ -z "$site_url" ]] && site_url="$(read_env_value_from_file MINGLE_WEB_APP_BASE_URL "$APP_ENV_FILE")"
+    [[ -z "$site_url" ]] && site_url="$(read_env_value_from_file NEXT_PUBLIC_SITE_URL "$APP_ENV_FILE")"
+
+    ws_url="$(read_env_value_from_file RN_DEFAULT_WS_URL "$APP_ENV_FILE")"
+    [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_file MINGLE_DEFAULT_WS_URL "$APP_ENV_FILE")"
+    [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_file NEXT_PUBLIC_WS_URL "$APP_ENV_FILE")"
+  fi
+
+  if [[ -z "$site_url" && -f "$fallback_file" ]]; then
+    site_url="$(read_env_value_from_file RN_WEB_APP_BASE_URL "$fallback_file")"
+    [[ -z "$site_url" ]] && site_url="$(read_env_value_from_file MINGLE_WEB_APP_BASE_URL "$fallback_file")"
+    [[ -z "$site_url" ]] && site_url="$(read_env_value_from_file NEXT_PUBLIC_SITE_URL "$fallback_file")"
+  fi
+
+  if [[ -z "$ws_url" && -f "$fallback_file" ]]; then
+    ws_url="$(read_env_value_from_file RN_DEFAULT_WS_URL "$fallback_file")"
+    [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_file MINGLE_DEFAULT_WS_URL "$fallback_file")"
+    [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_file NEXT_PUBLIC_WS_URL "$fallback_file")"
+  fi
+
+  [[ -n "$site_url" ]] || die "missing production site url for prod profile: define RN_WEB_APP_BASE_URL, MINGLE_WEB_APP_BASE_URL, or NEXT_PUBLIC_SITE_URL in $APP_ENV_FILE or $fallback_file"
+  [[ -n "$ws_url" ]] || die "missing production ws url for prod profile: define RN_DEFAULT_WS_URL, MINGLE_DEFAULT_WS_URL, or NEXT_PUBLIC_WS_URL in $APP_ENV_FILE or $fallback_file"
+
+  DEVBOX_PROFILE="prod"
+  DEVBOX_LOCAL_HOST="127.0.0.1"
+  DEVBOX_SITE_URL="$site_url"
+  DEVBOX_RN_WS_URL="$ws_url"
+  DEVBOX_PUBLIC_WS_URL="$ws_url"
+  DEVBOX_TEST_API_BASE_URL="http://127.0.0.1:$DEVBOX_WEB_PORT"
+  DEVBOX_TEST_WS_URL="ws://127.0.0.1:$DEVBOX_STT_PORT"
+
+  validate_http_url "prod site url" "$DEVBOX_SITE_URL"
+  validate_ws_url "prod ws url" "$DEVBOX_RN_WS_URL"
+}
+
 save_and_refresh() {
   write_devbox_env
   refresh_runtime_files
@@ -1282,8 +1324,11 @@ apply_profile() {
     device)
       set_device_profile_values
       ;;
+    prod)
+      set_prod_profile_values
+      ;;
     *)
-      die "unsupported profile: $profile (expected local|device)"
+      die "unsupported profile: $profile (expected local|device|prod)"
       ;;
   esac
 
@@ -1442,7 +1487,7 @@ cmd_profile() {
     esac
   done
 
-  [[ -n "$profile" ]] || die "missing --profile local|device"
+  [[ -n "$profile" ]] || die "missing --profile local|device|prod"
   apply_profile "$profile" "$host"
   log "applied profile: $profile"
   cmd_status
@@ -1493,11 +1538,14 @@ cmd_mobile() {
       # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
       apply_profile "device"
       ;;
+    prod)
+      apply_profile "prod"
+      ;;
     local)
       apply_profile "local" "$active_host"
       ;;
     *)
-      die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device)"
+      die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device|prod)"
       ;;
   esac
   save_and_refresh
@@ -1733,6 +1781,7 @@ Files:
 
 Run:
 - scripts/devbox up --profile local
+- scripts/devbox up --profile prod
 - scripts/devbox up --profile device
 - scripts/devbox up --profile device --with-mobile-install
 - scripts/devbox up --profile local --with-metro
