@@ -1826,6 +1826,19 @@ $(ngrok_plan_capacity_hint)"
       . "$runtime_app_env_file"
       set +a
     fi
+    DEVBOX_WORKTREE_NAME="$DEVBOX_WORKTREE_NAME" \
+    DEVBOX_PROFILE="$DEVBOX_PROFILE" \
+    DEVBOX_WEB_PORT="$DEVBOX_WEB_PORT" \
+    DEVBOX_STT_PORT="$DEVBOX_STT_PORT" \
+    DEVBOX_METRO_PORT="$DEVBOX_METRO_PORT" \
+    NEXT_PUBLIC_SITE_URL="$DEVBOX_SITE_URL" \
+    NEXTAUTH_URL="$DEVBOX_SITE_URL" \
+    RN_WEB_APP_BASE_URL="$DEVBOX_SITE_URL" \
+    NEXT_PUBLIC_WS_PORT="$DEVBOX_STT_PORT" \
+    NEXT_PUBLIC_WS_URL="$DEVBOX_PUBLIC_WS_URL" \
+    RN_DEFAULT_WS_URL="$DEVBOX_RN_WS_URL" \
+    MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
+    MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
     pnpm exec next dev --port "$DEVBOX_WEB_PORT"
   ) &
   pids+=("$!")
@@ -1841,6 +1854,19 @@ $(ngrok_plan_capacity_hint)"
         . "$runtime_app_env_file"
         set +a
       fi
+      DEVBOX_WORKTREE_NAME="$DEVBOX_WORKTREE_NAME" \
+      DEVBOX_PROFILE="$DEVBOX_PROFILE" \
+      DEVBOX_WEB_PORT="$DEVBOX_WEB_PORT" \
+      DEVBOX_STT_PORT="$DEVBOX_STT_PORT" \
+      DEVBOX_METRO_PORT="$DEVBOX_METRO_PORT" \
+      NEXT_PUBLIC_SITE_URL="$DEVBOX_SITE_URL" \
+      NEXTAUTH_URL="$DEVBOX_SITE_URL" \
+      RN_WEB_APP_BASE_URL="$DEVBOX_SITE_URL" \
+      NEXT_PUBLIC_WS_PORT="$DEVBOX_STT_PORT" \
+      NEXT_PUBLIC_WS_URL="$DEVBOX_PUBLIC_WS_URL" \
+      RN_DEFAULT_WS_URL="$DEVBOX_RN_WS_URL" \
+      MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
+      MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
       node scripts/run-with-env-local.mjs pnpm --dir rn start --port "$DEVBOX_METRO_PORT"
     ) &
     pids+=("$!")
