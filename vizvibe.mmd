@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_stt_soniox_debug_logging_removed
+    %% @lastActive: mingle_app_ios_release_reinstall_with_env_blocked
 
     %% === START ===
     %% @project_start [start, closed]
@@ -628,6 +628,9 @@ flowchart TD
     %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
     mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
 
+    %% @mingle_app_ios_release_reinstall_with_env_blocked [blocker, closed, 2026-02-24, ai]
+    mingle_app_ios_release_reinstall_with_env_blocked("iOS 릴리즈 재빌드/재설치 실패<br/><sub>main 브랜치에서 .env 값으로 실제 서버 주입 후<br/>iOS Release 빌드를 시도했으나<br/>CoreSimulatorService 연결 실패와 기기 등록 이슈로<br/>설치/런치 단계를 완료하지 못함</sub>")
+
     %% @mingle_app_ios_top_tap_regression_hotfix [ai-task, closed, 2026-02-22, ai]
     mingle_app_ios_top_tap_regression_hotfix("iOS 상단 탭 회귀 핫픽스<br/><sub>RN 상태바 탭 오버레이 높이를<br/>상단 헤더 마진까지 포함하도록 복구하고<br/>nativeUi 브리지 사용 중에도 iOS 웹 상단 탭<br/>fallback을 유지해 기존 스크롤 UX를 복원</sub>")
 
@@ -1068,6 +1071,7 @@ flowchart TD
     mingle_worktree_devbox_ngrok_tunnel_name_collision_fix --> mingle_worktree_devbox_prisma_generate_autofix
     mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
     mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_top_tap_regression_hotfix
+    mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_release_reinstall_with_env_blocked
     mingle_app_ios_top_tap_regression_hotfix --> mingle_app_ios_top_tap_pr9_reaudit_hardening
     mingle_app_ios_top_tap_pr9_reaudit_hardening --> mingle_app_ios_notch_tap_margin_decouple
     mingle_app_tdd_nonstraight_main_merge_guard --> vercel_deploy_rate_limit_blocker
@@ -1207,7 +1211,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_stt_soniox_debug_logging_removed
+        mingle_app_ios_release_reinstall_with_env_blocked
     end
 
     %% === STYLES ===
@@ -1479,6 +1483,7 @@ flowchart TD
     style mingle_worktree_devbox_ngrok_tunnel_name_collision_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_prisma_generate_autofix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_release_reinstall_with_env_blocked fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
     style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_ios_notch_tap_margin_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1541,6 +1546,7 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
+    style mingle_app_ios_release_reinstall_with_env_blocked fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
