@@ -42,6 +42,12 @@ cd mingle-ios
 DEVELOPMENT_TEAM=YOUR_TEAM_ID ./scripts/install-ios-device.sh <DEVICE_ID>
 ```
 
+번들 ID 충돌(프로비저닝 생성 실패) 시 로컬 번들 ID를 지정할 수 있습니다.
+
+```bash
+APP_BUNDLE_ID=com.<your_name>.mingleios DEVELOPMENT_TEAM=YOUR_TEAM_ID ./scripts/install-ios-device.sh <DEVICE_ID>
+```
+
 ## iOS 시뮬레이터 설치/실행
 
 ```bash

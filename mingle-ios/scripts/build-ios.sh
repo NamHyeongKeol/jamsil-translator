@@ -10,6 +10,7 @@ DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${PROJECT_DIR}/.derived-data}"
 DEVICE_ID="${1:-${DEVICE_ID:-}}"
 MINGLE_API_BASE_URL="${MINGLE_API_BASE_URL:-}"
 MINGLE_WS_URL="${MINGLE_WS_URL:-}"
+APP_BUNDLE_ID="${APP_BUNDLE_ID:-com.nam.mingleios}"
 
 cd "${PROJECT_DIR}"
 
@@ -27,6 +28,9 @@ if [[ -n "${MINGLE_API_BASE_URL}" ]]; then
 fi
 if [[ -n "${MINGLE_WS_URL}" ]]; then
   XCB_ARGS+=("MINGLE_WS_URL=${MINGLE_WS_URL}")
+fi
+if [[ -n "${APP_BUNDLE_ID}" ]]; then
+  XCB_ARGS+=("PRODUCT_BUNDLE_IDENTIFIER=${APP_BUNDLE_ID}")
 fi
 
 if [[ -n "${DEVICE_ID}" ]]; then

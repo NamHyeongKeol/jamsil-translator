@@ -110,6 +110,7 @@ XCB_ARGS=(
   -destination "generic/platform=iOS"
   -allowProvisioningUpdates
   "DEVELOPMENT_TEAM=${TEAM_ID}"
+  "PRODUCT_BUNDLE_IDENTIFIER=${APP_BUNDLE_ID}"
 )
 if [[ -n "${MINGLE_API_BASE_URL}" ]]; then
   XCB_ARGS+=("MINGLE_API_BASE_URL=${MINGLE_API_BASE_URL}")
@@ -138,7 +139,7 @@ if [[ ${BUILD_EXIT} -ne 0 ]]; then
     echo "Signing prerequisites are missing."
     echo "1) Open Xcode > Settings > Accounts and sign in with Apple ID"
     echo "2) Connect/unlock iPhone and trust this Mac"
-    echo "3) Re-run: DEVELOPMENT_TEAM=${TEAM_ID} ./scripts/install-ios-device.sh ${DEVICE_ID}"
+    echo "3) Re-run: APP_BUNDLE_ID=${APP_BUNDLE_ID} DEVELOPMENT_TEAM=${TEAM_ID} ./scripts/install-ios-device.sh ${DEVICE_ID}"
   fi
   exit ${BUILD_EXIT}
 fi

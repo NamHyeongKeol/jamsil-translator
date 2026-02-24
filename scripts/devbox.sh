@@ -1250,6 +1250,7 @@ run_native_ios_mobile_install() {
   log "building native iOS app ($configuration) for device: ${requested_coredevice_id:-auto}"
   (
     cd "$MINGLE_IOS_DIR"
+    APP_BUNDLE_ID="$bundle_id" \
     MINGLE_API_BASE_URL="$DEVBOX_SITE_URL" \
     MINGLE_WS_URL="$DEVBOX_RN_WS_URL" \
     AUTO_SELECT_DEVICE=1 \
@@ -1282,6 +1283,7 @@ run_native_ios_simulator_install() {
   log "building native iOS app ($configuration) for simulator: ${simulator_udid:-$simulator_name}"
   (
     cd "$MINGLE_IOS_DIR"
+    APP_BUNDLE_ID="$bundle_id" \
     MINGLE_API_BASE_URL="$DEVBOX_SITE_URL" \
     MINGLE_WS_URL="$DEVBOX_RN_WS_URL" \
     CONFIGURATION="$configuration" \
@@ -1295,6 +1297,7 @@ run_native_ios_build() {
   local configuration="$2"
   local api_base_url="${3:-}"
   local ws_url="${4:-}"
+  local bundle_id="${5:-com.nam.mingleios}"
 
   [[ -x "$MINGLE_IOS_BUILD_SCRIPT" ]] || die "native iOS build script not found: $MINGLE_IOS_BUILD_SCRIPT"
   require_cmd xcodebuild
@@ -1304,11 +1307,13 @@ run_native_ios_build() {
   (
     cd "$MINGLE_IOS_DIR"
     if [[ -n "$api_base_url" || -n "$ws_url" ]]; then
+      APP_BUNDLE_ID="$bundle_id" \
       MINGLE_API_BASE_URL="${api_base_url:-}" \
       MINGLE_WS_URL="${ws_url:-}" \
       CONFIGURATION="$configuration" \
         "$MINGLE_IOS_BUILD_SCRIPT" "${requested_coredevice_id:-}"
     else
+      APP_BUNDLE_ID="$bundle_id" \
       CONFIGURATION="$configuration" \
         "$MINGLE_IOS_BUILD_SCRIPT" "${requested_coredevice_id:-}"
     fi
@@ -1372,7 +1377,7 @@ run_mobile_install_targets() {
   local with_ios_clean_install="${12:-0}"
   local app_site_override="${13:-}"
   local app_ws_override="${14:-}"
-  local native_ios_bundle_id="com.nam.mingleios"
+  local native_ios_bundle_id="${MINGLE_IOS_BUNDLE_ID:-com.nam.mingleios}"
 
   (
     if [[ -n "$app_site_override" ]]; then
@@ -2211,6 +2216,7 @@ $(ngrok_plan_capacity_hint)"
 cmd_ios_native_build() {
   local ios_configuration="Debug"
   local ios_coredevice_id=""
+  local ios_bundle_id="${MINGLE_IOS_BUNDLE_ID:-com.nam.mingleios}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -2232,7 +2238,7 @@ cmd_ios_native_build() {
     log "no $DEVBOX_ENV_FILE found; using mingle-ios xcconfig default URLs"
   fi
 
-  run_native_ios_build "$ios_coredevice_id" "$ios_configuration" "$api_base_url" "$ws_url"
+  run_native_ios_build "$ios_coredevice_id" "$ios_configuration" "$api_base_url" "$ws_url" "$ios_bundle_id"
 }
 
 cmd_ios_native_uninstall() {
@@ -2240,7 +2246,7 @@ cmd_ios_native_uninstall() {
   local ios_simulator_name="iPhone 16"
   local ios_simulator_udid=""
   local ios_coredevice_id=""
-  local bundle_id="com.nam.mingleios"
+  local bundle_id="${MINGLE_IOS_BUNDLE_ID:-com.nam.mingleios}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
