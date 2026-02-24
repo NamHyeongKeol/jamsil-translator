@@ -93,6 +93,7 @@ Usage:
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
   scripts/devbox ios-native-build [--ios-configuration Debug|Release] [--ios-coredevice-id ID]
+  scripts/devbox ios-native-uninstall [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-coredevice-id ID] [--bundle-id ID]
   scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release]
   scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
@@ -104,6 +105,7 @@ Commands:
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
   ios-native-build Build mingle-ios only (no install).
+  ios-native-uninstall Uninstall mingle-ios app from simulator/device.
   mobile       Build/install RN/native iOS and Android apps (device/simulator).
   up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
   test         Run mingle-app live tests and/or mingle-ios native test build.
@@ -1019,6 +1021,69 @@ resolve_android_application_id() {
   printf '%s' "com.rnnative"
 }
 
+resolve_ios_simulator_udid_for_uninstall() {
+  local requested_name="${1:-iPhone 16}"
+  local requested_udid="${2:-}"
+  local simctl_devices=""
+
+  simctl_devices="$(xcrun simctl list devices available 2>/dev/null)" || \
+    die "CoreSimulator is unavailable. Open Simulator once and retry."
+
+  if [[ -n "$requested_udid" ]]; then
+    local matched
+    matched="$(
+      printf '%s\n' "$simctl_devices" | awk -v udid="$requested_udid" '
+        {
+          line = $0
+          sub(/^[[:space:]]+/, "", line)
+          if (line !~ /\(Booted\)|\(Shutdown\)|\(Shutdown \(SimDiskImageMounting\)\)/) next
+          if (line !~ /iPhone / && line !~ /iPad /) next
+          if (match(line, /\([0-9A-F-]+\)/)) {
+            candidate = substr(line, RSTART + 1, RLENGTH - 2)
+            if (candidate == udid) {
+              print candidate
+              exit
+            }
+          }
+        }
+      '
+    )"
+    [[ -n "$matched" ]] || die "SIMULATOR_UDID '$requested_udid' is not available."
+    printf '%s' "$requested_udid"
+    return 0
+  fi
+
+  local candidates=""
+  candidates="$(
+    printf '%s\n' "$simctl_devices" | awk -v name="$requested_name" '
+      {
+        line = $0
+        sub(/^[[:space:]]+/, "", line)
+        if (index(line, name " (") != 1) next
+        if (line !~ /\(Booted\)|\(Shutdown\)|\(Shutdown \(SimDiskImageMounting\)\)/) next
+        if (line !~ /iPhone / && line !~ /iPad /) next
+        if (match(line, /\([0-9A-F-]+\)/)) {
+          udid = substr(line, RSTART + 1, RLENGTH - 2)
+          print line " :: " udid
+        }
+      }
+    '
+  )"
+
+  local count
+  count="$(printf '%s\n' "$candidates" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [[ "$count" == "1" ]]; then
+    printf '%s\n' "$candidates" | awk -F' :: ' 'NR == 1 { print $2 }'
+    return 0
+  fi
+  if [[ "$count" -gt 1 ]]; then
+    die "multiple simulators match '$requested_name'; specify --ios-simulator-udid explicitly.
+$(printf '%s\n' "$candidates" | sed -n '1,20p')"
+  fi
+
+  die "no available simulator matched '$requested_name'. Use --ios-simulator-udid or check: xcrun simctl list devices available"
+}
+
 run_ios_mobile_install() {
   local requested_udid="${1:-}"
   local configuration="$2"
@@ -1831,6 +1896,54 @@ cmd_ios_native_build() {
   run_native_ios_build "$ios_coredevice_id" "$ios_configuration" "$api_base_url" "$ws_url"
 }
 
+cmd_ios_native_uninstall() {
+  local ios_native_target="simulator"
+  local ios_simulator_name="iPhone 16"
+  local ios_simulator_udid=""
+  local ios_coredevice_id=""
+  local bundle_id="com.nam.mingleios"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --ios-native-target) ios_native_target="${2:-}"; shift 2 ;;
+      --ios-simulator-name) ios_simulator_name="${2:-}"; shift 2 ;;
+      --ios-simulator-udid) ios_simulator_udid="${2:-}"; shift 2 ;;
+      --ios-coredevice-id) ios_coredevice_id="${2:-}"; shift 2 ;;
+      --bundle-id) bundle_id="${2:-}"; shift 2 ;;
+      *) die "unknown option for ios-native-uninstall: $1" ;;
+    esac
+  done
+
+  ios_native_target="$(normalize_ios_native_target "$ios_native_target")"
+  [[ -n "$bundle_id" ]] || die "--bundle-id must not be empty"
+  require_cmd xcrun
+
+  if [[ "$ios_native_target" == "simulator" ]]; then
+    local simulator_udid
+    simulator_udid="$(resolve_ios_simulator_udid_for_uninstall "$ios_simulator_name" "$ios_simulator_udid")"
+    log "uninstalling native iOS app bundle '$bundle_id' from simulator: $simulator_udid"
+    if xcrun simctl uninstall "$simulator_udid" "$bundle_id"; then
+      log "native iOS app uninstalled from simulator: $simulator_udid"
+    else
+      log "native iOS app uninstall skipped (bundle may be absent): $bundle_id on $simulator_udid"
+    fi
+    return 0
+  fi
+
+  local coredevice_id="$ios_coredevice_id"
+  if [[ -z "$coredevice_id" ]]; then
+    coredevice_id="$(detect_ios_device_udid || true)"
+  fi
+  [[ -n "$coredevice_id" ]] || die "iOS device not detected; specify --ios-coredevice-id"
+
+  log "uninstalling native iOS app bundle '$bundle_id' from device: $coredevice_id"
+  if xcrun devicectl device uninstall app --device "$coredevice_id" "$bundle_id"; then
+    log "native iOS app uninstalled from device: $coredevice_id"
+  else
+    log "native iOS app uninstall skipped (bundle may be absent): $bundle_id on $coredevice_id"
+  fi
+}
+
 cmd_test() {
   require_devbox_env
   local target="app"
@@ -1922,6 +2035,7 @@ Run:
 - scripts/devbox up --profile local --with-ios-install --ios-runtime native --ios-native-target simulator
 - scripts/devbox up --profile local --with-metro
 - scripts/devbox ios-native-build --ios-configuration Debug
+- scripts/devbox ios-native-uninstall --ios-native-target simulator --ios-simulator-udid <UDID>
 - scripts/devbox mobile --platform ios --ios-runtime rn
 - scripts/devbox mobile --platform ios --ios-runtime native
 - scripts/devbox mobile --platform ios --ios-runtime native --ios-native-target simulator --ios-simulator-name "iPhone 16"
@@ -2017,6 +2131,7 @@ main() {
     profile-device|profile-ngrok) cmd_profile --profile device "$@" ;;
     ngrok-config) cmd_ngrok_config "$@" ;;
     ios-native-build|ios-build-native) cmd_ios_native_build "$@" ;;
+    ios-native-uninstall|ios-uninstall-native|ios-native-remove) cmd_ios_native_uninstall "$@" ;;
     mobile) cmd_mobile "$@" ;;
     up) cmd_up "$@" ;;
     test|test-live) cmd_test "$@" ;;
