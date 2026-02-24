@@ -16,6 +16,17 @@ APP_PATH="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}-iphonesimulator/M
 SIMCTL_DEVICES_LIST=""
 AUTO_SELECT_SIMULATOR="${AUTO_SELECT_SIMULATOR:-0}"
 
+maybe_generate_xcodeproj() {
+  local project_file="${PROJECT_DIR}/MingleIOS.xcodeproj/project.pbxproj"
+  local spec_file="${PROJECT_DIR}/project.yml"
+  if [[ "${MINGLE_IOS_FORCE_XCODEGEN:-0}" == "1" || ! -f "${project_file}" || "${spec_file}" -nt "${project_file}" ]]; then
+    (
+      cd "${PROJECT_DIR}"
+      xcodegen generate --spec project.yml > /dev/null
+    )
+  fi
+}
+
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "required command not found: $1"
@@ -180,7 +191,7 @@ if [[ -z "${SIMULATOR_UDID}" ]]; then
 fi
 
 cd "${PROJECT_DIR}"
-xcodegen generate --spec project.yml > /dev/null
+maybe_generate_xcodeproj
 
 # Keep simulator running state stable for install/launch.
 xcrun simctl boot "${SIMULATOR_UDID}" >/dev/null 2>&1 || true

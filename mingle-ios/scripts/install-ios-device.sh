@@ -11,6 +11,17 @@ MINGLE_API_BASE_URL="${MINGLE_API_BASE_URL:-}"
 MINGLE_WS_URL="${MINGLE_WS_URL:-}"
 AUTO_SELECT_DEVICE="${AUTO_SELECT_DEVICE:-0}"
 
+maybe_generate_xcodeproj() {
+  local project_file="${PROJECT_DIR}/MingleIOS.xcodeproj/project.pbxproj"
+  local spec_file="${PROJECT_DIR}/project.yml"
+  if [[ "${MINGLE_IOS_FORCE_XCODEGEN:-0}" == "1" || ! -f "${project_file}" || "${spec_file}" -nt "${project_file}" ]]; then
+    (
+      cd "${PROJECT_DIR}"
+      xcodegen generate --spec project.yml > /dev/null
+    )
+  fi
+}
+
 DEVICE_ID="${1:-${DEVICE_ID:-}}"
 detect_devices() {
   xcrun devicectl list devices 2>/dev/null \
@@ -99,7 +110,7 @@ if [[ -z "${TEAM_ID}" ]]; then
 fi
 
 cd "${PROJECT_DIR}"
-xcodegen generate --spec project.yml > /dev/null
+maybe_generate_xcodeproj
 
 BUILD_LOG="$(mktemp)"
 XCB_ARGS=(

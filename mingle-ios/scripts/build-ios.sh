@@ -12,9 +12,19 @@ MINGLE_API_BASE_URL="${MINGLE_API_BASE_URL:-}"
 MINGLE_WS_URL="${MINGLE_WS_URL:-}"
 APP_BUNDLE_ID="${APP_BUNDLE_ID:-com.nam.mingleios}"
 
-cd "${PROJECT_DIR}"
+maybe_generate_xcodeproj() {
+  local project_file="${PROJECT_DIR}/MingleIOS.xcodeproj/project.pbxproj"
+  local spec_file="${PROJECT_DIR}/project.yml"
+  if [[ "${MINGLE_IOS_FORCE_XCODEGEN:-0}" == "1" || ! -f "${project_file}" || "${spec_file}" -nt "${project_file}" ]]; then
+    (
+      cd "${PROJECT_DIR}"
+      xcodegen generate --spec project.yml > /dev/null
+    )
+  fi
+}
 
-xcodegen generate --spec project.yml > /dev/null
+cd "${PROJECT_DIR}"
+maybe_generate_xcodeproj
 
 XCB_ARGS=(
   -project MingleIOS.xcodeproj

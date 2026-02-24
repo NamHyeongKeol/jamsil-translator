@@ -1569,26 +1569,32 @@ resolve_device_app_env_override() {
   local ws_url=""
 
   case "$mode" in
-    dev|prod)
-      path="secret/mingle-app/$mode"
+    dev)
+      path="runtime:device-profile"
+      site_url="${DEVBOX_SITE_URL:-}"
+      ws_url="${DEVBOX_RN_WS_URL:-}"
+      [[ -n "$site_url" ]] || die "missing runtime site url for --device-app-env dev. Run with --profile device so ngrok URLs are resolved first."
+      [[ -n "$ws_url" ]] || die "missing runtime ws url for --device-app-env dev. Run with --profile device so ngrok URLs are resolved first."
+      ;;
+    prod)
+      path="secret/mingle-app/prod"
+      site_url="$(read_env_value_from_vault "$path" RN_WEB_APP_BASE_URL || true)"
+      [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$path" MINGLE_WEB_APP_BASE_URL || true)"
+      [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$path" NEXT_PUBLIC_SITE_URL || true)"
+      [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$path" MINGLE_API_BASE_URL || true)"
+
+      ws_url="$(read_env_value_from_vault "$path" RN_DEFAULT_WS_URL || true)"
+      [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$path" MINGLE_DEFAULT_WS_URL || true)"
+      [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$path" NEXT_PUBLIC_WS_URL || true)"
+      [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$path" MINGLE_WS_URL || true)"
+
+      [[ -n "$site_url" ]] || die "missing RN_WEB_APP_BASE_URL/MINGLE_WEB_APP_BASE_URL/NEXT_PUBLIC_SITE_URL/MINGLE_API_BASE_URL in vault path: $path"
+      [[ -n "$ws_url" ]] || die "missing RN_DEFAULT_WS_URL/MINGLE_DEFAULT_WS_URL/NEXT_PUBLIC_WS_URL/MINGLE_WS_URL in vault path: $path"
       ;;
     *)
       die "invalid --device-app-env: $mode (expected dev|prod)"
       ;;
   esac
-
-  site_url="$(read_env_value_from_vault "$path" RN_WEB_APP_BASE_URL || true)"
-  [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$path" MINGLE_WEB_APP_BASE_URL || true)"
-  [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$path" NEXT_PUBLIC_SITE_URL || true)"
-  [[ -z "$site_url" ]] && site_url="$(read_env_value_from_vault "$path" MINGLE_API_BASE_URL || true)"
-
-  ws_url="$(read_env_value_from_vault "$path" RN_DEFAULT_WS_URL || true)"
-  [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$path" MINGLE_DEFAULT_WS_URL || true)"
-  [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$path" NEXT_PUBLIC_WS_URL || true)"
-  [[ -z "$ws_url" ]] && ws_url="$(read_env_value_from_vault "$path" MINGLE_WS_URL || true)"
-
-  [[ -n "$site_url" ]] || die "missing RN_WEB_APP_BASE_URL/MINGLE_WEB_APP_BASE_URL/NEXT_PUBLIC_SITE_URL/MINGLE_API_BASE_URL in vault path: $path"
-  [[ -n "$ws_url" ]] || die "missing RN_DEFAULT_WS_URL/MINGLE_DEFAULT_WS_URL/NEXT_PUBLIC_WS_URL/MINGLE_WS_URL in vault path: $path"
 
   validate_http_url "device app env site url" "$site_url"
   validate_ws_url "device app env ws url" "$ws_url"
