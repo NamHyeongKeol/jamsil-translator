@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
   const callbackPath = resolveSafeCallbackPath(request.nextUrl.searchParams.get("callbackUrl"), "/");
   const externalOrigin = resolveExternalOrigin(request);
-  const completeUrl = new URL("/api/auth/native/complete", externalOrigin);
+  const completeUrl = new URL("/api/native-auth/complete", externalOrigin);
   completeUrl.searchParams.set("provider", provider);
   completeUrl.searchParams.set("callbackUrl", callbackPath);
   completeUrl.searchParams.set("ngrok-skip-browser-warning", "1");

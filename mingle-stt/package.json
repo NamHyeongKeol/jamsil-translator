@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "license": "GPL-3.0-only",
   "scripts": {
-    "dev": "ts-node stt-server.ts",
+    "dev": "ts-node --project tsconfig.json stt-server.ts",
     "build": "tsc stt-server.ts --outDir dist --esModuleInterop --module commonjs --target ES2017 --skipLibCheck --resolveJsonModule",
     "start": "node dist/stt-server.js"
   },

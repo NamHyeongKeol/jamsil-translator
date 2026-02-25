@@ -160,7 +160,7 @@ export default function MingleHome(props: MingleHomeProps) {
     const nativeBridgeEnabled = typeof window !== "undefined" && isNativeAuthBridgeEnabled();
     if (nativeBridgeEnabled) {
       try {
-        const startUrl = new URL("/api/auth/native/start", window.location.origin);
+        const startUrl = new URL("/api/native-auth/start", window.location.origin);
         startUrl.searchParams.set("provider", provider);
         startUrl.searchParams.set("callbackUrl", callbackUrl);
         const command: NativeAuthStartCommand = {
