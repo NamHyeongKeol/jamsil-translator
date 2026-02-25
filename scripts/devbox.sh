@@ -999,6 +999,28 @@ ensure_devbox_nextauth_secret() {
   upsert_non_managed_env_entry "$APP_ENV_FILE" "NEXTAUTH_SECRET" "$(build_devbox_nextauth_secret)"
 }
 
+resolve_runtime_nextauth_secret() {
+  local runtime_file="$1"
+  local value=""
+
+  value="$(read_env_value_from_file NEXTAUTH_SECRET "$runtime_file")"
+  if [[ -z "$value" ]]; then
+    value="$(read_env_value_from_file AUTH_SECRET "$runtime_file")"
+  fi
+  if [[ -z "$value" ]]; then
+    value="$(read_env_value_from_file NEXTAUTH_SECRET "$APP_ENV_FILE")"
+  fi
+  if [[ -z "$value" ]]; then
+    value="$(read_env_value_from_file AUTH_SECRET "$APP_ENV_FILE")"
+  fi
+  if [[ -z "$value" ]]; then
+    value="$(build_devbox_nextauth_secret)"
+  fi
+
+  ensure_single_line_value "NEXTAUTH_SECRET" "$value"
+  printf '%s' "$value"
+}
+
 write_stt_env_block() {
   local block
   strip_env_keys "$STT_ENV_FILE" "${STT_MANAGED_KEYS[@]}"
@@ -2420,10 +2442,12 @@ cmd_up() {
   log "stateless mode: skipping automatic vault -> .env.local sync (use scripts/devbox bootstrap when needed)"
   local runtime_app_env_file=""
   local runtime_stt_env_file=""
+  local runtime_nextauth_secret=""
   runtime_app_env_file="$(mktemp "${TMPDIR:-/tmp}/devbox-app-runtime-env.XXXXXX")"
   runtime_stt_env_file="$(mktemp "${TMPDIR:-/tmp}/devbox-stt-runtime-env.XXXXXX")"
   write_runtime_env_from_vault_path "app" "$DEVBOX_VAULT_APP_PATH" "$runtime_app_env_file"
   write_runtime_env_from_vault_path "stt" "$DEVBOX_VAULT_STT_PATH" "$runtime_stt_env_file"
+  runtime_nextauth_secret="$(resolve_runtime_nextauth_secret "$runtime_app_env_file")"
   ensure_workspace_dependencies
 
   local -a pids=()
@@ -2582,6 +2606,8 @@ $(ngrok_plan_capacity_hint)"
     DEVBOX_METRO_PORT="$DEVBOX_METRO_PORT" \
     NEXT_PUBLIC_SITE_URL="$DEVBOX_SITE_URL" \
     NEXTAUTH_URL="$DEVBOX_SITE_URL" \
+    NEXTAUTH_SECRET="$runtime_nextauth_secret" \
+    AUTH_SECRET="$runtime_nextauth_secret" \
     NEXT_PUBLIC_WS_PORT="$DEVBOX_STT_PORT" \
     NEXT_PUBLIC_WS_URL="$DEVBOX_PUBLIC_WS_URL" \
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
@@ -2609,6 +2635,8 @@ $(ngrok_plan_capacity_hint)"
       DEVBOX_METRO_PORT="$DEVBOX_METRO_PORT" \
       NEXT_PUBLIC_SITE_URL="$DEVBOX_SITE_URL" \
       NEXTAUTH_URL="$DEVBOX_SITE_URL" \
+      NEXTAUTH_SECRET="$runtime_nextauth_secret" \
+      AUTH_SECRET="$runtime_nextauth_secret" \
       NEXT_PUBLIC_WS_PORT="$DEVBOX_STT_PORT" \
       NEXT_PUBLIC_WS_URL="$DEVBOX_PUBLIC_WS_URL" \
       NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
