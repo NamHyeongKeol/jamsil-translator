@@ -169,7 +169,46 @@ const NATIVE_TTS_EVENT = 'mingle:native-tts';
 const NATIVE_UI_EVENT = 'mingle:native-ui';
 const NATIVE_AUTH_EVENT = 'mingle:native-auth';
 const IOS_SAFE_BROWSER_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
-const WEB_SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
+const WEB_SUPPORTED_LOCALES = new Set([
+  'ko',
+  'en',
+  'ja',
+  'zh-CN',
+  'zh-TW',
+  'fr',
+  'de',
+  'es',
+  'pt',
+  'it',
+  'ru',
+  'ar',
+  'hi',
+  'th',
+  'vi',
+]);
+const WEB_LOCALE_ALIASES: Record<string, string> = {
+  ko: 'ko',
+  en: 'en',
+  ja: 'ja',
+  fr: 'fr',
+  de: 'de',
+  es: 'es',
+  pt: 'pt',
+  it: 'it',
+  ru: 'ru',
+  ar: 'ar',
+  hi: 'hi',
+  th: 'th',
+  vi: 'vi',
+  zh: 'zh-CN',
+  'zh-cn': 'zh-CN',
+  'zh-hans': 'zh-CN',
+  'zh-sg': 'zh-CN',
+  'zh-tw': 'zh-TW',
+  'zh-hant': 'zh-TW',
+  'zh-hk': 'zh-TW',
+  'zh-mo': 'zh-TW',
+};
 const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
   'ko',
   'en',
@@ -464,8 +503,28 @@ function resolveDeviceLocaleTag(): string {
 }
 
 function resolveWebLocaleSegment(rawLocaleTag: string): string {
-  const code = rawLocaleTag.trim().replace(/_/g, '-').split('-')[0]?.toLowerCase() || 'ko';
-  return WEB_SUPPORTED_LOCALES.has(code) ? code : 'ko';
+  const normalized = rawLocaleTag.trim().replace(/_/g, '-').toLowerCase();
+  if (!normalized) return 'ko';
+
+  const directMatch = WEB_LOCALE_ALIASES[normalized];
+  if (directMatch && WEB_SUPPORTED_LOCALES.has(directMatch)) {
+    return directMatch;
+  }
+
+  if (normalized.startsWith('zh-')) {
+    if (normalized.includes('-tw') || normalized.includes('-hant') || normalized.includes('-hk') || normalized.includes('-mo')) {
+      return 'zh-TW';
+    }
+    return 'zh-CN';
+  }
+
+  const base = normalized.split('-')[0] || '';
+  const baseMatch = WEB_LOCALE_ALIASES[base];
+  if (baseMatch && WEB_SUPPORTED_LOCALES.has(baseMatch)) {
+    return baseMatch;
+  }
+
+  return 'ko';
 }
 
 function resolveVersionPolicyLocale(rawLocaleTag: string): string {

@@ -1128,13 +1128,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       scrollMetrics.thumbTop + (scrollMetrics.thumbHeight / 2),
     ),
   )
+  const navSurfaceClassName = 'bg-white'
 
   return (
     <PhoneFrame>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Header */}
         <div
-          className="relative shrink-0 flex items-center justify-between border-b border-gray-100"
+          className={`relative shrink-0 flex items-center justify-between border-b border-gray-100 ${navSurfaceClassName}`}
           style={{
             paddingTop: "max(calc(env(safe-area-inset-top) + 20px), 24px)",
             paddingBottom: "10px",
@@ -1203,7 +1204,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               {menuOpen && (
                 <div
                   ref={menuPanelRef}
-                  className="absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg"
+                  className={`absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-gray-200 p-1.5 shadow-lg ${navSurfaceClassName}`}
                 >
                   <button
                     type="button"
