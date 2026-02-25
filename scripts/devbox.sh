@@ -2587,7 +2587,7 @@ $(ngrok_plan_capacity_hint)"
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
     MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
     MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
-    pnpm exec next dev --webpack --port "$DEVBOX_WEB_PORT"
+    pnpm exec next dev --port "$DEVBOX_WEB_PORT"
   ) &
   pids+=("$!")
 
