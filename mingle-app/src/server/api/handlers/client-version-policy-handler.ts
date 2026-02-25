@@ -2,7 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 
 type VersionTuple = [number, number, number]
 type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none'
-type SupportedLocale = 'ko' | 'en' | 'ja'
+type SupportedLocale =
+  | 'ko'
+  | 'en'
+  | 'ja'
+  | 'zh-CN'
+  | 'zh-TW'
+  | 'fr'
+  | 'de'
+  | 'es'
+  | 'pt'
+  | 'it'
+  | 'ru'
+  | 'ar'
+  | 'hi'
+  | 'th'
+  | 'vi'
 
 const DEFAULT_MIN_SUPPORTED_VERSION = '1.0.0'
 
@@ -10,45 +25,171 @@ const FORCE_MESSAGES: Record<SupportedLocale, string> = {
   ko: '현재 버전에서는 서비스를 사용할 수 없습니다. 최신 버전으로 업데이트해 주세요.',
   en: 'This version is no longer supported. Please update to the latest version.',
   ja: 'このバージョンはサポートされていません。最新バージョンにアップデートしてください。',
+  'zh-CN': '当前版本已不再受支持。请更新到最新版本。',
+  'zh-TW': '目前版本已不再支援。請更新至最新版本。',
+  fr: 'Cette version n\'est plus prise en charge. Veuillez mettre à jour vers la dernière version.',
+  de: 'Diese Version wird nicht mehr unterstützt. Bitte aktualisieren Sie auf die neueste Version.',
+  es: 'Esta versión ya no es compatible. Actualiza a la última versión.',
+  pt: 'Esta versão não é mais compatível. Atualize para a versão mais recente.',
+  it: 'Questa versione non è più supportata. Aggiorna all\'ultima versione.',
+  ru: 'Эта версия больше не поддерживается. Обновите приложение до последней версии.',
+  ar: 'هذا الإصدار لم يعد مدعومًا. يرجى التحديث إلى أحدث إصدار.',
+  hi: 'यह संस्करण अब समर्थित नहीं है। कृपया नवीनतम संस्करण में अपडेट करें।',
+  th: 'เวอร์ชันนี้ไม่รองรับแล้ว กรุณาอัปเดตเป็นเวอร์ชันล่าสุด',
+  vi: 'Phiên bản này không còn được hỗ trợ. Vui lòng cập nhật lên phiên bản mới nhất.',
 }
 
 const RECOMMEND_MESSAGES: Record<SupportedLocale, string> = {
   ko: '새 버전이 출시되었습니다. 더 안정적인 사용을 위해 업데이트를 권장합니다.',
   en: 'A new version is available. We recommend updating for a better experience.',
   ja: '新しいバージョンが利用可能です。より安定した利用のためにアップデートをお勧めします。',
+  'zh-CN': '新版本已发布，建议更新以获得更稳定的体验。',
+  'zh-TW': '新版本已推出，建議更新以獲得更穩定的體驗。',
+  fr: 'Une nouvelle version est disponible. Nous vous recommandons de mettre à jour pour une meilleure stabilité.',
+  de: 'Eine neue Version ist verfügbar. Wir empfehlen ein Update für eine stabilere Nutzung.',
+  es: 'Hay una nueva versión disponible. Recomendamos actualizar para una experiencia más estable.',
+  pt: 'Há uma nova versão disponível. Recomendamos atualizar para uma experiência mais estável.',
+  it: 'È disponibile una nuova versione. Ti consigliamo di aggiornare per un\'esperienza più stabile.',
+  ru: 'Доступна новая версия. Рекомендуем обновить приложение для более стабильной работы.',
+  ar: 'يتوفر إصدار جديد. نوصي بالتحديث للحصول على تجربة أكثر استقرارًا.',
+  hi: 'नया संस्करण उपलब्ध है। अधिक स्थिर अनुभव के लिए अपडेट करने की सलाह दी जाती है।',
+  th: 'มีเวอร์ชันใหม่พร้อมใช้งาน แนะนำให้อัปเดตเพื่อการใช้งานที่เสถียรยิ่งขึ้น',
+  vi: 'Đã có phiên bản mới. Chúng tôi khuyên bạn nên cập nhật để có trải nghiệm ổn định hơn.',
 }
 
 const FORCE_UPDATE_TITLE: Record<SupportedLocale, string> = {
   ko: '업데이트 필요',
   en: 'Update Required',
   ja: 'アップデートが必要です',
+  'zh-CN': '更新必需',
+  'zh-TW': '必須更新',
+  fr: 'Mise à jour requise',
+  de: 'Update erforderlich',
+  es: 'Actualización obligatoria',
+  pt: 'Atualização obrigatória',
+  it: 'Aggiornamento obbligatorio',
+  ru: 'Требуется обновление',
+  ar: 'التحديث مطلوب',
+  hi: 'अपडेट आवश्यक',
+  th: 'จำเป็นต้องอัปเดต',
+  vi: 'Cần cập nhật',
 }
 
 const RECOMMEND_UPDATE_TITLE: Record<SupportedLocale, string> = {
   ko: '업데이트 권장',
   en: 'Update Recommended',
   ja: 'アップデート推奨',
+  'zh-CN': '建议更新',
+  'zh-TW': '建議更新',
+  fr: 'Mise à jour recommandée',
+  de: 'Update empfohlen',
+  es: 'Actualización recomendada',
+  pt: 'Atualização recomendada',
+  it: 'Aggiornamento consigliato',
+  ru: 'Рекомендуется обновление',
+  ar: 'يوصى بالتحديث',
+  hi: 'अपडेट की अनुशंसा',
+  th: 'แนะนำให้อัปเดต',
+  vi: 'Khuyến nghị cập nhật',
 }
 
 const UPDATE_BUTTON_LABEL: Record<SupportedLocale, string> = {
   ko: '업데이트',
   en: 'Update',
   ja: 'アップデート',
+  'zh-CN': '更新',
+  'zh-TW': '更新',
+  fr: 'Mettre à jour',
+  de: 'Aktualisieren',
+  es: 'Actualizar',
+  pt: 'Atualizar',
+  it: 'Aggiorna',
+  ru: 'Обновить',
+  ar: 'تحديث',
+  hi: 'अपडेट करें',
+  th: 'อัปเดต',
+  vi: 'Cập nhật',
 }
 
 const LATER_BUTTON_LABEL: Record<SupportedLocale, string> = {
   ko: '나중에',
   en: 'Later',
   ja: 'あとで',
+  'zh-CN': '稍后',
+  'zh-TW': '稍後',
+  fr: 'Plus tard',
+  de: 'Später',
+  es: 'Más tarde',
+  pt: 'Mais tarde',
+  it: 'Più tardi',
+  ru: 'Позже',
+  ar: 'لاحقًا',
+  hi: 'बाद में',
+  th: 'ภายหลัง',
+  vi: 'Để sau',
 }
 
-const SUPPORTED_LOCALES = new Set<SupportedLocale>(['ko', 'en', 'ja'])
+const SUPPORTED_LOCALES = new Set<SupportedLocale>([
+  'ko',
+  'en',
+  'ja',
+  'zh-CN',
+  'zh-TW',
+  'fr',
+  'de',
+  'es',
+  'pt',
+  'it',
+  'ru',
+  'ar',
+  'hi',
+  'th',
+  'vi',
+])
+const LOCALE_ALIAS_MAP: Record<string, SupportedLocale> = {
+  ko: 'ko',
+  en: 'en',
+  ja: 'ja',
+  fr: 'fr',
+  de: 'de',
+  es: 'es',
+  pt: 'pt',
+  it: 'it',
+  ru: 'ru',
+  ar: 'ar',
+  hi: 'hi',
+  th: 'th',
+  vi: 'vi',
+  zh: 'zh-CN',
+  'zh-cn': 'zh-CN',
+  'zh-hans': 'zh-CN',
+  'zh-sg': 'zh-CN',
+  'zh-tw': 'zh-TW',
+  'zh-hant': 'zh-TW',
+  'zh-hk': 'zh-TW',
+  'zh-mo': 'zh-TW',
+}
 const DEFAULT_LOCALE: SupportedLocale = 'en'
 
 function resolveLocale(raw: unknown): SupportedLocale {
   if (typeof raw !== 'string') return DEFAULT_LOCALE
-  const normalized = raw.trim().split(/[-_]/)[0]?.toLowerCase() || ''
-  if (SUPPORTED_LOCALES.has(normalized as SupportedLocale)) return normalized as SupportedLocale
+  const normalized = raw.trim().replace(/_/g, '-').toLowerCase()
+  if (!normalized) return DEFAULT_LOCALE
+
+  const directMatch = LOCALE_ALIAS_MAP[normalized]
+  if (directMatch && SUPPORTED_LOCALES.has(directMatch)) return directMatch
+
+  if (normalized.startsWith('zh-')) {
+    if (normalized.includes('-tw') || normalized.includes('-hant') || normalized.includes('-hk') || normalized.includes('-mo')) {
+      return 'zh-TW'
+    }
+    return 'zh-CN'
+  }
+
+  const base = normalized.split('-')[0] || ''
+  const baseMatch = LOCALE_ALIAS_MAP[base]
+  if (baseMatch && SUPPORTED_LOCALES.has(baseMatch)) return baseMatch
+
   return DEFAULT_LOCALE
 }
 

@@ -21,6 +21,24 @@ async function loadLegacyRoutePost() {
   return mod.POST
 }
 
+const FORCE_LOCALIZATION_CASES = [
+  { locale: 'ko', title: '업데이트 필요', updateButtonLabel: '업데이트', laterButtonLabel: '나중에' },
+  { locale: 'en', title: 'Update Required', updateButtonLabel: 'Update', laterButtonLabel: 'Later' },
+  { locale: 'ja', title: 'アップデートが必要です', updateButtonLabel: 'アップデート', laterButtonLabel: 'あとで' },
+  { locale: 'zh-CN', title: '更新必需', updateButtonLabel: '更新', laterButtonLabel: '稍后' },
+  { locale: 'zh-TW', title: '必須更新', updateButtonLabel: '更新', laterButtonLabel: '稍後' },
+  { locale: 'fr', title: 'Mise à jour requise', updateButtonLabel: 'Mettre à jour', laterButtonLabel: 'Plus tard' },
+  { locale: 'de', title: 'Update erforderlich', updateButtonLabel: 'Aktualisieren', laterButtonLabel: 'Später' },
+  { locale: 'es', title: 'Actualización obligatoria', updateButtonLabel: 'Actualizar', laterButtonLabel: 'Más tarde' },
+  { locale: 'pt', title: 'Atualização obrigatória', updateButtonLabel: 'Atualizar', laterButtonLabel: 'Mais tarde' },
+  { locale: 'it', title: 'Aggiornamento obbligatorio', updateButtonLabel: 'Aggiorna', laterButtonLabel: 'Più tardi' },
+  { locale: 'ru', title: 'Требуется обновление', updateButtonLabel: 'Обновить', laterButtonLabel: 'Позже' },
+  { locale: 'ar', title: 'التحديث مطلوب', updateButtonLabel: 'تحديث', laterButtonLabel: 'لاحقًا' },
+  { locale: 'hi', title: 'अपडेट आवश्यक', updateButtonLabel: 'अपडेट करें', laterButtonLabel: 'बाद में' },
+  { locale: 'th', title: 'จำเป็นต้องอัปเดต', updateButtonLabel: 'อัปเดต', laterButtonLabel: 'ภายหลัง' },
+  { locale: 'vi', title: 'Cần cập nhật', updateButtonLabel: 'Cập nhật', laterButtonLabel: 'Để sau' },
+] as const
+
 describe('/api/client/version-policy route', () => {
   beforeEach(() => {
     process.env.IOS_CLIENT_MIN_SUPPORTED_VERSION = '1.0.0'
@@ -93,34 +111,50 @@ describe('/api/client/version-policy route', () => {
     expect(json.title).toBe('')
   })
 
-  it('returns force_update with English messages when locale is en', async () => {
-    const POST = await loadLegacyRoutePost()
-    const response = await POST(makeRequest('0.9.9', 'en') as never)
-    const json = await response.json()
+  it.each(FORCE_LOCALIZATION_CASES)(
+    'returns localized force_update copy for %s',
+    async ({ locale, title, updateButtonLabel, laterButtonLabel }) => {
+      const POST = await loadLegacyRoutePost()
+      const response = await POST(makeRequest('0.9.9', locale) as never)
+      const json = await response.json()
 
-    expect(json.action).toBe('force_update')
-    expect(json.locale).toBe('en')
-    expect(json.title).toBe('Update Required')
-    expect(json.message).toContain('no longer supported')
-    expect(json.updateButtonLabel).toBe('Update')
-    expect(json.laterButtonLabel).toBe('Later')
+      expect(json.action).toBe('force_update')
+      expect(json.locale).toBe(locale)
+      expect(json.title).toBe(title)
+      expect(json.message).toBeTruthy()
+      expect(json.updateButtonLabel).toBe(updateButtonLabel)
+      expect(json.laterButtonLabel).toBe(laterButtonLabel)
+    },
+  )
+
+  it('normalizes Chinese locale aliases to zh-CN/zh-TW', async () => {
+    const POST = await loadLegacyRoutePost()
+    const zhHant = await POST(makeRequest('0.9.9', 'zh-Hant') as never)
+    const zhHantJson = await zhHant.json()
+    const zhGeneric = await POST(makeRequest('0.9.9', 'zh') as never)
+    const zhGenericJson = await zhGeneric.json()
+
+    expect(zhHantJson.locale).toBe('zh-TW')
+    expect(zhHantJson.title).toBe('必須更新')
+    expect(zhGenericJson.locale).toBe('zh-CN')
+    expect(zhGenericJson.title).toBe('更新必需')
   })
 
-  it('returns recommend_update with Japanese messages when locale is ja', async () => {
+  it('returns recommend_update with localized titles and labels', async () => {
     const POST = await loadLegacyRoutePost()
-    const response = await POST(makeRequest('1.1.5', 'ja') as never)
+    const response = await POST(makeRequest('1.1.5', 'fr') as never)
     const json = await response.json()
 
     expect(json.action).toBe('recommend_update')
-    expect(json.locale).toBe('ja')
-    expect(json.title).toBe('アップデート推奨')
-    expect(json.updateButtonLabel).toBe('アップデート')
-    expect(json.laterButtonLabel).toBe('あとで')
+    expect(json.locale).toBe('fr')
+    expect(json.title).toBe('Mise à jour recommandée')
+    expect(json.updateButtonLabel).toBe('Mettre à jour')
+    expect(json.laterButtonLabel).toBe('Plus tard')
   })
 
   it('falls back to English when locale is unsupported', async () => {
     const POST = await loadLegacyRoutePost()
-    const response = await POST(makeRequest('0.9.9', 'fr') as never)
+    const response = await POST(makeRequest('0.9.9', 'xx-YY') as never)
     const json = await response.json()
 
     expect(json.locale).toBe('en')
@@ -136,4 +170,3 @@ describe('/api/client/version-policy route', () => {
     expect(json.action).toBe('force_update')
   })
 })
-
