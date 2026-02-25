@@ -46,10 +46,19 @@ type NativeAuthBridgeEvent =
       message: string;
     };
 
+type MingleWindowWithNativeAuthCache = Window & {
+  __MINGLE_LAST_NATIVE_AUTH_EVENT?: NativeAuthBridgeEvent;
+};
+
 function isNativeAuthBridgeEnabled(): boolean {
   if (typeof window === "undefined") return false;
   if (typeof window.ReactNativeWebView?.postMessage !== "function") return false;
   return true;
+}
+
+function getWindowWithNativeAuthCache(): MingleWindowWithNativeAuthCache | null {
+  if (typeof window === "undefined") return null;
+  return window as MingleWindowWithNativeAuthCache;
 }
 
 export default function MingleHome(props: MingleHomeProps) {
@@ -85,9 +94,12 @@ export default function MingleHome(props: MingleHomeProps) {
     if (typeof window === "undefined") return;
     if (!isNativeAuthBridgeEnabled()) return;
 
-    const handleNativeAuthEvent = (event: Event) => {
-      const detail = (event as CustomEvent<NativeAuthBridgeEvent>).detail;
+    const processNativeAuthDetail = (detail: NativeAuthBridgeEvent | null | undefined) => {
       if (!detail || typeof detail !== "object") return;
+      const cachedWindow = getWindowWithNativeAuthCache();
+      if (cachedWindow) {
+        delete cachedWindow.__MINGLE_LAST_NATIVE_AUTH_EVENT;
+      }
 
       if (detail.type === "status") {
         return;
@@ -129,11 +141,19 @@ export default function MingleHome(props: MingleHomeProps) {
       });
     };
 
+    const handleNativeAuthEvent = (event: Event) => {
+      processNativeAuthDetail((event as CustomEvent<NativeAuthBridgeEvent>).detail);
+    };
+
     window.addEventListener(NATIVE_AUTH_EVENT, handleNativeAuthEvent as EventListener);
+    const pendingDetail = getWindowWithNativeAuthCache()?.__MINGLE_LAST_NATIVE_AUTH_EVENT;
+    if (pendingDetail) {
+      processNativeAuthDetail(pendingDetail);
+    }
     return () => {
       window.removeEventListener(NATIVE_AUTH_EVENT, handleNativeAuthEvent as EventListener);
     };
-  }, [callbackUrl, props.dictionary.profile.nativeSignInFailed]);
+  }, [callbackUrl, clearNativeAuthTimeout, props.dictionary.profile.nativeSignInFailed]);
 
   const handleSocialSignIn = useCallback((provider: "apple" | "google") => {
     setIsSigningIn(true);

@@ -495,6 +495,7 @@ function App(): React.JSX.Element {
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
   const nativeAuthInFlightRef = useRef<NativeAuthProvider | null>(null);
+  const pendingAuthEventRef = useRef<NativeAuthEvent | null>(null);
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
     if (Platform.OS !== 'ios') return 36;
     const manager = (NativeModules as {
@@ -668,15 +669,34 @@ function App(): React.JSX.Element {
     webViewRef.current?.injectJavaScript(script);
   }, []);
 
-  const emitAuthToWeb = useCallback((payload: NativeAuthEvent) => {
-    if (!isPageReadyRef.current) return;
+  const dispatchAuthToWeb = useCallback((payload: NativeAuthEvent) => {
     const serialized = JSON.stringify(payload);
     if (__DEV__) {
       console.log(`[NativeAuth→Web] ${JSON.stringify(payload).slice(0, 160)}`);
     }
-    const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_AUTH_EVENT)}, { detail: ${serialized} })); true;`;
+    const script = `window.__MINGLE_LAST_NATIVE_AUTH_EVENT = ${serialized}; window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_AUTH_EVENT)}, { detail: ${serialized} })); true;`;
     webViewRef.current?.injectJavaScript(script);
   }, []);
+
+  const emitAuthToWeb = useCallback((payload: NativeAuthEvent) => {
+    if (!isPageReadyRef.current) {
+      pendingAuthEventRef.current = payload;
+      if (__DEV__) {
+        console.log(`[NativeAuth→Web] queued (page not ready) ${JSON.stringify(payload).slice(0, 160)}`);
+      }
+      return;
+    }
+    pendingAuthEventRef.current = null;
+    dispatchAuthToWeb(payload);
+  }, [dispatchAuthToWeb]);
+
+  const flushPendingAuthToWeb = useCallback(() => {
+    if (!isPageReadyRef.current) return;
+    const pending = pendingAuthEventRef.current;
+    if (!pending) return;
+    pendingAuthEventRef.current = null;
+    dispatchAuthToWeb(pending);
+  }, [dispatchAuthToWeb]);
 
   const handleIosTopTapOverlayPress = useCallback(() => {
     emitUiToWeb({ type: 'scroll_to_top', source: 'ios_status_bar_overlay' });
@@ -973,10 +993,15 @@ function App(): React.JSX.Element {
     };
   }, [emitTtsToWeb, resolveCurrentTtsIdentity]);
 
+  const handleLoadStart = useCallback(() => {
+    isPageReadyRef.current = false;
+  }, []);
+
   const handleLoadEnd = useCallback(() => {
     isPageReadyRef.current = true;
     emitToWeb({ type: 'status', status: nativeStatusRef.current });
-  }, [emitToWeb]);
+    flushPendingAuthToWeb();
+  }, [emitToWeb, flushPendingAuthToWeb]);
 
   const handleLoadError = useCallback((event: { nativeEvent: { description?: string } }) => {
     const description = event.nativeEvent.description || 'webview_load_failed';
@@ -1009,6 +1034,7 @@ function App(): React.JSX.Element {
           setSupportMultipleWindows={false}
           allowsBackForwardNavigationGestures={false}
           onMessage={handleWebMessage}
+          onLoadStart={handleLoadStart}
           onLoadEnd={handleLoadEnd}
           onError={handleLoadError}
           style={styles.webView}
