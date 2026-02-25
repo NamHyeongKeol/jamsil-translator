@@ -9,6 +9,7 @@ import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
+import { buildLandingApiPath } from '@/lib/api-contract'
 
 const VOLUME_THRESHOLD = 0.05
 const USAGE_LIMIT_SEC = 60
@@ -53,7 +54,7 @@ function getFirstTranslationToSpeak(utterance: Utterance, selectedLanguages: str
 
 async function saveConversation(utterances: Utterance[], selectedLanguages: string[], usageSec: number) {
   try {
-    await fetch('/api/log-conversation', {
+    await fetch(buildLandingApiPath('/log-conversation'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

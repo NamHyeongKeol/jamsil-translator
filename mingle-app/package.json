@@ -6,10 +6,15 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "build:release:web": "NEXT_PUBLIC_API_NAMESPACE= pnpm build",
+    "build:release:ios": "NEXT_PUBLIC_API_NAMESPACE=ios/v1.0.0 pnpm build",
+    "build:release:android": "NEXT_PUBLIC_API_NAMESPACE= pnpm build",
+    "build:release:all": "pnpm build:release:web && pnpm build:release:ios && pnpm build:release:android",
     "rn:install": "pnpm --dir rn install",
     "rn:pods": "cd rn/ios && (bundle exec pod install || pod install)",
     "rn:start": "node scripts/run-with-env-local.mjs pnpm --dir rn start",
-    "rn:ios": "node scripts/run-with-env-local.mjs pnpm --dir rn ios",
+    "rn:ios:env-check": "node scripts/run-with-env-local.mjs node scripts/require-rn-ios-namespace.mjs",
+    "rn:ios": "pnpm rn:ios:env-check && node scripts/run-with-env-local.mjs pnpm --dir rn ios",
     "rn:android": "node scripts/run-with-env-local.mjs pnpm --dir rn android",
     "start": "next start",
     "test": "vitest run",
@@ -42,6 +47,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@react-native/typescript-config": "0.84.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

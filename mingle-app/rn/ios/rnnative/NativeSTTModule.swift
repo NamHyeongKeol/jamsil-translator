@@ -301,6 +301,8 @@ class NativeSTTModule: RCTEventEmitter {
                     hostKey: "MingleDefaultWsHost",
                     legacyKey: "MingleDefaultWsURL"
                 ),
+                "clientVersion": Self.readRuntimeConfigValue("CFBundleShortVersionString"),
+                "clientBuild": Self.readRuntimeConfigValue("CFBundleVersion"),
             ],
         ]
     }
@@ -321,6 +323,8 @@ class NativeSTTModule: RCTEventEmitter {
                 hostKey: "MingleDefaultWsHost",
                 legacyKey: "MingleDefaultWsURL"
             ),
+            "clientVersion": Self.readRuntimeConfigValue("CFBundleShortVersionString"),
+            "clientBuild": Self.readRuntimeConfigValue("CFBundleVersion"),
         ])
     }
 
