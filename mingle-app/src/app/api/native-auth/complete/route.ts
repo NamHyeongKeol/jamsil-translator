@@ -42,6 +42,19 @@ function buildAppRedirect(params: {
   return redirectUrl;
 }
 
+function redirectToApp(params: {
+  status: "success" | "error";
+  provider?: NativeOAuthProvider;
+  callbackUrl?: string;
+  token?: string;
+  message?: string;
+}): NextResponse {
+  // Use 302 for custom-scheme redirects to maximize browser compatibility on iOS.
+  const response = NextResponse.redirect(buildAppRedirect(params), 302);
+  response.headers.set("cache-control", "no-store, max-age=0");
+  return response;
+}
+
 function resolveSubject({
   jwtSubject,
   email,
@@ -79,22 +92,22 @@ export async function GET(request: NextRequest) {
 
   if (!provider) {
     console.warn("[native-auth/complete] invalid provider");
-    return NextResponse.redirect(buildAppRedirect({
+    return redirectToApp({
       status: "error",
       callbackUrl,
       message: "invalid_provider",
-    }));
+    });
   }
 
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     console.warn(`[native-auth/complete] missing session provider=${provider}`);
-    return NextResponse.redirect(buildAppRedirect({
+    return redirectToApp({
       status: "error",
       provider,
       callbackUrl,
       message: "native_auth_session_missing",
-    }));
+    });
   }
 
   const jwtToken = await getToken({ req: request, secret: resolveJwtSecret() });
@@ -114,22 +127,22 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[native-auth/complete] bridge token creation failed provider=${provider} reason=${message}`);
-    return NextResponse.redirect(buildAppRedirect({
+    return redirectToApp({
       status: "error",
       provider,
       callbackUrl,
       message: "native_auth_bridge_token_failed",
-    }));
+    });
   }
 
   console.info(
     `[native-auth/complete] success provider=${provider} callbackUrl=${callbackUrl} hasEmail=${email ? "1" : "0"}`,
   );
 
-  return NextResponse.redirect(buildAppRedirect({
+  return redirectToApp({
     status: "success",
     provider,
     callbackUrl,
     token: bridgeToken,
-  }));
+  });
 }
