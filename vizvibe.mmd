@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_ios_client_version_policy_gate
+    %% @lastActive: mingle_api_shared_utilities
 
     %% === START ===
     %% @project_start [start, closed]
@@ -808,6 +808,9 @@ flowchart TD
     %% @mingle_ios_client_version_policy_gate [ai-task, closed, 2026-02-25, ai]
     mingle_ios_client_version_policy_gate("iOS 클라이언트 버전 정책 게이트 추가<br/><sub>앱 시작 시 API로 clientVersion/clientBuild를 전송해<br/>force_update/recommend_update/none 정책을 수신하고<br/>강제 업데이트는 화면 차단, 권장 업데이트는 알림으로 처리<br/>legacy와 /ios/v1.0.0 라우트가 동일 컨트롤러를 공유</sub>")
 
+    %% @mingle_api_shared_utilities [ai-task, closed, 2026-02-25, ai]
+    mingle_api_shared_utilities("API Handler 공유 유틸리티 추출<br/><sub>TTS/Translate Handler 간 중복되던 Inworld 인증,<br/>base64/음성 디코딩, voiceId 캐시 로직을 공유 폴더로 추출<br/>불필요하게 혼재된 mobile/web 라우트 빈 디렉토리 제거<br/>iOS v1.0.0 구조(라우트/컨트롤러)로 통일된 버전 관리</sub>")
+
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
 
@@ -1034,6 +1037,7 @@ flowchart TD
     mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix --> mingle_ios_team_override_auto_detect_removal_fix
     mingle_ios_team_override_auto_detect_removal_fix --> mingle_api_ios_v1_0_0_legacy_parity_rollout
     mingle_api_ios_v1_0_0_legacy_parity_rollout --> mingle_ios_client_version_policy_gate
+    mingle_api_ios_v1_0_0_legacy_parity_rollout --> mingle_api_shared_utilities
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -1275,6 +1279,7 @@ flowchart TD
     mingle_ios_team_override_auto_detect_removal_fix -.-> ultimate_goal
     mingle_api_ios_v1_0_0_legacy_parity_rollout -.-> ultimate_goal
     mingle_ios_client_version_policy_gate -.-> ultimate_goal
+    mingle_api_shared_utilities -.-> ultimate_goal
     mingle_stt_soniox_debug_logging_removed -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
     mingle_worktree_devbox_env_spacing_normalization --> mingle_ios_native_swiftui_workspace
@@ -1350,6 +1355,7 @@ flowchart TD
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
         mingle_ios_client_version_policy_gate
+        mingle_api_shared_utilities
     end
 
     %% === STYLES ===
@@ -1712,7 +1718,8 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_ios_client_version_policy_gate fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_api_shared_utilities fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_ios_client_version_policy_gate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_runtime_vault_env_injection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
