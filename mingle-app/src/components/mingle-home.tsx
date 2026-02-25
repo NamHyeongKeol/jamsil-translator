@@ -247,6 +247,12 @@ export default function MingleHome(props: MingleHomeProps) {
       clearNativeAuthTimeout();
 
       const pendingProvider = pendingNativeProviderRef.current;
+      if (!pendingProvider) {
+        // Ignore late/stale native auth events when no auth flow is in progress.
+        // Still ack so the RN layer can stop retrying this payload.
+        postNativeAuthAck(detail);
+        return;
+      }
       if (pendingProvider && detail.provider !== pendingProvider) {
         return;
       }
