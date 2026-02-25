@@ -1137,7 +1137,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Header */}
         <div
-          className={`relative shrink-0 flex items-center justify-between border-b border-gray-100 ${navSurfaceClassName}`}
+          className={`relative z-40 shrink-0 flex items-center justify-between ${navSurfaceClassName}`}
           style={{
             paddingTop: "max(calc(env(safe-area-inset-top) + 20px), 24px)",
             paddingBottom: "10px",
@@ -1198,7 +1198,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   setMenuOpen(o => !o)
                 }}
                 disabled={isAuthActionPending}
-                className={`inline-flex h-11 min-w-[44px] items-center justify-center rounded-xl px-3 text-gray-700 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60 ${navSurfaceClassName}`}
+                className={`inline-flex h-11 min-w-[44px] items-center justify-center px-2 text-gray-700 transition-colors hover:text-gray-900 active:text-gray-900 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${navSurfaceClassName}`}
                 aria-label={menuLabel}
                 aria-expanded={menuOpen}
               >
@@ -1207,7 +1207,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               {menuOpen && (
                 <div
                   ref={menuPanelRef}
-                  className={`absolute right-0 top-full z-30 mt-2 w-44 rounded-xl p-1.5 shadow-lg ${navSurfaceClassName}`}
+                  className={`absolute right-0 top-0 z-50 w-44 p-0 ${navSurfaceClassName}`}
                 >
                   <button
                     type="button"
@@ -1216,7 +1216,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                       onLogout()
                     }}
                     disabled={isAuthActionPending}
-                    className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <LogOut size={15} strokeWidth={2} />
                     <span>{logoutLabel}</span>
@@ -1228,7 +1228,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                       onDeleteAccount()
                     }}
                     disabled={isAuthActionPending}
-                    className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Trash2 size={15} strokeWidth={2} />
                     <span>{deleteAccountLabel}</span>
