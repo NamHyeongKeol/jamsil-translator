@@ -134,6 +134,21 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
 }
 
+resolve_bundle_cmd() {
+  local candidate
+  for candidate in \
+    "/opt/homebrew/lib/ruby/gems/3.3.0/bin/bundle" \
+    "/opt/homebrew/opt/ruby/bin/bundle"
+  do
+    [[ -x "$candidate" ]] || continue
+    printf "%s" "$candidate"
+    return 0
+  done
+
+  command -v bundle >/dev/null 2>&1 || return 1
+  command -v bundle
+}
+
 trim_whitespace() {
   local value="${1:-}"
   value="${value#"${value%%[![:space:]]*}"}"
@@ -606,6 +621,7 @@ ensure_ios_pods_if_needed() {
   local pods_dir="$ROOT_DIR/mingle-app/rn/ios/Pods"
   local podfile_lock="$ios_dir/Podfile.lock"
   local manifest_lock="$ios_dir/Pods/Manifest.lock"
+  local bundle_cmd=""
   local needs_install=0
   local reason="already synced"
 
@@ -627,27 +643,28 @@ ensure_ios_pods_if_needed() {
     return 0
   fi
 
+  bundle_cmd="$(resolve_bundle_cmd || true)"
   log "installing iOS pods: mingle-app/rn/ios ($reason)"
   (
     cd "$ROOT_DIR/mingle-app/rn"
-    if command -v bundle >/dev/null 2>&1; then
+    if [[ -n "$bundle_cmd" ]]; then
       local bundle_home="$ROOT_DIR/.devbox-cache/bundle/rn"
       mkdir -p "$bundle_home"
       if ! BUNDLE_USER_HOME="$bundle_home" \
         BUNDLE_PATH="$bundle_home" \
         BUNDLE_DISABLE_SHARED_GEMS=true \
-        bundle check >/dev/null 2>&1; then
+        "$bundle_cmd" check >/dev/null 2>&1; then
         BUNDLE_USER_HOME="$bundle_home" \
         BUNDLE_PATH="$bundle_home" \
         BUNDLE_DISABLE_SHARED_GEMS=true \
-          bundle install
+          "$bundle_cmd" install
       fi
       (
         cd ios
         BUNDLE_USER_HOME="$bundle_home" \
         BUNDLE_PATH="$bundle_home" \
         BUNDLE_DISABLE_SHARED_GEMS=true \
-          bundle exec pod install
+          "$bundle_cmd" exec pod install
       )
     else
       (
@@ -1270,12 +1287,14 @@ detect_ios_coredevice_id() {
 detect_ios_xcode_destination_udid() {
   command -v xcodebuild >/dev/null 2>&1 || return 1
   local workspace="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace"
+  local destination_udid=""
   [[ -d "$workspace" ]] || return 1
 
-  xcodebuild \
-    -workspace "$workspace" \
-    -scheme rnnative \
-    -showdestinations 2>/dev/null | awk '
+  destination_udid="$(
+    xcodebuild \
+      -workspace "$workspace" \
+      -scheme rnnative \
+      -showdestinations 2>&1 | awk '
       /platform:iOS/ && /id:/ && /name:/ {
         line = $0
         if (line ~ /Any iOS Device/) next
@@ -1289,7 +1308,29 @@ detect_ios_xcode_destination_udid() {
         print id
         exit
       }
-    '
+    ' || true
+  )"
+
+  if [[ -n "$destination_udid" ]]; then
+    printf '%s' "$destination_udid"
+    return 0
+  fi
+
+  command -v xcrun >/dev/null 2>&1 || return 1
+  xcrun xctrace list devices 2>/dev/null | awk '
+    /^== Devices ==/ { in_devices = 1; next }
+    /^== Simulators ==/ { in_devices = 0 }
+    !in_devices { next }
+    {
+      line = $0
+      if (line ~ /MacBook|^Mac /) next
+      if (match(line, /\([0-9A-F-]{36}\)/)) {
+        id = substr(line, RSTART + 1, RLENGTH - 2)
+        print id
+        exit
+      }
+    }
+  '
 }
 
 detect_ios_device_udid() {
