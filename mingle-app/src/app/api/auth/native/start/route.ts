@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
   completeUrl.searchParams.set("provider", provider);
   completeUrl.searchParams.set("callbackUrl", callbackPath);
 
-  const signInUrl = new URL(`/api/auth/signin/${provider}`, externalOrigin);
+  const signInUrl = new URL("/auth/signin", externalOrigin);
+  signInUrl.searchParams.set("provider", provider);
   signInUrl.searchParams.set("callbackUrl", completeUrl.toString());
 
   return NextResponse.redirect(signInUrl);
