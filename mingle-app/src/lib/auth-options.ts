@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import AppleProvider from "next-auth/providers/apple";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import { DEFAULT_LOCALE } from "@/i18n";
 import { verifyNativeAuthBridgeToken } from "@/lib/native-auth-bridge";
 
 const appleClientId = process.env.AUTH_APPLE_ID;
@@ -81,7 +82,7 @@ export function isGoogleOAuthConfigured(): boolean {
 export const authOptions: NextAuthOptions = {
   providers,
   pages: {
-    signIn: "/auth/signin",
+    signIn: `/${DEFAULT_LOCALE}/auth/signin`,
   },
   session: {
     strategy: "jwt",

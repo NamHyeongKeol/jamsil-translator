@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n";
 import { resolveNativeOAuthProvider, resolveSafeCallbackPath } from "@/lib/native-auth-bridge";
 
 function normalizeOriginCandidate(rawValue: string | null | undefined): string | null {
@@ -39,6 +40,18 @@ function resolveExternalOrigin(request: NextRequest): string {
   return request.nextUrl.origin;
 }
 
+function resolveLocaleFromCallbackPath(pathname: string): string {
+  const firstSegment = pathname
+    .split("/")
+    .filter(Boolean)[0]
+    ?.trim()
+    .toLowerCase();
+  if (firstSegment && isSupportedLocale(firstSegment)) {
+    return firstSegment;
+  }
+  return DEFAULT_LOCALE;
+}
+
 export async function GET(request: NextRequest) {
   const provider = resolveNativeOAuthProvider(request.nextUrl.searchParams.get("provider"));
   if (!provider) {
@@ -51,7 +64,8 @@ export async function GET(request: NextRequest) {
   completeUrl.searchParams.set("provider", provider);
   completeUrl.searchParams.set("callbackUrl", callbackPath);
 
-  const signInUrl = new URL("/auth/signin", externalOrigin);
+  const locale = resolveLocaleFromCallbackPath(callbackPath);
+  const signInUrl = new URL(`/${locale}/auth/signin`, externalOrigin);
   signInUrl.searchParams.set("provider", provider);
   signInUrl.searchParams.set("callbackUrl", completeUrl.toString());
 
