@@ -126,6 +126,7 @@ export interface LivePhoneDemoRef {
 interface LivePhoneDemoProps {
   onLimitReached?: () => void
   enableAutoTTS?: boolean
+  uiLocale: string
   tapPlayToStartLabel: string
   usageLimitReachedLabel: string
   usageLimitRetryHintLabel: string
@@ -201,6 +202,7 @@ async function saveConversation(utterances: Utterance[], selectedLanguages: stri
 const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function LivePhoneDemo({
   onLimitReached,
   enableAutoTTS = false,
+  uiLocale,
   tapPlayToStartLabel,
   usageLimitReachedLabel,
   usageLimitRetryHintLabel,
@@ -1182,6 +1184,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 onClose={() => setLangSelectorOpen(false)}
                 selectedLanguages={selectedLanguages}
                 onToggleLanguage={handleToggleLanguage}
+                uiLocale={uiLocale}
                 disabled={isActive}
                 triggerRef={langSelectorButtonRef}
               />
@@ -1195,7 +1198,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   setMenuOpen(o => !o)
                 }}
                 disabled={isAuthActionPending}
-                className={`inline-flex h-11 min-w-[44px] items-center justify-center rounded-xl px-3 text-gray-700 shadow-sm ring-1 ring-gray-200 transition-colors hover:bg-gray-50 active:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60 ${navSurfaceClassName}`}
+                className={`inline-flex h-11 min-w-[44px] items-center justify-center rounded-xl px-3 text-gray-700 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60 ${navSurfaceClassName}`}
                 aria-label={menuLabel}
                 aria-expanded={menuOpen}
               >
@@ -1204,7 +1207,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               {menuOpen && (
                 <div
                   ref={menuPanelRef}
-                  className={`absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-gray-200 p-1.5 shadow-lg ${navSurfaceClassName}`}
+                  className={`absolute right-0 top-full z-30 mt-2 w-44 rounded-xl p-1.5 shadow-lg ${navSurfaceClassName}`}
                 >
                   <button
                     type="button"
