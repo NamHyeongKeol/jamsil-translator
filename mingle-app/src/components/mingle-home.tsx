@@ -48,13 +48,7 @@ type NativeAuthBridgeEvent =
 function isNativeAuthBridgeEnabled(): boolean {
   if (typeof window === "undefined") return false;
   if (typeof window.ReactNativeWebView?.postMessage !== "function") return false;
-  try {
-    const params = new URLSearchParams(window.location.search || "");
-    const value = (params.get("nativeAuth") || "").trim().toLowerCase();
-    return value === "1" || value === "true";
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 export default function MingleHome(props: MingleHomeProps) {
@@ -131,7 +125,8 @@ export default function MingleHome(props: MingleHomeProps) {
 
   const handleSocialSignIn = useCallback((provider: "apple" | "google") => {
     setIsSigningIn(true);
-    if (typeof window !== "undefined" && isNativeAuthBridgeEnabled()) {
+    const nativeBridgeEnabled = typeof window !== "undefined" && isNativeAuthBridgeEnabled();
+    if (nativeBridgeEnabled) {
       try {
         const startUrl = new URL("/api/auth/native/start", window.location.origin);
         startUrl.searchParams.set("provider", provider);
@@ -149,13 +144,16 @@ export default function MingleHome(props: MingleHomeProps) {
         return;
       } catch {
         pendingNativeProviderRef.current = null;
+        setIsSigningIn(false);
+        window.alert(props.dictionary.profile.nativeSignInFailed);
+        return;
       }
     }
 
     void signIn(provider, { callbackUrl }).catch(() => {
       setIsSigningIn(false);
     });
-  }, [callbackUrl]);
+  }, [callbackUrl, props.dictionary.profile.nativeSignInFailed]);
 
   const handleSignOut = useCallback(() => {
     if (isDeletingAccount) return;
