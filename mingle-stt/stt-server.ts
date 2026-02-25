@@ -63,6 +63,14 @@ wss.on('connection', (clientWs) => {
     let sonioxLastTranscriptProgressAtMs = 0;
     let sonioxManualFinalizeTimer: NodeJS.Timeout | null = null;
     let sonioxManualFinalizeDueAtMs = 0;
+    // Snapshot of accumulated finalizedText length at the moment we send
+    // { type: 'finalize' } to Soniox.  When the <fin> response eventually
+    // arrives, any text beyond this length was spoken *after* the finalize
+    // request and should become carry for the next utterance.
+    let sonioxFinalizeSnapshotTextLen: number | null = null;
+    // Mirror of `finalizedText.length` from inside startSonioxConnection,
+    // kept in connection scope so maybeTriggerSonioxManualFinalize can read it.
+    let sonioxCurrentFinalizedTextLen = 0;
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
     const fireworksApiKey = process.env.FIREWORKS_API_KEY;
@@ -105,6 +113,8 @@ wss.on('connection', (clientWs) => {
         sonioxManualFinalizeSent = false;
         sonioxLastManualFinalizeAtMs = 0;
         sonioxLastTranscriptProgressAtMs = 0;
+        sonioxFinalizeSnapshotTextLen = null;
+        sonioxCurrentFinalizedTextLen = 0;
     };
 
     const maybeTriggerSonioxManualFinalize = () => {
@@ -146,12 +156,18 @@ wss.on('connection', (clientWs) => {
         }
 
         try {
+            // Capture snapshot of accumulated text length before sending
+            // finalize.  Tokens arriving after this point belong to the
+            // *next* utterance, even though Soniox may place them before
+            // the <fin> marker in its response.
+            sonioxFinalizeSnapshotTextLen = sonioxCurrentFinalizedTextLen;
             sttWs.send(JSON.stringify({ type: 'finalize' }));
             sonioxManualFinalizeSent = true;
             sonioxLastManualFinalizeAtMs = now;
             clearSonioxManualFinalizeTimer();
         } catch (error) {
             console.error('Soniox manual finalize send failed:', error);
+            sonioxFinalizeSnapshotTextLen = null;
         }
     };
 
@@ -867,6 +883,7 @@ wss.on('connection', (clientWs) => {
 
                     if (newFinalText) {
                         finalizedText += newFinalText;
+                        sonioxCurrentFinalizedTextLen = finalizedText.length;
                         latestNonFinalIsProvisionalCarry = false;
                         if (maxSeenFinalEndMs > lastFinalizedEndMs) {
                             lastFinalizedEndMs = maxSeenFinalEndMs;
@@ -925,9 +942,41 @@ wss.on('connection', (clientWs) => {
                     let endpointCarryText = '';
                     if (hasEndpointToken && (hasProgressTokenBeyondWatermark || mergedHasEndpointMarker || hasPendingTextSnapshot)) {
                         const mergedAtEndpoint = composeTurnText(finalizedText, latestNonFinalText);
-                        const { finalText, carryText } = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
-                        let finalTextToEmit = finalText;
-                        let carryTextToEmit = carryText;
+
+                        // --- Snapshot-based split ---
+                        // When we sent { type: 'finalize' } to Soniox, we recorded
+                        // the length of `finalizedText` at that instant.  Any text
+                        // that was appended to `finalizedText` AFTER that snapshot
+                        // was spoken after the finalize request and therefore belongs
+                        // to the next utterance.  We use this boundary instead of
+                        // (or in combination with) the <fin> marker position to
+                        // avoid the "next word leaks into previous utterance" bug.
+                        let finalTextToEmit: string;
+                        let carryTextToEmit: string;
+
+                        if (sonioxFinalizeSnapshotTextLen !== null && sonioxFinalizeSnapshotTextLen >= 0) {
+                            // Text accumulated in `finalizedText` up to the snapshot
+                            // is the authoritative utterance boundary.
+                            const snapshotBoundary = sonioxFinalizeSnapshotTextLen;
+                            const textUpToSnapshot = finalizedText.slice(0, snapshotBoundary);
+                            const textAfterSnapshot = finalizedText.slice(snapshotBoundary);
+
+                            // The utterance text is: snapshot text (strip markers) + endpoint marker.
+                            // Carry is: text added after snapshot + any non-final tail.
+                            const marker = extractFirstEndpointMarker(mergedAtEndpoint);
+                            finalTextToEmit = `${stripEndpointMarkers(textUpToSnapshot).trim()}${marker}`.trim();
+                            const afterSnapshotClean = stripEndpointMarkers(textAfterSnapshot).trim();
+                            const nonFinalClean = stripEndpointMarkers(latestNonFinalText).trim();
+                            carryTextToEmit = `${afterSnapshotClean}${afterSnapshotClean && nonFinalClean ? ' ' : ''}${nonFinalClean}`.trim();
+
+                            sonioxFinalizeSnapshotTextLen = null;
+                        } else {
+                            // No snapshot (e.g. Soniox-initiated endpoint, not our
+                            // manual finalize).  Fall back to marker-position split.
+                            const split = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
+                            finalTextToEmit = split.finalText;
+                            carryTextToEmit = split.carryText;
+                        }
 
                         if (!stripEndpointMarkers(finalTextToEmit).trim() && carryTextToEmit) {
                             // Some Soniox finalize bursts can place endpoint marker before stale non-final tail.
@@ -943,6 +992,7 @@ wss.on('connection', (clientWs) => {
                         } else {
                             // Ignore marker-only finals to avoid <fin>-only bubble floods.
                             finalizedText = '';
+                            sonioxCurrentFinalizedTextLen = 0;
                             latestNonFinalText = '';
                             latestNonFinalIsProvisionalCarry = false;
                             resetSonioxSegmentState();
