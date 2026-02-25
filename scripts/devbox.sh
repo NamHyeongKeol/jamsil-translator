@@ -79,6 +79,10 @@ log() {
   printf '[devbox] %s\n' "$*"
 }
 
+warn() {
+  printf '[devbox] warning: %s\n' "$*" >&2
+}
+
 die() {
   printf '[devbox] %s\n' "$*" >&2
   exit 1
@@ -120,6 +124,23 @@ EOF
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
+}
+
+trim_whitespace() {
+  local value="${1:-}"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+is_truthy() {
+  local raw="${1:-}"
+  local value
+  value="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+  case "$value" in
+    1|true|yes|y|on) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 is_numeric() {
@@ -260,6 +281,29 @@ read_env_value_from_vault() {
   value="$(vault kv get -format=json "$path" 2>/dev/null | jq -r --arg key "$key" '.data.data[$key] // ""')"
   [[ "$value" == "null" ]] && value=""
   [[ -n "$value" ]] && printf '%s' "$value"
+}
+
+read_app_setting_value() {
+  local key="$1"
+  local value=""
+
+  [[ -n "$key" ]] || return 1
+
+  value="${!key:-}"
+  if [[ -n "$value" ]]; then
+    printf '%s' "$value"
+    return 0
+  fi
+
+  if [[ -n "${DEVBOX_VAULT_APP_PATH:-}" ]] && command -v vault >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    value="$(read_env_value_from_vault "$DEVBOX_VAULT_APP_PATH" "$key" || true)"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
 derive_worktree_name() {
@@ -1596,7 +1640,188 @@ wait_for_ngrok_tunnels() {
   return 1
 }
 
+resolve_google_cloud_project() {
+  local project=""
+
+  project="$(read_app_setting_value DEVBOX_GOOGLE_CLOUD_PROJECT || true)"
+  [[ -z "$project" ]] && project="$(read_app_setting_value GOOGLE_CLOUD_PROJECT || true)"
+  [[ -z "$project" ]] && project="$(read_app_setting_value GCLOUD_PROJECT || true)"
+  if [[ -z "$project" ]] && command -v gcloud >/dev/null 2>&1; then
+    project="$(gcloud config get-value core/project 2>/dev/null || true)"
+    if [[ "$project" == "(unset)" ]]; then
+      project=""
+    fi
+  fi
+
+  printf '%s' "$(trim_whitespace "$project")"
+}
+
+resolve_google_access_token() {
+  local token_cmd=""
+  local token=""
+
+  token_cmd="$(read_app_setting_value DEVBOX_GOOGLE_ACCESS_TOKEN_CMD || true)"
+  if [[ -n "$token_cmd" ]]; then
+    token="$(bash -lc "$token_cmd" 2>/dev/null || true)"
+  elif command -v gcloud >/dev/null 2>&1; then
+    token="$(gcloud auth print-access-token 2>/dev/null || true)"
+  fi
+
+  printf '%s' "$(trim_whitespace "$token")"
+}
+
+build_google_redirect_uris_for_site() {
+  local site_url="$1"
+  local paths_raw=""
+  local item trimmed normalized
+  local -a items=()
+
+  paths_raw="$(read_app_setting_value DEVBOX_GOOGLE_REDIRECT_PATHS || true)"
+  if [[ -z "$paths_raw" ]]; then
+    paths_raw="/api/auth/callback/google"
+  fi
+
+  IFS=',' read -r -a items <<< "$paths_raw"
+  for item in "${items[@]}"; do
+    trimmed="$(trim_whitespace "$item")"
+    [[ -n "$trimmed" ]] || continue
+
+    if [[ "$trimmed" =~ ^https?:// ]]; then
+      printf '%s\n' "${trimmed%/}"
+      continue
+    fi
+
+    normalized="$trimmed"
+    [[ "$normalized" == /* ]] || normalized="/$normalized"
+    printf '%s%s\n' "${site_url%/}" "$normalized"
+  done | awk 'NF && !seen[$0]++'
+}
+
+sync_google_oauth_redirect_uris_for_site_change() {
+  local previous_site_url="${1:-}"
+  local current_site_url="${2:-}"
+  local enabled_raw=""
+  local client_id=""
+  local location=""
+  local project=""
+  local token=""
+  local encoded_client_id=""
+  local endpoint=""
+  local current_client_json=""
+  local updated=0
+  local current_uri=""
+  local desired_uri=""
+  local found=0
+  local uris_json=""
+  local payload=""
+  local -a desired_redirect_uris=()
+  local -a merged_redirect_uris=()
+
+  [[ -n "$current_site_url" ]] || return 0
+  [[ "$current_site_url" =~ ^https:// ]] || return 0
+  [[ "$current_site_url" != "$previous_site_url" ]] || return 0
+
+  enabled_raw="$(read_app_setting_value DEVBOX_GOOGLE_REDIRECT_SYNC_ENABLED || true)"
+  if [[ -n "$enabled_raw" ]] && ! is_truthy "$enabled_raw"; then
+    log "google oauth redirect sync disabled (DEVBOX_GOOGLE_REDIRECT_SYNC_ENABLED=$enabled_raw)"
+    return 0
+  fi
+
+  client_id="$(read_app_setting_value DEVBOX_GOOGLE_OAUTH_CLIENT_ID || true)"
+  [[ -z "$client_id" ]] && client_id="$(read_app_setting_value AUTH_GOOGLE_ID || true)"
+  client_id="$(trim_whitespace "$client_id")"
+  if [[ -z "$client_id" ]]; then
+    return 0
+  fi
+
+  location="$(read_app_setting_value DEVBOX_GOOGLE_OAUTH_LOCATION || true)"
+  location="$(trim_whitespace "$location")"
+  [[ -n "$location" ]] || location="global"
+
+  project="$(resolve_google_cloud_project)"
+  if [[ -z "$project" ]]; then
+    warn "skipping google redirect sync: missing project id (set DEVBOX_GOOGLE_CLOUD_PROJECT or gcloud core/project)"
+    return 0
+  fi
+
+  while IFS= read -r desired_uri; do
+    desired_uri="$(trim_whitespace "$desired_uri")"
+    [[ -n "$desired_uri" ]] || continue
+    desired_redirect_uris+=("$desired_uri")
+  done < <(build_google_redirect_uris_for_site "$current_site_url")
+
+  if [[ "${#desired_redirect_uris[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  token="$(resolve_google_access_token)"
+  if [[ -z "$token" ]]; then
+    warn "skipping google redirect sync: missing access token (run gcloud auth login or set DEVBOX_GOOGLE_ACCESS_TOKEN_CMD)"
+    return 0
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    warn "skipping google redirect sync: jq not found"
+    return 0
+  fi
+  if ! command -v curl >/dev/null 2>&1; then
+    warn "skipping google redirect sync: curl not found"
+    return 0
+  fi
+
+  encoded_client_id="$(printf '%s' "$client_id" | jq -sRr @uri)"
+  endpoint="https://iam.googleapis.com/v1/projects/${project}/locations/${location}/oauthClients/${encoded_client_id}"
+  current_client_json="$(curl -fsS \
+    -H "Authorization: Bearer $token" \
+    -H "X-Goog-User-Project: $project" \
+    "$endpoint" 2>/dev/null || true)"
+  if [[ -z "$current_client_json" ]]; then
+    warn "google redirect sync skipped: failed to load oauth client (project=$project location=$location client=$client_id)"
+    return 0
+  fi
+
+  while IFS= read -r current_uri; do
+    current_uri="$(trim_whitespace "$current_uri")"
+    [[ -n "$current_uri" ]] || continue
+    merged_redirect_uris+=("$current_uri")
+  done < <(printf '%s' "$current_client_json" | jq -r '.allowedRedirectUris[]?' 2>/dev/null || true)
+
+  for desired_uri in "${desired_redirect_uris[@]}"; do
+    found=0
+    for current_uri in "${merged_redirect_uris[@]}"; do
+      if [[ "$current_uri" == "$desired_uri" ]]; then
+        found=1
+        break
+      fi
+    done
+    if [[ "$found" -eq 0 ]]; then
+      merged_redirect_uris+=("$desired_uri")
+      updated=1
+    fi
+  done
+
+  if [[ "$updated" -eq 0 ]]; then
+    log "google oauth redirect URI already present for current ngrok host"
+    return 0
+  fi
+
+  uris_json="$(printf '%s\n' "${merged_redirect_uris[@]}" | jq -R . | jq -s 'map(select(length>0))')"
+  payload="$(jq -cn --argjson uris "$uris_json" '{allowedRedirectUris: $uris}')"
+  if ! curl -fsS -X PATCH \
+    -H "Authorization: Bearer $token" \
+    -H "X-Goog-User-Project: $project" \
+    -H "Content-Type: application/json" \
+    "$endpoint?update_mask=allowed_redirect_uris" \
+    --data "$payload" >/dev/null 2>&1; then
+    warn "google redirect sync failed while patching oauth client (project=$project location=$location client=$client_id)"
+    return 0
+  fi
+
+  log "google oauth redirect URI synced for ngrok host: ${desired_redirect_uris[*]}"
+}
+
 set_device_profile_values() {
+  local previous_site_url="${DEVBOX_SITE_URL:-}"
   read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"
 
   DEVBOX_PROFILE="device"
@@ -1609,6 +1834,7 @@ set_device_profile_values() {
 
   validate_https_url "ngrok web url" "$DEVBOX_SITE_URL"
   validate_wss_url "ngrok stt url" "$DEVBOX_RN_WS_URL"
+  sync_google_oauth_redirect_uris_for_site_change "$previous_site_url" "$DEVBOX_SITE_URL"
 }
 
 resolve_device_app_env_override() {
