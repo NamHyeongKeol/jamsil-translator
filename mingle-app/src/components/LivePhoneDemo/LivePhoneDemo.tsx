@@ -1194,7 +1194,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   setMenuOpen(o => !o)
                 }}
                 disabled={isAuthActionPending}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-11 min-w-[44px] items-center justify-center rounded-xl bg-gray-100 px-3 text-gray-700 shadow-sm transition-colors hover:bg-gray-200 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label={menuLabel}
                 aria-expanded={menuOpen}
               >
