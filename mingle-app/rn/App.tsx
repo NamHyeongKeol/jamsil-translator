@@ -153,6 +153,7 @@ const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
 const NATIVE_UI_EVENT = 'mingle:native-ui';
 const SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
+const IOS_SAFE_BROWSER_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
 type NativeSttStartPayload = {
   wsUrl?: string;
@@ -631,6 +632,7 @@ function App(): React.JSX.Element {
           ? { uri: webUrl }
           : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
         originWhitelist={['*']}
+        userAgent={Platform.OS === 'ios' ? IOS_SAFE_BROWSER_USER_AGENT : undefined}
         javaScriptEnabled
         domStorageEnabled
         allowsInlineMediaPlayback
