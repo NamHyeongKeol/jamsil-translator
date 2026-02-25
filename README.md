@@ -37,8 +37,18 @@ scripts/devbox up --profile device --device-app-env prod --with-ios-install --wi
 # scripts/devbox up --profile device --with-mobile-install
 # iOS만 설치하려면
 # scripts/devbox up --profile device --with-ios-install
+# iOS 네이티브만 설치하려면
+# scripts/devbox up --profile device --with-ios-install --ios-runtime native
+# mingle-ios만 빌드하려면(설치 없음)
+# scripts/devbox ios-native-build --ios-configuration Debug
+# 또는 RN + 네이티브를 같이 설치
+# scripts/devbox mobile --platform ios --ios-runtime both
 # 전체 로그를 파일로 남기려면
 # scripts/devbox --log-file auto up --profile device --with-ios-install
+# 테스트
+scripts/devbox test --target app
+# scripts/devbox test --target ios-native
+# scripts/devbox test --target all
 scripts/devbox status
 ```
 
@@ -56,7 +66,8 @@ scripts/devbox status
   서버 프로세스 환경변수로 런타임 주입합니다(파일 미기록).
 - `--profile device`는 ngrok(`devbox_web`/`devbox_stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
 - `--profile device`에서 `--device-app-env dev|prod`를 주면 모바일 앱 빌드 URL을
-  `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 읽어 주입합니다.
+  `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 읽어 주입합니다
+  (RN + `mingle-ios` 네이티브 URL 키 모두 지원).
   `--device-app-env prod`에서는 `up` 실행 시 ngrok/로컬 서버 기동을 생략합니다.
 - 워크트리마다 ngrok inspector 포트를 분리(`DEVBOX_NGROK_API_PORT`)해 동시 실행 충돌을 줄였습니다.
 - `--profile device`는 현재 워크트리 포트와 일치하는 `https/wss` 터널만 허용합니다.
@@ -67,8 +78,11 @@ scripts/devbox status
   `PATH`가 상대경로면 저장소 루트 기준이며, `auto`를 주면 `.devbox-logs/`에 타임스탬프 파일을 생성합니다.
   ngrok이 별도 터미널에서 실행되면 ngrok 로그는 해당 터미널에서 확인합니다.
   `.devbox-logs/` 폴더는 gitignore 처리되어 로그가 커밋되지 않습니다.
-- `scripts/devbox mobile --platform ios|android|all`로 기기 연결 시 RN 앱 빌드/설치 자동화를 수행합니다.
+- `scripts/devbox mobile --platform ios|android|all`로 기기 연결 시 RN/네이티브 앱 빌드/설치 자동화를 수행합니다.
+  iOS는 `--ios-runtime rn|native|both`를 지원하며, 네이티브 설치 대상은 `--ios-coredevice-id`로 지정할 수 있습니다.
+- `scripts/devbox ios-native-build --ios-configuration Debug|Release`로 `mingle-ios`만 빌드할 수 있습니다(설치 없음).
 - `scripts/devbox up --profile device --with-mobile-install`으로 서버 준비 + 모바일 설치를 한 번에 실행할 수 있습니다.
+- `scripts/devbox test --target app|ios-native|all`로 live 테스트와 네이티브 iOS 테스트 빌드를 분리/통합 실행할 수 있습니다.
 
 ## Learn More
 
