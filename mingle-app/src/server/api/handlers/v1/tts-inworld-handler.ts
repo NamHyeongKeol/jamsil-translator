@@ -6,128 +6,20 @@ import {
   parseClientContext,
   upsertTrackedUser,
 } from '@/lib/app-analytics'
+import { getInworldAuthHeaderValue } from '@/server/api/shared/inworld-auth'
+import { decodeAudioContent, detectAudioMime } from '@/server/api/shared/audio-utils'
+import { resolveVoiceId, INWORLD_API_BASE } from '@/server/api/shared/inworld-voice'
 
 export const runtime = 'nodejs'
 
-const INWORLD_API_BASE = 'https://api.inworld.ai'
 const DEFAULT_MODEL_ID = process.env.INWORLD_TTS_MODEL_ID || 'inworld-tts-1.5-mini'
-const DEFAULT_VOICE_ID = process.env.INWORLD_TTS_DEFAULT_VOICE_ID || 'Ashley'
 const DEFAULT_SPEAKING_RATE = Number(process.env.INWORLD_TTS_SPEAKING_RATE || '1.3')
-const VOICE_CACHE_TTL_MS = 1000 * 60 * 30
-
-interface InworldVoiceItem {
-  id?: string
-  voiceId?: string
-  name?: string
-}
-
-const voiceCache = new Map<string, { voiceId: string, expiresAt: number }>()
-
-function getAuthHeaderValue(): string | null {
-  const jwtToken = process.env.INWORLD_JWT?.trim()
-  if (jwtToken) {
-    if (jwtToken.startsWith('Bearer ')) {
-      return jwtToken
-    }
-    return `Bearer ${jwtToken}`
-  }
-
-  const basicCredential = (
-    process.env.INWORLD_BASIC
-    || process.env.INWORLD_BASIC_KEY
-    || process.env.INWORLD_RUNTIME_BASE64_CREDENTIAL
-    || process.env.INWORLD_BASIC_CREDENTIAL
-    || ''
-  ).trim()
-  if (basicCredential) {
-    if (basicCredential.startsWith('Basic ')) {
-      return basicCredential
-    }
-    return `Basic ${basicCredential}`
-  }
-
-  const apiKey = process.env.INWORLD_API_KEY?.trim()
-  const apiSecret = process.env.INWORLD_API_SECRET?.trim()
-  if (apiKey && !apiSecret) {
-    if (apiKey.startsWith('Basic ')) return apiKey
-    return `Basic ${apiKey}`
-  }
-
-  if (apiKey && apiSecret) {
-    const credential = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
-    return `Basic ${credential}`
-  }
-
-  return null
-}
 
 function normalizeLanguage(input?: string): string | null {
   if (!input) return null
   const normalized = input.trim().replace(/_/g, '-').toLowerCase()
   if (!normalized) return null
   return normalized.split('-')[0] || null
-}
-
-function pickVoiceId(item: InworldVoiceItem): string | null {
-  if (item.voiceId && typeof item.voiceId === 'string') return item.voiceId
-  if (item.id && typeof item.id === 'string') return item.id
-  if (item.name && typeof item.name === 'string') return item.name
-  return null
-}
-
-async function resolveVoiceId(authHeader: string, language: string | null): Promise<string> {
-  if (!language) return DEFAULT_VOICE_ID
-
-  const now = Date.now()
-  const cached = voiceCache.get(language)
-  if (cached && cached.expiresAt > now) {
-    return cached.voiceId
-  }
-
-  try {
-    const url = `${INWORLD_API_BASE}/tts/v1/voices?filter=${encodeURIComponent(`language=${language}`)}`
-    const response = await fetch(url, {
-      headers: { Authorization: authHeader },
-      cache: 'no-store',
-    })
-    if (!response.ok) {
-      return DEFAULT_VOICE_ID
-    }
-
-    const data = await response.json() as { voices?: InworldVoiceItem[], items?: InworldVoiceItem[] }
-    const voices = Array.isArray(data.voices) ? data.voices : (Array.isArray(data.items) ? data.items : [])
-    const resolved = voices
-      .map(pickVoiceId)
-      .find((id): id is string => Boolean(id))
-
-    const voiceId = resolved || DEFAULT_VOICE_ID
-    voiceCache.set(language, { voiceId, expiresAt: now + VOICE_CACHE_TTL_MS })
-    return voiceId
-  } catch {
-    return DEFAULT_VOICE_ID
-  }
-}
-
-function decodeAudioContent(audioContent?: string): Buffer | null {
-  if (!audioContent || typeof audioContent !== 'string') return null
-  const cleaned = audioContent.replace(/^data:audio\/[a-zA-Z0-9.+-]+;base64,/, '').trim()
-  if (!cleaned) return null
-
-  try {
-    return Buffer.from(cleaned, 'base64')
-  } catch {
-    return null
-  }
-}
-
-function detectAudioMime(audioBuffer: Buffer): string {
-  if (audioBuffer.length < 4) return 'application/octet-stream'
-  const b = audioBuffer
-  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46) return 'audio/wav'
-  if (b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) return 'audio/mpeg'
-  if (b[0] === 0xff && (b[1] & 0xe0) === 0xe0) return 'audio/mpeg'
-  if (b[0] === 0x4f && b[1] === 0x67 && b[2] === 0x67 && b[3] === 0x53) return 'audio/ogg'
-  return 'application/octet-stream'
 }
 
 export async function handleTtsInworldV1(request: NextRequest) {
@@ -139,7 +31,7 @@ export async function handleTtsInworldV1(request: NextRequest) {
   const clientMessageId = typeof body?.clientMessageId === 'string' ? body.clientMessageId.trim().slice(0, 128) : null
   const clientContext = parseClientContext(body?.clientContext)
 
-  const authHeader = getAuthHeaderValue()
+  const authHeader = getInworldAuthHeaderValue()
   if (!authHeader) {
     const response = NextResponse.json(
       {
