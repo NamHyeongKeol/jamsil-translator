@@ -70,6 +70,7 @@ export const jaDictionary: AppDictionary = {
     deleteAccountFailed: "アカウント削除に失敗しました。もう一度お試しください。",
     appleNotConfigured: "Apple OAuth の環境変数が未設定のため、Appleログインは利用できません。",
     googleNotConfigured: "Google OAuth の環境変数が未設定のため、デモログインのみ利用できます。",
+    nativeSignInFailed: "ネイティブログインに失敗しました。もう一度お試しください。",
     translatorPage: "翻訳機を開く",
     populateSeedData: "シードデータを投入",
     mobileRuntime: "モバイルランタイム",

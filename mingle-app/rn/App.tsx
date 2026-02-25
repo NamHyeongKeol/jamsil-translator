@@ -24,6 +24,10 @@ import {
   playNativeTts,
   stopNativeTts,
 } from './src/nativeTts';
+import {
+  startNativeBrowserAuthSession,
+  type NativeAuthProvider,
+} from './src/nativeAuth';
 
 type RuntimeEnvMap = Record<string, string | undefined>;
 type NativeRuntimeConfig = {
@@ -152,6 +156,7 @@ const INITIAL_RUNTIME_CONFIG = resolveRuntimeConfig();
 const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
 const NATIVE_UI_EVENT = 'mingle:native-ui';
+const NATIVE_AUTH_EVENT = 'mingle:native-auth';
 const SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
 const IOS_SAFE_BROWSER_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
@@ -200,7 +205,16 @@ type NativeSttAecCommand = {
   payload: { enabled: boolean };
 };
 
-type WebViewCommand = NativeSttCommand | NativeTtsCommand | NativeSttAecCommand;
+type NativeAuthStartCommand = {
+  type: 'native_auth_start';
+  payload: {
+    provider: NativeAuthProvider;
+    callbackUrl?: string;
+    startUrl: string;
+  };
+};
+
+type WebViewCommand = NativeSttCommand | NativeTtsCommand | NativeSttAecCommand | NativeAuthStartCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -212,6 +226,24 @@ type NativeUiEvent = {
   type: 'scroll_to_top';
   source: string;
 };
+
+type NativeAuthEvent =
+  | {
+      type: 'status';
+      provider: NativeAuthProvider;
+      status: 'opening';
+    }
+  | {
+      type: 'success';
+      provider: NativeAuthProvider;
+      callbackUrl: string;
+      bridgeToken: string;
+    }
+  | {
+      type: 'error';
+      provider: NativeAuthProvider;
+      message: string;
+    };
 
 function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
   const numeric = typeof rawStatusBarHeight === 'number'
@@ -289,6 +321,7 @@ function App(): React.JSX.Element {
   const [loadError, setLoadError] = useState<string | null>(() => INITIAL_RUNTIME_CONFIG.error);
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
+  const nativeAuthInFlightRef = useRef<NativeAuthProvider | null>(null);
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
     if (Platform.OS !== 'ios') return 36;
     const manager = (NativeModules as {
@@ -301,7 +334,7 @@ function App(): React.JSX.Element {
   const webUrl = useMemo(() => {
     if (!runtimeConfig.webAppBaseUrl) return '';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
-    return `${runtimeConfig.webAppBaseUrl}/${locale}?nativeStt=1&nativeUi=1${debugParams}`;
+    return `${runtimeConfig.webAppBaseUrl}/${locale}?nativeStt=1&nativeUi=1&nativeAuth=1${debugParams}`;
   }, [locale, runtimeConfig.webAppBaseUrl]);
 
   useEffect(() => {
@@ -375,6 +408,16 @@ function App(): React.JSX.Element {
       console.log(`[NativeUI→Web] ${JSON.stringify(payload).slice(0, 120)}`);
     }
     const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_UI_EVENT)}, { detail: ${serialized} })); true;`;
+    webViewRef.current?.injectJavaScript(script);
+  }, []);
+
+  const emitAuthToWeb = useCallback((payload: NativeAuthEvent) => {
+    if (!isPageReadyRef.current) return;
+    const serialized = JSON.stringify(payload);
+    if (__DEV__) {
+      console.log(`[NativeAuth→Web] ${JSON.stringify(payload).slice(0, 160)}`);
+    }
+    const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_AUTH_EVENT)}, { detail: ${serialized} })); true;`;
     webViewRef.current?.injectJavaScript(script);
   }, []);
 
@@ -456,6 +499,66 @@ function App(): React.JSX.Element {
     }
   }, [emitToWeb]);
 
+  const handleNativeAuthStart = useCallback(async (payload?: {
+    provider?: NativeAuthProvider;
+    callbackUrl?: string;
+    startUrl?: string;
+  }) => {
+    const provider = payload?.provider === 'google' || payload?.provider === 'apple'
+      ? payload.provider
+      : null;
+    if (!provider) {
+      return;
+    }
+
+    if (nativeAuthInFlightRef.current) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_already_in_flight',
+      });
+      return;
+    }
+
+    const startUrl = typeof payload?.startUrl === 'string' ? payload.startUrl.trim() : '';
+    if (!startUrl) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_missing_start_url',
+      });
+      return;
+    }
+
+    nativeAuthInFlightRef.current = provider;
+    emitAuthToWeb({
+      type: 'status',
+      provider,
+      status: 'opening',
+    });
+    try {
+      const result = await startNativeBrowserAuthSession({
+        provider,
+        startUrl,
+      });
+      emitAuthToWeb({
+        type: 'success',
+        provider: result.provider,
+        callbackUrl: result.callbackUrl,
+        bridgeToken: result.bridgeToken,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: message || 'native_auth_failed',
+      });
+    } finally {
+      nativeAuthInFlightRef.current = null;
+    }
+  }, [emitAuthToWeb]);
+
   const handleWebMessage = useCallback((event: WebViewMessageEvent) => {
     let parsed: WebViewCommand | null = null;
     try {
@@ -521,8 +624,16 @@ function App(): React.JSX.Element {
       }
       currentTtsPlaybackRef.current = null;
       void stopNativeTts();
+      return;
     }
-  }, [emitTtsToWeb, handleNativeStart, handleNativeStop]);
+
+    if (parsed.type === 'native_auth_start') {
+      if (__DEV__) {
+        console.log(`[Web→NativeAuth] ${parsed.type}`, JSON.stringify(parsed.payload ?? {}).slice(0, 120));
+      }
+      void handleNativeAuthStart(parsed.payload);
+    }
+  }, [emitTtsToWeb, handleNativeAuthStart, handleNativeStart, handleNativeStop]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;

@@ -68,6 +68,7 @@ export type AppDictionary = {
     deleteAccountFailed: string;
     appleNotConfigured: string;
     googleNotConfigured: string;
+    nativeSignInFailed: string;
     translatorPage: string;
     populateSeedData: string;
     mobileRuntime: string;

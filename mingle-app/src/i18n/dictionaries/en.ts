@@ -70,6 +70,7 @@ export const enDictionary: AppDictionary = {
     deleteAccountFailed: "Failed to delete account. Please try again.",
     appleNotConfigured: "Apple OAuth env vars are missing, so Apple sign-in is unavailable.",
     googleNotConfigured: "Google OAuth env vars are missing, so only demo sign-in is available.",
+    nativeSignInFailed: "Native sign-in failed. Please try again.",
     translatorPage: "Open translator",
     populateSeedData: "Populate seed data",
     mobileRuntime: "Mobile Runtime",

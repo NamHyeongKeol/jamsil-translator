@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import AppleProvider from "next-auth/providers/apple";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import { verifyNativeAuthBridgeToken } from "@/lib/native-auth-bridge";
 
 const appleClientId = process.env.AUTH_APPLE_ID;
 const appleClientSecret = process.env.AUTH_APPLE_SECRET;
@@ -9,6 +10,25 @@ const googleClientId = process.env.AUTH_GOOGLE_ID;
 const googleClientSecret = process.env.AUTH_GOOGLE_SECRET;
 
 const providers: NextAuthOptions["providers"] = [
+  CredentialsProvider({
+    id: "native-bridge",
+    name: "Native Bridge",
+    credentials: {
+      token: { label: "Token", type: "text" },
+    },
+    async authorize(credentials) {
+      const token = credentials?.token?.trim();
+      if (!token) return null;
+      const payload = verifyNativeAuthBridgeToken(token);
+      if (!payload) return null;
+
+      return {
+        id: payload.sub,
+        name: payload.name || "Mingle User",
+        email: payload.email || "",
+      };
+    },
+  }),
   CredentialsProvider({
     name: "Demo",
     credentials: {

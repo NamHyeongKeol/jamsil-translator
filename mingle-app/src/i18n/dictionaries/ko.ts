@@ -70,6 +70,7 @@ export const koDictionary: AppDictionary = {
     deleteAccountFailed: "회원탈퇴 처리에 실패했습니다. 다시 시도해주세요.",
     appleNotConfigured: "Apple OAuth 환경변수가 없어 Apple 로그인을 사용할 수 없습니다.",
     googleNotConfigured: "Google OAuth 환경변수가 없어 Demo 로그인만 사용할 수 있습니다.",
+    nativeSignInFailed: "네이티브 로그인에 실패했습니다. 다시 시도해주세요.",
     translatorPage: "번역기 열기",
     populateSeedData: "시드 데이터 채우기",
     mobileRuntime: "모바일 런타임",
