@@ -237,7 +237,7 @@ RN 앱 URL은 하드코딩하지 않고 환경변수로만 읽습니다.
 
 - `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
 - `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
-- `RN_API_NAMESPACE` (iOS 권장: `ios/v1.0.0`)
+- `RN_API_NAMESPACE` (iOS 필수: `ios/v1.0.0`)
 - iOS에서 `RN_API_NAMESPACE`가 `ios/v1.0.0`과 불일치하면 WebView를 로드하지 않고 오류를 표시합니다.
 - `RN_CLIENT_VERSION` (optional, fallback: `CFBundleShortVersionString`)
 - `RN_CLIENT_BUILD` (optional, fallback: `CFBundleVersion`)
@@ -250,6 +250,7 @@ RN 앱 URL은 하드코딩하지 않고 환경변수로만 읽습니다.
 - `IOS_APPSTORE_URL`
 
 루트 `pnpm rn:start|ios|android` 스크립트는 `.env.local`을 먼저 로드한 뒤 RN CLI를 실행합니다.
+`pnpm rn:ios`는 실행 전에 `RN_API_NAMESPACE=ios/v1.0.0` 검증을 강제합니다.
 
 - iOS native STT bridge lives in:
   - `rn/ios/rnnative/NativeSTTModule.swift`

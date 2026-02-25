@@ -126,6 +126,11 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm exec prisma generate
 
+      - name: Enforce RN iOS namespace contract
+        env:
+          RN_API_NAMESPACE: ios/v1.0.0
+        run: pnpm run rn:ios:env-check
+
       - name: Run TDD suite (unit)
         run: pnpm test:unit
 
