@@ -25,7 +25,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 `pnpm test` runs both unit tests and live integration tests that:
 
 1. Streams an audio fixture to local STT WebSocket server
-2. Sends the finalized transcript to `/api/translate/finalize`
+2. Sends the finalized transcript to `/api/translate/finalize` (or `/api/ios/v1.0.0/translate/finalize`)
 
 Useful commands:
 
@@ -50,10 +50,49 @@ MINGLE_TEST_AUDIO_FIXTURE=/absolute/path/to/file.wav
 MINGLE_TEST_AUDIO_FIXTURE_DIR=/absolute/path/to/fixtures-dir
 MINGLE_TEST_WS_URL=ws://127.0.0.1:3001
 MINGLE_TEST_API_BASE_URL=http://127.0.0.1:3000
+MINGLE_TEST_API_NAMESPACE=
 MINGLE_TEST_EXPECTED_PHRASE="hello mingle"
 MINGLE_TEST_TARGET_LANGUAGES=ko,en
 MINGLE_TEST_TTS_LANGUAGE=ko
 MINGLE_TEST_TTS_OUTPUT_DIR=/absolute/path/to/tts-output
+```
+
+## API Namespace (Release Routing)
+
+클라이언트는 런타임 분기 없이 `NEXT_PUBLIC_API_NAMESPACE`로 API 경로를 결정합니다.
+
+- 기본값(legacy): 빈 값(`''`) -> `/api/{기존경로}`
+- iOS versioned: `ios/v1.0.0` -> `/api/ios/v1.0.0/{기존경로}`
+
+Release build commands:
+
+```bash
+pnpm build:release:web
+pnpm build:release:ios
+pnpm build:release:android
+```
+
+URL override (optional):
+
+- 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)는 allow-list 값만 반영됩니다.
+- 허용값: `''`, `ios/v1.0.0`
+- 예: `https://your-app/ko?apiNamespace=ios/v1.0.0`
+- 허용되지 않은 값은 무시되고 env/default를 사용합니다.
+
+### iOS Client Version Policy
+
+- 앱 시작 시 `POST /api/ios/v1.0.0/client/version-policy`를 호출합니다.
+- 요청: `clientVersion`(`x.y.z`), `clientBuild`
+- 응답 `action`:
+  - `force_update`: 강제 업데이트 화면
+  - `recommend_update`: 권장 업데이트 알림
+  - `none`: 표시 없음
+
+Contract test commands:
+
+```bash
+# API namespace allow-list + route wiring
+pnpm test:unit -- src/lib/api-contract.test.ts src/app/api/namespace-routing.contract.test.ts src/lib/rn-api-namespace.test.ts
 ```
 
 Fixture scan behavior:
@@ -198,8 +237,20 @@ RN 앱 URL은 하드코딩하지 않고 환경변수로만 읽습니다.
 
 - `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
 - `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
+- `RN_API_NAMESPACE` (iOS 필수: `ios/v1.0.0`)
+- iOS에서 `RN_API_NAMESPACE`가 `ios/v1.0.0`과 불일치하면 WebView를 로드하지 않고 오류를 표시합니다.
+- `RN_CLIENT_VERSION` (optional, fallback: `CFBundleShortVersionString`)
+- `RN_CLIENT_BUILD` (optional, fallback: `CFBundleVersion`)
+
+서버 환경변수(optional):
+
+- `IOS_CLIENT_MIN_SUPPORTED_VERSION` (default: `1.0.0`)
+- `IOS_CLIENT_RECOMMENDED_BELOW_VERSION`
+- `IOS_CLIENT_LATEST_VERSION`
+- `IOS_APPSTORE_URL`
 
 루트 `pnpm rn:start|ios|android` 스크립트는 `.env.local`을 먼저 로드한 뒤 RN CLI를 실행합니다.
+`pnpm rn:ios`는 실행 전에 `RN_API_NAMESPACE=ios/v1.0.0` 검증을 강제합니다.
 
 - iOS native STT bridge lives in:
   - `rn/ios/rnnative/NativeSTTModule.swift`
