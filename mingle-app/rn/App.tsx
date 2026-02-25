@@ -66,6 +66,15 @@ type VersionPolicyResponse = {
   updateButtonLabel?: string;
   laterButtonLabel?: string;
 };
+type IOSSettingsManager = {
+  settings?: {
+    AppleLocale?: string;
+    AppleLanguages?: string[];
+  };
+};
+type AndroidI18nManager = {
+  localeIdentifier?: string;
+};
 
 function readRuntimeEnvValue(keys: string[]): string {
   const env = (globalThis as { process?: { env?: RuntimeEnvMap } }).process?.env;
@@ -495,6 +504,27 @@ function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
 }
 
 function resolveDeviceLocaleTag(): string {
+  if (Platform.OS === 'ios') {
+    const settingsManager = (NativeModules as {
+      SettingsManager?: IOSSettingsManager;
+    }).SettingsManager;
+    const appleLocale = settingsManager?.settings?.AppleLocale;
+    if (typeof appleLocale === 'string' && appleLocale.trim()) {
+      return appleLocale.trim();
+    }
+    const firstAppleLanguage = settingsManager?.settings?.AppleLanguages?.[0];
+    if (typeof firstAppleLanguage === 'string' && firstAppleLanguage.trim()) {
+      return firstAppleLanguage.trim();
+    }
+  }
+
+  if (Platform.OS === 'android') {
+    const localeIdentifier = (NativeModules.I18nManager as AndroidI18nManager | undefined)?.localeIdentifier;
+    if (typeof localeIdentifier === 'string' && localeIdentifier.trim()) {
+      return localeIdentifier.trim();
+    }
+  }
+
   try {
     return Intl.DateTimeFormat().resolvedOptions().locale || 'ko';
   } catch {
