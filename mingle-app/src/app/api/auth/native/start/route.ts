@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n";
 import { resolveNativeOAuthProvider, resolveSafeCallbackPath } from "@/lib/native-auth-bridge";
 
 function normalizeOriginCandidate(rawValue: string | null | undefined): string | null {
@@ -40,16 +39,10 @@ function resolveExternalOrigin(request: NextRequest): string {
   return request.nextUrl.origin;
 }
 
-function resolveLocaleFromCallbackPath(pathname: string): string {
-  const firstSegment = pathname
-    .split("/")
-    .filter(Boolean)[0]
-    ?.trim()
-    .toLowerCase();
-  if (firstSegment && isSupportedLocale(firstSegment)) {
-    return firstSegment;
-  }
-  return DEFAULT_LOCALE;
+function summarizeUserAgent(rawValue: string | null): string {
+  const normalized = (rawValue || "").trim().replace(/\s+/g, " ");
+  if (!normalized) return "unknown";
+  return normalized.slice(0, 160);
 }
 
 export async function GET(request: NextRequest) {
@@ -63,11 +56,17 @@ export async function GET(request: NextRequest) {
   const completeUrl = new URL("/api/auth/native/complete", externalOrigin);
   completeUrl.searchParams.set("provider", provider);
   completeUrl.searchParams.set("callbackUrl", callbackPath);
+  completeUrl.searchParams.set("ngrok-skip-browser-warning", "1");
 
-  const locale = resolveLocaleFromCallbackPath(callbackPath);
-  const signInUrl = new URL(`/${locale}/auth/signin`, externalOrigin);
-  signInUrl.searchParams.set("provider", provider);
+  const signInUrl = new URL(`/api/auth/signin/${provider}`, externalOrigin);
   signInUrl.searchParams.set("callbackUrl", completeUrl.toString());
+  signInUrl.searchParams.set("ngrok-skip-browser-warning", "1");
+
+  console.info(
+    `[native-auth/start] provider=${provider} callbackPath=${callbackPath} origin=${externalOrigin} ua="${summarizeUserAgent(
+      request.headers.get("user-agent"),
+    )}"`,
+  );
 
   return NextResponse.redirect(signInUrl);
 }

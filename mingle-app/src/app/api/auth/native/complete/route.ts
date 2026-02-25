@@ -12,6 +12,12 @@ import {
 
 const APP_AUTH_CALLBACK_URL = "mingleauth://auth";
 
+function summarizeUserAgent(rawValue: string | null): string {
+  const normalized = (rawValue || "").trim().replace(/\s+/g, " ");
+  if (!normalized) return "unknown";
+  return normalized.slice(0, 160);
+}
+
 function buildAppRedirect(params: {
   status: "success" | "error";
   provider?: NativeOAuthProvider;
@@ -57,8 +63,14 @@ function resolveSubject({
 export async function GET(request: NextRequest) {
   const provider = resolveNativeOAuthProvider(request.nextUrl.searchParams.get("provider"));
   const callbackUrl = resolveSafeCallbackPath(request.nextUrl.searchParams.get("callbackUrl"), "/");
+  const userAgent = summarizeUserAgent(request.headers.get("user-agent"));
+
+  console.info(
+    `[native-auth/complete] begin provider=${provider ?? "invalid"} callbackUrl=${callbackUrl} ua="${userAgent}"`,
+  );
 
   if (!provider) {
+    console.warn("[native-auth/complete] invalid provider");
     return NextResponse.redirect(buildAppRedirect({
       status: "error",
       callbackUrl,
@@ -68,6 +80,7 @@ export async function GET(request: NextRequest) {
 
   const session = await getServerSession(authOptions);
   if (!session?.user) {
+    console.warn(`[native-auth/complete] missing session provider=${provider}`);
     return NextResponse.redirect(buildAppRedirect({
       status: "error",
       provider,
@@ -91,6 +104,7 @@ export async function GET(request: NextRequest) {
       callbackUrl,
     });
   } catch {
+    console.error(`[native-auth/complete] bridge token creation failed provider=${provider}`);
     return NextResponse.redirect(buildAppRedirect({
       status: "error",
       provider,
@@ -98,6 +112,10 @@ export async function GET(request: NextRequest) {
       message: "native_auth_bridge_token_failed",
     }));
   }
+
+  console.info(
+    `[native-auth/complete] success provider=${provider} callbackUrl=${callbackUrl} hasEmail=${email ? "1" : "0"}`,
+  );
 
   return NextResponse.redirect(buildAppRedirect({
     status: "success",
