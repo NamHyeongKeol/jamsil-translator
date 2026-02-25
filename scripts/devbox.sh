@@ -283,6 +283,41 @@ read_env_value_from_vault() {
   [[ -n "$value" ]] && printf '%s' "$value"
 }
 
+can_read_vault_path() {
+  local path="$1"
+  [[ -n "$path" ]] || return 1
+  command -v vault >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  vault kv get -format=json "$path" >/dev/null 2>&1
+}
+
+auto_detect_default_vault_path() {
+  local target="$1"
+  local candidate=""
+  local -a candidates=()
+
+  case "$target" in
+    app)
+      candidates=("secret/mingle-app/dev" "secret/mingle-app/prod")
+      ;;
+    stt)
+      candidates=("secret/mingle-stt/dev" "secret/mingle-stt/prod")
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  for candidate in "${candidates[@]}"; do
+    if can_read_vault_path "$candidate"; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 try_read_env_value_from_vault_path() {
   local path="$1"
   local key="$2"
@@ -716,12 +751,30 @@ resolve_vault_paths() {
   local stt_override="${2:-}"
   local app_path="${DEVBOX_VAULT_APP_PATH:-}"
   local stt_path="${DEVBOX_VAULT_STT_PATH:-}"
+  local detected_app_path=""
+  local detected_stt_path=""
 
   if [[ -n "$app_override" ]]; then
     app_path="$app_override"
   fi
   if [[ -n "$stt_override" ]]; then
     stt_path="$stt_override"
+  fi
+
+  if [[ -z "$app_path" ]]; then
+    detected_app_path="$(auto_detect_default_vault_path "app" || true)"
+    if [[ -n "$detected_app_path" ]]; then
+      app_path="$detected_app_path"
+      log "auto-detected vault app path: $app_path"
+    fi
+  fi
+
+  if [[ -z "$stt_path" ]]; then
+    detected_stt_path="$(auto_detect_default_vault_path "stt" || true)"
+    if [[ -n "$detected_stt_path" ]]; then
+      stt_path="$detected_stt_path"
+      log "auto-detected vault stt path: $stt_path"
+    fi
   fi
 
   DEVBOX_VAULT_APP_PATH="$app_path"
