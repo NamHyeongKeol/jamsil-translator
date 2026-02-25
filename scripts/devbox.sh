@@ -283,9 +283,27 @@ read_env_value_from_vault() {
   [[ -n "$value" ]] && printf '%s' "$value"
 }
 
+try_read_env_value_from_vault_path() {
+  local path="$1"
+  local key="$2"
+  local value=""
+
+  [[ -n "$path" ]] || return 1
+  [[ -n "$key" ]] || return 1
+  command -v vault >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  value="$(read_env_value_from_vault "$path" "$key" || true)"
+  [[ -n "$value" ]] || return 1
+  printf '%s' "$value"
+}
+
 read_app_setting_value() {
   local key="$1"
   local value=""
+  local path=""
+  local seen_paths=""
+  local -a candidate_paths=()
 
   [[ -n "$key" ]] || return 1
 
@@ -302,6 +320,34 @@ read_app_setting_value() {
       return 0
     fi
   fi
+
+  if [[ -f "$APP_ENV_FILE" ]]; then
+    value="$(read_env_value_from_file "$key" "$APP_ENV_FILE" || true)"
+    value="$(trim_whitespace "$value")"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  fi
+
+  candidate_paths+=("${DEVBOX_VAULT_APP_PATH:-}")
+  candidate_paths+=("secret/mingle-app/dev")
+  candidate_paths+=("secret/mingle-app/prod")
+
+  for path in "${candidate_paths[@]}"; do
+    path="$(trim_whitespace "$path")"
+    [[ -n "$path" ]] || continue
+    if printf '%s\n' "$seen_paths" | grep -Fxq -- "$path"; then
+      continue
+    fi
+    seen_paths="${seen_paths}${seen_paths:+$'\n'}$path"
+
+    value="$(try_read_env_value_from_vault_path "$path" "$key" || true)"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  done
 
   return 1
 }
@@ -1731,6 +1777,7 @@ sync_google_oauth_redirect_uris_for_site_change() {
   [[ -z "$client_id" ]] && client_id="$(read_app_setting_value AUTH_GOOGLE_ID || true)"
   client_id="$(trim_whitespace "$client_id")"
   if [[ -z "$client_id" ]]; then
+    warn "skipping google redirect sync: missing oauth client id (set AUTH_GOOGLE_ID in secret/mingle-app/dev|prod or DEVBOX_GOOGLE_OAUTH_CLIENT_ID)"
     return 0
   fi
 
@@ -1813,8 +1860,15 @@ sync_google_oauth_redirect_uris_for_site_change() {
     -H "Content-Type: application/json" \
     "$endpoint?update_mask=allowed_redirect_uris" \
     --data "$payload" >/dev/null 2>&1; then
-    warn "google redirect sync failed while patching oauth client (project=$project location=$location client=$client_id)"
-    return 0
+    if ! curl -fsS -X PATCH \
+      -H "Authorization: Bearer $token" \
+      -H "X-Goog-User-Project: $project" \
+      -H "Content-Type: application/json" \
+      "$endpoint?updateMask=allowedRedirectUris" \
+      --data "$payload" >/dev/null 2>&1; then
+      warn "google redirect sync failed while patching oauth client (project=$project location=$location client=$client_id)"
+      return 0
+    fi
   fi
 
   log "google oauth redirect URI synced for ngrok host: ${desired_redirect_uris[*]}"
