@@ -29,32 +29,66 @@ import { postTranslateFinalizeForWebLandingV1 } from '@/server/api/controllers/w
 import { postTtsInworldForWebLandingV1 } from '@/server/api/controllers/web/landing/v1/tts-inworld-controller'
 
 describe('mingle-landing namespace route wiring', () => {
-  it('maps legacy + /web/landing/v1 click routes to the same v1 controller', () => {
-    expect(postLegacyLogClick).toBe(postLogClickForWebLandingV1)
-    expect(getLegacyClicks).toBe(getClicksForWebLandingV1)
+  it('rejects legacy click routes without namespace/version', async () => {
+    const postResponse = await postLegacyLogClick()
+    const getResponse = await getLegacyClicks()
+
+    expect(postResponse.status).toBe(410)
+    expect(postResponse.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/landing/v1/log-click')
+    expect(getResponse.status).toBe(410)
+    expect(getResponse.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/landing/v1/clicks')
+  })
+
+  it('maps /web/landing/v1 click routes to v1 controller', () => {
     expect(postV1LogClick).toBe(postLogClickForWebLandingV1)
     expect(getV1Clicks).toBe(getClicksForWebLandingV1)
   })
 
-  it('maps legacy + /web/landing/v1 subscriber routes to the same v1 controller', () => {
-    expect(postLegacySubscribe).toBe(postSubscribeForWebLandingV1)
-    expect(getLegacySubscribers).toBe(getSubscribersForWebLandingV1)
+  it('rejects legacy subscriber routes without namespace/version', async () => {
+    const postResponse = await postLegacySubscribe()
+    const getResponse = await getLegacySubscribers()
+
+    expect(postResponse.status).toBe(410)
+    expect(postResponse.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/landing/v1/subscribe')
+    expect(getResponse.status).toBe(410)
+    expect(getResponse.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/landing/v1/subscribers')
+  })
+
+  it('maps /web/landing/v1 subscriber routes to v1 controller', () => {
     expect(postV1Subscribe).toBe(postSubscribeForWebLandingV1)
     expect(getV1Subscribers).toBe(getSubscribersForWebLandingV1)
   })
 
-  it('maps legacy + /web/landing/v1 conversation event routes to the same v1 controller', () => {
-    expect(postLegacyLogConversation).toBe(postLogConversationForWebLandingV1)
-    expect(postLegacyLogEvent).toBe(postLogEventForWebLandingV1)
-    expect(postLegacyLogVisit).toBe(postLogVisitForWebLandingV1)
+  it('rejects legacy conversation event routes without namespace/version', async () => {
+    const conversationResponse = await postLegacyLogConversation()
+    const eventResponse = await postLegacyLogEvent()
+    const visitResponse = await postLegacyLogVisit()
+
+    expect(conversationResponse.status).toBe(410)
+    expect(conversationResponse.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/landing/v1/log-conversation')
+    expect(eventResponse.status).toBe(410)
+    expect(eventResponse.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/landing/v1/log-event')
+    expect(visitResponse.status).toBe(410)
+    expect(visitResponse.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/landing/v1/log-visit')
+  })
+
+  it('maps /web/landing/v1 conversation event routes to v1 controller', () => {
     expect(postV1LogConversation).toBe(postLogConversationForWebLandingV1)
     expect(postV1LogEvent).toBe(postLogEventForWebLandingV1)
     expect(postV1LogVisit).toBe(postLogVisitForWebLandingV1)
   })
 
-  it('maps legacy + /web/landing/v1 translate/tts routes to the same v1 controller', () => {
-    expect(postLegacyTranslateFinalize).toBe(postTranslateFinalizeForWebLandingV1)
-    expect(postLegacyTtsInworld).toBe(postTtsInworldForWebLandingV1)
+  it('rejects legacy translate/tts routes without namespace/version', async () => {
+    const translateResponse = await postLegacyTranslateFinalize()
+    const ttsResponse = await postLegacyTtsInworld()
+
+    expect(translateResponse.status).toBe(410)
+    expect(translateResponse.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/landing/v1/translate/finalize')
+    expect(ttsResponse.status).toBe(410)
+    expect(ttsResponse.headers.get('X-Mingle-Api-Replacement')).toBe('/api/web/landing/v1/tts/inworld')
+  })
+
+  it('maps /web/landing/v1 translate/tts routes to v1 controller', () => {
     expect(postV1TranslateFinalize).toBe(postTranslateFinalizeForWebLandingV1)
     expect(postV1TtsInworld).toBe(postTtsInworldForWebLandingV1)
   })

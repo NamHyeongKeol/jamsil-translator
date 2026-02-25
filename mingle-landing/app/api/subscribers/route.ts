@@ -1,3 +1,5 @@
-import { getSubscribersForWebLandingV1 } from '@/server/api/controllers/web/landing/v1/subscribers-controller'
+import { legacyApiGoneResponse } from '@/server/api/versioning/legacy-route'
 
-export const GET = getSubscribersForWebLandingV1
+export async function GET() {
+  return legacyApiGoneResponse('/api/web/landing/v1/subscribers')
+}

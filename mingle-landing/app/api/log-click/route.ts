@@ -1,3 +1,5 @@
-import { postLogClickForWebLandingV1 } from '@/server/api/controllers/web/landing/v1/log-click-controller'
+import { legacyApiGoneResponse } from '@/server/api/versioning/legacy-route'
 
-export const POST = postLogClickForWebLandingV1
+export async function POST() {
+  return legacyApiGoneResponse('/api/web/landing/v1/log-click')
+}

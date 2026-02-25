@@ -1,4 +1,7 @@
-import { postTtsInworldForWebLandingV1 } from '@/server/api/controllers/web/landing/v1/tts-inworld-controller'
+import { legacyApiGoneResponse } from '@/server/api/versioning/legacy-route'
 
 export const runtime = 'nodejs'
-export const POST = postTtsInworldForWebLandingV1
+
+export async function POST() {
+  return legacyApiGoneResponse('/api/web/landing/v1/tts/inworld')
+}
