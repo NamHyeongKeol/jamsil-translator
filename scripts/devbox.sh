@@ -1044,8 +1044,53 @@ normalize_android_variant() {
   esac
 }
 
-detect_ios_device_udid() {
+detect_ios_coredevice_id() {
   command -v xcrun >/dev/null 2>&1 || return 1
+  xcrun devicectl list devices 2>/dev/null | awk '
+      /connected|available \(paired\)/ {
+        if (match($0, /[0-9A-F-]{36}/)) {
+          id = substr($0, RSTART, RLENGTH)
+          if ($0 ~ / connected/) {
+            print id
+            exit
+          }
+          if (first == "") first = id
+        }
+      }
+      END {
+        if (first != "") print first
+      }
+    ' | head -n 1
+}
+
+detect_ios_xcode_destination_udid() {
+  command -v xcodebuild >/dev/null 2>&1 || return 1
+  local workspace="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace"
+  [[ -d "$workspace" ]] || return 1
+
+  xcodebuild \
+    -workspace "$workspace" \
+    -scheme rnnative \
+    -showdestinations 2>/dev/null | awk '
+      /platform:iOS/ && /id:/ && /name:/ {
+        line = $0
+        if (line ~ /Any iOS Device/) next
+        if (line ~ /error:[^,}]*not connected/) next
+        id = ""
+        if (match(line, /id:[^,}]+/)) {
+          id = substr(line, RSTART + 3, RLENGTH - 3)
+          gsub(/[[:space:]]/, "", id)
+        }
+        if (id == "" || id ~ /placeholder/) next
+        print id
+        exit
+      }
+    '
+}
+
+detect_ios_device_udid() {
+  # Backward-compatible alias used by native paths.
+  # For RN xcodebuild destination, use detect_ios_xcode_destination_udid.
   local coredevice_id=""
   coredevice_id="$(
     xcrun devicectl list devices 2>/dev/null | awk '
@@ -1069,9 +1114,7 @@ detect_ios_device_udid() {
     return 0
   fi
 
-  xcrun xctrace list devices 2>/dev/null | \
-    sed -nE '/Simulator/d; s/^.*\([^)]*\)[[:space:]]+\(([A-Fa-f0-9-]{8,})\)$/\1/p' | \
-    head -n 1
+  detect_ios_xcode_destination_udid || true
 }
 
 detect_android_device_serial() {
@@ -1164,15 +1207,21 @@ run_ios_mobile_install() {
   local requested_udid="${1:-}"
   local configuration="$2"
   local with_clean_install="${3:-0}"
-  local udid="$requested_udid"
+  local destination_udid="$requested_udid"
+  local coredevice_id=""
 
-  if [[ -z "$udid" ]]; then
-    udid="$(detect_ios_device_udid || true)"
+  if [[ -z "$destination_udid" ]]; then
+    destination_udid="$(detect_ios_xcode_destination_udid || true)"
   fi
 
-  if [[ -z "$udid" ]]; then
+  if [[ -z "$destination_udid" ]]; then
     log "iOS device not detected; skipping iOS build/install"
     return 0
+  fi
+  coredevice_id="$(detect_ios_coredevice_id || true)"
+  if [[ -z "$coredevice_id" ]]; then
+    # Fallback for environments where only xcodebuild destination id is visible.
+    coredevice_id="$destination_udid"
   fi
 
   require_cmd xcodebuild
@@ -1186,8 +1235,8 @@ run_ios_mobile_install() {
   bundle_id="$(resolve_ios_bundle_id)"
 
   if [[ "$with_clean_install" -eq 1 && -n "$bundle_id" ]]; then
-    log "uninstalling existing iOS app before reinstall: $bundle_id"
-    xcrun devicectl device uninstall app --device "$udid" "$bundle_id" || \
+    log "uninstalling existing iOS app before reinstall: $bundle_id (device=$coredevice_id)"
+    xcrun devicectl device uninstall app --device "$coredevice_id" "$bundle_id" || \
       log "iOS uninstall skipped (app may not be installed)"
   fi
 
@@ -1200,14 +1249,14 @@ run_ios_mobile_install() {
 
   mkdir -p "$(dirname "$derived_data_path")"
 
-  log "building iOS app ($configuration) for device: $udid"
+  log "building iOS app ($configuration) for destination: $destination_udid"
   (
     cd "$ROOT_DIR/mingle-app/rn/ios"
     xcodebuild \
       -workspace rnnative.xcworkspace \
       -scheme rnnative \
       -configuration "$configuration" \
-      -destination "id=$udid" \
+      -destination "id=$destination_udid" \
       -derivedDataPath "$derived_data_path" \
       -xcconfig "$RN_IOS_RUNTIME_XCCONFIG" \
       build
@@ -1215,12 +1264,12 @@ run_ios_mobile_install() {
 
   [[ -d "$app_path" ]] || die "built iOS app not found: $app_path"
 
-  log "installing iOS app on device: $udid"
-  xcrun devicectl device install app --device "$udid" "$app_path"
+  log "installing iOS app on device: $coredevice_id"
+  xcrun devicectl device install app --device "$coredevice_id" "$app_path"
 
   if [[ -n "$bundle_id" ]]; then
     log "launching iOS app bundle: $bundle_id"
-    xcrun devicectl device process launch --device "$udid" "$bundle_id" >/dev/null 2>&1 || \
+    xcrun devicectl device process launch --device "$coredevice_id" "$bundle_id" >/dev/null 2>&1 || \
       log "iOS app launch skipped (manual launch may be required)"
   fi
 }
@@ -1238,7 +1287,7 @@ run_native_ios_mobile_install() {
 
   local coredevice_id="$requested_coredevice_id"
   if [[ -z "$coredevice_id" ]]; then
-    coredevice_id="$(detect_ios_device_udid || true)"
+    coredevice_id="$(detect_ios_coredevice_id || true)"
   fi
 
   if [[ "$with_clean_install" -eq 1 && -n "$bundle_id" && -n "$coredevice_id" ]]; then
@@ -2283,7 +2332,7 @@ cmd_ios_native_uninstall() {
 
   local coredevice_id="$ios_coredevice_id"
   if [[ -z "$coredevice_id" ]]; then
-    coredevice_id="$(detect_ios_device_udid || true)"
+    coredevice_id="$(detect_ios_coredevice_id || true)"
   fi
   [[ -n "$coredevice_id" ]] || die "iOS device not detected; specify --ios-coredevice-id"
 
