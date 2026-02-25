@@ -80,6 +80,9 @@ export function isGoogleOAuthConfigured(): boolean {
 
 export const authOptions: NextAuthOptions = {
   providers,
+  pages: {
+    signIn: "/auth/signin",
+  },
   session: {
     strategy: "jwt",
   },
