@@ -1,6 +1,70 @@
 import NextAuth from "next-auth/next";
+import type { NextRequest } from "next/server";
 import { authOptions } from "@/lib/auth-options";
 
-const handler = NextAuth(authOptions);
+type AppRouteContext = {
+  params: Promise<{
+    nextauth: string[];
+  }>;
+};
 
-export { handler as GET, handler as POST };
+function summarizeText(rawValue: string, maxLength: number): string {
+  const normalized = rawValue.trim().replace(/\s+/g, " ");
+  if (!normalized) return "";
+  return normalized.slice(0, maxLength);
+}
+
+function summarizeCallbackUrl(rawValue: string): string {
+  const trimmed = rawValue.trim();
+  if (!trimmed) return "-";
+  try {
+    const parsed = new URL(trimmed);
+    const pathname = parsed.pathname || "/";
+    const host = parsed.host || "-";
+    return `${host}${pathname}`.slice(0, 120);
+  } catch {
+    return summarizeText(trimmed, 120) || "-";
+  }
+}
+
+function resolveAction(nextauth: string[] | undefined): string {
+  const action = nextauth?.[0];
+  if (typeof action !== "string") return "";
+  return action.trim().toLowerCase();
+}
+
+function resolveRouteAuthOptions(nextauth: string[] | undefined) {
+  const action = resolveAction(nextauth);
+  if (action !== "signin") {
+    return authOptions;
+  }
+
+  // Keep built-in NextAuth sign-in page for OAuth providers only.
+  const oauthOnlyProviders = (authOptions.providers || []).filter((provider) => provider.type !== "credentials");
+  return {
+    ...authOptions,
+    providers: oauthOnlyProviders,
+  };
+}
+
+export async function GET(request: NextRequest, context: AppRouteContext) {
+  const params = await context.params;
+  const action = resolveAction(params?.nextauth);
+  const provider = summarizeText(params?.nextauth?.[1] || "-", 48) || "-";
+  const callbackUrl = summarizeCallbackUrl(request.nextUrl.searchParams.get("callbackUrl") || "");
+  console.info(
+    `[nextauth] method=GET action=${action || "-"} provider=${provider} callback=${callbackUrl}`,
+  );
+  return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(params?.nextauth));
+}
+
+export async function POST(request: NextRequest, context: AppRouteContext) {
+  const params = await context.params;
+  const action = resolveAction(params?.nextauth);
+  const provider = summarizeText(params?.nextauth?.[1] || "-", 48) || "-";
+  const callbackUrl = summarizeCallbackUrl(request.nextUrl.searchParams.get("callbackUrl") || "");
+  console.info(
+    `[nextauth] method=POST action=${action || "-"} provider=${provider} callback=${callbackUrl}`,
+  );
+  return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(params?.nextauth));
+}

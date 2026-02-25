@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n";
-import { resolveNativeOAuthProvider, resolveSafeCallbackPath } from "@/lib/native-auth-bridge";
+import { resolveNativeAuthRequestId, resolveNativeOAuthProvider, resolveSafeCallbackPath } from "@/lib/native-auth-bridge";
 
 function normalizeOriginCandidate(rawValue: string | null | undefined): string | null {
   if (typeof rawValue !== "string") return null;
@@ -40,16 +39,10 @@ function resolveExternalOrigin(request: NextRequest): string {
   return request.nextUrl.origin;
 }
 
-function resolveLocaleFromCallbackPath(pathname: string): string {
-  const firstSegment = pathname
-    .split("/")
-    .filter(Boolean)[0]
-    ?.trim()
-    .toLowerCase();
-  if (firstSegment && isSupportedLocale(firstSegment)) {
-    return firstSegment;
-  }
-  return DEFAULT_LOCALE;
+function summarizeUserAgent(rawValue: string | null): string {
+  const normalized = (rawValue || "").trim().replace(/\s+/g, " ");
+  if (!normalized) return "unknown";
+  return normalized.slice(0, 160);
 }
 
 export async function GET(request: NextRequest) {
@@ -59,15 +52,25 @@ export async function GET(request: NextRequest) {
   }
 
   const callbackPath = resolveSafeCallbackPath(request.nextUrl.searchParams.get("callbackUrl"), "/");
+  const requestId = resolveNativeAuthRequestId(request.nextUrl.searchParams.get("requestId"));
   const externalOrigin = resolveExternalOrigin(request);
-  const completeUrl = new URL("/api/auth/native/complete", externalOrigin);
+  const completeUrl = new URL("/api/native-auth/complete", externalOrigin);
   completeUrl.searchParams.set("provider", provider);
   completeUrl.searchParams.set("callbackUrl", callbackPath);
+  completeUrl.searchParams.set("ngrok-skip-browser-warning", "1");
+  if (requestId) {
+    completeUrl.searchParams.set("requestId", requestId);
+  }
 
-  const locale = resolveLocaleFromCallbackPath(callbackPath);
-  const signInUrl = new URL(`/${locale}/auth/native`, externalOrigin);
-  signInUrl.searchParams.set("provider", provider);
+  const signInUrl = new URL(`/api/auth/signin/${provider}`, externalOrigin);
   signInUrl.searchParams.set("callbackUrl", completeUrl.toString());
+  signInUrl.searchParams.set("ngrok-skip-browser-warning", "1");
+
+  console.info(
+    `[native-auth/start] provider=${provider} callbackPath=${callbackPath} requestId=${requestId || "-"} origin=${externalOrigin} ua="${summarizeUserAgent(
+      request.headers.get("user-agent"),
+    )}"`,
+  );
 
   return NextResponse.redirect(signInUrl);
 }

@@ -285,13 +285,14 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				MINGLE_DEFAULT_WS_HOST = mingle.up.railway.app;
-				MINGLE_DEFAULT_WS_SCHEME = wss;
-				MINGLE_DEFAULT_WS_URL = "wss://mingle.up.railway.app";
-				MINGLE_WEB_APP_BASE_URL = "https://mingle-app-xi.vercel.app";
-				MINGLE_WEB_APP_HOST = "mingle-app-xi.vercel.app";
-				MINGLE_WEB_APP_SCHEME = https;
+				MARKETING_VERSION = 1.0.0;
+				NEXT_PUBLIC_API_NAMESPACE = "ios/v1.0.0";
+				NEXT_PUBLIC_SITE_HOST = "mingle-app-xi.vercel.app";
+				NEXT_PUBLIC_SITE_SCHEME = https;
+				NEXT_PUBLIC_SITE_URL = "https://mingle-app-xi.vercel.app";
+				NEXT_PUBLIC_WS_HOST = mingle.up.railway.app;
+				NEXT_PUBLIC_WS_SCHEME = wss;
+				NEXT_PUBLIC_WS_URL = "wss://mingle.up.railway.app";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -322,13 +323,14 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				MINGLE_DEFAULT_WS_HOST = mingle.up.railway.app;
-				MINGLE_DEFAULT_WS_SCHEME = wss;
-				MINGLE_DEFAULT_WS_URL = "wss://mingle.up.railway.app";
-				MINGLE_WEB_APP_BASE_URL = "https://mingle-app-xi.vercel.app";
-				MINGLE_WEB_APP_HOST = "mingle-app-xi.vercel.app";
-				MINGLE_WEB_APP_SCHEME = https;
+				MARKETING_VERSION = 1.0.0;
+				NEXT_PUBLIC_API_NAMESPACE = "ios/v1.0.0";
+				NEXT_PUBLIC_SITE_HOST = "mingle-app-xi.vercel.app";
+				NEXT_PUBLIC_SITE_SCHEME = https;
+				NEXT_PUBLIC_SITE_URL = "https://mingle-app-xi.vercel.app";
+				NEXT_PUBLIC_WS_HOST = mingle.up.railway.app;
+				NEXT_PUBLIC_WS_SCHEME = wss;
+				NEXT_PUBLIC_WS_URL = "wss://mingle.up.railway.app";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

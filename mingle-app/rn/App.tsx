@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AppState,
   Alert,
   Linking,
   NativeModules,
@@ -27,12 +28,20 @@ import {
   stopNativeTts,
 } from './src/nativeTts';
 import {
+  parseNativeAuthCallbackUrl,
   startNativeBrowserAuthSession,
   type NativeAuthProvider,
 } from './src/nativeAuth';
 import { validateRnApiNamespace } from './src/apiNamespace';
 
 type RuntimeEnvMap = Record<string, string | undefined>;
+type NativeRuntimeConfig = {
+  webAppBaseUrl?: string;
+  defaultWsUrl?: string;
+  apiNamespace?: string;
+  clientVersion?: string;
+  clientBuild?: string;
+};
 type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none';
 type VersionGateState =
   | { status: 'checking' }
@@ -72,12 +81,23 @@ function readRuntimeEnvValue(keys: string[]): string {
   return '';
 }
 
-function resolveConfiguredUrl(
-  keys: string[],
+function readNativeRuntimeConfig(): NativeRuntimeConfig {
+  const runtimeConfig = (NativeModules.NativeSTTModule as
+    | {
+        runtimeConfig?: NativeRuntimeConfig;
+      }
+    | undefined)?.runtimeConfig;
+  if (!runtimeConfig || typeof runtimeConfig !== 'object') {
+    return {};
+  }
+  return runtimeConfig;
+}
+
+function normalizeConfiguredUrl(
+  raw: string,
   allowedProtocols: string[],
   options?: { trimTrailingSlash?: boolean },
 ): string {
-  const raw = readRuntimeEnvValue(keys);
   if (!raw) return '';
 
   try {
@@ -92,14 +112,30 @@ function resolveConfiguredUrl(
   }
 }
 
+function resolveConfiguredUrl(
+  keys: string[],
+  allowedProtocols: string[],
+  options?: { trimTrailingSlash?: boolean },
+): string {
+  return normalizeConfiguredUrl(readRuntimeEnvValue(keys), allowedProtocols, options);
+}
+
 const RN_RUNTIME_OS = Platform.OS;
+const NATIVE_RUNTIME_CONFIG = readNativeRuntimeConfig();
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
-  ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
+  ['NEXT_PUBLIC_SITE_URL', 'RN_WEB_APP_BASE_URL'],
+  ['http:', 'https:'],
+  { trimTrailingSlash: true },
+) || normalizeConfiguredUrl(
+  NATIVE_RUNTIME_CONFIG.webAppBaseUrl || '',
   ['http:', 'https:'],
   { trimTrailingSlash: true },
 ) || 'https://mingle-app-xi.vercel.app';
 const DEFAULT_WS_URL = resolveConfiguredUrl(
-  ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
+  ['NEXT_PUBLIC_WS_URL', 'RN_DEFAULT_WS_URL'],
+  ['ws:', 'wss:'],
+) || normalizeConfiguredUrl(
+  NATIVE_RUNTIME_CONFIG.defaultWsUrl || '',
   ['ws:', 'wss:'],
 ) || 'wss://mingle.up.railway.app';
 const {
@@ -108,20 +144,21 @@ const {
   validatedApiNamespace: VALIDATED_API_NAMESPACE,
 } = validateRnApiNamespace({
   runtimeOs: RN_RUNTIME_OS,
-  configuredApiNamespace: readRuntimeEnvValue(['RN_API_NAMESPACE']),
+  configuredApiNamespace: readRuntimeEnvValue(['NEXT_PUBLIC_API_NAMESPACE', 'RN_API_NAMESPACE'])
+    || (NATIVE_RUNTIME_CONFIG.apiNamespace || '').trim(),
 });
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {
-  missingRuntimeConfig.push('RN_WEB_APP_BASE_URL (or NEXT_PUBLIC_SITE_URL)');
+  missingRuntimeConfig.push('NEXT_PUBLIC_SITE_URL');
 }
 if (!DEFAULT_WS_URL) {
-  missingRuntimeConfig.push('RN_DEFAULT_WS_URL (or NEXT_PUBLIC_WS_URL)');
+  missingRuntimeConfig.push('NEXT_PUBLIC_WS_URL');
 }
 if (EXPECTED_API_NAMESPACE && !CONFIGURED_API_NAMESPACE) {
-  missingRuntimeConfig.push(`RN_API_NAMESPACE (expected: ${EXPECTED_API_NAMESPACE})`);
+  missingRuntimeConfig.push(`NEXT_PUBLIC_API_NAMESPACE (expected: ${EXPECTED_API_NAMESPACE})`);
 } else if (EXPECTED_API_NAMESPACE && !VALIDATED_API_NAMESPACE) {
-  missingRuntimeConfig.push(`RN_API_NAMESPACE must match current platform namespace: ${EXPECTED_API_NAMESPACE}`);
+  missingRuntimeConfig.push(`NEXT_PUBLIC_API_NAMESPACE must match current platform namespace: ${EXPECTED_API_NAMESPACE}`);
 }
 const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
   ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}`
@@ -357,7 +394,21 @@ type NativeAuthStartCommand = {
   };
 };
 
-type WebViewCommand = NativeSttCommand | NativeTtsCommand | NativeSttAecCommand | NativeAuthStartCommand;
+type NativeAuthAckCommand = {
+  type: 'native_auth_ack';
+  payload?: {
+    provider?: NativeAuthProvider;
+    outcome?: 'success' | 'error';
+    bridgeToken?: string;
+  };
+};
+
+type WebViewCommand =
+  | NativeSttCommand
+  | NativeTtsCommand
+  | NativeSttAecCommand
+  | NativeAuthStartCommand
+  | NativeAuthAckCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -460,6 +511,10 @@ function App(): React.JSX.Element {
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
   const nativeAuthInFlightRef = useRef<NativeAuthProvider | null>(null);
+  const pendingAuthEventRef = useRef<NativeAuthEvent | null>(null);
+  const authDispatchRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const authDispatchRetryCountRef = useRef(0);
+  const lastRecoveredNativeAuthUrlRef = useRef('');
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
     if (Platform.OS !== 'ios') return 36;
     const manager = (NativeModules as {
@@ -633,15 +688,136 @@ function App(): React.JSX.Element {
     webViewRef.current?.injectJavaScript(script);
   }, []);
 
-  const emitAuthToWeb = useCallback((payload: NativeAuthEvent) => {
-    if (!isPageReadyRef.current) return;
+  const dispatchAuthToWeb = useCallback((payload: NativeAuthEvent) => {
     const serialized = JSON.stringify(payload);
     if (__DEV__) {
       console.log(`[NativeAuth→Web] ${JSON.stringify(payload).slice(0, 160)}`);
     }
-    const script = `window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_AUTH_EVENT)}, { detail: ${serialized} })); true;`;
+    const script = `window.__MINGLE_LAST_NATIVE_AUTH_EVENT = ${serialized}; window.dispatchEvent(new CustomEvent(${JSON.stringify(NATIVE_AUTH_EVENT)}, { detail: ${serialized} })); true;`;
     webViewRef.current?.injectJavaScript(script);
   }, []);
+
+  const clearAuthDispatchRetryTimer = useCallback(() => {
+    if (authDispatchRetryTimerRef.current) {
+      clearTimeout(authDispatchRetryTimerRef.current);
+      authDispatchRetryTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleAuthDispatchRetry = useCallback((payload: NativeAuthEvent) => {
+    if (payload.type === 'status') return;
+    clearAuthDispatchRetryTimer();
+
+    authDispatchRetryTimerRef.current = setTimeout(() => {
+      const pending = pendingAuthEventRef.current;
+      if (!pending || pending.type === 'status') return;
+      if (pending.provider !== payload.provider) return;
+      if (pending.type !== payload.type) return;
+      if (pending.type === 'success' && payload.type === 'success' && pending.bridgeToken !== payload.bridgeToken) {
+        return;
+      }
+      if (authDispatchRetryCountRef.current >= 20) return;
+
+      if (!isPageReadyRef.current || !webViewRef.current) {
+        scheduleAuthDispatchRetry(payload);
+        return;
+      }
+
+      authDispatchRetryCountRef.current += 1;
+      dispatchAuthToWeb(pending);
+      scheduleAuthDispatchRetry(payload);
+    }, 500);
+  }, [clearAuthDispatchRetryTimer, dispatchAuthToWeb]);
+
+  const emitAuthToWeb = useCallback((payload: NativeAuthEvent) => {
+    if (payload.type !== 'status') {
+      pendingAuthEventRef.current = payload;
+      authDispatchRetryCountRef.current = 0;
+    }
+
+    if (!isPageReadyRef.current) {
+      if (__DEV__) {
+        console.log(`[NativeAuth→Web] queued (page not ready) ${JSON.stringify(payload).slice(0, 160)}`);
+      }
+      if (payload.type !== 'status') {
+        scheduleAuthDispatchRetry(payload);
+      }
+      return;
+    }
+    dispatchAuthToWeb(payload);
+    if (payload.type !== 'status') {
+      scheduleAuthDispatchRetry(payload);
+    }
+  }, [dispatchAuthToWeb, scheduleAuthDispatchRetry]);
+
+  const flushPendingAuthToWeb = useCallback(() => {
+    if (!isPageReadyRef.current) return;
+    const pending = pendingAuthEventRef.current;
+    if (!pending) return;
+    dispatchAuthToWeb(pending);
+    if (pending.type !== 'status') {
+      scheduleAuthDispatchRetry(pending);
+    }
+  }, [dispatchAuthToWeb, scheduleAuthDispatchRetry]);
+
+  useEffect(() => {
+    return () => {
+      clearAuthDispatchRetryTimer();
+    };
+  }, [clearAuthDispatchRetryTimer]);
+
+  useEffect(() => {
+    const handleIncomingAuthUrl = (incomingUrl: string | null | undefined) => {
+      const normalized = typeof incomingUrl === 'string' ? incomingUrl.trim() : '';
+      if (!normalized) return;
+      if (nativeAuthInFlightRef.current) return;
+      if (lastRecoveredNativeAuthUrlRef.current === normalized) return;
+
+      const parsed = parseNativeAuthCallbackUrl(normalized);
+      if (!parsed) return;
+      lastRecoveredNativeAuthUrlRef.current = normalized;
+
+      if (parsed.status === 'success') {
+        emitAuthToWeb({
+          type: 'success',
+          provider: parsed.provider,
+          callbackUrl: parsed.callbackUrl,
+          bridgeToken: parsed.bridgeToken,
+        });
+        return;
+      }
+
+      emitAuthToWeb({
+        type: 'error',
+        provider: parsed.provider,
+        message: parsed.message || 'native_auth_failed',
+      });
+    };
+
+    void Linking.getInitialURL()
+      .then(handleIncomingAuthUrl)
+      .catch(() => {
+        // no-op: listener below can still receive callbacks while app is alive
+      });
+
+    const urlSubscription = Linking.addEventListener('url', (event) => {
+      handleIncomingAuthUrl(event.url);
+    });
+
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') return;
+      void Linking.getInitialURL()
+        .then(handleIncomingAuthUrl)
+        .catch(() => {
+          // no-op
+        });
+    });
+
+    return () => {
+      urlSubscription.remove();
+      appStateSubscription.remove();
+    };
+  }, [emitAuthToWeb]);
 
   const handleIosTopTapOverlayPress = useCallback(() => {
     emitUiToWeb({ type: 'scroll_to_top', source: 'ios_status_bar_overlay' });
@@ -675,7 +851,7 @@ function App(): React.JSX.Element {
 
     const payloadWsUrl = typeof payload?.wsUrl === 'string' ? payload.wsUrl.trim() : '';
     if (!payloadWsUrl && !DEFAULT_WS_URL) {
-      emitToWeb({ type: 'error', message: 'missing_ws_url_env(RN_DEFAULT_WS_URL or NEXT_PUBLIC_WS_URL)' });
+      emitToWeb({ type: 'error', message: 'missing_ws_url_env(NEXT_PUBLIC_WS_URL)' });
       return;
     }
 
@@ -752,6 +928,9 @@ function App(): React.JSX.Element {
       return;
     }
 
+    pendingAuthEventRef.current = null;
+    authDispatchRetryCountRef.current = 0;
+    clearAuthDispatchRetryTimer();
     nativeAuthInFlightRef.current = provider;
     emitAuthToWeb({
       type: 'status',
@@ -779,7 +958,7 @@ function App(): React.JSX.Element {
     } finally {
       nativeAuthInFlightRef.current = null;
     }
-  }, [emitAuthToWeb]);
+  }, [clearAuthDispatchRetryTimer, emitAuthToWeb]);
 
   const handleWebMessage = useCallback((event: WebViewMessageEvent) => {
     let parsed: WebViewCommand | null = null;
@@ -789,6 +968,35 @@ function App(): React.JSX.Element {
       return;
     }
     if (!parsed || typeof parsed !== 'object') return;
+
+    if (parsed.type === 'native_auth_ack') {
+      const provider = parsed.payload?.provider === 'google' || parsed.payload?.provider === 'apple'
+        ? parsed.payload.provider
+        : null;
+      if (!provider) return;
+
+      const pending = pendingAuthEventRef.current;
+      if (!pending || pending.type === 'status' || pending.provider !== provider) return;
+
+      const outcome = parsed.payload?.outcome;
+      if (pending.type === 'success') {
+        if (outcome !== 'success') return;
+        const ackBridgeToken = typeof parsed.payload?.bridgeToken === 'string'
+          ? parsed.payload.bridgeToken.trim()
+          : '';
+        if (ackBridgeToken && ackBridgeToken !== pending.bridgeToken) return;
+      } else if (outcome !== 'error') {
+        return;
+      }
+
+      pendingAuthEventRef.current = null;
+      authDispatchRetryCountRef.current = 0;
+      clearAuthDispatchRetryTimer();
+      if (__DEV__) {
+        console.log(`[Web→NativeAuth] ack provider=${provider} outcome=${outcome ?? 'unknown'}`);
+      }
+      return;
+    }
 
     if (parsed.type === 'native_stt_start') {
       if (__DEV__) {
@@ -855,7 +1063,7 @@ function App(): React.JSX.Element {
       }
       void handleNativeAuthStart(parsed.payload);
     }
-  }, [emitTtsToWeb, handleNativeAuthStart, handleNativeStart, handleNativeStop]);
+  }, [clearAuthDispatchRetryTimer, emitTtsToWeb, handleNativeAuthStart, handleNativeStart, handleNativeStop]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -938,10 +1146,15 @@ function App(): React.JSX.Element {
     };
   }, [emitTtsToWeb, resolveCurrentTtsIdentity]);
 
+  const handleLoadStart = useCallback(() => {
+    isPageReadyRef.current = false;
+  }, []);
+
   const handleLoadEnd = useCallback(() => {
     isPageReadyRef.current = true;
     emitToWeb({ type: 'status', status: nativeStatusRef.current });
-  }, [emitToWeb]);
+    flushPendingAuthToWeb();
+  }, [emitToWeb, flushPendingAuthToWeb]);
 
   const handleLoadError = useCallback((event: { nativeEvent: { description?: string } }) => {
     const description = event.nativeEvent.description || 'webview_load_failed';
@@ -974,6 +1187,7 @@ function App(): React.JSX.Element {
           setSupportMultipleWindows={false}
           allowsBackForwardNavigationGestures={false}
           onMessage={handleWebMessage}
+          onLoadStart={handleLoadStart}
           onLoadEnd={handleLoadEnd}
           onError={handleLoadError}
           style={styles.webView}

@@ -48,7 +48,7 @@ function resolveSafeCallbackUrl(rawValue: string): string | null {
   try {
     const parsed = new URL(trimmed, window.location.origin);
     if (parsed.origin !== window.location.origin) return null;
-    if (!parsed.pathname.startsWith("/api/auth/native/complete")) return null;
+    if (!parsed.pathname.startsWith("/api/native-auth/complete")) return null;
     return parsed.toString();
   } catch {
     return null;

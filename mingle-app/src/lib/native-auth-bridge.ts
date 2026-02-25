@@ -5,6 +5,7 @@ const TOKEN_TTL_SECONDS = 90;
 const TOKEN_MAX_AGE_SKEW_SECONDS = 30;
 const SAFE_CALLBACK_ORIGIN = "https://mingle.local";
 const FALLBACK_CALLBACK_PATH = "/";
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{12,128}$/;
 
 export type NativeOAuthProvider = "apple" | "google";
 
@@ -35,11 +36,13 @@ function decodeBase64Url(value: string): Buffer {
 }
 
 function getAuthSecret(): string {
-  const secret = process.env.AUTH_SECRET?.trim() ?? "";
-  if (!secret) {
-    throw new Error("native_auth_secret_missing");
-  }
-  return secret;
+  const authSecret = process.env.AUTH_SECRET?.trim() ?? "";
+  if (authSecret) return authSecret;
+
+  const nextAuthSecret = process.env.NEXTAUTH_SECRET?.trim() ?? "";
+  if (nextAuthSecret) return nextAuthSecret;
+
+  throw new Error("native_auth_secret_missing");
 }
 
 function signPayload(encodedPayload: string, secret: string): string {
@@ -60,6 +63,13 @@ export function resolveNativeOAuthProvider(rawValue: string | null | undefined):
     return normalized;
   }
   return null;
+}
+
+export function resolveNativeAuthRequestId(rawValue: string | null | undefined): string | null {
+  if (typeof rawValue !== "string") return null;
+  const trimmed = rawValue.trim();
+  if (!REQUEST_ID_PATTERN.test(trimmed)) return null;
+  return trimmed;
 }
 
 export function resolveSafeCallbackPath(

@@ -5,8 +5,8 @@
 | Target | API prefix | Required Env |
 |---|---|---|
 | Web App (legacy) | `/api/{path}` | `NEXT_PUBLIC_API_NAMESPACE=` |
-| iOS App (versioned) | `/api/ios/v1.0.0/{path}` | `RN_API_NAMESPACE=ios/v1.0.0` |
-| Android App (legacy) | `/api/{path}` | `RN_API_NAMESPACE=` (optional) |
+| iOS App (versioned) | `/api/ios/v1.0.0/{path}` | `NEXT_PUBLIC_API_NAMESPACE=ios/v1.0.0` |
+| Android App (legacy) | `/api/{path}` | `NEXT_PUBLIC_API_NAMESPACE=` (optional) |
 
 iOS version policy env (optional):
 

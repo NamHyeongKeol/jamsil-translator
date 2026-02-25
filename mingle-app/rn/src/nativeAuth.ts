@@ -1,4 +1,4 @@
-import { Linking } from 'react-native';
+import { AppState, Linking } from 'react-native';
 
 export type NativeAuthProvider = 'apple' | 'google';
 
@@ -18,6 +18,8 @@ type NativeAuthCallbackError = {
   callbackUrl: string;
   message: string;
 };
+
+export type NativeAuthCallbackPayload = NativeAuthCallbackSuccess | NativeAuthCallbackError;
 
 const AUTH_CALLBACK_SCHEME = 'mingleauth:';
 const AUTH_CALLBACK_HOST = 'auth';
@@ -40,7 +42,7 @@ function resolveProvider(rawValue: string): NativeAuthProvider | null {
   return null;
 }
 
-function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackSuccess | NativeAuthCallbackError | null {
+export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPayload | null {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== AUTH_CALLBACK_SCHEME) return null;
@@ -108,6 +110,7 @@ export async function startNativeBrowserAuthSession(args: {
   return new Promise<NativeAuthSessionResult>((resolve, reject) => {
     let settled = false;
     let cleanup = () => {};
+    let lastHandledUrl = '';
     const settleSuccess = (result: NativeAuthSessionResult) => {
       if (settled) return;
       settled = true;
@@ -122,9 +125,12 @@ export async function startNativeBrowserAuthSession(args: {
     };
 
     const handleIncomingUrl = (incomingUrl: string) => {
+      if (!incomingUrl) return;
+      if (incomingUrl === lastHandledUrl) return;
       const parsed = parseNativeAuthCallbackUrl(incomingUrl);
       if (!parsed) return;
       if (parsed.provider !== args.provider) return;
+      lastHandledUrl = incomingUrl;
 
       if (parsed.status === 'success') {
         settleSuccess({
@@ -141,12 +147,33 @@ export async function startNativeBrowserAuthSession(args: {
     const urlSubscription = Linking.addEventListener('url', event => {
       handleIncomingUrl(event.url);
     });
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') return;
+      void Linking.getInitialURL()
+        .then((initialUrl) => {
+          if (!initialUrl) return;
+          handleIncomingUrl(initialUrl);
+        })
+        .catch(() => {
+          // no-op: keep waiting for regular url events or timeout
+        });
+    });
     const timeoutHandle = setTimeout(() => {
       settleError('native_auth_timeout');
     }, timeoutMs);
 
+    void Linking.getInitialURL()
+      .then((initialUrl) => {
+        if (!initialUrl) return;
+        handleIncomingUrl(initialUrl);
+      })
+      .catch(() => {
+        // no-op: regular url events still handled
+      });
+
     cleanup = () => {
       urlSubscription.remove();
+      appStateSubscription.remove();
       clearTimeout(timeoutHandle);
     };
 

@@ -100,13 +100,13 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
 
 - `scripts/devbox profile --profile device`
   - 현재 워크트리 ngrok inspector(`DEVBOX_NGROK_API_PORT`)에서 `devbox_web`, `devbox_stt` 터널 URL을 읽어
-    `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`, `RN_DEFAULT_WS_URL`에 반영
+    `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
 - `scripts/devbox up --profile device --device-app-env dev|prod`
   - 모바일 앱 빌드 URL을
     `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 직접 읽어 주입
-    - RN: `RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL` (fallback: `MINGLE_WEB_APP_BASE_URL`, `MINGLE_DEFAULT_WS_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`)
-    - Native iOS: `MINGLE_API_BASE_URL`, `MINGLE_WS_URL` (RN/NEXT_PUBLIC 키도 fallback으로 허용)
+    - 기준 키: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`
+    - fallback(마이그레이션 호환): `MINGLE_API_BASE_URL`, `RN_WEB_APP_BASE_URL`, `MINGLE_WEB_APP_BASE_URL`, `MINGLE_WS_URL`, `RN_DEFAULT_WS_URL`, `MINGLE_DEFAULT_WS_URL`
   - `--device-app-env prod`면 ngrok 및 로컬 서버(mingle-app/mingle-stt) 기동을 생략
   - `--device-app-env dev`면 기존 device(ngrok) 흐름을 그대로 사용
 
@@ -142,9 +142,9 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
     (device 프로필은 ngrok inspector에서 최신 터널 URL 재조회)
   - iOS는 `--ios-runtime rn|native|both`로 RN/네이티브(또는 동시) 설치를 선택
   - `--device-app-env dev|prod`를 주면 앱 빌드 URL만 Vault 경로에서 덮어씁니다.
-  - RN iOS/Android는 devbox URL(`RN_WEB_APP_BASE_URL`, `RN_DEFAULT_WS_URL`) 기준으로
+  - RN iOS/Android는 devbox URL(`NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`) 기준으로
     빌드/설치를 수행
-  - 네이티브 iOS는 devbox URL(`MINGLE_API_BASE_URL`, `MINGLE_WS_URL`)을 주입해 설치
+  - 네이티브 iOS도 동일하게 `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`를 주입해 설치
   - `--ios-udid`, `--ios-coredevice-id`, `--android-serial`로 대상 기기 지정 가능
   - `--ios-configuration Debug|Release` (기본 Release)
   - `--android-variant debug|release` (기본 release)
@@ -153,7 +153,7 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
 
 - `scripts/devbox ios-native-build`
   - `mingle-ios/scripts/build-ios.sh`를 호출해 네이티브 iOS만 빌드(설치 없음)
-  - `.devbox.env`가 있으면 `MINGLE_API_BASE_URL`, `MINGLE_WS_URL`를 devbox 값으로 주입
+  - `.devbox.env`가 있으면 `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`를 devbox 값으로 주입
   - `.devbox.env`가 없으면 `mingle-ios/Config/*.xcconfig` 기본 URL을 사용
   - `--ios-configuration Debug|Release` (기본 Debug)
   - `--ios-coredevice-id <ID>`를 주면 해당 실기기 타깃으로 빌드
