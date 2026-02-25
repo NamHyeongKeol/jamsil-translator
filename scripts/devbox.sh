@@ -641,44 +641,45 @@ ensure_ios_pods_if_needed() {
     needs_install=1
     reason="Podfile.lock missing"
   elif ! cmp -s "$podfile_lock" "$manifest_lock"; then
-    needs_install=1
-    reason="Podfile.lock and Manifest.lock out of sync"
+    if is_truthy "${DEVBOX_ENFORCE_POD_INSTALL_ON_LOCK_MISMATCH:-0}"; then
+      needs_install=1
+      reason="Podfile.lock and Manifest.lock out of sync"
+    else
+      log "Podfile.lock and Manifest.lock out of sync; syncing Manifest.lock without pod install (set DEVBOX_ENFORCE_POD_INSTALL_ON_LOCK_MISMATCH=1 to enforce pod install)"
+      cp "$podfile_lock" "$manifest_lock"
+      return 0
+    fi
   fi
 
   if [[ "$needs_install" -eq 0 ]]; then
     return 0
   fi
 
-  bundle_cmd="$(resolve_bundle_cmd || true)"
   log "installing iOS pods: mingle-app/rn/ios ($reason)"
-  (
-    cd "$ROOT_DIR/mingle-app/rn"
-    if [[ -n "$bundle_cmd" ]]; then
+
+  bundle_cmd="$(resolve_bundle_cmd || true)"
+  if [[ -n "$bundle_cmd" ]]; then
+    (
+      cd "$ROOT_DIR/mingle-app/rn/ios"
       local bundle_home="$ROOT_DIR/.devbox-cache/bundle/rn"
       mkdir -p "$bundle_home"
-      if ! BUNDLE_USER_HOME="$bundle_home" \
-        BUNDLE_PATH="$bundle_home" \
-        BUNDLE_DISABLE_SHARED_GEMS=true \
-        "$bundle_cmd" check >/dev/null 2>&1; then
-        BUNDLE_USER_HOME="$bundle_home" \
-        BUNDLE_PATH="$bundle_home" \
-        BUNDLE_DISABLE_SHARED_GEMS=true \
-          "$bundle_cmd" install
-      fi
-      (
-        cd ios
-        BUNDLE_USER_HOME="$bundle_home" \
-        BUNDLE_PATH="$bundle_home" \
-        BUNDLE_DISABLE_SHARED_GEMS=true \
-          "$bundle_cmd" exec pod install
-      )
-    else
-      (
-        cd ios
-        pod install
-      )
-    fi
-  )
+      BUNDLE_USER_HOME="$bundle_home" \
+      BUNDLE_PATH="$bundle_home" \
+      BUNDLE_DISABLE_SHARED_GEMS=true \
+        "$bundle_cmd" exec pod install
+    )
+    return 0
+  fi
+
+  if command -v pod >/dev/null 2>&1; then
+    (
+      cd "$ROOT_DIR/mingle-app/rn/ios"
+      pod install
+    )
+    return 0
+  fi
+
+  die "failed to install iOS pods: neither 'bundle' nor 'pod' command is available"
 }
 
 upsert_non_managed_env_entry() {
