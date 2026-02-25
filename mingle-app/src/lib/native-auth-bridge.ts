@@ -35,11 +35,13 @@ function decodeBase64Url(value: string): Buffer {
 }
 
 function getAuthSecret(): string {
-  const secret = process.env.AUTH_SECRET?.trim() ?? "";
-  if (!secret) {
-    throw new Error("native_auth_secret_missing");
-  }
-  return secret;
+  const authSecret = process.env.AUTH_SECRET?.trim() ?? "";
+  if (authSecret) return authSecret;
+
+  const nextAuthSecret = process.env.NEXTAUTH_SECRET?.trim() ?? "";
+  if (nextAuthSecret) return nextAuthSecret;
+
+  throw new Error("native_auth_secret_missing");
 }
 
 function signPayload(encodedPayload: string, secret: string): string {

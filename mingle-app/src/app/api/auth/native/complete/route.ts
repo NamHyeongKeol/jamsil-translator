@@ -60,6 +60,14 @@ function resolveSubject({
   return `native_${provider}_${randomUUID().replaceAll("-", "")}`;
 }
 
+function resolveJwtSecret(): string | undefined {
+  const authSecret = process.env.AUTH_SECRET?.trim();
+  if (authSecret) return authSecret;
+  const nextAuthSecret = process.env.NEXTAUTH_SECRET?.trim();
+  if (nextAuthSecret) return nextAuthSecret;
+  return undefined;
+}
+
 export async function GET(request: NextRequest) {
   const provider = resolveNativeOAuthProvider(request.nextUrl.searchParams.get("provider"));
   const callbackUrl = resolveSafeCallbackPath(request.nextUrl.searchParams.get("callbackUrl"), "/");
@@ -89,7 +97,7 @@ export async function GET(request: NextRequest) {
     }));
   }
 
-  const jwtToken = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+  const jwtToken = await getToken({ req: request, secret: resolveJwtSecret() });
   const name = typeof session.user.name === "string" ? session.user.name.trim() : "";
   const email = typeof session.user.email === "string" ? session.user.email.trim().toLowerCase() : "";
   const subject = resolveSubject({ jwtSubject: jwtToken?.sub, email, provider });
@@ -103,8 +111,9 @@ export async function GET(request: NextRequest) {
       provider,
       callbackUrl,
     });
-  } catch {
-    console.error(`[native-auth/complete] bridge token creation failed provider=${provider}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[native-auth/complete] bridge token creation failed provider=${provider} reason=${message}`);
     return NextResponse.redirect(buildAppRedirect({
       status: "error",
       provider,
