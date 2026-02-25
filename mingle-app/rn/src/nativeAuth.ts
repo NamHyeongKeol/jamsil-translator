@@ -19,6 +19,8 @@ type NativeAuthCallbackError = {
   message: string;
 };
 
+export type NativeAuthCallbackPayload = NativeAuthCallbackSuccess | NativeAuthCallbackError;
+
 const AUTH_CALLBACK_SCHEME = 'mingleauth:';
 const AUTH_CALLBACK_HOST = 'auth';
 const DEFAULT_CALLBACK_URL = '/';
@@ -40,7 +42,7 @@ function resolveProvider(rawValue: string): NativeAuthProvider | null {
   return null;
 }
 
-function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackSuccess | NativeAuthCallbackError | null {
+export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPayload | null {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== AUTH_CALLBACK_SCHEME) return null;
