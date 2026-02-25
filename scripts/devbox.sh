@@ -137,16 +137,22 @@ require_cmd() {
 resolve_bundle_cmd() {
   local candidate
   for candidate in \
-    "/opt/homebrew/lib/ruby/gems/3.3.0/bin/bundle" \
-    "/opt/homebrew/opt/ruby/bin/bundle"
+    "/opt/homebrew/opt/ruby/bin/bundle" \
+    "/usr/local/opt/ruby/bin/bundle"
   do
     [[ -x "$candidate" ]] || continue
     printf "%s" "$candidate"
     return 0
   done
 
-  command -v bundle >/dev/null 2>&1 || return 1
-  command -v bundle
+  # Avoid homebrew gem-bin shim path which can hang on some environments.
+  candidate="$(command -v bundle 2>/dev/null || true)"
+  if [[ -n "$candidate" && ! "$candidate" =~ ^/opt/homebrew/lib/ruby/gems/.*/bin/bundle$ ]]; then
+    printf "%s" "$candidate"
+    return 0
+  fi
+
+  return 1
 }
 
 trim_whitespace() {
