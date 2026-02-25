@@ -33,6 +33,13 @@ import {
 import { validateRnApiNamespace } from './src/apiNamespace';
 
 type RuntimeEnvMap = Record<string, string | undefined>;
+type NativeRuntimeConfig = {
+  webAppBaseUrl?: string;
+  defaultWsUrl?: string;
+  apiNamespace?: string;
+  clientVersion?: string;
+  clientBuild?: string;
+};
 type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none';
 type VersionGateState =
   | { status: 'checking' }
@@ -72,12 +79,23 @@ function readRuntimeEnvValue(keys: string[]): string {
   return '';
 }
 
-function resolveConfiguredUrl(
-  keys: string[],
+function readNativeRuntimeConfig(): NativeRuntimeConfig {
+  const runtimeConfig = (NativeModules.NativeSTTModule as
+    | {
+        runtimeConfig?: NativeRuntimeConfig;
+      }
+    | undefined)?.runtimeConfig;
+  if (!runtimeConfig || typeof runtimeConfig !== 'object') {
+    return {};
+  }
+  return runtimeConfig;
+}
+
+function normalizeConfiguredUrl(
+  raw: string,
   allowedProtocols: string[],
   options?: { trimTrailingSlash?: boolean },
 ): string {
-  const raw = readRuntimeEnvValue(keys);
   if (!raw) return '';
 
   try {
@@ -92,14 +110,30 @@ function resolveConfiguredUrl(
   }
 }
 
+function resolveConfiguredUrl(
+  keys: string[],
+  allowedProtocols: string[],
+  options?: { trimTrailingSlash?: boolean },
+): string {
+  return normalizeConfiguredUrl(readRuntimeEnvValue(keys), allowedProtocols, options);
+}
+
 const RN_RUNTIME_OS = Platform.OS;
+const NATIVE_RUNTIME_CONFIG = readNativeRuntimeConfig();
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
-  ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
+  ['NEXT_PUBLIC_SITE_URL', 'RN_WEB_APP_BASE_URL'],
+  ['http:', 'https:'],
+  { trimTrailingSlash: true },
+) || normalizeConfiguredUrl(
+  NATIVE_RUNTIME_CONFIG.webAppBaseUrl || '',
   ['http:', 'https:'],
   { trimTrailingSlash: true },
 ) || 'https://mingle-app-xi.vercel.app';
 const DEFAULT_WS_URL = resolveConfiguredUrl(
-  ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
+  ['NEXT_PUBLIC_WS_URL', 'RN_DEFAULT_WS_URL'],
+  ['ws:', 'wss:'],
+) || normalizeConfiguredUrl(
+  NATIVE_RUNTIME_CONFIG.defaultWsUrl || '',
   ['ws:', 'wss:'],
 ) || 'wss://mingle.up.railway.app';
 const {
@@ -108,20 +142,21 @@ const {
   validatedApiNamespace: VALIDATED_API_NAMESPACE,
 } = validateRnApiNamespace({
   runtimeOs: RN_RUNTIME_OS,
-  configuredApiNamespace: readRuntimeEnvValue(['RN_API_NAMESPACE']),
+  configuredApiNamespace: readRuntimeEnvValue(['NEXT_PUBLIC_API_NAMESPACE', 'RN_API_NAMESPACE'])
+    || (NATIVE_RUNTIME_CONFIG.apiNamespace || '').trim(),
 });
 
 const missingRuntimeConfig: string[] = [];
 if (!WEB_APP_BASE_URL) {
-  missingRuntimeConfig.push('RN_WEB_APP_BASE_URL (or NEXT_PUBLIC_SITE_URL)');
+  missingRuntimeConfig.push('NEXT_PUBLIC_SITE_URL');
 }
 if (!DEFAULT_WS_URL) {
-  missingRuntimeConfig.push('RN_DEFAULT_WS_URL (or NEXT_PUBLIC_WS_URL)');
+  missingRuntimeConfig.push('NEXT_PUBLIC_WS_URL');
 }
 if (EXPECTED_API_NAMESPACE && !CONFIGURED_API_NAMESPACE) {
-  missingRuntimeConfig.push(`RN_API_NAMESPACE (expected: ${EXPECTED_API_NAMESPACE})`);
+  missingRuntimeConfig.push(`NEXT_PUBLIC_API_NAMESPACE (expected: ${EXPECTED_API_NAMESPACE})`);
 } else if (EXPECTED_API_NAMESPACE && !VALIDATED_API_NAMESPACE) {
-  missingRuntimeConfig.push(`RN_API_NAMESPACE must match current platform namespace: ${EXPECTED_API_NAMESPACE}`);
+  missingRuntimeConfig.push(`NEXT_PUBLIC_API_NAMESPACE must match current platform namespace: ${EXPECTED_API_NAMESPACE}`);
 }
 const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
   ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}`
@@ -675,7 +710,7 @@ function App(): React.JSX.Element {
 
     const payloadWsUrl = typeof payload?.wsUrl === 'string' ? payload.wsUrl.trim() : '';
     if (!payloadWsUrl && !DEFAULT_WS_URL) {
-      emitToWeb({ type: 'error', message: 'missing_ws_url_env(RN_DEFAULT_WS_URL or NEXT_PUBLIC_WS_URL)' });
+      emitToWeb({ type: 'error', message: 'missing_ws_url_env(NEXT_PUBLIC_WS_URL)' });
       return;
     }
 

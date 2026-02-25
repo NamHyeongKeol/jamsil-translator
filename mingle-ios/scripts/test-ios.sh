@@ -7,8 +7,8 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SCHEME="${SCHEME:-MingleIOS}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-${PROJECT_DIR}/.derived-data-test}"
-MINGLE_API_BASE_URL="${MINGLE_API_BASE_URL:-}"
-MINGLE_WS_URL="${MINGLE_WS_URL:-}"
+NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-${MINGLE_API_BASE_URL:-}}"
+NEXT_PUBLIC_WS_URL="${NEXT_PUBLIC_WS_URL:-${MINGLE_WS_URL:-}}"
 
 cd "${PROJECT_DIR}"
 xcodegen generate --spec project.yml > /dev/null
@@ -24,11 +24,11 @@ XCB_ARGS=(
   "CODE_SIGN_IDENTITY="
 )
 
-if [[ -n "${MINGLE_API_BASE_URL}" ]]; then
-  XCB_ARGS+=("MINGLE_API_BASE_URL=${MINGLE_API_BASE_URL}")
+if [[ -n "${NEXT_PUBLIC_SITE_URL}" ]]; then
+  XCB_ARGS+=("NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}")
 fi
-if [[ -n "${MINGLE_WS_URL}" ]]; then
-  XCB_ARGS+=("MINGLE_WS_URL=${MINGLE_WS_URL}")
+if [[ -n "${NEXT_PUBLIC_WS_URL}" ]]; then
+  XCB_ARGS+=("NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}")
 fi
 
 xcodebuild "${XCB_ARGS[@]}" build-for-testing

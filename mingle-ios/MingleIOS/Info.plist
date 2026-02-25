@@ -76,9 +76,9 @@
             </dict>
         </dict>
     </dict>
-    <key>MINGLE_API_BASE_URL</key>
-    <string>$(MINGLE_API_BASE_URL)</string>
-    <key>MINGLE_WS_URL</key>
-    <string>$(MINGLE_WS_URL)</string>
+    <key>NEXT_PUBLIC_SITE_URL</key>
+    <string>$(NEXT_PUBLIC_SITE_URL)</string>
+    <key>NEXT_PUBLIC_WS_URL</key>
+    <string>$(NEXT_PUBLIC_WS_URL)</string>
 </dict>
 </plist>

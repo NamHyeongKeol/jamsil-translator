@@ -7,13 +7,15 @@ function normalizeNamespace(raw) {
   return raw.trim().replace(/^\/+/, '').replace(/\/+$/, '');
 }
 
-const configured = normalizeNamespace(process.env.RN_API_NAMESPACE || '');
+const configured = normalizeNamespace(
+  process.env.NEXT_PUBLIC_API_NAMESPACE || process.env.RN_API_NAMESPACE || '',
+);
 
 if (configured !== EXPECTED_NAMESPACE) {
   console.error(
-    `[rn:ios] invalid RN_API_NAMESPACE: expected "${EXPECTED_NAMESPACE}", received "${configured || '(empty)'}"`,
+    `[rn:ios] invalid NEXT_PUBLIC_API_NAMESPACE: expected "${EXPECTED_NAMESPACE}", received "${configured || '(empty)'}"`,
   );
   process.exit(1);
 }
 
-console.log(`[rn:ios] RN_API_NAMESPACE validated: ${configured}`);
+console.log(`[rn:ios] NEXT_PUBLIC_API_NAMESPACE validated: ${configured}`);

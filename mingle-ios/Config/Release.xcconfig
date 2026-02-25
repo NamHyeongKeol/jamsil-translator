@@ -1,2 +1,2 @@
-MINGLE_API_BASE_URL = https://app.mingle.so
-MINGLE_WS_URL = wss://stt.mingle.so
+NEXT_PUBLIC_SITE_URL = https://app.mingle.so
+NEXT_PUBLIC_WS_URL = wss://stt.mingle.so

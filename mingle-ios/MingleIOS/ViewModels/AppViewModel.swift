@@ -62,10 +62,14 @@ final class AppViewModel: ObservableObject {
 
         self.apiBaseURL = configuredApi?.isEmpty == false
             ? configuredApi!
-            : (Bundle.main.object(forInfoDictionaryKey: "MINGLE_API_BASE_URL") as? String ?? "http://127.0.0.1:3000")
+            : (Bundle.main.object(forInfoDictionaryKey: "NEXT_PUBLIC_SITE_URL") as? String
+                ?? Bundle.main.object(forInfoDictionaryKey: "MINGLE_API_BASE_URL") as? String
+                ?? "http://127.0.0.1:3000")
         self.wsURL = configuredWs?.isEmpty == false
             ? configuredWs!
-            : (Bundle.main.object(forInfoDictionaryKey: "MINGLE_WS_URL") as? String ?? "ws://127.0.0.1:3001")
+            : (Bundle.main.object(forInfoDictionaryKey: "NEXT_PUBLIC_WS_URL") as? String
+                ?? Bundle.main.object(forInfoDictionaryKey: "MINGLE_WS_URL") as? String
+                ?? "ws://127.0.0.1:3001")
         self.languagesCSV = configuredLanguages?.isEmpty == false ? configuredLanguages! : "en,ko"
 
         bindSocketCallbacks()
