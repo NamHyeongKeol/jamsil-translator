@@ -119,6 +119,10 @@ Global Options:
   --log-file PATH|auto  Save combined devbox stdout/stderr to PATH.
                         Relative paths resolve from repository root.
                         auto -> .devbox-logs/devbox-<worktree>-<timestamp>.log
+
+Environment:
+  DEVBOX_NGROK_WEB_DOMAIN  Optional fixed ngrok domain for devbox_web tunnel.
+                           Example: abcdef.ngrok-free.app
 EOF
 }
 
@@ -141,6 +145,15 @@ is_truthy() {
     1|true|yes|y|on) return 0 ;;
     *) return 1 ;;
   esac
+}
+
+normalize_domain_input() {
+  local value
+  value="$(trim_whitespace "${1:-}")"
+  value="${value#https://}"
+  value="${value#http://}"
+  value="${value%%/*}"
+  printf '%s' "$value"
 }
 
 is_numeric() {
@@ -997,7 +1010,20 @@ EOF
   upsert_managed_block "$STT_ENV_FILE" "$block"
 }
 
+resolve_ngrok_web_domain() {
+  local raw=""
+  local domain=""
+  raw="$(read_app_setting_value DEVBOX_NGROK_WEB_DOMAIN || true)"
+  domain="$(normalize_domain_input "$raw")"
+  [[ -n "$domain" ]] || return 1
+  validate_host "$domain"
+  printf '%s' "$domain"
+}
+
 write_ngrok_local_config() {
+  local ngrok_web_domain=""
+  ngrok_web_domain="$(resolve_ngrok_web_domain || true)"
+
   cat > "$NGROK_LOCAL_CONFIG" <<EOF
 version: "3"
 agent:
@@ -1006,6 +1032,15 @@ tunnels:
   devbox_web:
     addr: $DEVBOX_WEB_PORT
     proto: http
+EOF
+
+  if [[ -n "$ngrok_web_domain" ]]; then
+    cat >> "$NGROK_LOCAL_CONFIG" <<EOF
+    domain: $ngrok_web_domain
+EOF
+  fi
+
+  cat >> "$NGROK_LOCAL_CONFIG" <<EOF
   devbox_stt:
     addr: $DEVBOX_STT_PORT
     proto: http
@@ -2739,12 +2774,19 @@ cmd_test() {
 
 cmd_status() {
   require_devbox_env
+  local ngrok_web_domain="(auto)"
+  local detected_ngrok_web_domain=""
+  detected_ngrok_web_domain="$(resolve_ngrok_web_domain || true)"
+  if [[ -n "$detected_ngrok_web_domain" ]]; then
+    ngrok_web_domain="$detected_ngrok_web_domain"
+  fi
 
   cat <<EOF
 [devbox] worktree: $DEVBOX_WORKTREE_NAME
 [devbox] profile:  $DEVBOX_PROFILE
 [devbox] ports:    web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT metro=$DEVBOX_METRO_PORT
 [devbox] ngrok:    inspector=http://127.0.0.1:$DEVBOX_NGROK_API_PORT
+[devbox] ngrok-web-domain: $ngrok_web_domain
 
 PC Web      : $DEVBOX_SITE_URL
 iOS Web     : $DEVBOX_SITE_URL
