@@ -1818,12 +1818,15 @@ sync_google_oauth_redirect_uris_for_site_change() {
 
   [[ -n "$current_site_url" ]] || return 0
   [[ "$current_site_url" =~ ^https:// ]] || return 0
-  [[ "$current_site_url" != "$previous_site_url" ]] || return 0
 
   enabled_raw="$(read_app_setting_value DEVBOX_GOOGLE_REDIRECT_SYNC_ENABLED || true)"
   if [[ -n "$enabled_raw" ]] && ! is_truthy "$enabled_raw"; then
     log "google oauth redirect sync disabled (DEVBOX_GOOGLE_REDIRECT_SYNC_ENABLED=$enabled_raw)"
     return 0
+  fi
+
+  if [[ "$current_site_url" == "$previous_site_url" ]]; then
+    log "google oauth redirect sync check: ngrok host unchanged; validating redirect URI presence"
   fi
 
   client_id="$(read_app_setting_value DEVBOX_GOOGLE_OAUTH_CLIENT_ID || true)"

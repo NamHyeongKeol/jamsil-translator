@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env
+    %% @lastActive: mingle_worktree_devbox_google_redirect_sync_retry_on_same_host
 
     %% === START ===
     %% @project_start [start, closed]
@@ -814,6 +814,9 @@ flowchart TD
     %% @mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env [ai-task, closed, 2026-02-25, ai]
     mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env("devbox 기본 Vault 경로 자동탐지<br/><sub>DEVBOX_VAULT_APP_PATH가 비어도<br/>secret/mingle-app/dev|prod를 자동 감지해<br/>up 실행 시 AUTH_GOOGLE_* 런타임 주입을 복구하고<br/>로그인 버튼 disabled 재발을 줄이도록 보강</sub>")
 
+    %% @mingle_worktree_devbox_google_redirect_sync_retry_on_same_host [ai-task, closed, 2026-02-25, ai]
+    mingle_worktree_devbox_google_redirect_sync_retry_on_same_host("devbox redirect 동기화 재시도 보강<br/><sub>ngrok host가 이전과 같으면 동기화를 건너뛰던<br/>조건을 제거해 profile/up 실행마다 redirect URI를<br/>재검증하고 누락 시 즉시 patch하도록 바꿔<br/>이전 실패 이후 same-host 상태에서도 자동 복구</sub>")
+
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
 
@@ -1042,6 +1045,7 @@ flowchart TD
     mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix --> mingle_worktree_devbox_google_oauth_redirect_uri_auto_append
     mingle_worktree_devbox_google_oauth_redirect_uri_auto_append --> mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix
     mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix --> mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env
+    mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env --> mingle_worktree_devbox_google_redirect_sync_retry_on_same_host
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -1285,6 +1289,7 @@ flowchart TD
     mingle_worktree_devbox_google_oauth_redirect_uri_auto_append -.-> ultimate_goal
     mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix -.-> ultimate_goal
     mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env -.-> ultimate_goal
+    mingle_worktree_devbox_google_redirect_sync_retry_on_same_host -.-> ultimate_goal
     mingle_app_rn_social_auth_gate_and_menu -.-> ultimate_goal
     mingle_stt_soniox_debug_logging_removed -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
@@ -1360,7 +1365,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env
+        mingle_worktree_devbox_google_redirect_sync_retry_on_same_host
     end
 
     %% === STYLES ===
@@ -1710,6 +1715,7 @@ flowchart TD
     style mingle_worktree_devbox_google_oauth_redirect_uri_auto_append fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_google_redirect_sync_retry_on_same_host fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_social_auth_gate_and_menu fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1726,7 +1732,7 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_google_redirect_sync_retry_on_same_host fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_worktree_devbox_runtime_vault_env_injection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
