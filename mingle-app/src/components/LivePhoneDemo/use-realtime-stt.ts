@@ -70,9 +70,12 @@ function shouldUseNativeSttBridge(): boolean {
   try {
     const params = new URLSearchParams(window.location.search || '')
     const value = (params.get(NATIVE_STT_QUERY_KEY) || '').trim().toLowerCase()
-    return value === '1' || value === 'true'
+    if (!value) return true
+    if (value === '0' || value === 'false' || value === 'off') return false
+    if (value === '1' || value === 'true' || value === 'on') return true
+    return true
   } catch {
-    return false
+    return true
   }
 }
 
