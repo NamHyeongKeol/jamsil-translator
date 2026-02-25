@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix
+    %% @lastActive: mingle_worktree_devbox_google_oauth_redirect_uri_auto_append
 
     %% === START ===
     %% @project_start [start, closed]
@@ -805,6 +805,9 @@ flowchart TD
     %% @mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix [ai-task, closed, 2026-02-25, ai]
     mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix("devbox RN iOS 자동 탐지 ID 매핑 수정<br/><sub>RN 실기기 설치에서 xcodebuild destination id와<br/>devicectl coredevice id를 같은 값으로 처리해<br/>자동탐지 시 destination mismatch로 실패하던 경로를<br/>각 도구별 ID 탐지 로직 분리로 안정화</sub>")
 
+    %% @mingle_worktree_devbox_google_oauth_redirect_uri_auto_append [ai-task, closed, 2026-02-25, ai]
+    mingle_worktree_devbox_google_oauth_redirect_uri_auto_append("devbox ngrok redirect 자동 추가<br/><sub>device 프로필에서 ngrok URL이 바뀌면<br/>Google OAuth allowedRedirectUris에<br/>/api/auth/callback/google 경로를 자동 병합하고<br/>설정 부족/권한 오류는 경고로만 처리</sub>")
+
     %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
     mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
 
@@ -1030,6 +1033,7 @@ flowchart TD
     mingle_ios_signing_bundle_id_override_support --> mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix
     mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix --> mingle_ios_team_override_auto_detect_removal_fix
     mingle_worktree_devbox_native_ios_auto_device_selection_parity --> mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix
+    mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix --> mingle_worktree_devbox_google_oauth_redirect_uri_auto_append
     mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
     mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
     mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
@@ -1270,6 +1274,7 @@ flowchart TD
     mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix -.-> ultimate_goal
     mingle_ios_team_override_auto_detect_removal_fix -.-> ultimate_goal
     mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix -.-> ultimate_goal
+    mingle_worktree_devbox_google_oauth_redirect_uri_auto_append -.-> ultimate_goal
     mingle_app_rn_social_auth_gate_and_menu -.-> ultimate_goal
     mingle_stt_soniox_debug_logging_removed -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
@@ -1345,7 +1350,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix
+        mingle_worktree_devbox_google_oauth_redirect_uri_auto_append
     end
 
     %% === STYLES ===
@@ -1692,6 +1697,7 @@ flowchart TD
     style mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_ios_team_override_auto_detect_removal_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_google_oauth_redirect_uri_auto_append fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_social_auth_gate_and_menu fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1708,7 +1714,7 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_google_oauth_redirect_uri_auto_append fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_worktree_devbox_runtime_vault_env_injection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
