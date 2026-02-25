@@ -450,6 +450,7 @@ export default function MingleHome(props: MingleHomeProps) {
     <main className="h-full min-h-0 w-full overflow-hidden bg-white text-slate-900">
       <LivePhoneDemo
         enableAutoTTS
+        uiLocale={props.locale}
         tapPlayToStartLabel={props.dictionary.demo.tapPlayToStart}
         usageLimitReachedLabel={props.dictionary.demo.usageLimitReached}
         usageLimitRetryHintLabel={props.dictionary.demo.usageLimitRetryHint}

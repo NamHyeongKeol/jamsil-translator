@@ -1,0 +1,20 @@
+import { createProfileLocalizedDictionary } from "@/i18n/dictionaries/create-profile-localized-dictionary";
+
+export const esDictionary = createProfileLocalizedDictionary({
+  authTitle: "Autenticación",
+  loginRequiredTitle: "Inicio de sesión requerido",
+  loginRequiredDescription: "Inicia sesión con Apple o Google para usar el traductor.",
+  loginLoading: "Comprobando tu sesión...",
+  signedInAs: "Sesión iniciada como",
+  loginApple: "Iniciar sesión con Apple",
+  loginGoogle: "Iniciar sesión con Google",
+  loginDemo: "Inicio de sesión demo",
+  logout: "Cerrar sesión",
+  deleteAccount: "Eliminar cuenta",
+  menuLabel: "Menú",
+  deleteAccountConfirm: "¿Eliminar los datos de la cuenta y cerrar sesión ahora?",
+  deleteAccountFailed: "No se pudo eliminar la cuenta. Inténtalo de nuevo.",
+  appleNotConfigured: "Faltan variables de entorno de Apple OAuth, por lo que Apple no está disponible.",
+  googleNotConfigured: "Faltan variables de entorno de Google OAuth, por lo que solo está disponible el inicio demo.",
+  nativeSignInFailed: "Falló el inicio de sesión nativo. Inténtalo de nuevo.",
+});
