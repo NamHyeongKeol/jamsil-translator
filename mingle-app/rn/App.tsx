@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
+  Linking,
   NativeModules,
   Platform,
   Pressable,
@@ -28,30 +30,33 @@ import {
   startNativeBrowserAuthSession,
   type NativeAuthProvider,
 } from './src/nativeAuth';
+import { validateRnApiNamespace } from './src/apiNamespace';
 
 type RuntimeEnvMap = Record<string, string | undefined>;
-type NativeRuntimeConfig = {
-  webAppBaseUrl?: string;
-  defaultWsUrl?: string;
+type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none';
+type VersionGateState =
+  | { status: 'checking' }
+  | { status: 'ready' }
+  | {
+      status: 'force_update';
+      updateUrl: string;
+      title: string;
+      message: string;
+      updateButtonLabel: string;
+      clientVersion: string;
+      latestVersion: string;
+    };
+type VersionPolicyResponse = {
+  action: VersionPolicyAction;
+  locale?: string;
+  updateUrl?: string;
+  title?: string;
+  message?: string;
+  latestVersion?: string;
+  clientVersion?: string;
+  updateButtonLabel?: string;
+  laterButtonLabel?: string;
 };
-type ResolvedRuntimeConfig = {
-  webAppBaseUrl: string;
-  defaultWsUrl: string;
-  error: string | null;
-};
-
-const RUNTIME_CONFIG_ERROR_PREFIX = 'Missing or invalid runtime config: ';
-
-function readNativeRuntimeConfig(): NativeRuntimeConfig {
-  const nativeSttModule = NativeModules.NativeSTTModule as
-    | { runtimeConfig?: NativeRuntimeConfig }
-    | undefined;
-  const runtimeConfig = nativeSttModule?.runtimeConfig;
-  if (!runtimeConfig || typeof runtimeConfig !== 'object') {
-    return {};
-  }
-  return runtimeConfig;
-}
 
 function readRuntimeEnvValue(keys: string[]): string {
   const env = (globalThis as { process?: { env?: RuntimeEnvMap } }).process?.env;
@@ -67,98 +72,236 @@ function readRuntimeEnvValue(keys: string[]): string {
   return '';
 }
 
-function readNativeRuntimeValue(
-  keys: Array<keyof NativeRuntimeConfig>,
-  runtimeConfig: NativeRuntimeConfig = readNativeRuntimeConfig(),
-): string {
-  for (const key of keys) {
-    const value = runtimeConfig[key];
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-  return '';
-}
-
-function normalizeRuntimeUrlCandidate(raw: string): string {
-  let value = raw.trim();
-  while (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
-    value = value.slice(1, -1).trim();
-  }
-  return value.replace(/\\\//g, '/').trim();
-}
-
 function resolveConfiguredUrl(
-  sources: {
-    nativeKeys?: Array<keyof NativeRuntimeConfig>;
-    envKeys?: string[];
-  },
+  keys: string[],
   allowedProtocols: string[],
   options?: { trimTrailingSlash?: boolean },
-  runtimeConfig?: NativeRuntimeConfig,
 ): string {
-  const raw = readNativeRuntimeValue(sources.nativeKeys || [], runtimeConfig)
-    || readRuntimeEnvValue(sources.envKeys || []);
-  const normalizedRaw = raw ? normalizeRuntimeUrlCandidate(raw) : '';
-  if (!normalizedRaw) return '';
+  const raw = readRuntimeEnvValue(keys);
+  if (!raw) return '';
 
   try {
-    const parsed = new URL(normalizedRaw);
+    const parsed = new URL(raw);
     if (!allowedProtocols.includes(parsed.protocol)) return '';
-    if (!parsed.hostname) return '';
     if (options?.trimTrailingSlash) {
-      return normalizedRaw.replace(/\/+$/, '');
+      return raw.replace(/\/+$/, '');
     }
-    return normalizedRaw;
+    return raw;
   } catch {
     return '';
   }
 }
 
-function resolveRuntimeConfig(runtimeConfig?: NativeRuntimeConfig): ResolvedRuntimeConfig {
-  const webAppBaseUrl = resolveConfiguredUrl(
-    {
-      nativeKeys: ['webAppBaseUrl'],
-      envKeys: ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
-    },
-    ['http:', 'https:'],
-    { trimTrailingSlash: true },
-    runtimeConfig,
-  );
-  const defaultWsUrl = resolveConfiguredUrl(
-    {
-      nativeKeys: ['defaultWsUrl'],
-      envKeys: ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
-    },
-    ['ws:', 'wss:'],
-    undefined,
-    runtimeConfig,
-  );
+const RN_RUNTIME_OS = Platform.OS;
+const WEB_APP_BASE_URL = resolveConfiguredUrl(
+  ['RN_WEB_APP_BASE_URL', 'NEXT_PUBLIC_SITE_URL'],
+  ['http:', 'https:'],
+  { trimTrailingSlash: true },
+) || 'https://mingle-app-xi.vercel.app';
+const DEFAULT_WS_URL = resolveConfiguredUrl(
+  ['RN_DEFAULT_WS_URL', 'NEXT_PUBLIC_WS_URL'],
+  ['ws:', 'wss:'],
+) || 'wss://mingle.up.railway.app';
+const {
+  expectedApiNamespace: EXPECTED_API_NAMESPACE,
+  configuredApiNamespace: CONFIGURED_API_NAMESPACE,
+  validatedApiNamespace: VALIDATED_API_NAMESPACE,
+} = validateRnApiNamespace({
+  runtimeOs: RN_RUNTIME_OS,
+  configuredApiNamespace: readRuntimeEnvValue(['RN_API_NAMESPACE']),
+});
 
-  const missingRuntimeConfig: string[] = [];
-  if (!webAppBaseUrl) {
-    missingRuntimeConfig.push('MingleWebAppScheme/Host(Info.plist) or RN_WEB_APP_BASE_URL');
-  }
-  // WS URL is optional at boot because the web layer usually provides
-  // wsUrl in native_stt_start payload. We validate again at start-time.
-
-  return {
-    webAppBaseUrl,
-    defaultWsUrl,
-    error: missingRuntimeConfig.length > 0
-      ? `${RUNTIME_CONFIG_ERROR_PREFIX}${missingRuntimeConfig.join(', ')}`
-      : null,
-  };
+const missingRuntimeConfig: string[] = [];
+if (!WEB_APP_BASE_URL) {
+  missingRuntimeConfig.push('RN_WEB_APP_BASE_URL (or NEXT_PUBLIC_SITE_URL)');
 }
-
-const INITIAL_RUNTIME_CONFIG = resolveRuntimeConfig();
+if (!DEFAULT_WS_URL) {
+  missingRuntimeConfig.push('RN_DEFAULT_WS_URL (or NEXT_PUBLIC_WS_URL)');
+}
+if (EXPECTED_API_NAMESPACE && !CONFIGURED_API_NAMESPACE) {
+  missingRuntimeConfig.push(`RN_API_NAMESPACE (expected: ${EXPECTED_API_NAMESPACE})`);
+} else if (EXPECTED_API_NAMESPACE && !VALIDATED_API_NAMESPACE) {
+  missingRuntimeConfig.push(`RN_API_NAMESPACE must match current platform namespace: ${EXPECTED_API_NAMESPACE}`);
+}
+const REQUIRED_CONFIG_ERROR = missingRuntimeConfig.length > 0
+  ? `Missing or invalid env: ${missingRuntimeConfig.join(', ')}`
+  : null;
 
 const NATIVE_STT_EVENT = 'mingle:native-stt';
 const NATIVE_TTS_EVENT = 'mingle:native-tts';
 const NATIVE_UI_EVENT = 'mingle:native-ui';
 const NATIVE_AUTH_EVENT = 'mingle:native-auth';
-const SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
 const IOS_SAFE_BROWSER_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+const WEB_SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
+const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
+  'ko',
+  'en',
+  'ja',
+  'zh-CN',
+  'zh-TW',
+  'fr',
+  'de',
+  'es',
+  'pt',
+  'it',
+  'ru',
+  'ar',
+  'hi',
+  'th',
+  'vi',
+]);
+const VERSION_POLICY_LOCALE_ALIASES: Record<string, string> = {
+  ko: 'ko',
+  en: 'en',
+  ja: 'ja',
+  fr: 'fr',
+  de: 'de',
+  es: 'es',
+  pt: 'pt',
+  it: 'it',
+  ru: 'ru',
+  ar: 'ar',
+  hi: 'hi',
+  th: 'th',
+  vi: 'vi',
+  zh: 'zh-CN',
+  'zh-cn': 'zh-CN',
+  'zh-hans': 'zh-CN',
+  'zh-sg': 'zh-CN',
+  'zh-tw': 'zh-TW',
+  'zh-hant': 'zh-TW',
+  'zh-hk': 'zh-TW',
+  'zh-mo': 'zh-TW',
+};
+const VERSION_POLICY_FALLBACK_COPY: Record<string, {
+  forceTitle: string;
+  forceMessage: string;
+  recommendTitle: string;
+  recommendMessage: string;
+  updateLabel: string;
+  laterLabel: string;
+}> = {
+  ko: {
+    forceTitle: '업데이트 필요',
+    forceMessage: '현재 버전은 더 이상 지원되지 않습니다. 최신 버전으로 업데이트해 주세요.',
+    recommendTitle: '업데이트 권장',
+    recommendMessage: '새 버전 업데이트를 권장합니다.',
+    updateLabel: '업데이트',
+    laterLabel: '나중에',
+  },
+  en: {
+    forceTitle: 'Update Required',
+    forceMessage: 'This version is no longer supported. Please update to the latest version.',
+    recommendTitle: 'Update Recommended',
+    recommendMessage: 'A new version is available. We recommend updating for a better experience.',
+    updateLabel: 'Update',
+    laterLabel: 'Later',
+  },
+  ja: {
+    forceTitle: 'アップデートが必要です',
+    forceMessage: 'このバージョンはサポートされていません。最新バージョンにアップデートしてください。',
+    recommendTitle: 'アップデート推奨',
+    recommendMessage: '新しいバージョンが利用可能です。アップデートをお勧めします。',
+    updateLabel: 'アップデート',
+    laterLabel: 'あとで',
+  },
+  'zh-CN': {
+    forceTitle: '更新必需',
+    forceMessage: '当前版本已不再受支持。请更新到最新版本。',
+    recommendTitle: '建议更新',
+    recommendMessage: '新版本已发布，建议更新以获得更稳定的体验。',
+    updateLabel: '更新',
+    laterLabel: '稍后',
+  },
+  'zh-TW': {
+    forceTitle: '必須更新',
+    forceMessage: '目前版本已不再支援。請更新至最新版本。',
+    recommendTitle: '建議更新',
+    recommendMessage: '新版本已推出，建議更新以獲得更穩定的體驗。',
+    updateLabel: '更新',
+    laterLabel: '稍後',
+  },
+  fr: {
+    forceTitle: 'Mise à jour requise',
+    forceMessage: 'Cette version n\'est plus prise en charge. Veuillez mettre à jour vers la dernière version.',
+    recommendTitle: 'Mise à jour recommandée',
+    recommendMessage: 'Une nouvelle version est disponible. Nous recommandons la mise à jour.',
+    updateLabel: 'Mettre à jour',
+    laterLabel: 'Plus tard',
+  },
+  de: {
+    forceTitle: 'Update erforderlich',
+    forceMessage: 'Diese Version wird nicht mehr unterstützt. Bitte aktualisieren Sie auf die neueste Version.',
+    recommendTitle: 'Update empfohlen',
+    recommendMessage: 'Eine neue Version ist verfügbar. Wir empfehlen ein Update.',
+    updateLabel: 'Aktualisieren',
+    laterLabel: 'Später',
+  },
+  es: {
+    forceTitle: 'Actualización obligatoria',
+    forceMessage: 'Esta versión ya no es compatible. Actualiza a la última versión.',
+    recommendTitle: 'Actualización recomendada',
+    recommendMessage: 'Hay una nueva versión disponible. Recomendamos actualizar.',
+    updateLabel: 'Actualizar',
+    laterLabel: 'Más tarde',
+  },
+  pt: {
+    forceTitle: 'Atualização obrigatória',
+    forceMessage: 'Esta versão não é mais compatível. Atualize para a versão mais recente.',
+    recommendTitle: 'Atualização recomendada',
+    recommendMessage: 'Há uma nova versão disponível. Recomendamos atualizar.',
+    updateLabel: 'Atualizar',
+    laterLabel: 'Mais tarde',
+  },
+  it: {
+    forceTitle: 'Aggiornamento obbligatorio',
+    forceMessage: 'Questa versione non è più supportata. Aggiorna all\'ultima versione.',
+    recommendTitle: 'Aggiornamento consigliato',
+    recommendMessage: 'È disponibile una nuova versione. Ti consigliamo di aggiornare.',
+    updateLabel: 'Aggiorna',
+    laterLabel: 'Più tardi',
+  },
+  ru: {
+    forceTitle: 'Требуется обновление',
+    forceMessage: 'Эта версия больше не поддерживается. Обновите приложение до последней версии.',
+    recommendTitle: 'Рекомендуется обновление',
+    recommendMessage: 'Доступна новая версия. Рекомендуем обновить приложение.',
+    updateLabel: 'Обновить',
+    laterLabel: 'Позже',
+  },
+  ar: {
+    forceTitle: 'التحديث مطلوب',
+    forceMessage: 'هذا الإصدار لم يعد مدعومًا. يرجى التحديث إلى أحدث إصدار.',
+    recommendTitle: 'يوصى بالتحديث',
+    recommendMessage: 'يتوفر إصدار جديد. نوصي بالتحديث.',
+    updateLabel: 'تحديث',
+    laterLabel: 'لاحقًا',
+  },
+  hi: {
+    forceTitle: 'अपडेट आवश्यक',
+    forceMessage: 'यह संस्करण अब समर्थित नहीं है। कृपया नवीनतम संस्करण में अपडेट करें।',
+    recommendTitle: 'अपडेट की अनुशंसा',
+    recommendMessage: 'नया संस्करण उपलब्ध है। अपडेट करने की सलाह दी जाती है।',
+    updateLabel: 'अपडेट करें',
+    laterLabel: 'बाद में',
+  },
+  th: {
+    forceTitle: 'จำเป็นต้องอัปเดต',
+    forceMessage: 'เวอร์ชันนี้ไม่รองรับแล้ว กรุณาอัปเดตเป็นเวอร์ชันล่าสุด',
+    recommendTitle: 'แนะนำให้อัปเดต',
+    recommendMessage: 'มีเวอร์ชันใหม่พร้อมใช้งาน แนะนำให้อัปเดต',
+    updateLabel: 'อัปเดต',
+    laterLabel: 'ภายหลัง',
+  },
+  vi: {
+    forceTitle: 'Cần cập nhật',
+    forceMessage: 'Phiên bản này không còn được hỗ trợ. Vui lòng cập nhật lên phiên bản mới nhất.',
+    recommendTitle: 'Khuyến nghị cập nhật',
+    recommendMessage: 'Đã có phiên bản mới. Chúng tôi khuyên bạn nên cập nhật.',
+    updateLabel: 'Cập nhật',
+    laterLabel: 'Để sau',
+  },
+};
 
 type NativeSttStartPayload = {
   wsUrl?: string;
@@ -244,6 +387,13 @@ type NativeAuthEvent =
       provider: NativeAuthProvider;
       message: string;
     };
+function normalizeClientVersion(raw: string): string {
+  return raw.trim().replace(/^v/i, '');
+}
+
+function buildIosVersionPolicyUrl(baseUrl: string): string {
+  return `${baseUrl}/api/ios/v1.0.0/client/version-policy`;
+}
 
 function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
   const numeric = typeof rawStatusBarHeight === 'number'
@@ -254,71 +404,59 @@ function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
   return Math.max(20, Math.min(64, Math.ceil(numeric)));
 }
 
-function normalizeLocaleCode(rawLocale: string): string {
-  const candidate = rawLocale.trim();
-  if (!candidate) return '';
-  const base = candidate.split(/[-_]/)[0]?.toLowerCase() || '';
-  return base;
+function resolveDeviceLocaleTag(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale || 'ko';
+  } catch {
+    return 'ko';
+  }
 }
 
-function resolveLocaleSegment(): string {
-  const candidates: string[] = [];
+function resolveWebLocaleSegment(rawLocaleTag: string): string {
+  const code = rawLocaleTag.trim().replace(/_/g, '-').split('-')[0]?.toLowerCase() || 'ko';
+  return WEB_SUPPORTED_LOCALES.has(code) ? code : 'ko';
+}
 
-  const settingsManager = (NativeModules as {
-    SettingsManager?: {
-      settings?: {
-        AppleLanguages?: unknown;
-        AppleLocale?: unknown;
-      };
-    };
-  }).SettingsManager;
-  const nativeSettings = settingsManager?.settings;
-  const appleLanguages = nativeSettings?.AppleLanguages;
-  if (Array.isArray(appleLanguages)) {
-    for (const value of appleLanguages) {
-      if (typeof value === 'string' && value.trim()) {
-        candidates.push(value);
-      }
+function resolveVersionPolicyLocale(rawLocaleTag: string): string {
+  const normalized = rawLocaleTag.trim().replace(/_/g, '-').toLowerCase();
+  if (!normalized) return 'en';
+
+  const directMatch = VERSION_POLICY_LOCALE_ALIASES[normalized];
+  if (directMatch && VERSION_POLICY_SUPPORTED_LOCALES.has(directMatch)) {
+    return directMatch;
+  }
+
+  if (normalized.startsWith('zh-')) {
+    if (normalized.includes('-tw') || normalized.includes('-hant') || normalized.includes('-hk') || normalized.includes('-mo')) {
+      return 'zh-TW';
     }
-  }
-  if (typeof nativeSettings?.AppleLocale === 'string' && nativeSettings.AppleLocale.trim()) {
-    candidates.push(nativeSettings.AppleLocale);
+    return 'zh-CN';
   }
 
-  const i18nManager = (NativeModules as {
-    I18nManager?: {
-      localeIdentifier?: unknown;
-    };
-  }).I18nManager;
-  if (typeof i18nManager?.localeIdentifier === 'string' && i18nManager.localeIdentifier.trim()) {
-    candidates.push(i18nManager.localeIdentifier);
+  const base = normalized.split('-')[0] || '';
+  const baseMatch = VERSION_POLICY_LOCALE_ALIASES[base];
+  if (baseMatch && VERSION_POLICY_SUPPORTED_LOCALES.has(baseMatch)) {
+    return baseMatch;
   }
 
-  try {
-    const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale;
-    if (typeof intlLocale === 'string' && intlLocale.trim()) {
-      candidates.push(intlLocale);
-    }
-  } catch {
-    // Ignore Intl lookup failures and fallback to defaults below.
-  }
+  return 'en';
+}
 
-  for (const localeCandidate of candidates) {
-    const code = normalizeLocaleCode(localeCandidate);
-    if (SUPPORTED_LOCALES.has(code)) {
-      return code;
-    }
-  }
-
-  return 'ko';
+function getVersionPolicyFallbackCopy(locale: string) {
+  return VERSION_POLICY_FALLBACK_COPY[locale] || VERSION_POLICY_FALLBACK_COPY.en;
 }
 
 function App(): React.JSX.Element {
   const webViewRef = useRef<WebView>(null);
   const isPageReadyRef = useRef(false);
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
-  const [runtimeConfig, setRuntimeConfig] = useState<ResolvedRuntimeConfig>(() => INITIAL_RUNTIME_CONFIG);
-  const [loadError, setLoadError] = useState<string | null>(() => INITIAL_RUNTIME_CONFIG.error);
+  const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
+  const [versionGate, setVersionGate] = useState<VersionGateState>(() => (
+    Platform.OS === 'ios' && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
+      ? { status: 'checking' }
+      : { status: 'ready' }
+  ));
+  const recommendPromptShownRef = useRef(false);
   const nativeStatusRef = useRef('idle');
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
   const nativeAuthInFlightRef = useRef<NativeAuthProvider | null>(null);
@@ -330,53 +468,137 @@ function App(): React.JSX.Element {
     return resolveIosTopTapOverlayHeight(manager?.HEIGHT);
   });
 
-  const locale = useMemo(() => resolveLocaleSegment(), []);
+  const deviceLocaleTag = useMemo(() => resolveDeviceLocaleTag(), []);
+  const webLocale = useMemo(() => resolveWebLocaleSegment(deviceLocaleTag), [deviceLocaleTag]);
+  const versionPolicyLocale = useMemo(() => resolveVersionPolicyLocale(deviceLocaleTag), [deviceLocaleTag]);
+  const versionPolicyFallback = useMemo(
+    () => getVersionPolicyFallbackCopy(versionPolicyLocale),
+    [versionPolicyLocale],
+  );
   const webUrl = useMemo(() => {
-    if (!runtimeConfig.webAppBaseUrl) return '';
+    if (!WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) return '';
+    const apiNamespaceQuery = VALIDATED_API_NAMESPACE
+      ? `&apiNamespace=${encodeURIComponent(VALIDATED_API_NAMESPACE)}`
+      : '';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
-    return `${runtimeConfig.webAppBaseUrl}/${locale}?nativeStt=1&nativeUi=1&nativeAuth=1${debugParams}`;
-  }, [locale, runtimeConfig.webAppBaseUrl]);
+    return `${WEB_APP_BASE_URL}/${webLocale}?nativeStt=1&nativeUi=1&nativeAuth=1${apiNamespaceQuery}${debugParams}`;
+  }, [webLocale]);
 
   useEffect(() => {
-    const nativeSttModule = NativeModules.NativeSTTModule as
-      | { getRuntimeConfig?: () => Promise<NativeRuntimeConfig> }
-      | undefined;
-    if (!nativeSttModule || typeof nativeSttModule.getRuntimeConfig !== 'function') {
+    if (Platform.OS !== 'ios' || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
       return;
     }
 
     let active = true;
-    void nativeSttModule.getRuntimeConfig()
-      .then((nativeConfig) => {
-        if (!active) return;
-        const next = resolveRuntimeConfig(nativeConfig);
-        setRuntimeConfig((current) => {
-          if (
-            current.webAppBaseUrl === next.webAppBaseUrl
-            && current.defaultWsUrl === next.defaultWsUrl
-            && current.error === next.error
-          ) {
-            return current;
-          }
-          return next;
-        });
-        setLoadError((current) => {
-          const isRuntimeConfigError = typeof current === 'string'
-            && current.startsWith(RUNTIME_CONFIG_ERROR_PREFIX);
-          if (current === null || isRuntimeConfigError) {
-            return next.error;
-          }
-          return current;
-        });
+    const nativeRuntimeConfig = (NativeModules.NativeSTTModule as
+      | {
+          runtimeConfig?: {
+            clientVersion?: string;
+            clientBuild?: string;
+          };
+        }
+      | undefined)?.runtimeConfig;
+    const envClientVersion = readRuntimeEnvValue(['RN_CLIENT_VERSION']);
+    const envClientBuild = readRuntimeEnvValue(['RN_CLIENT_BUILD']);
+    const clientVersion = normalizeClientVersion(
+      envClientVersion
+      || nativeRuntimeConfig?.clientVersion
+      || '',
+    );
+    const clientBuild = envClientBuild || nativeRuntimeConfig?.clientBuild || '';
+
+    void fetch(buildIosVersionPolicyUrl(WEB_APP_BASE_URL), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientVersion,
+        clientBuild,
+        locale: versionPolicyLocale,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`version_policy_status_${response.status}`);
+        }
+        return response.json() as Promise<VersionPolicyResponse>;
       })
-      .catch(() => {
-        // Keep initial runtime config when native bridge lookup fails.
+      .then((policy) => {
+        if (!active) return;
+
+        if (policy.action === 'force_update') {
+          setVersionGate({
+            status: 'force_update',
+            updateUrl: typeof policy.updateUrl === 'string' ? policy.updateUrl : '',
+            message: typeof policy.message === 'string' && policy.message.trim()
+              ? policy.message.trim()
+              : versionPolicyFallback.forceMessage,
+            title: typeof policy.title === 'string' && policy.title.trim()
+              ? policy.title.trim()
+              : versionPolicyFallback.forceTitle,
+            updateButtonLabel: typeof policy.updateButtonLabel === 'string' && policy.updateButtonLabel.trim()
+              ? policy.updateButtonLabel.trim()
+              : versionPolicyFallback.updateLabel,
+            clientVersion: typeof policy.clientVersion === 'string' ? policy.clientVersion : clientVersion,
+            latestVersion: typeof policy.latestVersion === 'string' ? policy.latestVersion : '',
+          });
+          return;
+        }
+
+        setVersionGate({ status: 'ready' });
+        if (policy.action === 'recommend_update' && !recommendPromptShownRef.current) {
+          recommendPromptShownRef.current = true;
+          const updateUrl = typeof policy.updateUrl === 'string' ? policy.updateUrl : '';
+          const alertTitle = typeof policy.title === 'string' && policy.title.trim()
+            ? policy.title.trim()
+            : versionPolicyFallback.recommendTitle;
+          const message = typeof policy.message === 'string' && policy.message.trim()
+            ? policy.message.trim()
+            : versionPolicyFallback.recommendMessage;
+          const updateLabel = typeof policy.updateButtonLabel === 'string' && policy.updateButtonLabel.trim()
+            ? policy.updateButtonLabel.trim()
+            : versionPolicyFallback.updateLabel;
+          const laterLabel = typeof policy.laterButtonLabel === 'string' && policy.laterButtonLabel.trim()
+            ? policy.laterButtonLabel.trim()
+            : versionPolicyFallback.laterLabel;
+          if (updateUrl) {
+            Alert.alert(
+              alertTitle,
+              message,
+              [
+                { text: laterLabel, style: 'cancel' },
+                {
+                  text: updateLabel,
+                  onPress: () => {
+                    void Linking.openURL(updateUrl);
+                  },
+                },
+              ],
+            );
+          } else {
+            Alert.alert(alertTitle, message);
+          }
+        }
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        if (__DEV__) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.log(`[VersionPolicy] bypass due to error: ${message}`);
+        }
+        setVersionGate({ status: 'ready' });
       });
 
     return () => {
       active = false;
     };
   }, []);
+
+  const handleForceUpdatePress = useCallback(() => {
+    if (versionGate.status !== 'force_update') return;
+    const updateUrl = versionGate.updateUrl.trim();
+    if (!updateUrl) return;
+    void Linking.openURL(updateUrl);
+  }, [versionGate]);
 
   const emitToWeb = useCallback((payload: NativeSttEvent) => {
     if (!isPageReadyRef.current) return;
@@ -452,14 +674,14 @@ function App(): React.JSX.Element {
     }
 
     const payloadWsUrl = typeof payload?.wsUrl === 'string' ? payload.wsUrl.trim() : '';
-    if (!payloadWsUrl && !runtimeConfig.defaultWsUrl) {
-      emitToWeb({ type: 'error', message: 'missing_ws_url_runtime(MingleDefaultWsScheme/Host or RN_DEFAULT_WS_URL)' });
+    if (!payloadWsUrl && !DEFAULT_WS_URL) {
+      emitToWeb({ type: 'error', message: 'missing_ws_url_env(RN_DEFAULT_WS_URL or NEXT_PUBLIC_WS_URL)' });
       return;
     }
 
     const wsUrl = payloadWsUrl
       ? payloadWsUrl
-      : runtimeConfig.defaultWsUrl;
+      : DEFAULT_WS_URL;
     const languages = Array.isArray(payload?.languages)
       ? payload.languages.filter((language): language is string => typeof language === 'string' && language.trim().length > 0)
       : ['ko', 'en', 'th'];
@@ -484,7 +706,7 @@ function App(): React.JSX.Element {
       nativeStatusRef.current = 'failed';
       emitToWeb({ type: 'error', message });
     }
-  }, [emitToWeb, nativeAvailable, runtimeConfig.defaultWsUrl]);
+  }, [emitToWeb, nativeAvailable]);
 
   const handleNativeStop = useCallback(async (payload?: NativeSttStopPayload) => {
     try {
@@ -737,25 +959,57 @@ function App(): React.JSX.Element {
           style={[styles.iosTopTapOverlay, { height: iosTopTapOverlayHeight }]}
         />
       ) : null}
-      <WebView
-        ref={webViewRef}
-        source={webUrl
-          ? { uri: webUrl }
-          : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
-        originWhitelist={['*']}
-        userAgent={Platform.OS === 'ios' ? IOS_SAFE_BROWSER_USER_AGENT : undefined}
-        javaScriptEnabled
-        domStorageEnabled
-        allowsInlineMediaPlayback
-        mediaPlaybackRequiresUserAction={false}
-        setSupportMultipleWindows={false}
-        allowsBackForwardNavigationGestures={false}
-        onMessage={handleWebMessage}
-        onLoadEnd={handleLoadEnd}
-        onError={handleLoadError}
-        style={styles.webView}
-      />
-      {loadError ? (
+      {versionGate.status === 'ready' ? (
+        <WebView
+          ref={webViewRef}
+          source={webUrl
+            ? { uri: webUrl }
+            : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
+          originWhitelist={['*']}
+          userAgent={Platform.OS === 'ios' ? IOS_SAFE_BROWSER_USER_AGENT : undefined}
+          javaScriptEnabled
+          domStorageEnabled
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+          setSupportMultipleWindows={false}
+          allowsBackForwardNavigationGestures={false}
+          onMessage={handleWebMessage}
+          onLoadEnd={handleLoadEnd}
+          onError={handleLoadError}
+          style={styles.webView}
+        />
+      ) : (
+        <View style={styles.webView} />
+      )}
+      {versionGate.status === 'checking' ? (
+        <View style={styles.versionOverlay}>
+          <Text style={styles.versionTitle}>버전 확인 중</Text>
+          <Text style={styles.versionDescription}>최신 업데이트 정책을 확인하고 있습니다.</Text>
+        </View>
+      ) : null}
+      {versionGate.status === 'force_update' ? (
+        <View style={styles.versionOverlay}>
+          <Text style={styles.versionTitle}>{versionGate.title}</Text>
+          <Text style={styles.versionDescription}>{versionGate.message}</Text>
+          {versionGate.clientVersion || versionGate.latestVersion ? (
+            <Text style={styles.versionMeta}>
+              {versionGate.clientVersion || 'unknown'} → {versionGate.latestVersion || 'unknown'}
+            </Text>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Update now"
+            onPress={handleForceUpdatePress}
+            style={({ pressed }) => [
+              styles.updateButton,
+              pressed ? styles.updateButtonPressed : null,
+            ]}
+          >
+            <Text style={styles.updateButtonText}>{versionGate.updateButtonLabel}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {versionGate.status === 'ready' && loadError ? (
         <View style={styles.errorOverlay}>
           <Text style={styles.errorTitle}>WebView Load Failed</Text>
           <Text style={styles.errorDescription}>{loadError}</Text>
@@ -802,6 +1056,47 @@ const styles = StyleSheet.create({
     color: '#d1d5db',
     fontSize: 12,
     lineHeight: 16,
+  },
+  versionOverlay: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    backgroundColor: 'rgba(17, 24, 39, 0.94)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  versionTitle: {
+    color: '#f9fafb',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  versionDescription: {
+    color: '#d1d5db',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  versionMeta: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  updateButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  updateButtonPressed: {
+    opacity: 0.85,
+  },
+  updateButtonText: {
+    color: '#f9fafb',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
 

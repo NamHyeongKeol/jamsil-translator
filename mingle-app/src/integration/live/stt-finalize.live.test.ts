@@ -34,6 +34,9 @@ const STREAM_CHUNK_MS = readEnvInt('MINGLE_TEST_STREAM_CHUNK_MS', 40)
 const STREAM_SEND_DELAY_MS = readEnvInt('MINGLE_TEST_STREAM_SEND_DELAY_MS', STREAM_CHUNK_MS)
 
 const API_BASE_URL = readEnvString('MINGLE_TEST_API_BASE_URL', 'http://127.0.0.1:3000')
+const API_NAMESPACE = normalizeApiNamespace(
+  readEnvString('MINGLE_TEST_API_NAMESPACE', ''),
+)
 const STT_WS_URL = readEnvString('MINGLE_TEST_WS_URL', 'ws://127.0.0.1:3001')
 const STT_MODEL = readEnvString('MINGLE_TEST_STT_MODEL', 'soniox')
 const SOURCE_LANGUAGE_HINT = readEnvString('MINGLE_TEST_SOURCE_LANGUAGE', 'en')
@@ -79,6 +82,10 @@ function readEnvOptionalString(name: string): string | null {
   if (!value) return null
   const trimmed = value.trim()
   return trimmed || null
+}
+
+function normalizeApiNamespace(value: string): string {
+  return value.trim().replace(/^\/+/, '').replace(/\/+$/, '')
 }
 
 function readEnvInt(name: string, fallback: number): number {
@@ -644,7 +651,7 @@ async function runFinalizeApiCheck(finalTurn: FinalTurn, fixtureName: string): P
     }
 
     const { status, json, rawText } = await fetchJsonWithTimeout(
-      `${API_BASE_URL}/api/translate/finalize`,
+      `${API_BASE_URL}/api/${API_NAMESPACE}/translate/finalize`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

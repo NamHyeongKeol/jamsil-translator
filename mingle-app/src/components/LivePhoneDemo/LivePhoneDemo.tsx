@@ -9,6 +9,7 @@ import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
 import { useTtsSettings } from '@/context/tts-settings'
+import { buildClientApiPath } from '@/lib/api-contract'
 import {
   AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
   deriveScrollAutoFollowState,
@@ -168,7 +169,34 @@ function EchoInputRouteIcon({ echoAllowed }: { echoAllowed: boolean }) {
   )
 }
 
-
+async function saveConversation(utterances: Utterance[], selectedLanguages: string[], usageSec: number) {
+  try {
+    await fetch(buildClientApiPath('/log/client-event'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventType: 'stt_session_stopped',
+        metadata: {
+          utterances,
+          selectedLanguages,
+          usageSec,
+        },
+        clientContext: {
+          screenWidth: window.screen.width,
+          screenHeight: window.screen.height,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          platform: navigator.platform,
+          language: navigator.language,
+          referrer: document.referrer || null,
+          pathname: window.location.pathname,
+          fullUrl: window.location.href,
+          queryParams: window.location.search || null,
+          usageSec,
+        },
+      }),
+    })
+  } catch { /* silently fail */ }
+}
 
 const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function LivePhoneDemo({
   onLimitReached,
