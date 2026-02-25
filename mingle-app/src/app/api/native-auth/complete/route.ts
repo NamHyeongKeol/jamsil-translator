@@ -5,10 +5,12 @@ import { getToken } from "next-auth/jwt";
 import { authOptions } from "@/lib/auth-options";
 import {
   createNativeAuthBridgeToken,
+  resolveNativeAuthRequestId,
   resolveNativeOAuthProvider,
   resolveSafeCallbackPath,
   type NativeOAuthProvider,
 } from "@/lib/native-auth-bridge";
+import { savePendingNativeAuthResult } from "@/lib/native-auth-pending-store";
 
 const APP_AUTH_CALLBACK_URL = "mingleauth://auth";
 
@@ -84,14 +86,22 @@ function resolveJwtSecret(): string | undefined {
 export async function GET(request: NextRequest) {
   const provider = resolveNativeOAuthProvider(request.nextUrl.searchParams.get("provider"));
   const callbackUrl = resolveSafeCallbackPath(request.nextUrl.searchParams.get("callbackUrl"), "/");
+  const requestId = resolveNativeAuthRequestId(request.nextUrl.searchParams.get("requestId"));
   const userAgent = summarizeUserAgent(request.headers.get("user-agent"));
 
   console.info(
-    `[native-auth/complete] begin provider=${provider ?? "invalid"} callbackUrl=${callbackUrl} ua="${userAgent}"`,
+    `[native-auth/complete] begin provider=${provider ?? "invalid"} callbackUrl=${callbackUrl} requestId=${requestId || "-"} ua="${userAgent}"`,
   );
 
   if (!provider) {
     console.warn("[native-auth/complete] invalid provider");
+    if (requestId) {
+      savePendingNativeAuthResult(requestId, {
+        status: "error",
+        callbackUrl,
+        message: "invalid_provider",
+      });
+    }
     return redirectToApp({
       status: "error",
       callbackUrl,
@@ -102,6 +112,14 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     console.warn(`[native-auth/complete] missing session provider=${provider}`);
+    if (requestId) {
+      savePendingNativeAuthResult(requestId, {
+        status: "error",
+        provider,
+        callbackUrl,
+        message: "native_auth_session_missing",
+      });
+    }
     return redirectToApp({
       status: "error",
       provider,
@@ -127,6 +145,14 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[native-auth/complete] bridge token creation failed provider=${provider} reason=${message}`);
+    if (requestId) {
+      savePendingNativeAuthResult(requestId, {
+        status: "error",
+        provider,
+        callbackUrl,
+        message: "native_auth_bridge_token_failed",
+      });
+    }
     return redirectToApp({
       status: "error",
       provider,
@@ -138,6 +164,14 @@ export async function GET(request: NextRequest) {
   console.info(
     `[native-auth/complete] success provider=${provider} callbackUrl=${callbackUrl} hasEmail=${email ? "1" : "0"}`,
   );
+  if (requestId) {
+    savePendingNativeAuthResult(requestId, {
+      status: "success",
+      provider,
+      callbackUrl,
+      bridgeToken,
+    });
+  }
 
   return redirectToApp({
     status: "success",

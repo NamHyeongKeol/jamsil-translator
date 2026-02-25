@@ -5,6 +5,7 @@ const TOKEN_TTL_SECONDS = 90;
 const TOKEN_MAX_AGE_SKEW_SECONDS = 30;
 const SAFE_CALLBACK_ORIGIN = "https://mingle.local";
 const FALLBACK_CALLBACK_PATH = "/";
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{12,128}$/;
 
 export type NativeOAuthProvider = "apple" | "google";
 
@@ -62,6 +63,13 @@ export function resolveNativeOAuthProvider(rawValue: string | null | undefined):
     return normalized;
   }
   return null;
+}
+
+export function resolveNativeAuthRequestId(rawValue: string | null | undefined): string | null {
+  if (typeof rawValue !== "string") return null;
+  const trimmed = rawValue.trim();
+  if (!REQUEST_ID_PATTERN.test(trimmed)) return null;
+  return trimmed;
 }
 
 export function resolveSafeCallbackPath(

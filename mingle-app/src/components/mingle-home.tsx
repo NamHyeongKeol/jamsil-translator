@@ -45,6 +45,30 @@ type NativeAuthBridgeEvent =
       provider: NativeAuthProvider;
       message: string;
     };
+type NativeAuthAckCommand = {
+  type: "native_auth_ack";
+  payload: {
+    provider: NativeAuthProvider;
+    outcome: "success" | "error";
+    bridgeToken?: string;
+  };
+};
+type NativeAuthPendingResponse =
+  | {
+      status: "pending";
+    }
+  | {
+      status: "success";
+      provider: NativeAuthProvider;
+      callbackUrl: string;
+      bridgeToken: string;
+    }
+  | {
+      status: "error";
+      provider?: NativeAuthProvider;
+      callbackUrl: string;
+      message: string;
+    };
 
 type MingleWindowWithNativeAuthCache = Window & {
   __MINGLE_LAST_NATIVE_AUTH_EVENT?: NativeAuthBridgeEvent;
@@ -61,11 +85,44 @@ function getWindowWithNativeAuthCache(): MingleWindowWithNativeAuthCache | null 
   return window as MingleWindowWithNativeAuthCache;
 }
 
+function postNativeAuthAck(detail: NativeAuthBridgeEvent): void {
+  if (typeof window === "undefined") return;
+  if (!isNativeAuthBridgeEnabled()) return;
+  if (detail.type === "status") return;
+
+  const command: NativeAuthAckCommand = {
+    type: "native_auth_ack",
+    payload: {
+      provider: detail.provider,
+      outcome: detail.type,
+      bridgeToken: detail.type === "success" ? detail.bridgeToken : undefined,
+    },
+  };
+
+  try {
+    window.ReactNativeWebView?.postMessage(JSON.stringify(command));
+  } catch {
+    // no-op
+  }
+}
+
+function createNativeAuthRequestId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `rq_${crypto.randomUUID().replaceAll("-", "")}`;
+  }
+  const fallback = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14)}`;
+  return `rq_${fallback}`;
+}
+
 export default function MingleHome(props: MingleHomeProps) {
   const { status } = useSession();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const pendingNativeProviderRef = useRef<NativeAuthProvider | null>(null);
+  const lastHandledBridgeTokenRef = useRef("");
+  const pendingNativeRequestIdRef = useRef<string | null>(null);
+  const nativeAuthPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const nativeAuthPollInFlightRef = useRef(false);
   const nativeAuthTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const callbackUrl = useMemo(() => `/${props.locale}/translator`, [props.locale]);
 
@@ -76,6 +133,86 @@ export default function MingleHome(props: MingleHomeProps) {
     }
   }, []);
 
+  const clearNativeAuthPoller = useCallback(() => {
+    if (nativeAuthPollTimerRef.current) {
+      clearInterval(nativeAuthPollTimerRef.current);
+      nativeAuthPollTimerRef.current = null;
+    }
+    nativeAuthPollInFlightRef.current = false;
+  }, []);
+
+  const pollNativeAuthResult = useCallback(async (requestId: string, provider: NativeAuthProvider) => {
+    if (pendingNativeRequestIdRef.current !== requestId) return;
+
+    const response = await fetch(`/api/native-auth/pending?requestId=${encodeURIComponent(requestId)}`, {
+      cache: "no-store",
+    });
+    if (!response.ok) return;
+
+    const payload = await response.json() as NativeAuthPendingResponse;
+    if (pendingNativeRequestIdRef.current !== requestId) return;
+    if (payload.status === "pending") return;
+
+    clearNativeAuthPoller();
+    clearNativeAuthTimeout();
+    pendingNativeRequestIdRef.current = null;
+    pendingNativeProviderRef.current = null;
+
+    if (payload.status === "error") {
+      setIsSigningIn(false);
+      const normalizedMessage = (payload.message || "").trim().toLowerCase();
+      if (normalizedMessage === "native_auth_cancelled") {
+        return;
+      }
+      window.alert(props.dictionary.profile.nativeSignInFailed);
+      return;
+    }
+
+    if (payload.provider !== provider) {
+      return;
+    }
+    const bridgeToken = (payload.bridgeToken || "").trim();
+    if (!bridgeToken) {
+      setIsSigningIn(false);
+      window.alert(props.dictionary.profile.nativeSignInFailed);
+      return;
+    }
+    if (bridgeToken === lastHandledBridgeTokenRef.current) {
+      return;
+    }
+    lastHandledBridgeTokenRef.current = bridgeToken;
+
+    const nextCallbackUrl = (payload.callbackUrl || "").trim() || callbackUrl;
+    void signIn("native-bridge", {
+      token: bridgeToken,
+      callbackUrl: nextCallbackUrl,
+    }).catch(() => {
+      setIsSigningIn(false);
+      window.alert(props.dictionary.profile.nativeSignInFailed);
+    });
+  }, [callbackUrl, clearNativeAuthPoller, clearNativeAuthTimeout, props.dictionary.profile.nativeSignInFailed]);
+
+  const startNativeAuthPoller = useCallback((requestId: string, provider: NativeAuthProvider) => {
+    clearNativeAuthPoller();
+    nativeAuthPollInFlightRef.current = false;
+
+    const run = () => {
+      if (pendingNativeRequestIdRef.current !== requestId) return;
+      if (nativeAuthPollInFlightRef.current) return;
+      nativeAuthPollInFlightRef.current = true;
+      void pollNativeAuthResult(requestId, provider)
+        .catch(() => {
+          // no-op
+        })
+        .finally(() => {
+          nativeAuthPollInFlightRef.current = false;
+        });
+    };
+
+    run();
+    nativeAuthPollTimerRef.current = setInterval(run, 1200);
+  }, [clearNativeAuthPoller, pollNativeAuthResult]);
+
   useEffect(() => {
     if (typeof document !== "undefined") {
       document.documentElement.lang = props.locale;
@@ -85,10 +222,12 @@ export default function MingleHome(props: MingleHomeProps) {
   useEffect(() => {
     if (status !== "loading") {
       clearNativeAuthTimeout();
+      clearNativeAuthPoller();
       setIsSigningIn(false);
+      pendingNativeRequestIdRef.current = null;
       pendingNativeProviderRef.current = null;
     }
-  }, [clearNativeAuthTimeout, status]);
+  }, [clearNativeAuthPoller, clearNativeAuthTimeout, status]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -111,8 +250,11 @@ export default function MingleHome(props: MingleHomeProps) {
       if (pendingProvider && detail.provider !== pendingProvider) {
         return;
       }
+      postNativeAuthAck(detail);
 
       if (detail.type === "error") {
+        clearNativeAuthPoller();
+        pendingNativeRequestIdRef.current = null;
         pendingNativeProviderRef.current = null;
         setIsSigningIn(false);
         const normalizedMessage = (detail.message || "").trim().toLowerCase();
@@ -123,6 +265,8 @@ export default function MingleHome(props: MingleHomeProps) {
         return;
       }
 
+      clearNativeAuthPoller();
+      pendingNativeRequestIdRef.current = null;
       pendingNativeProviderRef.current = null;
       const bridgeToken = (detail.bridgeToken || "").trim();
       if (!bridgeToken) {
@@ -130,6 +274,10 @@ export default function MingleHome(props: MingleHomeProps) {
         window.alert(props.dictionary.profile.nativeSignInFailed);
         return;
       }
+      if (bridgeToken === lastHandledBridgeTokenRef.current) {
+        return;
+      }
+      lastHandledBridgeTokenRef.current = bridgeToken;
 
       const nextCallbackUrl = (detail.callbackUrl || "").trim() || callbackUrl;
       void signIn("native-bridge", {
@@ -153,16 +301,18 @@ export default function MingleHome(props: MingleHomeProps) {
     return () => {
       window.removeEventListener(NATIVE_AUTH_EVENT, handleNativeAuthEvent as EventListener);
     };
-  }, [callbackUrl, clearNativeAuthTimeout, props.dictionary.profile.nativeSignInFailed]);
+  }, [callbackUrl, clearNativeAuthPoller, clearNativeAuthTimeout, props.dictionary.profile.nativeSignInFailed]);
 
   const handleSocialSignIn = useCallback((provider: "apple" | "google") => {
     setIsSigningIn(true);
     const nativeBridgeEnabled = typeof window !== "undefined" && isNativeAuthBridgeEnabled();
     if (nativeBridgeEnabled) {
       try {
+        const requestId = createNativeAuthRequestId();
         const startUrl = new URL("/api/native-auth/start", window.location.origin);
         startUrl.searchParams.set("provider", provider);
         startUrl.searchParams.set("callbackUrl", callbackUrl);
+        startUrl.searchParams.set("requestId", requestId);
         const command: NativeAuthStartCommand = {
           type: "native_auth_start",
           payload: {
@@ -171,10 +321,14 @@ export default function MingleHome(props: MingleHomeProps) {
             startUrl: startUrl.toString(),
           },
         };
+        pendingNativeRequestIdRef.current = requestId;
         pendingNativeProviderRef.current = provider;
         clearNativeAuthTimeout();
+        startNativeAuthPoller(requestId, provider);
         nativeAuthTimeoutRef.current = setTimeout(() => {
           if (pendingNativeProviderRef.current !== provider) return;
+          clearNativeAuthPoller();
+          pendingNativeRequestIdRef.current = null;
           pendingNativeProviderRef.current = null;
           setIsSigningIn(false);
           window.alert(props.dictionary.profile.nativeSignInFailed);
@@ -182,7 +336,9 @@ export default function MingleHome(props: MingleHomeProps) {
         window.ReactNativeWebView?.postMessage(JSON.stringify(command));
         return;
       } catch {
+        clearNativeAuthPoller();
         clearNativeAuthTimeout();
+        pendingNativeRequestIdRef.current = null;
         pendingNativeProviderRef.current = null;
         setIsSigningIn(false);
         window.alert(props.dictionary.profile.nativeSignInFailed);
@@ -193,13 +349,15 @@ export default function MingleHome(props: MingleHomeProps) {
     void signIn(provider, { callbackUrl }).catch(() => {
       setIsSigningIn(false);
     });
-  }, [callbackUrl, clearNativeAuthTimeout, props.dictionary.profile.nativeSignInFailed]);
+  }, [callbackUrl, clearNativeAuthPoller, clearNativeAuthTimeout, props.dictionary.profile.nativeSignInFailed, startNativeAuthPoller]);
 
   useEffect(() => {
     return () => {
+      clearNativeAuthPoller();
       clearNativeAuthTimeout();
+      pendingNativeRequestIdRef.current = null;
     };
-  }, [clearNativeAuthTimeout]);
+  }, [clearNativeAuthPoller, clearNativeAuthTimeout]);
 
   const handleSignOut = useCallback(() => {
     if (isDeletingAccount) return;

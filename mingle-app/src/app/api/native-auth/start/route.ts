@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveNativeOAuthProvider, resolveSafeCallbackPath } from "@/lib/native-auth-bridge";
+import { resolveNativeAuthRequestId, resolveNativeOAuthProvider, resolveSafeCallbackPath } from "@/lib/native-auth-bridge";
 
 function normalizeOriginCandidate(rawValue: string | null | undefined): string | null {
   if (typeof rawValue !== "string") return null;
@@ -52,18 +52,22 @@ export async function GET(request: NextRequest) {
   }
 
   const callbackPath = resolveSafeCallbackPath(request.nextUrl.searchParams.get("callbackUrl"), "/");
+  const requestId = resolveNativeAuthRequestId(request.nextUrl.searchParams.get("requestId"));
   const externalOrigin = resolveExternalOrigin(request);
   const completeUrl = new URL("/api/native-auth/complete", externalOrigin);
   completeUrl.searchParams.set("provider", provider);
   completeUrl.searchParams.set("callbackUrl", callbackPath);
   completeUrl.searchParams.set("ngrok-skip-browser-warning", "1");
+  if (requestId) {
+    completeUrl.searchParams.set("requestId", requestId);
+  }
 
   const signInUrl = new URL(`/api/auth/signin/${provider}`, externalOrigin);
   signInUrl.searchParams.set("callbackUrl", completeUrl.toString());
   signInUrl.searchParams.set("ngrok-skip-browser-warning", "1");
 
   console.info(
-    `[native-auth/start] provider=${provider} callbackPath=${callbackPath} origin=${externalOrigin} ua="${summarizeUserAgent(
+    `[native-auth/start] provider=${provider} callbackPath=${callbackPath} requestId=${requestId || "-"} origin=${externalOrigin} ua="${summarizeUserAgent(
       request.headers.get("user-agent"),
     )}"`,
   );

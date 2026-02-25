@@ -394,7 +394,21 @@ type NativeAuthStartCommand = {
   };
 };
 
-type WebViewCommand = NativeSttCommand | NativeTtsCommand | NativeSttAecCommand | NativeAuthStartCommand;
+type NativeAuthAckCommand = {
+  type: 'native_auth_ack';
+  payload?: {
+    provider?: NativeAuthProvider;
+    outcome?: 'success' | 'error';
+    bridgeToken?: string;
+  };
+};
+
+type WebViewCommand =
+  | NativeSttCommand
+  | NativeTtsCommand
+  | NativeSttAecCommand
+  | NativeAuthStartCommand
+  | NativeAuthAckCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -498,6 +512,8 @@ function App(): React.JSX.Element {
   const currentTtsPlaybackRef = useRef<{ utteranceId: string; playbackId: string } | null>(null);
   const nativeAuthInFlightRef = useRef<NativeAuthProvider | null>(null);
   const pendingAuthEventRef = useRef<NativeAuthEvent | null>(null);
+  const authDispatchRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const authDispatchRetryCountRef = useRef(0);
   const lastRecoveredNativeAuthUrlRef = useRef('');
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
     if (Platform.OS !== 'ios') return 36;
@@ -681,25 +697,74 @@ function App(): React.JSX.Element {
     webViewRef.current?.injectJavaScript(script);
   }, []);
 
+  const clearAuthDispatchRetryTimer = useCallback(() => {
+    if (authDispatchRetryTimerRef.current) {
+      clearTimeout(authDispatchRetryTimerRef.current);
+      authDispatchRetryTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleAuthDispatchRetry = useCallback((payload: NativeAuthEvent) => {
+    if (payload.type === 'status') return;
+    clearAuthDispatchRetryTimer();
+
+    authDispatchRetryTimerRef.current = setTimeout(() => {
+      const pending = pendingAuthEventRef.current;
+      if (!pending || pending.type === 'status') return;
+      if (pending.provider !== payload.provider) return;
+      if (pending.type !== payload.type) return;
+      if (pending.type === 'success' && payload.type === 'success' && pending.bridgeToken !== payload.bridgeToken) {
+        return;
+      }
+      if (authDispatchRetryCountRef.current >= 20) return;
+
+      if (!isPageReadyRef.current || !webViewRef.current) {
+        scheduleAuthDispatchRetry(payload);
+        return;
+      }
+
+      authDispatchRetryCountRef.current += 1;
+      dispatchAuthToWeb(pending);
+      scheduleAuthDispatchRetry(payload);
+    }, 500);
+  }, [clearAuthDispatchRetryTimer, dispatchAuthToWeb]);
+
   const emitAuthToWeb = useCallback((payload: NativeAuthEvent) => {
-    if (!isPageReadyRef.current) {
+    if (payload.type !== 'status') {
       pendingAuthEventRef.current = payload;
+      authDispatchRetryCountRef.current = 0;
+    }
+
+    if (!isPageReadyRef.current) {
       if (__DEV__) {
         console.log(`[NativeAuth→Web] queued (page not ready) ${JSON.stringify(payload).slice(0, 160)}`);
       }
+      if (payload.type !== 'status') {
+        scheduleAuthDispatchRetry(payload);
+      }
       return;
     }
-    pendingAuthEventRef.current = null;
     dispatchAuthToWeb(payload);
-  }, [dispatchAuthToWeb]);
+    if (payload.type !== 'status') {
+      scheduleAuthDispatchRetry(payload);
+    }
+  }, [dispatchAuthToWeb, scheduleAuthDispatchRetry]);
 
   const flushPendingAuthToWeb = useCallback(() => {
     if (!isPageReadyRef.current) return;
     const pending = pendingAuthEventRef.current;
     if (!pending) return;
-    pendingAuthEventRef.current = null;
     dispatchAuthToWeb(pending);
-  }, [dispatchAuthToWeb]);
+    if (pending.type !== 'status') {
+      scheduleAuthDispatchRetry(pending);
+    }
+  }, [dispatchAuthToWeb, scheduleAuthDispatchRetry]);
+
+  useEffect(() => {
+    return () => {
+      clearAuthDispatchRetryTimer();
+    };
+  }, [clearAuthDispatchRetryTimer]);
 
   useEffect(() => {
     const handleIncomingAuthUrl = (incomingUrl: string | null | undefined) => {
@@ -863,6 +928,9 @@ function App(): React.JSX.Element {
       return;
     }
 
+    pendingAuthEventRef.current = null;
+    authDispatchRetryCountRef.current = 0;
+    clearAuthDispatchRetryTimer();
     nativeAuthInFlightRef.current = provider;
     emitAuthToWeb({
       type: 'status',
@@ -890,7 +958,7 @@ function App(): React.JSX.Element {
     } finally {
       nativeAuthInFlightRef.current = null;
     }
-  }, [emitAuthToWeb]);
+  }, [clearAuthDispatchRetryTimer, emitAuthToWeb]);
 
   const handleWebMessage = useCallback((event: WebViewMessageEvent) => {
     let parsed: WebViewCommand | null = null;
@@ -900,6 +968,35 @@ function App(): React.JSX.Element {
       return;
     }
     if (!parsed || typeof parsed !== 'object') return;
+
+    if (parsed.type === 'native_auth_ack') {
+      const provider = parsed.payload?.provider === 'google' || parsed.payload?.provider === 'apple'
+        ? parsed.payload.provider
+        : null;
+      if (!provider) return;
+
+      const pending = pendingAuthEventRef.current;
+      if (!pending || pending.type === 'status' || pending.provider !== provider) return;
+
+      const outcome = parsed.payload?.outcome;
+      if (pending.type === 'success') {
+        if (outcome !== 'success') return;
+        const ackBridgeToken = typeof parsed.payload?.bridgeToken === 'string'
+          ? parsed.payload.bridgeToken.trim()
+          : '';
+        if (ackBridgeToken && ackBridgeToken !== pending.bridgeToken) return;
+      } else if (outcome !== 'error') {
+        return;
+      }
+
+      pendingAuthEventRef.current = null;
+      authDispatchRetryCountRef.current = 0;
+      clearAuthDispatchRetryTimer();
+      if (__DEV__) {
+        console.log(`[Web→NativeAuth] ack provider=${provider} outcome=${outcome ?? 'unknown'}`);
+      }
+      return;
+    }
 
     if (parsed.type === 'native_stt_start') {
       if (__DEV__) {
@@ -966,7 +1063,7 @@ function App(): React.JSX.Element {
       }
       void handleNativeAuthStart(parsed.payload);
     }
-  }, [emitTtsToWeb, handleNativeAuthStart, handleNativeStart, handleNativeStop]);
+  }, [clearAuthDispatchRetryTimer, emitTtsToWeb, handleNativeAuthStart, handleNativeStart, handleNativeStop]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
