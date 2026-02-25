@@ -1,0 +1,1804 @@
+flowchart TD
+    %% === PROJECT GOALS ===
+    %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
+    %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
+    %% @lastActive: mingle_app_rn_ios_appdelegate_linking_module_fix
+
+    %% === START ===
+    %% @project_start [start, closed]
+    project_start("Next.js Project Start<br/><sub>Mingle 프로젝트의 기반이 되는<br/>Next.js 프레임워크와 기본 구조를<br/>설정하고 초기 환경을 구축함</sub>")
+
+    %% === COMPLETED WORK ===
+    %% @structure_refinement [ai-task, closed]
+    structure_refinement("Structure & Error Fix<br/><sub>불필요한 폴더 위계를 제거하여<br/>구조를 단순화하고, 클라이언트 컴포넌트<br/>하이드레이션 에러를 해결하여 안정성 확보</sub>")
+
+    %% @ui_ux_improvement [ai-task, closed]
+    ui_ux_improvement("UI/UX Improvement<br/><sub>반응형 레이아웃을 적용하여<br/>다양한 화면 크기에서 일관된 경험을<br/>제공하고, 현대적인 감각의 UI로 개선</sub>")
+
+    %% @gladia_stt_integration [ai-task, closed]
+    gladia_stt_integration("Gladia STT Integration<br/><sub>Gladia API와 통신하는 Node.js 기반<br/>WebSocket 프록시 서버를 구현하여<br/>실시간 음성 인식을 가능하게 함</sub>")
+
+    %% @language_selection [ai-task, closed]
+    language_selection("Language Selection<br/><sub>사용자가 번역할 언어를 직접<br/>선택할 수 있는 기능을 추가하여<br/>다양한 언어권 사용자를 지원함</sub>")
+
+    %% @mingle_landing_prototype [ai-task, closed]
+    mingle_landing_prototype("Mingle Landing Page<br/><sub>서비스명 Mingle로 확정하고 소셜링<br/>핵심 가치를 담은 랜딩페이지 프리토타입<br/>React+Vite+Tailwind CSS v4로 구현</sub>")
+
+    %% @landing_i18n [ai-task, closed]
+    landing_i18n("Landing i18n 15개 언어<br/><sub>react-i18next로 다국어 지원 구현<br/>EN/KO/JA/ZH/FR/DE/ES/PT/IT/RU<br/>AR/HI/TH/VI 포함, RTL 지원</sub>")
+
+    %% @landing_email_mockups [ai-task, closed]
+    landing_email_mockups("이메일 수집 & UI 모킵<br/><sub>다운로드 버튼→이메일 모달 전환<br/>Prisma+PostgreSQL 백엔드 구축<br/>3인 대화 모킵/파티 시나리오/비포애프터 추가</sub>")
+
+    %% @landing_ui_refinement [ai-task, closed]
+    landing_ui_refinement("UI 개선 & 테마 변경<br/><sub>다크→라이트 모드, 파란색→노란색 테마<br/>CSS 기반 폰 목업으로 3인 대화 시연<br/>Before/After 3문제-3해결 세로 나열</sub>")
+
+    %% @click_analytics [ai-task, closed]
+    click_analytics("클릭 분석 & 유저 추적<br/><sub>버튼 클릭 시 IP/UA/언어/화면크기 등<br/>유저 정보 자동 저장, ButtonClick 모델<br/>이메일 없이도 방문자 행동 추적</sub>")
+
+    %% === COMPLETED WORK (continued) ===
+    %% @nextjs_fullstack_migration [ai-task, closed]
+    nextjs_fullstack_migration("Next.js 풀스택 전환<br/><sub>mingle-landing을 Vite+Express에서<br/>Next.js App Router로 마이그레이션<br/>Vercel 배포, 방문자/클릭 추적, 다국어 라우팅</sub>")
+
+    %% @landing_copy_update [ai-task, closed]
+    landing_copy_update("랜딩 카피 전면 개편<br/><sub>15개 언어 hero/problem/features/coreValue<br/>문구 업데이트, 대화 끊김 없는 번역 강조<br/>4번째 문제점 추가, 불필요한 배지 삭제</sub>")
+
+    %% @talk_to_world_section [ai-task, closed]
+    talk_to_world_section("Talk to the World 섹션<br/><sub>사용 방법→글로벌 연결 섹션 교체<br/>15개 언어 번역, 전체너비 이미지 배치<br/>favicon 설정 완료</sub>")
+
+    %% @gladia_user_onboarding [blocker, closed]
+    gladia_user_onboarding("Gladia 유저 온보딩<br/><sub>Gladia 온보딩 500 에러로 신규 가입 불가<br/>버튼 코드 제거 완료, 서버 버그 해결 시<br/>재구현 필요 (key 중복 버그도 수정됨)</sub>")
+
+    %% @deepgram_integration [ai-task, closed]
+    deepgram_integration("Deepgram 통합 & UI 개선<br/><sub>Nova-3 모델 적용(단일언어 최적화)<br/>Detect Language 에러 해결 및<br/>자동 스크롤 기능 추가완료</sub>")
+
+    %% @fireworks_integration [ai-task, closed]
+    fireworks_integration("Fireworks AI 통합<br/><sub>Whisper 기반 V2 모델 연동 완료<br/>48kHz 샘플레이트 지원 패치<br/>다중 모델 선택 아키텍처 구축</sub>")
+
+    %% @deepgram_multi [ai-task, closed]
+    deepgram_multi("Deepgram Multi 모드 추가<br/><sub>language=multi 파라미터로 다국어<br/>코드 스위칭 전사 모드 추가<br/>기존 단일언어 모드와 별도 메뉴로 구성</sub>")
+
+    %% @deepgram_multi_fix [ai-task, closed]
+    deepgram_multi_fix("Deepgram Multi 언어감지 수정<br/><sub>detected_language→words[0].language<br/>+ channel.languages 폴백으로 변경<br/>지원 언어 10개 안내 UI 추가</sub>")
+
+    %% @gladia_stt_only [ai-task, closed]
+    gladia_stt_only("Gladia STT 전용 옵션<br/><sub>번역 없이 순수 STT만 사용하는<br/>옵션 추가, enableTranslation 파라미터로<br/>번역 on/off 제어</sub>")
+
+    %% @soniox_integration [ai-task, closed]
+    soniox_integration("Soniox V4 실시간 STT 통합<br/><sub>stt-rt-v4 모델 WebSocket 연동<br/>60+ 언어 자동 감지, 발화자 분리 지원<br/>디폴트 모델로 설정, 사용량 로깅 추가</sub>")
+
+    %% @cleanup_and_usage_ui [ai-task, closed]
+    cleanup_and_usage_ui("로그 제거 & 사용량 UI<br/><sub>서버/클라이언트 console.log 전부 제거<br/>Soniox 오디오 사용량을 WebSocket으로<br/>클라이언트 전달, 세션/누적 사용량 UI 표시</sub>")
+
+    %% @gpt_translation [ai-task, closed]
+    gpt_translation("AI 번역 통합 (모델 선택)<br/><sub>Claude Haiku 4.5 / GPT-5-nano 선택 가능<br/>모든 STT 프로바이더에 번역 적용<br/>Soniox language_hints_strict 토글 UI</sub>")
+
+    %% @translation_engine_research [ai-task, closed]
+    translation_engine_research("번역 기능 고도화<br/><sub>Deepgram/Fireworks는 번역 미지원<br/>별도 번역 엔진(GPT/DeepL 등)을<br/>붙이는 파이프라인 구축 필요</sub>")
+
+    %% @live_phone_demo [ai-task, closed]
+    live_phone_demo("랜딩 라이브 폰 데모<br/><sub>hero 정적 이미지를 CSS 스마트폰 프레임<br/>+ 실시간 STT 채팅 UI로 교체<br/>마이크 버튼으로 직접 체험 가능</sub>")
+
+    %% @gemini_translation [ai-task, closed]
+    gemini_translation("Gemini 번역 모델 추가<br/><sub>Gemini 2.5 Flash Lite / 3 Flash Preview<br/>번역 모델 추가, 데모는 Gemini Lite 사용<br/>@google/generative-ai SDK 연동</sub>")
+
+    %% @demo_ux_and_restructure [ai-task, closed]
+    demo_ux_and_restructure("데모 UX 개선 & 폴더 정리<br/><sub>폰 데모 반응형/노치/에러처리 개선<br/>hero에 번역기 테스트 버튼 추가<br/>레포를 mingle-landing + mingle-model-test로 분리</sub>")
+
+    %% @demo_streaming_polish [ai-task, closed]
+    demo_streaming_polish("스트리밍 번역 & UI 폴리시<br/><sub>부분 번역 ~2초 스트리밍, 국기 이모지 pill<br/>iPhone 녹음 인디케이터, bouncing dots<br/>기본언어 EN/KO/JA, Gemini Lite 기본값</sub>")
+
+    %% @demo_usage_limit_ux [ai-task, closed]
+    demo_usage_limit_ux("데모 사용량 제한 & UX 개선<br/><sub>30초/브라우저 사용량 제한 + 얼리액세스 모달<br/>언어 선택 드롭다운(최대5개), localStorage 영속성<br/>부분 번역 bouncing dots, 노치 확대, i18n 완성</sub>")
+
+    %% @demo_bugfix_db_logging [ai-task, closed]
+    demo_bugfix_db_logging("버그 수정 & 대화 DB 적재<br/><sub>React Strict Mode 중복 말풍선 수정<br/>대화록 DB 저장(번역 포함), 사용량 프로그레스바<br/>30초 제한 i18n, iPad 여백, Prisma directUrl</sub>")
+
+    %% @prisma_local_simplify [ai-task, closed]
+    prisma_local_simplify("Prisma 로컬 DB 단순화<br/><sub>prisma dev 임베디드 postgres → Homebrew PG14<br/>prisma+postgres:// 프록시 제거, 포트 5432<br/>directUrl 제거, Studio 안정 작동</sub>")
+
+    %% @stt_server_landing_merge [ai-task, closed]
+    stt_server_landing_merge("STT 서버 랜딩 통합<br/><sub>stt-server.ts를 mingle-landing으로 이동<br/>pnpm dev로 Next.js+STT 동시 실행<br/>WS URL 동적 hostname 지원</sub>")
+
+    %% @railway_stt_deploy [ai-task, closed]
+    railway_stt_deploy("Railway STT 서버 배포<br/><sub>stt-server.ts Railway 배포 설정<br/>railway.json, PORT 환경변수 대응<br/>Vercel+Railway 분리 아키텍처 구성</sub>")
+
+    %% @global_stats_fix [ai-task, closed]
+    global_stats_fix("Global Stats Mobile Fix<br/><sub>Social 버전 숫자 통계에서 + 기호 제거<br/>모바일 뷰에서 짤리는 문제 해결<br/>10M/100/120으로 표시 수정</sub>")
+
+    %% @chat_invite_feature [ai-task, closed]
+    chat_invite_feature("대화록 초대 기능<br/><sub>번역된 대화를 채팅방으로 저장하고<br/>상대방을 초대하여 헤어진 후에도<br/>연락을 이어갈 수 있는 핵심 기능</sub>")
+
+    %% @mobile_app_development [ai-task, closed]
+    mobile_app_development("Cross-Platform Mobile App<br/><sub>React Native 등을 활용하여 실시간<br/>연속 번역 기능을 탑재한 크로스<br/>플랫폼 모바일 애플리케이션 개발</sub>")
+
+    %% @next_i18n_adoption [ai-task, closed]
+    next_i18n_adoption("Next i18n 적용<br/><sub>Next.js 앱 라우팅에 다국어 구조를 적용하고<br/>번역 리소스/로케일 미들웨어를 정리해<br/>확장 가능한 국제화 기반을 구축</sub>")
+
+    %% @next_auth_adoption [ai-task, closed]
+    next_auth_adoption("NextAuth 적용<br/><sub>세션/인증 공통 레이어를 도입하여<br/>서버/클라이언트 인증 흐름을 통합하고<br/>보호 라우트 정책을 정비</sub>")
+
+    %% @google_oauth_login [ai-task, closed]
+    google_oauth_login("구글 로그인 적용<br/><sub>Google OAuth Provider를 연결하여<br/>소셜 로그인 진입을 구현하고<br/>계정 연동/세션 유지 시나리오를 검증</sub>")
+
+    %% @mingle_app_rn_social_auth_gate_and_menu [ai-task, closed, 2026-02-24, ai]
+    mingle_app_rn_social_auth_gate_and_menu("mingle-app RN 로그인 게이트/메뉴 적용<br/><sub>NextAuth에 Apple Provider를 추가하고<br/>비로그인 시 Apple/Google 화면을 먼저 노출해<br/>로그인 후 번역기 홈 접근만 허용했으며<br/>햄버거 메뉴에 로그아웃/회원탈퇴를 연결</sub>")
+
+    %% @mingle_app_ios_google_oauth_disallowed_useragent_ua_fix [ai-task, closed, 2026-02-25, ai]
+    mingle_app_ios_google_oauth_disallowed_useragent_ua_fix("RN iOS Google OAuth UA 차단 대응<br/><sub>Google 로그인 시 iOS WebView 내부 UA가<br/>보안 브라우저 정책에 막히는 경로를 줄이기 위해<br/>WebView userAgent를 Safari 형태로 고정해<br/>disallowed_useragent 오류 재현을 완화</sub>")
+
+    %% @mingle_app_rn_ios_native_browser_oauth_bridge [ai-task, closed, 2026-02-25, ai]
+    mingle_app_rn_ios_native_browser_oauth_bridge("RN iOS 네이티브 브라우저 OAuth 브리지 전환<br/><sub>WebView 내부 OAuth 대신 Safari 인증 세션으로<br/>Google/Apple 로그인을 시작하고 완료 시<br/>mingleauth 딥링크로 서명된 bridge token을 앱에 전달해<br/>WebView NextAuth 세션을 네이티브 경로로 복구</sub>")
+
+    %% @mingle_app_rn_ios_appdelegate_linking_module_fix [ai-task, closed, 2026-02-25, ai]
+    mingle_app_rn_ios_appdelegate_linking_module_fix("RN iOS AppDelegate Linking 모듈 참조 수정<br/><sub>딥링크 복귀 연결을 위해 추가한 import에서<br/>React_RCTLinking 모듈명이 실제 Pod에 없어<br/>Release 빌드가 즉시 실패하던 경로를 확인하고<br/>React 모듈 경유 RCTLinkingManager 호출로 정정</sub>")
+
+    %% @mingle_app_rn_ios_native_oauth_callback_origin_fix [ai-task, closed, 2026-02-25, ai]
+    mingle_app_rn_ios_native_oauth_callback_origin_fix("RN iOS OAuth callback origin 고정<br/><sub>네이티브 브라우저 로그인 시작 시 프록시 환경에서<br/>callbackUrl/signIn URL이 localhost로 생성돼<br/>iPhone Chrome에서 인증 후 복귀가 끊기던 문제를<br/>x-forwarded/NEXTAUTH_URL 우선 origin 해석으로 수정</sub>")
+
+    %% @mingle_app_rn_ios_native_oauth_google_only_launcher [ai-task, closed, 2026-02-25, ai]
+    mingle_app_rn_ios_native_oauth_google_only_launcher("RN iOS OAuth 기본 페이지 우회<br/><sub>NextAuth 기본 signin 페이지로 진입하면서<br/>native-bridge/demo 입력 폼이 노출되던 흐름을<br/>locale auth launcher 페이지에서 provider signIn을<br/>즉시 실행하는 경로로 바꿔 Google 진입만 노출</sub>")
+
+    %% @capacitor_app_build [ai-task, closed]
+    capacitor_app_build("Capacitor 앱 빌드 검증<br/><sub>웹 앱을 Capacitor로 패키징하여<br/>iOS/Android 네이티브 빌드 파이프라인과<br/>런타임 동작 가능성을 점검</sub>")
+
+    %% @translator_feature_build [ai-task, closed]
+    translator_feature_build("번역기 기능 구현<br/><sub>입력/감지/번역/출력까지 end-to-end<br/>번역 UX를 구성하고 실시간 대화 흐름에<br/>맞는 파이프라인을 완성</sub>")
+
+    %% @seed_data_population [ai-task, closed]
+    seed_data_population("시드 데이터 채워넣기<br/><sub>개발/테스트용 초기 데이터를 설계하고<br/>언어/유저/대화 샘플을 DB에 적재해<br/>기능 검증 속도를 높임</sub>")
+
+    %% @instagram_crawling [ai-task, closed]
+    instagram_crawling("인스타 크롤링 기능<br/><sub>타깃 데이터 수집 범위와 정책을 정의하고<br/>수집/정제 파이프라인을 구현해<br/>후속 분석 및 데이터 구축에 활용</sub>")
+
+    %% @tts_provider_research [ai-task, closed]
+    tts_provider_research("TTS 프로바이더 리서치/비교<br/><sub>실시간/비실시간 후보군 가격을 시간당으로 통일<br/>언어수/스트리밍 여부/데모 유무 비교 완료<br/>Inworld 중심 도입 방향으로 정리</sub>")
+
+    %% @inworld_non_realtime_strategy [ai-task, closed]
+    inworld_non_realtime_strategy("Inworld 비실시간 전략 확정<br/><sub>번역 확정 후 TTS 합성으로 1차 구현<br/>레이턴시 이슈 시 실시간 스트리밍으로 전환<br/>voiceId/언어코드 매핑 조사 완료</sub>")
+
+    %% @gaming_tts_test_section_spec [ai-task, closed]
+    gaming_tts_test_section_spec("Gaming 테스트 섹션 TTS 스펙 확정<br/><sub>입력: 번역 확정 텍스트 + 대상 언어<br/>출력: Inworld 합성 음성 재생/중단/오류 처리<br/>기본 voiceId 매핑 정책 정의</sub>")
+
+    %% @gaming_tts_test_section_apply [ai-task, closed]
+    gaming_tts_test_section_apply("Gaming 테스트 섹션 TTS 적용 (mingle-landing)<br/><sub>Inworld API Route + 첫 번역문 자동 재생 연결<br/>언어별 voice fallback 및 mini 모델 기본값 반영<br/>로컬 .env 인증키(fallback alias) 지원</sub>")
+
+    %% @gaming_tts_queue_ui_polish [ai-task, closed]
+    gaming_tts_queue_ui_polish("Gaming TTS 큐 안정화 & 재생 UI 표시<br/><sub>자동 데모 재생 구간에서는 TTS 비활성화<br/>유저 테스트 시작 후에만 TTS arm 처리<br/>final 번역 기준 큐 + 재생중 말풍선 음파 인디케이터 추가</sub>")
+
+    %% @tts_mobile_lock_recovery [ai-task, closed]
+    tts_mobile_lock_recovery("모바일 잠금/복귀 TTS 복구<br/><sub>iOS 잠금 해제 후 TTS 무음 상태 대응<br/>visibilitychange 재시도 + blocked 항목 큐 복원<br/>Enable Sound 버튼으로 수동 언락 후 재생 재개</sub>")
+
+    %% @mobile_tts_autounlock_and_feedback_guard [ai-task, closed]
+    mobile_tts_autounlock_and_feedback_guard("모바일 TTS 자동 언락 + 피드백 루프 완화<br/><sub>Enable Sound UI 제거, 사용자 제스처로 자동 언락 재시도<br/>TTS 재생 중 STT 오디오 업링크 잠시 suppress 처리<br/>getUserMedia echo/noise suppression 제약 강화</sub>")
+
+    %% @stt_graceful_stop_finalize_flush [ai-task, closed]
+    stt_graceful_stop_finalize_flush("STT 중단 시 강제 확정 + 번역/TTS 플러시<br/><sub>녹음 중지는 mic 업링크만 즉시 중단<br/>pending partial을 final 턴으로 확정 후 번역 완료까지 대기<br/>ack 후 소켓 종료로 중도 유실 완화(30초 제한 포함)</sub>")
+
+    %% @soniox_provider_finalization_on_stop [ai-task, closed]
+    soniox_provider_finalization_on_stop("Soniox 상태기반 종료 확정 처리<br/><sub>stop_recording 시 클라이언트 pending 텍스트 대신<br/>Soniox 서버 상태(finalized+non-final) 기준으로 final 확정<br/>ack 이후 클라이언트/서버 WS 순차 종료로 정합성 강화</sub>")
+
+    %% @demo_limit_60s_inworld_tts_rate [ai-task, closed]
+    demo_limit_60s_inworld_tts_rate("데모 제한 60초 + Inworld 말하기 속도 조정<br/><sub>테스트 섹션 사용 제한을 30초→60초로 확장<br/>i18n 제한 문구를 전 언어에서 60초로 동기화<br/>Inworld TTS audioConfig.speakingRate 기본값 1.2 적용</sub>")
+
+    %% @tts_stt_concurrent_input_enable [ai-task, closed]
+    tts_stt_concurrent_input_enable("TTS 재생 중 STT 동시 입력 허용<br/><sub>TTS 재생 상태와 연동된 STT 업링크 suppress 로직 제거<br/>TTS 출력 중에도 마이크 입력을 Soniox로 지속 전송<br/>브라우저 echo/noise suppression 기본 제약은 유지</sub>")
+
+    %% @soniox_endpoint_finalize_immediate_tts [ai-task, closed]
+    soniox_endpoint_finalize_immediate_tts("Soniox 엔드포인트 즉시 확정 처리<br/><sub><end> 토큰 감지 시 발화를 즉시 final로 확정<br/>번역 완료 직후 TTS 큐가 즉시 실행되도록 연결<br/>테스트 종료 시점까지 지연되던 발화 케이스 완화</sub>")
+
+    %% @stop_interrupt_local_finalize_fallback [ai-task, closed]
+    stop_interrupt_local_finalize_fallback("중단 시 partial 로컬 강제 확정 폴백<br/><sub>stop_recording ack 지연/유실 시 남은 partial을 클라이언트에서 final 승격<br/>중단 후 partial 말풍선 잔류를 제거하고 번역 연계를 안정화<br/>ack 대기시간/지연 close 보강으로 stop 레이스 완화</sub>")
+
+    %% @stop_dedupe_scope_fix_for_tts_chain [ai-task, closed]
+    stop_dedupe_scope_fix_for_tts_chain("중단 중복제거 범위 축소 (TTS 체인 복원)<br/><sub>global final dedupe를 stop 전용 dedupe로 축소<br/>세션 재시작 직후 발화가 dedupe로 누락되던 케이스 완화<br/>final→번역→TTS 연쇄가 재시작 후에도 이어지도록 보정</sub>")
+
+    %% @stop_state_and_partial_translation_promote [ai-task, closed]
+    stop_state_and_partial_translation_promote("중단 상태 UI 분리 + partial 번역 승격<br/><sub>stop 클릭 즉시 stopping 상태로 전환해 red 녹음 표시 해제<br/>로컬 강제 확정 시 partial 번역을 finalized로 승격<br/>ack 지연 시에도 final→TTS 체인이 끊기지 않도록 보강</sub>")
+
+    %% @stop_immediate_finalize_and_translation_drain [ai-task, closed]
+    stop_immediate_finalize_and_translation_drain("중단 즉시 final 확정 + 번역 드레인 대기<br/><sub>stop 시 partial을 즉시 final 승격해 지연 체감 제거<br/>ack timeout 구간에는 짧은 translation drain 대기 추가<br/>final 텍스트 기준 번역 업데이트 후 TTS 체인 복구</sub>")
+
+    %% @forced_termination_finalize_hooks [ai-task, closed]
+    forced_termination_finalize_hooks("강제 종료 이벤트 finalizing 훅 추가<br/><sub>1분 제한/오프라인/pagehide/visibilitychange에서 stop 트리거<br/>소켓 error/close 시 partial 로컬 확정 폴백 추가<br/>사용자 stop 외 종료에도 final→번역→TTS 체인 보존 강화</sub>")
+
+    %% @stop_fallback_translate_api_and_fast_restart [ai-task, closed]
+    stop_fallback_translate_api_and_fast_restart("중단 후 번역 API 폴백 + 재시작 지연 단축<br/><sub>로컬 final 직후 /api/translate/finalize 백그라운드 재번역 추가<br/>stop ack 대기시간/드레인 시간을 축소해 재녹음 지연 완화<br/>WS 번역 유실 시에도 final→번역→TTS 연쇄 복구</sub>")
+
+    %% @stop_local_server_final_merge_and_tts_guard [ai-task, closed]
+    stop_local_server_final_merge_and_tts_guard("중단 시 중복 발화 병합 + TTS 보장 강화<br/><sub>로컬 final과 후속 서버 final을 동일 발화로 병합 처리<br/>중단 직후 짧은/긴 문장 중복 말풍선 생성 문제 완화<br/>재번역 실패 시 기존 번역 finalized 처리로 TTS 최소 1회 보장</sub>")
+
+    %% @stop_stale_socket_guard_and_final_retranslate [ai-task, closed]
+    stop_stale_socket_guard_and_final_retranslate("중단 후 재연결 플리커 방지 + 최종 재번역 강화<br/><sub>stale websocket 이벤트를 무시해 red→orange→red 플리커 차단<br/>병합된 서버 final 텍스트 기준 재번역을 재시도하도록 보강<br/>번역 업데이트 시 같은 발화도 TTS 재큐잉 가능하게 정합성 개선</sub>")
+
+    %% @stop_partial_gate_and_finalize_parser_harden [ai-task, closed]
+    stop_partial_gate_and_finalize_parser_harden("중단 구간 partial 차단 + finalize 파서 강화<br/><sub>stopping 상태에서는 partial transcript/translation 이벤트를 무시<br/>중단 직후 partial 재등장으로 인한 중복/미완료 발화 경로 차단<br/>finalize 번역 API JSON 파싱과 응답 형식 안정성 보강</sub>")
+
+    %% @stop_finalize_retry_and_multi_provider_translate [ai-task, closed]
+    stop_finalize_retry_and_multi_provider_translate("중단 후 최종 번역 재시도 강화<br/><sub>/api/translate/finalize에 Gemini/OpenAI/Claude 다중 폴백 추가<br/>클라이언트 finalize 번역 호출을 짧은 백오프로 3회 재시도<br/>최종 번역 누락 시에도 기존 번역 finalized 폴백 유지</sub>")
+
+    %% @stop_ack_server_final_turn_payload [ai-task, closed]
+    stop_ack_server_final_turn_payload("중단 ACK에 서버 최종 번역 payload 포함<br/><sub>stop_recording_ack에 final_turn(원문+번역)을 함께 전달<br/>클라이언트는 /api/translate/finalize 의존 없이 ACK payload를 우선 반영<br/>중단 시 final→번역→TTS 체인을 서버 응답 기준으로 안정화</sub>")
+
+    %% @stop_translation_json_and_single_fallback [ai-task, closed]
+    stop_translation_json_and_single_fallback("중단 직후 번역 누락 보강 (JSON+단일언어 폴백)<br/><sub>서버 번역 JSON 파서에 fenced/sliced 복원 파싱 추가<br/>Gemini JSON 응답 강제(responseMimeType) 및 재시도 적용<br/>final 번역 누락 시 언어별 단일 번역 폴백으로 번역 공백 최소화</sub>")
+
+    %% @gaming_socialhero_multilingual_copy_refresh [ai-task, closed]
+    gaming_socialhero_multilingual_copy_refresh("Gaming 헤드라인 다국어 개편<br/><sub>gaming Hero 제목 문구를 한국어 기준으로<br/>동시 통역 강조 순서로 재배치하고<br/>중국어/대만어/일본어/베트남어/태국어를<br/>각 로케일에 맞춰 자연스럽게 동기화</sub>")
+
+    %% @gaming_demo_disclaimer_i18n [ai-task, closed]
+    gaming_demo_disclaimer_i18n("Gaming 데모 안내문 i18n 반영<br/><sub>테스트폰 하단에 성능 테스트용 데모라는<br/>고지 문구를 작은 텍스트로 추가하고<br/>socialHero.gaming.demoDisclaimer 키를<br/>15개 로케일에 맞춰 번역 동기화</sub>")
+
+    %% @landing_favicon_route_module_not_found_fix [ai-task, closed]
+    landing_favicon_route_module_not_found_fix("Landing favicon 500 오류 안정화<br/><sub>app/favicon.ico 메타데이터 라우트가<br/>간헐적으로 MODULE_NOT_FOUND를 내는<br/>개발환경 이슈를 줄이기 위해 favicon을<br/>public 정적 파일 서빙 경로로 전환</sub>")
+
+    %% @translation_decouple_http [ai-task, closed]
+    translation_decouple_http("번역 탈WebSocket → HTTP API 전환<br/><sub>STT 서버에서 번역 로직 전체 제거(~200줄)<br/>클라이언트가 /api/translate/finalize 직접 호출<br/>5글자 partial 번역, utteranceId 바인딩 오염 차단<br/>소리 토글 버튼 추가, 번역 표시 순서 고정</sub>")
+
+    %% @finalize_inline_tts_bundle [ai-task, closed]
+    finalize_inline_tts_bundle("파이널라이즈 번역+TTS 동시 처리<br/><sub>/api/translate/finalize가 tts.language를 받아<br/>번역 완료 직후 Inworld TTS를 즉시 호출하고<br/>번역 결과와 base64 오디오를 함께 내려<br/>클라이언트 왕복 지연 1회를 제거</sub>")
+
+    %% @finalize_tts_double_playback_rootcause [ai-task, closed]
+    finalize_tts_double_playback_rootcause("파이널라이즈 TTS 2회 재생 원인 확인<br/><sub>인라인 TTS 수신 시 spoken 시그니처를<br/>language::__server_tts__로 저장하지만<br/>후속 effect는 language::translatedText와 비교해<br/>/api/tts/inworld 재요청이 다시 큐잉됨</sub>")
+
+    %% @finalize_tts_dedupe_alignment_fix [ai-task, closed]
+    finalize_tts_dedupe_alignment_fix("클라 Inworld 후속 TTS 호출 제거 완료<br/><sub>LivePhoneDemo의 effect 기반 후속 TTS 큐를 삭제하고<br/>/api/tts/inworld 클라이언트 재요청 경로를 완전히 제거<br/>파이널라이즈는 서버 인라인 ttsAudio만 즉시 재생하도록<br/>TTS 실행 경로를 단일화해 중복 재생을 차단</sub>")
+
+    %% @finalize_translate_first_tts_split [ai-task, closed]
+    finalize_translate_first_tts_split("번역 우선 응답 + TTS 별도 호출 전환<br/><sub>/api/translate/finalize에서 인라인 TTS 병합을 제거해<br/>번역 결과를 먼저 즉시 응답하도록 경로를 단순화하고<br/>클라 훅은 번역 반영 후 /api/tts/inworld를 별도 호출해<br/>서버 경유 TTS를 1회만 실행하도록 재구성</sub>")
+
+    %% @tts_global_queue_sequential_playback [ai-task, closed]
+    tts_global_queue_sequential_playback("TTS 글로벌 큐 순차 재생 적용<br/><sub>인라인 TTS 응답을 도착 순서대로 큐잉하고<br/>재생 중인 음성을 중간에 끊지 않도록 보장해<br/>현재 음성 종료 후 다음 음성을 이어 재생하는<br/>단일 플레이백 루프로 발화 끊김을 제거</sub>")
+
+    %% @tts_priority_queue_ordering [ai-task, closed]
+    tts_priority_queue_ordering("TTS 메시지 순서 우선순위 큐 적용<br/><sub>응답 도착 순서가 역전되어도 utterance 순서를 기준으로<br/>앞선 발화 오디오를 우선 재생하도록 큐 우선순위를 재정렬<br/>선행 오디오 미도착 시 짧게 대기 후 타임아웃 스킵을 허용해<br/>순서 보장과 무한 대기 방지를 동시에 만족</sub>")
+
+    %% @ios_chrome_audio_player_reuse [ai-task, closed]
+    ios_chrome_audio_player_reuse("iOS Chrome 무음 대응 재생기 교체<br/><sub>TTS payload를 data URL 대신 Blob으로 전달하고<br/>재생 시 단일 HTMLAudioElement를 계속 재사용해<br/>사용자 제스처 언락 상태를 동일 플레이어에 유지하고<br/>iOS 브라우저별 자동재생 차단 케이스를 완화</sub>")
+
+    %% @ios_safari_lock_resume_recovery [ai-task, closed]
+    ios_safari_lock_resume_recovery("iOS 잠금복귀 TTS 회복 로직 강화<br/><sub>visibilitychange 외 pageshow/focus 복귀 훅을 추가해<br/>잠금 해제 후 자동 재개 시도를 다중 트리거로 보강하고<br/>재생 차단 시 BLOCKED 상태를 유지한 채 큐를 보존하며<br/>Resume Audio 버튼으로 사용자 제스처 재개 경로를 제공</sub>")
+
+    %% @mingle_app_test_section_migration [ai-task, closed]
+    mingle_app_test_section_migration("mingle-app 테스트 섹션 이식<br/><sub>mingle-landing의 최신 LivePhoneDemo 컴포넌트와<br/>/api/translate/finalize + /api/tts/inworld 서버 경유 경로를<br/>mingle-app /[locale]/translator 페이지에 통합해<br/>동일한 STT→번역→TTS 테스트 플로우를 구성</sub>")
+
+    %% @landing_inline_tts_reenable [ai-task, closed]
+    landing_inline_tts_reenable("landing 서버 인라인 TTS 재활성화<br/><sub>finalize 번역 API에 tts.language 입력을 다시 연결해<br/>번역 완료 즉시 서버가 Inworld TTS를 호출하고<br/>번역+TTS 오디오(base64)를 한 응답으로 반환하도록<br/>클라이언트 후속 /api/tts/inworld RTT를 제거</sub>")
+
+    %% @tts_queue_race_retrigger_fix [ai-task, closed]
+    tts_queue_race_retrigger_fix("TTS 큐 타이밍 레이스 재트리거 보강<br/><sub>inline TTS 도착이 번역 state 커밋보다 빠를 때<br/>첫 발화가 큐에서 누락되어 지연되던 경로를 추적해<br/>utterances 커밋 이후 pending 오디오가 있으면<br/>processTtsQueue를 재호출하도록 트리거를 추가</sub>")
+
+    %% @stt_background_stop_policy_update [ai-task, closed]
+    stt_background_stop_policy_update("STT 백그라운드 중단 정책 조정<br/><sub>잠금/백그라운드/pagehide 이벤트에서<br/>stopRecordingGracefully를 호출하던 경로를 제거하고<br/>네트워크 offline 이벤트에서만 STT 중단을 유지해<br/>모바일 화면 잠금 시 녹취가 즉시 끊기지 않게 보정</sub>")
+
+    %% @stt_background_auto_recovery [ai-task, closed]
+    stt_background_auto_recovery("잠금 복귀 후 STT 자동 복구 추가<br/><sub>visibility/pageshow/focus 복귀 이벤트에서<br/>AudioContext/track/chunk 흐름을 점검하고<br/>중단 상태가 감지되면 세션을 자동 stop→start해<br/>빨간 녹취 상태 잔류와 무음 입력 정체를 복구</sub>")
+
+    %% @stt_lock_resume_reconnect_removal [ai-task, closed]
+    stt_lock_resume_reconnect_removal("잠금 복귀 강제 재연결 로직 제거<br/><sub>잠금/백그라운드 복귀 시 실행되던<br/>STT 자동 stop→start 복구 경로를 제거해<br/>화면 잠금 자체가 세션 재연결 트리거가 되지 않도록<br/>오직 사용자 중지/offline/데모 제한에서만 종료 유지</sub>")
+
+    %% @stt_mic_button_tts_decouple [ai-task, closed]
+    stt_mic_button_tts_decouple("마이크 버튼의 STT 전용 제어 보장<br/><sub>마이크 클릭 시 오디오 프라임을 항상 실행하던 경로를<br/>STT 시작(idle→recording) 상황에서만 수행하도록 변경해<br/>녹취 종료 클릭이 진행 중 TTS 플레이어 src를 덮어써<br/>재생을 끊던 사이드이펙트를 제거</sub>")
+
+    %% @tts_queue_watchdog_and_start_prime_guard [ai-task, closed]
+    tts_queue_watchdog_and_start_prime_guard("TTS 큐 독립 재시도 + 시작 프라임 보강<br/><sub>inline 오디오 도착 후 트리거 누락 시를 대비해<br/>pending 큐를 짧은 주기로 재평가하는 watchdog을 추가하고<br/>마이크 시작 제스처(pointerdown/click)에서만 프라임하며<br/>재생 중 플레이어는 건드리지 않도록 인터럽트 가드 적용</sub>")
+
+    %% @tts_prime_failure_volume_recovery_fix [ai-task, closed]
+    tts_prime_failure_volume_recovery_fix("프라임 실패 시 볼륨 복구 보장<br/><sub>silent priming 도중 play() 실패가 발생하면<br/>공유 오디오 플레이어 volume이 0으로 남아<br/>TTS가 작게 들리거나 무음처럼 보이던 경로를<br/>실패 처리에서 volume/src를 즉시 복구하도록 수정</sub>")
+
+    %% @stt_lock_resume_reconnect_restore_and_stop_click_tts_resume [ai-task, closed]
+    stt_lock_resume_reconnect_restore_and_stop_click_tts_resume("잠금 복귀 재연결 복원 + 종료클릭 TTS 재개 보강<br/><sub>잠금 복귀 후 빨간 상태 고착 이슈 대응을 위해<br/>STT 자동 복구(stop→start) 경로를 다시 활성화하고<br/>STT 종료 버튼 클릭 제스처에서 TTS 재생 재개를<br/>즉시+지연 재시도해 재생 끊김을 완화하도록 조정</sub>")
+
+    %% @stt_stop_pipeline_without_output_close [ai-task, closed]
+    stt_stop_pipeline_without_output_close("STT 중지 시 출력 오디오 세션 보존<br/><sub>STT 정지에서 AudioContext를 close하던 경로를<br/>suspend 기반으로 변경하고 context 재사용을 도입해<br/>마이크 종료 시점에 iOS 출력 경로가 흔들리며<br/>TTS 재생이 끊기던 현상을 완화하도록 조정</sub>")
+
+    %% @mingle_app_landing_test_section_rebase [ai-task, closed]
+    mingle_app_landing_test_section_rebase("mingle-app 테스트 섹션 원본 재이식<br/><sub>mingle-landing 테스트 섹션 최신 코드를<br/>LivePhoneDemo/useRealtimeSTT와 번역/TTS API에<br/>원본 기준으로 다시 동기화하고 폰 프레임을 제거해<br/>앱 전역 480px 모바일 캔버스 스케일을 적용</sub>")
+
+    %% @mingle_app_fullscreen_test_surface [ai-task, closed]
+    mingle_app_fullscreen_test_surface("테스트 UI 풀스크린 정렬<br/><sub>mingle-home의 상단 안내/CTA를 제거하고<br/>LivePhoneDemo만 단독으로 렌더링해<br/>화면 전체가 테스트 앱 UI를 쓰도록 정리<br/>하단 마이크 버튼만 시작 진입점으로 유지</sub>")
+
+    %% @mingle_app_remove_mock_statusbar [ai-task, closed]
+    mingle_app_remove_mock_statusbar("가짜 상태바/노치 요소 제거<br/><sub>LivePhoneDemo 상단의 시간/신호/배터리<br/>모사 UI 블록을 제거해 테스트폰 느낌을 없애고<br/>실제 테스트 화면 본문만 바로 보이도록 정렬<br/>헤더부터 콘텐츠가 시작되는 구조로 단순화</sub>")
+
+    %% @mingle_app_client_only_live_demo [ai-task, closed]
+    mingle_app_client_only_live_demo("Live demo 하이드레이션 가드 적용<br/><sub>서버/클라이언트 초기 상태 차이로 발생하던<br/>Hydration mismatch 경고를 막기 위해<br/>mingle-home에서 LivePhoneDemo를<br/>dynamic ssr:false로 클라이언트 전용 렌더링</sub>")
+
+    %% @mingle_app_favicon_sync [ai-task, closed]
+    mingle_app_favicon_sync("mingle-app favicon 랜딩과 동기화<br/><sub>mingle-landing의 app/favicon.ico 파일을<br/>mingle-app src/app/favicon.ico에 복사해<br/>브라우저 탭 아이콘을 랜딩과 동일 리소스로<br/>일관되게 보이도록 에셋 기준을 통일</sub>")
+
+    %% @mingle_app_global_scroll_lock [ai-task, closed]
+    mingle_app_global_scroll_lock("전역 스크롤 잠금 + 내부 스크롤 한정<br/><sub>scale 캔버스와 minHeight 조합으로 생기던<br/>루트 스크롤바 토글/좌우 딸깍 현상을 추적해<br/>html/body/stage/frame overflow를 hidden으로 고정하고<br/>채팅 리스트 영역만 overflow-y-auto로 유지</sub>")
+
+    %% @mingle_app_under480_fullwidth_scale_shell [ai-task, closed]
+    mingle_app_under480_fullwidth_scale_shell("480 이하 전폭 사용 스케일 셸 보정<br/><sub>transform 스케일만 적용되던 기존 구조에서<br/>레이아웃 폭(480)과 시각 폭이 달라 보이던 문제를<br/>stage→shell→frame 2단 구조로 분리해<br/>480 이하에서 shell 폭을 viewport와 1:1로 정렬</sub>")
+
+    %% @mingle_app_top_level_scale_only [ai-task, closed]
+    mingle_app_top_level_scale_only("최상위 단일 스케일 구조로 정리<br/><sub>PhoneFrame 내부의 480 maxWidth 제한을 제거해<br/>컴포넌트 단위 폭 제약을 없애고<br/>모바일 비율/폭 제어 책임을 mobile-canvas-shell<br/>최상위 레벨 한 곳으로 단일화</sub>")
+
+    %% @mingle_app_fixed_footer_via_svh_and_flex_constraints [ai-task, closed]
+    mingle_app_fixed_footer_via_svh_and_flex_constraints("하단탭 고정 레이아웃 안정화<br/><sub>dvh 변동으로 하단탭이 따라 움직이던 경로를<br/>svh 기반 높이 체계로 전환해 흔들림을 완화하고<br/>header/footer를 shrink-0으로 고정, chat만 min-h-0<br/>내부 스크롤로 남겨 하단탭 위치를 일관되게 유지</sub>")
+
+    %% @mingle_app_footer_bottom_anchor_with_frame_height_inheritance [ai-task, closed]
+    mingle_app_footer_bottom_anchor_with_frame_height_inheritance("하단탭 최하단 앵커 보정<br/><sub>메인 컨테이너를 100svh 고정에서 h-full 상속으로 바꿔<br/>스케일된 frameHeight 전체를 실제 레이아웃 높이로 사용하고<br/>가로 폭 축소 시에도 footer가 캔버스 최하단에 붙도록<br/>상대 배율 변경과 무관한 고정 하단 위치를 유지</sub>")
+
+    %% @shared_live_demo_core_package_split [ai-task, closed]
+    shared_live_demo_core_package_split("라이브 데모 코어 패키지 분리<br/><sub>mingle-landing 최신 useRealtimeSTT/ChatBubble/LanguageSelector를<br/>packages/live-demo-core로 추출해 단일 소스로 관리하고<br/>landing/app 모두 로컬 래퍼를 통해 공통 패키지를 참조하도록<br/>연결해 UI 분기와 코어 로직 분리를 동시에 달성</sub>")
+
+    %% @mingle_app_remove_60s_usage_limit [ai-task, closed]
+    mingle_app_remove_60s_usage_limit("mingle-app 60초 제한 해제<br/><sub>공통 useRealtimeSTT 훅에 usageLimitSec 옵션을 추가해<br/>기본값 60초는 landing에 유지하고 app 래퍼에서 null 주입<br/>앱 UI는 제한 진행바/잔여초 대신 경과 시간 표시로 전환해<br/>제한 없는 녹음 흐름과 표시 정합성을 맞추도록 보정</sub>")
+
+    %% @mingle_app_ios_scaffold [ai-task, closed]
+    mingle_app_ios_scaffold("mingle-app iOS 래핑 스캐폴드 생성<br/><sub>Capacitor iOS 네이티브 프로젝트를 신규 생성하고<br/>웹 번들을 capacitor-web로 빌드/복사해 동기화 완료<br/>ios/App/App/public 및 Package.swift 플러그인 구성을<br/>현재 웹 코드 기준으로 정합되게 초기 세팅</sub>")
+
+    %% @live_demo_core_demo_logic_split [ai-task, closed]
+    live_demo_core_demo_logic_split("live-demo-core 데모 로직 분리<br/><sub>공통 useRealtimeSTT에서 초기 3개 예시/타이핑 애니메이션을 제거하고<br/>localStorage 기반 utterances/usage 저장 정책은 코어에 유지<br/>landing 래퍼 훅에서만 데모 시드/애니메이션을 담당하도록 재배치해<br/>app은 공통 코어만 사용하고 랜딩 전용 UX를 분리</sub>")
+
+    %% @xcode_install_and_ios_device_build [human-task, closed]
+    xcode_install_and_ios_device_build("Xcode 설치 및 iOS 빌드 준비 완료<br/><sub>Xcode 26.2 설치와 xcode-select 경로 전환,<br/>First Launch 초기화까지 로컬에서 완료됨<br/>mingle-app cap:sync와 xcodebuild 스킴 조회로<br/>네이티브 빌드 준비 상태를 검증 완료</sub>")
+
+    %% @capacitor_server_url_env_loading_fix [ai-task, closed]
+    capacitor_server_url_env_loading_fix("Capacitor 서버 URL .env 로딩 수정<br/><sub>.env에 CAPACITOR_SERVER_URL이 있어도<br/>cap sync 시 process.env 미로딩으로 누락되던 문제를<br/>capacitor.config.ts/prepare script에 로컬 env 파서를 추가해<br/>ios/App/App/capacitor.config.json server.url 반영을 복구</sub>")
+
+    %% @landing_social_version_route_block [ai-task, closed]
+    landing_social_version_route_block("Landing social 버전 외부 라우팅 차단<br/><sub>mingle-landing에서 version 허용 목록의 social을 제거해<br/>/social 및 /social/{locale} 경로가 유효 버전으로 매칭되지 않도록 수정<br/>middleware + 동적 버전 페이지 + locale 감지 프로바이더를 동기화해<br/>외부 직접 접근 시 404로 차단되게 정리</sub>")
+
+    %% @normal_global_connect_to_explore_swap [ai-task, closed]
+    normal_global_connect_to_explore_swap("Normal 글로벌 연결→Explore 교체<br/><sub>normal 버전 섹션 배열에서<br/>talkToWorld(글로벌 연결)를 제거하고<br/>worldMap(Explore) 섹션으로 교체해<br/>중간 콘텐츠 흐름을 Explore로 전환</sub>")
+
+    %% @ios_device_signing_and_run_validation [human-task, closed]
+    ios_device_signing_and_run_validation("실기기 서명/런 최종 검증<br/><sub>Xcode에서 Team 서명 설정 후 실제 iPhone에서<br/>App 실행/설치 동작 확인 완료<br/>마이크/오디오 권한 승인 흐름과 실시간 STT/TTS가<br/>실기기에서 정상 동작함을 검증</sub>")
+
+    %% @ios_safe_area_and_icon_sizing_fix [ai-task, closed]
+    ios_safe_area_and_icon_sizing_fix("iOS Safe Area 및 아이콘 사이즈 보정<br/><sub>실기기에서 상/하단바가 safe area를 무시하던 문제 수정<br/>viewportFit: cover 추가, mobile-safe-shell 패딩 강화<br/>아이콘/텍스트/버튼 크기 전반 업스케일, .gitignore 보강<br/>ripgrep 설치 및 iOS 로그 분석/프로덕션 설정 가이드 제공</sub>")
+
+    %% @ios_device_rebuild_and_run [ai-task, closed]
+    ios_device_rebuild_and_run("iOS 실기기 재빌드 및 실행<br/><sub>섹션별 safe area 적용 후 빌드/싱크/실행 완료<br/>xcodebuild + devicectl로 자동 설치/런<br/>CAPACITOR_SERVER_URL 변경된 .env 반영 확인</sub>")
+
+    %% @ios_cli_build_install_run [ai-task, closed]
+    ios_cli_build_install_run("iOS CLI 자동 빌드/설치/실행<br/><sub>Xcode 버튼 없이 CLI로만 빌드→싱크→설치→런 완료<br/>pnpm cap:sync → xcodebuild → devicectl install → launch<br/>Royce-ui-iPhone(99561FED-7D66-560E-81E1-A239CD308AB6)에<br/>com.minglelabs.app 번들 설치/실행 성공</sub>")
+
+    %% @mingle_app_git_push [ai-task, closed, 2026-02-15, ai]
+    mingle_app_git_push("mingle-app git push 완료<br/><sub>LivePhoneDemo/i18n/ios 설정 등<br/>15개 파일 변경사항을 커밋하고<br/>origin/main에 푸시 완료<br/>f1a9940: sync mingle app demo and i18n</sub>")
+
+    %% @mingle_app_gitignore_cleanup_for_deploy [ai-task, closed, 2026-02-15, ai]
+    mingle_app_gitignore_cleanup_for_deploy("mingle-app 배포용 gitignore 정리<br/><sub>iOS/Xcode 생성 산출물 경로를<br/>mingle-app/.gitignore에 추가해<br/>ios/build 및 중첩 ios 폴더가<br/>커밋 후보에 다시 올라오지 않게 정리</sub>")
+
+    %% @mingle_app_ios_rebuild_and_sync_retry [ai-task, closed, 2026-02-15, ai]
+    mingle_app_ios_rebuild_and_sync_retry("mingle-app iOS 빌드/싱크 재실행<br/><sub>웹 빌드를 다시 수행해 산출물을 갱신하고<br/>node>=22 경로로 cap sync ios를 재실행해<br/>ios/App/App/public 및 capacitor config를<br/>현재 코드 기준으로 동기화 완료</sub>")
+
+    %% @mingle_app_ios_run_blocked_coredevice_service [blocker, closed, 2026-02-15, ai]
+    mingle_app_ios_run_blocked_coredevice_service("iOS 실기기 실행 시 CoreDevice 타임아웃<br/><sub>xcrun devicectl install/launch를 재시도했지만<br/>CoreDeviceService 초기화 타임아웃으로 실패<br/>xcodebuild Debug-iphoneos 빌드는 성공했고<br/>실행 단계만 로컬 CoreDevice 상태 점검 필요</sub>")
+
+    %% @mingle_app_vercel_git_autodeploy_link_fix [ai-task, closed, 2026-02-15, ai]
+    mingle_app_vercel_git_autodeploy_link_fix("mingle-app Vercel Git 자동배포 연결 확인<br/><sub>프로젝트 API 점검으로 Git 링크/production main과<br/>createDeployments enabled 상태를 확인했고<br/>최근 배포가 CLI 메타였던 원인을 분리했으며<br/>이후 push부터 Git webhook 배포 경로를 복구</sub>")
+
+    %% @mingle_app_ui_scale_and_safearea_tune [ai-task, closed, 2026-02-15, ai]
+    mingle_app_ui_scale_and_safearea_tune("mingle-app UI 스케일 다운 + safe area 보정<br/><sub>LivePhoneDemo와 공용 chat bubble의 텍스트/아이콘<br/>버튼/패딩 스케일을 전반적으로 줄여 과대 요소를 완화<br/>상단바 top과 하단바 bottom safe-area 패딩을 늘려<br/>노치/홈인디케이터 근처의 여백 부족을 보정</sub>")
+
+    %% @mingle_app_ios_build_sync_and_run_retry [blocker, closed, 2026-02-15, ai]
+    mingle_app_ios_build_sync_and_run_retry("mingle-app 빌드/싱크/실행 재검증<br/><sub>next build와 cap sync ios, xcodebuild Debug 빌드는 성공<br/>실기기 install/launch는 devicectl에서 동일하게 실패<br/>CoreDeviceService 초기화 타임아웃이 재현되어<br/>실행 단계는 로컬 CoreDevice 상태 복구가 필요</sub>")
+
+    %% @mingle_app_ios_launch_via_xctrace_workaround [ai-task, closed, 2026-02-15, ai]
+    mingle_app_ios_launch_via_xctrace_workaround("실기기 실행 우회 (xctrace) 성공<br/><sub>devicectl 타임아웃 지속 상태에서 UDID를 재확인하고<br/>xcodebuild install로 앱 설치를 완료한 다음<br/>xcrun xctrace record --launch 경로로<br/>연결된 iPhone에서 com.minglelabs.app 실행 성공</sub>")
+
+    %% @mingle_app_secret_boundary_diagnosis [ai-task, closed, 2026-02-15, ai]
+    mingle_app_secret_boundary_diagnosis("mingle-app 시크릿 경계/경로 진단<br/><sub>클라이언트는 NEXT_PUBLIC_WS_URL로 중계 STT 서버에 연결되고<br/>Soniox API 키는 서버(mingle-landing stt-server)에서만 사용됨을 확인<br/>번역은 /api/translate/finalize 서버 라우트가 GEMINI/OPENAI/CLAUDE 키를 필요로 해<br/>Vercel 키 미설정 시 STT만 동작하고 번역은 실패하는 원인을 정리</sub>")
+
+    %% @vercel_monorepo_autodeploy_split_and_alias_check [ai-task, closed, 2026-02-15, ai]
+    vercel_monorepo_autodeploy_split_and_alias_check("Vercel 자동배포 분리 + 도메인 점검<br/><sub>mingle-app과 mingle-landing 프로젝트의 rootDirectory가<br/>각각 서브폴더로 설정된 상태를 확인했고<br/>두 앱 모두 vercel.json ignoreCommand를 추가해<br/>상대 앱 무관 커밋은 빌드를 자동 스킵하도록 분리</sub>")
+
+    %% @vercel_ignore_command_scope_fix [ai-task, closed, 2026-02-15, ai]
+    vercel_ignore_command_scope_fix("ignoreCommand 경로 스코프 보정<br/><sub>실행 위치에 따라 경로 해석이 흔들리지 않도록<br/>git show 변경 파일 목록 + grep 패턴 방식으로 교체해<br/>mingle-app/mingle-landing 각각 자기 경로와<br/>공용 packages/live-demo-core 변경만 빌드하도록 고정</sub>")
+
+    %% @vercel_dashboard_deploy_filter_check [human-task, opened, 2026-02-15, ai]
+    vercel_dashboard_deploy_filter_check("Vercel 대시보드 배포 필터 확인<br/><sub>ignoreCommand 코드 로직은 정상이나<br/>mingle-app만 수정해도 landing이 배포됨<br/>대시보드에서 Root Directory 및<br/>Ignored Build Step 설정 확인 필요</sub>")
+
+    %% @mingle_app_vercel_main_branch_only_deploy_guard [ai-task, closed, 2026-02-20, ai]
+    mingle_app_vercel_main_branch_only_deploy_guard("Vercel main 브랜치 전용 가드<br/><sub>mingle-app vercel.json ignoreCommand에<br/>VERCEL_GIT_COMMIT_REF 조건을 추가해<br/>main 외 브랜치는 즉시 빌드 스킵하고<br/>main + 앱 경로 변경일 때만 배포로 고정</sub>")
+
+    %% @live_demo_core_full_decouple [ai-task, closed, 2026-02-15, ai]
+    live_demo_core_full_decouple("live-demo-core 공통 패키지 완전 분리<br/><sub>landing/app이 참조하던 @mingle/live-demo-core를 제거하고<br/>ChatBubble/LanguageSelector/use-realtime-stt 코드를<br/>각 앱 디렉터리로 복제해 독립 소유 구조로 전환<br/>next.config, package, lockfile, vercel 필터까지 분리 기준으로 정리</sub>")
+
+    %% @mingle_app_ios_tts_audio_route_stability_fix [ai-task, closed, 2026-02-15, ai]
+    mingle_app_ios_tts_audio_route_stability_fix("mingle-app iOS TTS 무음 안정화<br/><sub>STT 시작 직후 priming 실패 레이스를 줄이기 위해<br/>오디오 priming 완료 후 녹음 시작 순서로 조정하고<br/>native 녹음 세션을 voiceChat에서 default로 전환해<br/>스피커 출력 라우팅을 강제하도록 iOS 플러그인을 보정</sub>")
+
+    %% @mingle_app_tts_fallback_recovery_path [ai-task, closed, 2026-02-15, ai]
+    mingle_app_tts_fallback_recovery_path("mingle-app TTS 수신 복구 경로 추가<br/><sub>/api/translate/finalize에서 inline TTS가 누락되거나<br/>base64 오디오가 깨질 때 /api/tts/inworld로 fallback 요청해<br/>큐에 음성을 넣도록 보강하고 socket error/close finalize 경로도<br/>ttsLanguage 전달 및 inline 처리까지 연결해 누락 케이스를 축소</sub>")
+
+    %% @mingle_app_tts_diagnostics_logging [ai-task, closed, 2026-02-15, ai]
+    mingle_app_tts_diagnostics_logging("mingle-app TTS 진단 로그 계측<br/><sub>Safari Web Inspector에서 즉시 확인 가능하도록<br/>translate/finalize 응답, inline/fallback TTS, 큐 적재/재생 이벤트를<br/>[MingleTTS]/[MingleTTSQueue] 로그로 추가하고<br/>NativeAudioSession 모드/라우트 로그를 Xcode 콘솔에도 노출</sub>")
+
+    %% @mingle_app_tts_initial_history_queue_race_fix [ai-task, closed, 2026-02-15, ai]
+    mingle_app_tts_initial_history_queue_race_fix("mingle-app 초기 히스토리 큐 레이스 수정<br/><sub>초기 mount 이펙트가 played 마킹을 먼저 실행해<br/>로컬스토리지 히스토리 utterance가 미마킹 상태로 남고<br/>queue.timeout_skip이 과거 발화를 계속 대기시키던 경로를<br/>utterances 동기화 시점에서 즉시 마킹하도록 정렬해 해소</sub>")
+
+    %% @mingle_stt_service_split_from_landing [ai-task, closed, 2026-02-15, ai]
+    mingle_stt_service_split_from_landing("STT 서버를 mingle-stt로 분리<br/><sub>mingle-landing에서 stt-server.ts와 railway.json을 분리해<br/>mingle-stt 전용 패키지와 빌드/실행 스크립트를 구성하고<br/>landing은 Next 앱 전용, STT는 Railway 루트 분리 구조로 정리해<br/>로그/환경변수/배포 경계를 명확히 분리</sub>")
+
+    %% @mingle_app_ios_native_tts_background_experiment [ai-task, closed, 2026-02-15, ai]
+    mingle_app_ios_native_tts_background_experiment("mingle-app iOS 네이티브 TTS 실험 경로 추가<br/><sub>웹뷰 HTMLAudio 재생 대신 AVAudioPlayer 기반 플러그인을 도입해<br/>잠금/백그라운드 구간 재생 유지 가능성을 높이는 경로를 추가하고<br/>기존 웹 재생 큐는 유지한 채 iOS Capacitor 환경에서만 자동 분기하며<br/>env/localStorage 토글로 즉시 off 가능한 롤백 스위치를 함께 제공</sub>")
+
+    %% @mingle_app_ios_icon_from_favicon_apply [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_icon_from_favicon_apply("mingle-app iOS 앱 아이콘 favicon 동기화<br/><sub>src/app/favicon.ico를 기준 소스로 사용해<br/>AppIcon.appiconset의 1024 아이콘을 동일 이미지로 교체하고<br/>build/sync/실기기 재설치까지 완료해<br/>홈 화면 아이콘이 웹 favicon과 일치하도록 반영</sub>")
+
+    %% @mingle_app_ios_native_tts_html_fallback_fix [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_native_tts_html_fallback_fix("iOS 앱 네이티브 TTS 실패 시 웹 폴백 보강<br/><sub>네이티브 AVAudioPlayer 경로 실패 시 발화를 즉시 스킵하던 흐름을 수정해<br/>같은 오디오 Blob을 HTMLAudio 경로로 즉시 재시도하도록 큐 로직을 보강하고<br/>native error/fallback 로그를 추가해 Safari Web Inspector에서 원인 추적을 돕고<br/>iOS 앱에서 음성 표시/재생이 간헐적으로 사라지던 케이스를 완화</sub>")
+
+    %% @mingle_app_ios_native_stt_module_path [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_native_stt_module_path("iOS 네이티브 STT 경로 이관<br/><sub>웹뷰 getUserMedia 오디오 업링크 대신<br/>AVAudioEngine+네이티브 WebSocket 플러그인을 추가해<br/>STT 캡처/전송 경로를 iOS 네이티브로 분리하고<br/>env/localStorage 토글로 즉시 롤백 가능한 구조를 도입</sub>")
+
+    %% @mingle_app_ios_native_stt_debug_logging [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_native_stt_debug_logging("iOS 네이티브 STT 디버그 로그 보강<br/><sub>연결 실패 원인 추적을 위해<br/>native/web STT 시작 분기와 transport 이벤트를<br/>[MingleSTT] 콘솔 로그로 표준화하고<br/>Safari Web Inspector에서 즉시 진단 가능하게 확장</sub>")
+
+    %% @mingle_app_ios_native_stt_permission_bootstrap [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_native_stt_permission_bootstrap("네이티브 STT 마이크 권한 부트스트랩 추가<br/><sub>NativeSTT start 진입에서 recordPermission을 확인해<br/>undetermined 상태면 권한 요청을 먼저 수행하고<br/>승인 후 AVAudioEngine/WS 세션을 시작하도록 분리해<br/>start 직후 즉시 실패하던 초기 진입 케이스를 완화</sub>")
+
+    %% @mingle_app_ios_native_plugin_registration_fix [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_native_plugin_registration_fix("iOS 커스텀 플러그인 등록 경로 보정<br/><sub>\"plugin is not implemented on ios\" 에러 원인을<br/>BridgeViewController 미등록으로 확인하고<br/>NativeAudioSession/NativeTTS/NativeSTT를<br/>capacitorDidLoad에서 명시 등록하도록 수정</sub>")
+
+    %% @backend_frontend_boundary_audit [ai-task, closed, 2026-02-16, ai]
+    backend_frontend_boundary_audit("백엔드/웹 경계 구조 파악<br/><sub>mingle-app/mingle-landing/mingle-stt를<br/>동시에 점검해 Vercel 웹 프론트와<br/>API 라우트, STT 중계 서버 책임을<br/>현재 코드 기준으로 재정리</sub>")
+
+    %% @backend_vercel_change_scope [human-task, opened, 2026-02-16, user]
+    backend_vercel_change_scope("백엔드+Vercel 웹 변경 범위 확정<br/><sub>클라 앱 작업과 분리해 서버/API와<br/>웹 프론트 페이지 변경 요구사항을<br/>우선순위/배포 단위로 나누고<br/>실행 순서를 합의해 진행 예정</sub>")
+
+    %% @mingle_app_db_schema_prisma_init [ai-task, closed, 2026-02-16, ai]
+    mingle_app_db_schema_prisma_init("mingle-app app 스키마 DB 초안 구축<br/><sub>Supabase 동일 DB를 유지한 채<br/>app 스키마 전용 Prisma 구조를 추가하고<br/>Message 메타 + MessageContent 분리 모델로<br/>토큰/시간 메트릭 중심 테이블을 정의</sub>")
+
+    %% @mingle_app_prisma_client_build_fix [ai-task, closed, 2026-02-16, ai]
+    mingle_app_prisma_client_build_fix("mingle-app Prisma 빌드 오류 복구<br/><sub>Vercel TypeScript 단계에서 발생한<br/>@prisma/client PrismaClient export 오류를<br/>런타임 안전 로딩 + build 전 prisma generate<br/>강제로 보정해 프로덕션 빌드를 정상화</sub>")
+
+    %% @mingle_app_database_schema_guard_autofix [ai-task, closed, 2026-02-23, ai]
+    mingle_app_database_schema_guard_autofix("mingle-app DB schema 가드 자동보정<br/><sub>mingle-landing과 동일 DB를 공유하되<br/>mingle-app은 app 스키마를 강제 유지하도록<br/>DATABASE_URL에 schema 누락 시 자동 보정하고<br/>단위테스트로 URL 파라미터 회귀를 고정</sub>")
+
+    %% @mingle_app_rn_workspace_alignment [ai-task, closed, 2026-02-16, ai]
+    mingle_app_rn_workspace_alignment("mingle-app 내부 RN 워크스페이스 정렬<br/><sub>분리 생성된 RN 프로젝트를 mingle-app/rn으로 고정하고<br/>nightly 의존성을 RN 0.84 안정 버전으로 핀 고정했으며<br/>iOS NativeSTTModule(AVAudioEngine+WS) 베이스를 추가해<br/>웹/Capacitor와 병행 가능한 네이티브 경로를 같은 저장소에 통합</sub>")
+
+    %% @mingle_app_capacitor_path_removal [ai-task, closed, 2026-02-16, ai]
+    mingle_app_capacitor_path_removal("mingle-app Capacitor 경로 완전 제거<br/><sub>package 의존성과 cap 스크립트, capacitor 설정/스크립트를 삭제하고<br/>legacy iOS 셸(ios/App)과 capacitor-web 번들을 전부 제거했으며<br/>LivePhoneDemo의 네이티브 플러그인 분기를 웹 경로로 단순화해<br/>웹+RN 이원 구조에서 검은 화면 원인이던 혼선 경로를 차단</sub>")
+
+    %% @mingle_app_vercel_rn_typecheck_scope_fix [ai-task, closed, 2026-02-16, ai]
+    mingle_app_vercel_rn_typecheck_scope_fix("Vercel RN 타입체크 스코프 분리<br/><sub>Next 빌드가 mingle-app/rn/App.tsx까지 검사해<br/>react-native 모듈 미존재로 실패하던 경로를 재현했고<br/>mingle-app tsconfig exclude에 rn/**/*를 추가해<br/>웹 빌드는 web 코드만 타입체크하도록 경계를 고정</sub>")
+
+    %% @mingle_app_rn_webview_native_stt_bridge [ai-task, closed, 2026-02-16, ai]
+    mingle_app_rn_webview_native_stt_bridge("RN WebView + 네이티브 STT 브리지 적용<br/><sub>RN 앱을 테스트 패널 대신 vercel 웹 UI WebView 셸로 전환하고<br/>웹 공용 훅은 ReactNativeWebView+nativeStt=1 조건에서만<br/>네이티브 이벤트 브리지를 사용해 웹/landing 기본 동작은 유지했으며<br/>iOS pod install·실기기 빌드/재설치까지 반영해 앱 경로를 재검증</sub>")
+
+    %% @mingle_app_ios_native_stt_interruption_recovery [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_native_stt_interruption_recovery("iOS 네이티브 STT 인터럽트 복구 보강<br/><sub>첫 턴 이후 STT 무응답 증상 원인을 오디오세션 인터럽트로 보고<br/>AVAudioSession interruption/route/media reset 감지를 추가했으며<br/>재진입 시 playAndRecord 재활성화와 input tap 재설치를 자동 수행해<br/>녹음 UI는 켜졌지만 입력이 멈추던 단절 구간을 런타임에서 복구</sub>")
+
+    %% @mingle_app_ios_stt_mode_output_gain_tune [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_stt_mode_output_gain_tune("iOS STT 중 출력 볼륨 라우팅 보정<br/><sub>STT 중 TTS가 통화 모드처럼 작아지는 증상을 줄이기 위해<br/>AVAudioSession을 voiceChat에서 default 모드로 전환하고<br/>스피커 포트를 매 세션 강제해 playAndRecord 동시 입출력은 유지하면서<br/>STT 활성 상태의 체감 출력 레벨을 일반 재생에 가깝게 보정</sub>")
+
+    %% @mingle_app_ios_stt_session_stability_rebalance [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_stt_session_stability_rebalance("iOS STT 세션 안정화 리밸런스 적용<br/><sub>default 모드 전환 후 발생한 무음/재시작 루프를 완화하기 위해<br/>오디오 세션을 voiceChat+mixWithOthers로 되돌리고<br/>route change 복구는 기기 연결/해제 등 필수 사유만 처리하며<br/>연속 재시작 debounce 가드(0.5s)를 넣어 UI 프리즈를 차단</sub>")
+
+    %% @mingle_app_ios_stt_tts_volume_reboost [ai-task, closed, 2026-02-16, ai]
+    mingle_app_ios_stt_tts_volume_reboost("iOS STT 중 TTS 볼륨 재보정<br/><sub>안정화 가드는 그대로 유지한 채<br/>AVAudioSession 모드를 default로 재조정하고<br/>mixWithOthers를 제거해 통화 모드처럼 작아지던<br/>STT 활성 중 TTS 출력 레벨을 우선 개선</sub>")
+
+    %% @mingle_app_rn_branding_name_icon_sync [ai-task, closed, 2026-02-16, ai]
+    mingle_app_rn_branding_name_icon_sync("RN 앱 브랜딩 이름/아이콘 동기화<br/><sub>iOS Info.plist의 표시명과 번들명을<br/>rnnative에서 Mingle로 변경하고<br/>RN AppIcon 세트를 favicon 기반 PNG들로 재생성해<br/>멀티태스킹/홈화면 아이콘을 브랜드 로고로 통일</sub>")
+
+    %% @mingle_app_async_nonblocking_db_write [ai-task, closed, 2026-02-16, ai]
+    mingle_app_async_nonblocking_db_write("앱 API 비동기 저장 경로 적용 완료<br/><sub>/api/translate/finalize·/translate·/tts/inworld에서<br/>응답 후 DB fire-and-forget 적재를 연결하고<br/>STT final일 때만 Message/MessageContent를 저장,<br/>app_users metadata JSON 대신 개별 컬럼으로 기록</sub>")
+
+    %% @mingle_app_web_client_event_logging_fix [ai-task, closed, 2026-02-16, ai]
+    mingle_app_web_client_event_logging_fix("웹 STT 클라이언트 로깅 API 전환<br/><sub>마지막 턴 누락 원인을 서버리스 fire-and-forget로 특정하고<br/>/api/log/client-event에서 DB 쓰기를 await 처리로 고정했으며<br/>웹 훅이 session/turn 시작·종료 이벤트를 비동기 전송해<br/>final 턴과 message contents가 세션 종료 직전에도 유실되지 않게 보강</sub>")
+
+    %% @mingle_app_og_image_locale_redirect_fix [ai-task, closed, 2026-02-16, ai]
+    mingle_app_og_image_locale_redirect_fix("OG 이미지 locale 리다이렉트 404 수정<br/><sub>mingle-app-xi 도메인에서 /og-image.png 요청이<br/>/ko/og-image.png로 307 리다이렉트된 뒤 404 나는<br/>원인을 src/proxy.ts matcher 예외 누락으로 특정했고<br/>정적 파일 확장자 경로를 locale 리다이렉트에서 제외</sub>")
+
+    %% @mingle_app_ios_stt_tts_resilience_diagnostics [ai-task, opened, 2026-02-16, ai]
+    mingle_app_ios_stt_tts_resilience_diagnostics("iOS STT/TTS 동시 재생 안정화<br/><sub>NativeTTSModule(AVAudioPlayer) 도입으로<br/>TTS를 native .playAndRecord 세션 안에서 재생하여<br/>STT 지속성 확보 완료. iOS AEC 재활성화 실험 결과<br/>볼륨 감소+불안정한 에코 제거로 롤백하고 AEC OFF 유지.<br/>에코는 감수하되 STT 연속성과 정상 볼륨을 우선</sub>")
+
+    %% @mingle_app_ios_dynamic_aec_mode_toggle [ai-task, closed, 2026-02-25, ai]
+    mingle_app_ios_dynamic_aec_mode_toggle("iOS AEC 동적 모드 전환<br/><sub>AEC ON 시 .voiceChat 모드로 시스템 AEC 활성화<br/>AEC OFF 및 STT 미사용 시 .default 모드로 전체 볼륨 복구<br/>에코 제거와 쾌적한 출력을 상태에 맞춰 동적 대응</sub>")
+
+    %% @mingle_app_ios_splash_cleanup [ai-task, closed, 2026-02-17, ai]
+    mingle_app_ios_splash_cleanup("iOS 스플래시 화면 정리<br/><sub>LaunchScreen.storyboard에서 RN 기본 템플릿의<br/>rnnative 텍스트와 Powered by React Native를 제거하고<br/>깔끔한 흰 화면으로 교체해 브랜드 이미지 정리</sub>")
+
+    %% @mingle_app_tts_global_state [ai-task, closed, 2026-02-18, ai]
+    mingle_app_tts_global_state("TTS 전역 상태 Context 도입<br/><sub>isSoundEnabled 로컬 state를 TtsSettingsContext로 격상해<br/>음소거 시 Inworld TTS API 요청을 서버에서 완전 차단하고<br/>localStorage 기반 persist로 설정 유지<br/>다른 컴포넌트에서도 useTtsSettings()로 읽기/쓰기 가능</sub>")
+
+    %% @mingle_app_aec_toggle [ai-task, closed, 2026-02-18, ai]
+    mingle_app_aec_toggle("AEC 토글 버튼 추가<br/><sub>음소거 버튼 우측에 Waves 아이콘으로 에코 제거 on/off 추가<br/>기본 AEC ON(에코 꺼짐), 끄면 출력이 입력으로 피드백 가능<br/>웹은 getUserMedia echoCancellation, iOS는<br/>setVoiceProcessingEnabled로 세션별 적용</sub>")
+
+    %% @mingle_app_echo_icon_and_canvas_400_restore [ai-task, closed, 2026-02-18, ai]
+    mingle_app_echo_icon_and_canvas_400_restore("에코 아이콘/캔버스 폭 복구<br/><sub>에코 토글 아이콘을 스피커→마이크 흐름으로<br/>더 직관적인 형태로 재교체하고 크기를 키워<br/>버튼만 보고도 용도를 파악하기 쉽게 보정,<br/>모바일 캔버스를 화면 중앙 400px 고정으로 복원</sub>")
+
+    %% @mingle_app_bottom_bar_usage_left_alignment [ai-task, closed, 2026-02-18, ai]
+    mingle_app_bottom_bar_usage_left_alignment("하단바 사용시간 표시 좌측 이동<br/><sub>재생 버튼 우측에 몰려 있던 요소를 완화하기 위해<br/>사용시간/제한 프로그레스 영역을 좌측 칸으로 분리하고<br/>우측 칸에는 오디오 토글 버튼만 유지해<br/>하단바 시인성과 터치 여유를 함께 개선</sub>")
+
+    %% @mingle_app_finalize_prompt_context_tone_and_token_logs [ai-task, closed, 2026-02-18, ai]
+    mingle_app_finalize_prompt_context_tone_and_token_logs("Finalize 번역 프롬프트 톤/로그 조정<br/><sub>userPrompt 하단 Instructions 블록을 제거해<br/>프롬프트 길이를 줄이고 최근 10초 턴을 참고해<br/>현재 턴을 더 자연스럽게 번역하도록 문구를 완화,<br/>응답 시 input/output 토큰을 서버 로그에 추가</sub>")
+
+    %% @mingle_app_finalize_provider_error_logging [ai-task, closed, 2026-02-18, ai]
+    mingle_app_finalize_provider_error_logging("Finalize 502 원인 로그 보강<br/><sub>provider별 번역 호출 실패를 catch에서 삼키던 흐름에<br/>provider/name/message/stack 로그를 추가하고<br/>빈 응답/전체 실패 케이스도 구조화된 로그로 남겨<br/>Vercel에서 502의 실제 원인 추적이 가능하도록 개선</sub>")
+
+    %% @mingle_app_finalize_gemini_only_single_attempt [ai-task, closed, 2026-02-18, ai]
+    mingle_app_finalize_gemini_only_single_attempt("Finalize 번역 엔진 Gemini 단일화<br/><sub>OpenAI/Claude 호출 코드와 환경키 분기를 제거하고<br/>Gemini 2.5 Flash Lite 1회 요청만 수행하도록 단순화,<br/>재시도/다중 provider 폴백 없이 실패 시 즉시 502로 종료해<br/>원인 추적 범위를 단일 경로로 고정</sub>")
+
+    %% @mingle_app_gemini_empty_response_deep_logging [ai-task, closed, 2026-02-18, ai]
+    mingle_app_gemini_empty_response_deep_logging("Gemini 빈응답 원인 추적 로그 확장<br/><sub>gemini_empty_text / gemini_unparseable_json 로그를 추가해<br/>promptFeedback·candidates·response preview·token usage를<br/>빈 응답/파싱 실패 시점에 구조화해 기록하고<br/>타깃 언어 누락 케이스도 별도 target_language_miss로 분리</sub>")
+
+    %% @mingle_app_gemini_response_schema_structured_output [ai-task, closed, 2026-02-18, ai]
+    mingle_app_gemini_response_schema_structured_output("Gemini Structured Output 스키마 적용<br/><sub>finalize 요청별 타깃 언어 키를 기준으로<br/>responseSchema(OBJECT+required)를 동적 생성해<br/>responseMimeType JSON과 함께 전달하도록 변경,<br/>파싱 가능한 번역 응답의 일관성을 높이도록 보강</sub>")
+
+    %% @mingle_app_gemini_raw_response_logging [ai-task, closed, 2026-02-18, ai]
+    mingle_app_gemini_raw_response_logging("Gemini 원문 응답 로그 추가<br/><sub>translate/finalize 처리에서 Gemini 응답 텍스트를<br/>trim 이전 원문 그대로 서버 로그에 출력해<br/>JSON 파싱 전 실제 모델 출력을 즉시 확인하고<br/>빈응답/형식오류 디버깅 속도를 높이도록 보강</sub>")
+
+    %% @mingle_app_finalize_current_state_fallback_and_target_guard [ai-task, closed, 2026-02-18, ai]
+    mingle_app_finalize_current_state_fallback_and_target_guard("Finalize 타깃검증 강화 + 직전상태 폴백<br/><sub>프롬프트에 타깃 언어 코드 검증/정확 출력을 명시하고<br/>클라가 현재 턴 직전 상태(원문+번역본)를 함께 전송,<br/>빈응답/타깃언어 누락 시 직전 상태 번역을 응답으로 사용해<br/>TTS enabled면 해당 번역으로 인라인 TTS까지 연속 처리</sub>")
+
+    %% @mingle_app_partial_translation_threshold_tune [ai-task, closed, 2026-02-18, ai]
+    mingle_app_partial_translation_threshold_tune("STT 부분번역 트리거 10자 단위 조정<br/><sub>중간 번역 호출 기준을 5자 단위에서<br/>10자 단위(10/20/30...)로 상향 조정하고<br/>첫 partial 수신 시 길이와 무관하게 1회<br/>선호출 후 final 확정 번역 호출은 유지</sub>")
+
+    %% @mingle_app_stt_leading_noise_chars_expand [ai-task, closed, 2026-02-18, ai]
+    mingle_app_stt_leading_noise_chars_expand("STT 선두 노이즈 문자 처리 확대<br/><sub>턴 시작부 노이즈 필터를 점/공백 중심에서<br/>쉼표·마침표·대시 등 핵심 구두점으로 확장하고<br/>괄호/인용부호 시작 발화는 보존해 의미 손실을 줄이며<br/>무의미 발화는 말풍선·번역·TTS 없이 건너뛰도록 보정</sub>")
+
+    %% @mingle_app_finalize_prompt_minify_for_structured_output [ai-task, closed, 2026-02-19, ai]
+    mingle_app_finalize_prompt_minify_for_structured_output("Finalize 번역 프롬프트 고정문구 축약<br/><sub>systemPrompt를 '번역기+타깃언어별 번역' 한 줄로 단순화하고<br/>JSON/코드검증 등 중복 지시를 제거해 토큰을 절감,<br/>userPrompt 헤더도 source/targets/text 중심의 짧은 포맷으로 압축해<br/>recent/context 본문은 유지하면서 프롬프트 길이를 줄임</sub>")
+
+    %% @mingle_app_recent_turn_context_source_lang_filter_fix [ai-task, closed, 2026-02-19, ai]
+    mingle_app_recent_turn_context_source_lang_filter_fix("Recent context 원문언어 누수 차단<br/><sub>partial 언어 추정 변동으로 source와 동일한 번역키가<br/>recentTurns/currentTurnPreviousState에 섞이던 경로를 추적해<br/>클라이언트 seed/partial/recent payload에서 source 언어 키를 제거하고<br/>서버 parse 단계에도 동일 필터를 추가해 2중 방어로 정합성 고정</sub>")
+
+    %% @mingle_app_finalize_immediate_prev_turn_context_boost [ai-task, closed, 2026-02-20, ai]
+    mingle_app_finalize_immediate_prev_turn_context_boost("Finalize 직전턴 컨텍스트 강화<br/><sub>recentTurns에 isFinalized와 직전턴 필드를 추가해<br/>확정/미확정 문맥 신뢰도를 프롬프트에서 구분하고<br/>현재턴>동일턴직전상태>직전턴>기타최근턴 순서로<br/>의역 규칙을 재강화해 잘게 분할된 턴 번역을 보강</sub>")
+
+    %% @mingle_app_translation_bubble_target_snapshot_policy [ai-task, closed, 2026-02-19, ai]
+    mingle_app_translation_bubble_target_snapshot_policy("번역 버블 언어 스냅샷 정책 적용<br/><sub>언어 추가/제거가 과거 메시지 버블을 바꾸지 않도록<br/>턴 생성 시점 targetLanguages를 utterance에 스냅샷 저장하고<br/>ChatBubble은 selectedLanguages 대신 utterance 메타데이터로 렌더해<br/>localStorage에 남은 기존 번역 버블도 그대로 유지되게 고정</sub>")
+
+    %% @mingle_app_turbopack_root_tailwind_resolution_fix [ai-task, closed, 2026-02-19, ai]
+    mingle_app_turbopack_root_tailwind_resolution_fix("Turbopack 루트-테일윈드 해석 오류 수정<br/><sub>next.config.ts에서 Turbopack root와<br/>outputFileTracingRoot가 상위 경로를 가리켜<br/>localhost 진입 시 tailwindcss 모듈을 못 찾던<br/>해석 충돌을 앱 루트 기준으로 정렬해 해결</sub>")
+
+    %% @mingle_app_chat_scroll_overlay_and_threshold_tuning [ai-task, closed, 2026-02-19, ai]
+    mingle_app_chat_scroll_overlay_and_threshold_tuning("채팅 스크롤 UX 오버레이/임계값 조정<br/><sub>자동 스크롤 바닥 판정을 80px에서 200px로 완화하고<br/>바닥에서 400px 이상 이탈 시 하단 중앙 점프 버튼을 표시,<br/>오버레이를 뷰포트 래퍼 기준으로 고정하고 사용자 의도 스크롤일 때만<br/>배지/스크롤바를 노출하며 초기 진입 시 먼저 하단 정착 후 페이지네이션 허용</sub>")
+
+    %% @mingle_app_pc_scroll_pagination_anchor_regression_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_app_pc_scroll_pagination_anchor_regression_fix("PC 스크롤 페이지네이션 앵커 회귀 수정<br/><sub>천천히 위로 스크롤할 때 상단 페이지네이션 직후<br/>최신 메시지 하단으로 순간이동하던 회귀를 차단하기 위해<br/>loadOlder 시 auto-follow를 즉시 비활성화하고<br/>사용자 스크롤 업 의도 동안 자동 하단 이동을 억제</sub>")
+
+    %% @mingle_app_mobile_scroll_overlay_visibility_hold_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_app_mobile_scroll_overlay_visibility_hold_fix("모바일 스크롤바/날짜 오버레이 유지 수정<br/><sub>모바일 관성 스크롤 중에는 touch 의도 신호가 끝나도<br/>실제 scroll 이벤트가 계속 발생하는 특성을 반영해<br/>auto-follow 스크롤이 아닌 경우에는 스크롤 진행 중<br/>오버레이가 중간에 꺼지지 않도록 표시 정책을 보정</sub>")
+
+    %% @mingle_app_tdd_test_harness_plan [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_test_harness_plan("mingle-app TDD 베이스라인 수립<br/><sub>웹 라우트/훅의 순수 함수 경계를 분리해<br/>Vitest 기반 단위 테스트 러너를 도입하고<br/>finalize·client-event 정규화 유틸에 대한<br/>회귀 단위 테스트를 녹색 상태로 고정</sub>")
+
+    %% @mingle_app_tdd_finalize_clientevent_unit_tests [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_finalize_clientevent_unit_tests("Finalize/ClientEvent 유틸 단위테스트 적용<br/><sub>translate finalize 파서/타깃언어 정규화와<br/>client-event sanitize 로직을 유틸로 분리해<br/>marker 제거·source 언어 필터·길이 제한 등<br/>핵심 회귀 케이스 12개를 자동 검증하도록 추가</sub>")
+
+    %% @mingle_app_tdd_finalize_route_mock_integration_tests [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_finalize_route_mock_integration_tests("Finalize 라우트 모킹 통합테스트 확장<br/><sub>Gemini SDK·Inworld fetch·tracking context를<br/>Vitest 모킹으로 묶어 /api/translate/finalize를<br/>실행 단위로 검증하고 번역+인라인 TTS 응답,<br/>provider 빈응답 시 이전 상태 폴백까지 자동 고정</sub>")
+
+    %% @mingle_app_tdd_stt_hook_logic_unit_tests [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_stt_hook_logic_unit_tests("STT 훅 핵심로직 단위테스트 1차 적용<br/><sub>use-realtime-stt의 WS URL 결정과<br/>transcript 파싱·final 발화 생성 경로를<br/>순수 함수 export로 분리해 회귀를 고정하고<br/>총 21개 Vitest 케이스를 녹색으로 유지</sub>")
+
+    %% @mingle_app_tdd_stt_hook_server_integration_plan [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_stt_hook_server_integration_plan("STT 훅/서버 통합 테스트 계획 확정<br/><sub>단위 테스트만으로는 로컬 실서버 연계 품질을<br/>판단하기 어려운 공백이 확인되어<br/>WS 스트리밍+finalize API를 함께 검증하는<br/>라이브 통합 테스트 방향을 명시하고 고정</sub>")
+
+    %% @mingle_app_tdd_live_stt_finalize_integration_automation [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_live_stt_finalize_integration_automation("pnpm test 라이브 통합 자동화 구현<br/><sub>src/integration/live 테스트를 추가해<br/>fixtures/local 다중 파일을 실시간 속도로 스트리밍하고<br/>m4a 변환·언어별 타깃번역·TTS 저장 경로를 기본화해<br/>원문/번역 stdout 추적까지 한 번에 검증</sub>")
+
+    %% @mingle_app_tdd_live_regression_e2e_matrix_expansion [ai-task, closed, 2026-02-20, ai]
+    mingle_app_tdd_live_regression_e2e_matrix_expansion("라이브 회귀 E2E 매트릭스 상시 실행화<br/><sub>오디오/서버 경로 e2e를 env 플래그 없이<br/>pnpm test:live 기본 실행에 포함하도록 전환하고<br/>조기 stop 시 ack close(1005)에서도 final 보강 경로로<br/>회귀 스위트 안정성을 유지하도록 테스트를 보정</sub>")
+
+    %% @mingle_app_tdd_vitest_node20_compat_fix [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_vitest_node20_compat_fix("Vitest 런타임 호환 버전 고정<br/><sub>Node 20.18 환경에서 vitest@3 + vite@7 조합이<br/>ERR_REQUIRE_ESM으로 즉시 실패하던 경로를<br/>vitest 2.1 계열로 조정해 unit test 실행을 복구하고<br/>기존 TDD 스위트가 로컬에서 바로 동작하게 보정</sub>")
+
+    %% @mingle_app_tdd_github_actions_unit_ci [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_github_actions_unit_ci("GitHub Actions TDD 유닛 CI 적용<br/><sub>mingle-app 경로 변경 시 자동 실행되는<br/>워크플로우를 추가해 pnpm install 이후<br/>Vitest unit 스위트(test:unit)를 CI에서 검증하고<br/>PR/푸시 단계에서 회귀를 자동 차단하도록 고정</sub>")
+
+    %% @mingle_app_tdd_live_ci_orchestration_plan [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_live_ci_orchestration_plan("라이브 STT 통합테스트 CI 오케스트레이션 적용<br/><sub>GitHub Actions에 live-tests 잡을 추가해<br/>mingle-app+stt 서버를 백그라운드 기동한 뒤<br/>fixture 준비 후 pnpm test:live를 실행하도록 구성하고<br/>PR/푸시에서 unit 이후 라이브 회귀까지 연결</sub>")
+
+    %% @mingle_app_tdd_live_ci_secret_provisioning [human-task, closed, 2026-02-21, user]
+    mingle_app_tdd_live_ci_secret_provisioning("라이브 CI 시크릿 프로비저닝 완료<br/><sub>GEMINI_API_KEY와 SONIOX_API_KEY를<br/>Repository Secrets에 등록해<br/>live-tests 실행 조건을 충족하도록 준비하고<br/>워크플로우 재실행을 위한 기반을 완료</sub>")
+
+    %% @mingle_app_tdd_actions_job_if_secret_context_fix [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_actions_job_if_secret_context_fix("GitHub Actions secrets-if 문법 실패 수정<br/><sub>job-level if에서 secrets 컨텍스트를 직접 참조해<br/>워크플로우가 실행 전 파싱 실패하던 경로를 확인하고<br/>step 출력(secret_gate) 기반 조건 분기로 치환해<br/>문법 실패 없이 live job이 정상 평가되도록 보정</sub>")
+
+    %% @mingle_app_tdd_live_ci_stt_build_start_runtime_fix [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_live_ci_stt_build_start_runtime_fix("live CI STT 런타임 경로 보정<br/><sub>GitHub 러너에서 ts-node dev 실행 시<br/>ESM import 파싱 오류로 STT 프로세스가 종료되는<br/>실패를 확인하고 dev 대신 build+start(dist) 경로로<br/>전환해 Node20에서도 STT 서버가 기동되게 수정</sub>")
+
+    %% @mingle_app_tdd_live_ci_ffmpeg_fixture_fix [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_live_ci_ffmpeg_fixture_fix("live CI ffmpeg fixture 처리 보정<br/><sub>러너에 오디오 트랜스코더가 없어 mp4 fixture가<br/>전부 invalid 처리되며 live 테스트가 실패하던 경로를<br/>ffmpeg 설치 + ci-demo.wav 변환 단계로 보강해<br/>fixture 스캔에서 유효 오디오가 항상 잡히게 수정</sub>")
+
+    %% @mingle_app_tdd_live_ci_node20_websocket_polyfill [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_live_ci_node20_websocket_polyfill("live CI Node20 WebSocket 폴리필 적용<br/><sub>Node 20 러너에서 global WebSocket이 없어<br/>live e2e가 즉시 ReferenceError로 실패하던 문제를<br/>live 테스트 진입 파일에 ws 기반 폴리필을 추가해<br/>Node 버전과 무관하게 WS 클라이언트가 동작하게 보정</sub>")
+
+    %% @mingle_app_tdd_run8_green_validation [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_run8_green_validation("Run #8 TDD 파이프라인 녹색 검증<br/><sub>pull_request 런에서 Unit Tests와<br/>Live Integration(STT+Finalize) job이<br/>모두 success로 완료된 것을 확인해<br/>워크플로우 변경 안정성을 최종 검증</sub>")
+
+    %% @mingle_app_live_fixture_autoskip_without_env [ai-task, closed, 2026-02-21, ai]
+    mingle_app_live_fixture_autoskip_without_env("라이브 fixture 자동 감지/스킵 정렬<br/><sub>fixture 후보 파일이 없을 때는 live 스위트를<br/>실패 대신 자동 skip 하도록 테스트를 조정해<br/>환경변수 없이도 파일만 두면 관련 회귀가<br/>로컬 pnpm test에서 바로 실행되게 보정</sub>")
+
+    %% @mingle_app_tdd_pr_only_trigger_without_post_merge_run [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_pr_only_trigger_without_post_merge_run("CI를 PR 전용으로 트리거 정렬<br/><sub>mingle-app TDD 워크플로우의 main push 트리거를<br/>제거하고 pull_request(main)만 남겨<br/>머지 전 검증은 유지하면서 머지 직후에는<br/>같은 테스트가 다시 자동 실행되지 않게 정리</sub>")
+
+    %% @mingle_app_tdd_main_push_direct_guard [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_main_push_direct_guard("main 직접 push 경로 테스트 가드 보강<br/><sub>push(main) 트리거를 복원하되 커밋-PR 연계를 조회해<br/>PR 머지 커밋이면 post-merge 테스트를 스킵하고<br/>연계 PR 없는 direct push일 때만 unit/live가 실행되게<br/>워크플로우 분기 로직으로 검증 공백을 해소</sub>")
+
+    %% @mingle_app_tdd_nonstraight_main_merge_guard [ai-task, closed, 2026-02-21, ai]
+    mingle_app_tdd_nonstraight_main_merge_guard("비정형 main merge 테스트 실행 분기<br/><sub>PR 연계가 있더라도 parent 2+ 이면서<br/>표준 'Merge pull request #' 형태가 아니면<br/>비정형 머지로 간주해 post-merge 테스트를 실행하고<br/>표준 PR 머지 커밋만 재실행 스킵으로 유지</sub>")
+
+    %% @mingle_worktree_devbox_local_device_automation [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_local_device_automation("워크트리 로컬 테스트 Devbox 자동화<br/><sub>mingle-app과 mingle-stt를 워크트리별<br/>자동 포트로 분리하고 .env.local/로컬 ngrok<br/>설정을 일괄 생성하는 scripts/devbox를 추가해<br/>local/device 프로필과 5타깃 status 출력까지 통합</sub>")
+
+    %% @mingle_worktree_devbox_bootstrap_env_seed_and_auto_install [ai-task, closed, 2026-02-22, ai]
+    mingle_worktree_devbox_bootstrap_env_seed_and_auto_install("Devbox 부트스트랩 자동화 보강<br/><sub>워크트리 env에 비관리 키가 비어 있으면<br/>main 워크트리의 mingle-app/.env.local과<br/>mingle-stt/.env.local을 자동 시드하고<br/>node_modules 누락 시 pnpm install까지 자동 처리</sub>")
+
+    %% @mingle_worktree_devbox_vault_secret_sync_option [ai-task, closed, 2026-02-22, ai]
+    mingle_worktree_devbox_vault_secret_sync_option("Devbox Vault 시크릿 동기화 옵션 추가<br/><sub>bootstrap/up 명령에 Vault KV 경로 옵션을 넣어<br/>mingle-app/mingle-stt 비관리 env 키를<br/>main 파일 복사에 의존하지 않고 원격 소스에서<br/>가져오도록 경로를 확장하고 문서화까지 완료</sub>")
+
+    %% @mingle_worktree_devbox_vault_path_persist_and_auto_sync [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_vault_path_persist_and_auto_sync("Devbox Vault 경로 저장 자동화<br/><sub>bootstrap/up에서 전달한 Vault app/stt 경로를<br/>.devbox.env에 저장해 이후 실행에서 재사용하고<br/>옵션 없이도 env 동기화가 자동 수행되도록<br/>status 출력과 문서까지 함께 정합성 보강</sub>")
+
+    %% @mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up("Devbox ngrok 격리/원커맨드 실행 보강<br/><sub>워크트리별 DEVBOX_NGROK_API_PORT를 할당해<br/>ngrok inspector 충돌 없이 profile/up이 동작하고<br/>up 실행 시 .devbox.env가 없으면 init 자동 수행으로<br/>서버2+인프라 준비를 단일 명령 흐름으로 단순화</sub>")
+
+    %% @mingle_worktree_devbox_device_split_ngrok_terminal_launch [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_device_split_ngrok_terminal_launch("Devbox device ngrok 로그 분리 실행<br/><sub>up --profile device에서 ngrok 기동이 필요하면<br/>iTerm은 분할 패널, Terminal은 새 탭/윈도우로<br/>ngrok을 별도 실행해 서버 로그와 분리하고<br/>불가 환경에서는 인라인 실행으로 자동 폴백</sub>")
+
+    %% @mingle_worktree_devbox_mobile_build_install_automation [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_mobile_build_install_automation("Devbox 모바일 빌드/설치 자동화 추가<br/><sub>mobile 명령과 up 옵션에서 연결된 기기를 감지해<br/>iOS/Android 빌드와 설치를 자동 실행하고<br/>기기 미연결 시 플랫폼별 설치 단계를 자동 스킵해<br/>워크트리 테스트 준비를 단일 흐름으로 통합</sub>")
+
+    %% @mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization [ai-task, closed, 2026-02-21, ai]
+    mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization("Devbox 모바일 의존성/번들 안정화<br/><sub>RN Android gradle-plugin 누락으로 실패하던 경로를<br/>rn devDependency와 설치 체크를 통해 보완하고<br/>iOS pod 준비 시 로컬 bundle 경로를 강제해<br/>권한/전역 gem 환경 차이로 인한 실패를 완화</sub>")
+
+    %% @mingle_worktree_devbox_ngrok_tunnel_name_collision_fix [ai-task, closed, 2026-02-22, ai]
+    mingle_worktree_devbox_ngrok_tunnel_name_collision_fix("Devbox ngrok 터널명 충돌 수정<br/><sub>전역 ngrok.yml의 web/stt(3000/3001)와<br/>워크트리 로컬 설정명이 충돌해 포워딩이 엉키던 문제를<br/>devbox_web/devbox_stt 전용 이름으로 분리해<br/>워크트리 포트(예:3478/5478)로만 고정되게 보강</sub>")
+
+    %% @mingle_worktree_devbox_prisma_generate_autofix [ai-task, closed, 2026-02-22, ai]
+    mingle_worktree_devbox_prisma_generate_autofix("Devbox Prisma generate 자동 복구 추가<br/><sub>워크트리에서 @prisma/client 생성물이 누락되면<br/>/api/translate/finalize가 500으로 깨지던 경로를<br/>bootstrap/up 단계에서 db:generate를 자동 실행해<br/>node_modules/.prisma/client 누락 상태를 즉시 복구</sub>")
+
+    %% @mingle_worktree_devbox_prod_profile [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_prod_profile("Devbox prod 프로필 URL 주입<br/><sub>실서버 React Native 빌드용으로<br/>RN_WEB_APP_BASE_URL와 RN_DEFAULT_WS_URL를<br/>.env.local/.env에서 읽어 프로필 반영<br/>릴리스 빌드 재설치 전 URL를 동기화</sub>")
+
+    %% @mingle_worktree_devbox_device_app_env_vault_switch [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_device_app_env_vault_switch("Device 앱 env 선택 옵션 전환<br/><sub>devbox prod 프로필을 제거하고<br/>device 프로필에 --device-app-env<br/>dev/prod 옵션을 추가해 Vault 경로를<br/>앱 빌드 URL 소스로 직접 선택하게 변경</sub>")
+
+    %% @mingle_worktree_device_prod_skip_runtime_start [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_device_prod_skip_runtime_start("Device prod 앱설치 시 서버 기동 생략<br/><sub>up --profile device에서 --device-app-env=prod면<br/>ngrok 시작/검증과 mingle-app/mingle-stt 실행을<br/>건너뛰고 Vault prod URL 주입 빌드만 수행하도록<br/>실기기 재설치 플로우를 단순화해 대기시간을 절감</sub>")
+
+    %% @mingle_worktree_devbox_native_device_app_env_vault_key_fallback [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_native_device_app_env_vault_key_fallback("device-app-env 네이티브 키 fallback 보강<br/><sub>secret/mingle-app/dev|prod 주입 경로에서<br/>RN_WEB_APP_BASE_URL/RN_DEFAULT_WS_URL 우선 뒤<br/>MINGLE_API_BASE_URL/MINGLE_WS_URL를 fallback으로<br/>허용해 mingle-ios 네이티브 설치도 동일 정책 정렬</sub>")
+
+    %% @mingle_worktree_devbox_stateless_default [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_stateless_default("Devbox stateless 기본 동작 전환<br/><sub>runtime refresh에서 .env.local 관리블록 갱신을<br/>기본 비활성화하고 ngrok/xcconfig 갱신에 집중해<br/>dev/prod 빌드 시 파일 의존도를 낮추며<br/>Vault 기반 주입 플로우를 기본 경로로 정렬</sub>")
+
+    %% @mingle_worktree_devbox_no_env_sync_on_up_init [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_no_env_sync_on_up_init("Devbox up/init env 동기화 완전 분리<br/><sub>init/up 기본 경로에서 .env.local 시드와<br/>Vault 자동 동기화를 제거하고 bootstrap만<br/>명시적 파일 동기화 엔트리로 남겨<br/>dev 실행 시 .env.local 비터치 기본값을 확정</sub>")
+
+    %% @mingle_worktree_devbox_runtime_vault_env_injection [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_runtime_vault_env_injection("Devbox 서버 런타임 Vault env 주입<br/><sub>up 기본 흐름에서 .env.local 비터치를 유지한 채<br/>Vault app/stt 비관리 키를 프로세스 env로 주입해<br/>dev 실행 시 API key 등 민감값을 파일 기록 없이<br/>서버/메트로가 즉시 참조하도록 실행 경로를 보강</sub>")
+
+    %% @mingle_app_ios_release_reinstall_with_env [ai-task, closed, 2026-02-21, ai]
+    mingle_app_ios_release_reinstall_with_env("iOS 릴리즈 재빌드/재설치(.env)<br/><sub>RN iOS를 Release 구성으로 다시 빌드하고<br/>.env 값을 .xcode.env.local로 주입해<br/>실기기 devicectl install/launch까지<br/>CLI 경로로 검증 완료</sub>")
+
+    %% @mingle_app_ios_top_tap_regression_hotfix [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_top_tap_regression_hotfix("iOS 상단 탭 회귀 핫픽스<br/><sub>RN 상태바 탭 오버레이 높이를<br/>상단 헤더 마진까지 포함하도록 복구하고<br/>nativeUi 브리지 사용 중에도 iOS 웹 상단 탭<br/>fallback을 유지해 기존 스크롤 UX를 복원</sub>")
+
+    %% @mingle_app_ios_top_tap_pr9_reaudit_hardening [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_top_tap_pr9_reaudit_hardening("PR #9 상단탭 재검수 및 하드닝<br/><sub>nativeUi 쿼리 파싱/UA 오인식 시에도<br/>iOS 상단탭 fallback이 꺼지지 않도록<br/>활성화 조건을 보수적으로 고정하고<br/>브리지 이벤트 리스너 결합도를 낮춰 회귀를 완화</sub>")
+
+    %% @mingle_app_ios_notch_tap_margin_decouple [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_notch_tap_margin_decouple("노치 탭 로직과 헤더 마진 분리<br/><sub>상단 탭 감지 영역을 상태바/노치 높이로만 고정해<br/>header paddingTop(+20)과의 결합을 제거하고<br/>웹 fallback 버튼 높이도 safe-area top 기준으로 축소해<br/>노치 터치 동작이 네비게이션 마진에 영향받지 않게 정렬</sub>")
+
+    %% @vercel_deploy_rate_limit_blocker [blocker, opened, 2026-02-21, user]
+    vercel_deploy_rate_limit_blocker("Vercel 배포 rate limit 대기<br/><sub>현재 PR commit status에서 Vercel – mingle-app/<br/>mingle-landing 체크가 배포 한도 초과로 실패해<br/>GitHub Actions는 녹색이어도 mergeable_state가<br/>unstable로 남아 대기 또는 수동 재시도가 필요</sub>")
+
+    %% @vercel_app_landing_main_branch_deploy_gate [ai-task, closed, 2026-02-21, ai]
+    vercel_app_landing_main_branch_deploy_gate("Vercel main 브랜치 배포 가드 통일<br/><sub>mingle-app과 mingle-landing vercel.json에<br/>git.deploymentEnabled 규칙을 추가해<br/>main 이외 브랜치 커밋에서는 Vercel 배포가<br/>시도되지 않도록 공통 정책으로 맞춤</sub>")
+
+    %% @vercel_deployment_enabled_double_star_pattern_fix [ai-task, closed, 2026-02-21, ai]
+    vercel_deployment_enabled_double_star_pattern_fix("Vercel 브랜치 패턴을 **로 보정<br/><sub>codex/.. 처럼 슬래시가 포함된 브랜치는<br/>git.deploymentEnabled의 *=false 규칙에서<br/>누락될 수 있어 **=false로 교체해<br/>main 외 브랜치 배포 시도를 전면 차단</sub>")
+
+    %% @vercel_main_always_deploy_ignore_command_fix [ai-task, closed, 2026-02-21, ai]
+    vercel_main_always_deploy_ignore_command_fix("main 커밋 취소 이슈용 ignoreCommand 정리<br/><sub>경로 기반 grep 필터가 남아 있어 main 커밋도<br/>Ignored Build Step으로 취소되던 로그를 확인하고<br/>ignoreCommand를 non-main 스킵 전용으로 단순화해<br/>main에서는 항상 배포가 진행되도록 보정</sub>")
+
+    %% @mingle_stt_railway_main_branch_deploy_setting [human-task, opened, 2026-02-21, user]
+    mingle_stt_railway_main_branch_deploy_setting("Railway mingle-stt main 브랜치 고정<br/><sub>railway.json 스키마에는 브랜치 트리거 옵션이 없어<br/>서비스 대시보드의 Connected Branch를 main으로<br/>직접 설정해야 PR 브랜치 배포 시도 자체를<br/>완전히 막을 수 있어 후속 반영이 필요</sub>")
+
+    %% @mingle_app_final_duplicate_guard_experiment [ai-task, closed, 2026-02-20, ai]
+    mingle_app_final_duplicate_guard_experiment("final 중복 가드 실험 브랜치 적용<br/><sub>별도 worktree/브랜치에서 동일 언어·문장 final이<br/>짧은 시간 내 재유입될 때 최근 턴과 비교해 차단하고<br/>새 발화 시작 신호(turnStartedAt)가 없을 때만 적용해<br/>정상 반복 발화 오탐을 줄이는 보수적 dedupe를 도입</sub>")
+
+    %% @mingle_app_final_duplicate_guard_nonfinal_aware_refine [ai-task, closed, 2026-02-20, ai]
+    mingle_app_final_duplicate_guard_nonfinal_aware_refine("final dedupe를 non-final 신호 기준으로 보강<br/><sub>중복 판정을 hadTurnStart 의존에서 분리하고<br/>마지막 final 이후 새 non-final(실제 재발화) 유무를<br/>별도 ref로 추적해 같은 final 재유입만 차단하며<br/>정상 반복 발화 오탐 가능성을 더 낮추도록 조정</sub>")
+
+    %% @mingle_app_mobile_safari_stt_no_log_rootcause [ai-task, closed, 2026-02-20, ai]
+    mingle_app_mobile_safari_stt_no_log_rootcause("Safari STT 무로그 원인 진단 및 가드<br/><sub>iOS Safari에서 http://192.168 대역 접근 시<br/>보안 컨텍스트 불충족으로 getUserMedia가<br/>WS 연결 전 단계에서 실패해 서버 로그가<br/>비는 경로를 확인하고 콘솔 에러 가드를 추가</sub>")
+
+    %% @mingle_app_ngrok_dual_tunnel_overlay_setup [ai-task, closed, 2026-02-20, ai]
+    mingle_app_ngrok_dual_tunnel_overlay_setup("ngrok 웹+STT 듀얼 터널 오버레이 구성<br/><sub>샌드박스 제약으로 전역 ngrok.yml은<br/>직접 수정하지 않고 워크트리 로컬 설정 파일에<br/>web(3000)/stt(3001) 터널을 정의해<br/>iPhone HTTPS 테스트 경로를 즉시 준비</sub>")
+
+    %% @mingle_app_final_dedupe_false_negative_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_app_final_dedupe_false_negative_fix("final dedupe 오탐으로 인한 누락 수정<br/><sub>중복 final 방지는 유지하되 판정 창을<br/>짧은 버스트 구간으로 축소해 동일 문장 재발화의<br/>정상 final 누락을 줄이고 로컬 finalize 경로는<br/>중복 판정으로 드롭하지 않도록 안전하게 조정</sub>")
+
+    %% @mingle_app_fin_marker_sanitize_temp_disable [ai-task, closed, 2026-02-20, ai]
+    mingle_app_fin_marker_sanitize_temp_disable("<fin> 제거 로직 임시 비활성화<br/><sub>파이널라이징 타이밍 진단을 위해<br/>앱·STT 서버·finalize API·로그 경로의<br/>문자열 정규화에서 fin 마커 제거를 끄고<br/>end 마커만 제거하도록 임시 정책 전환</sub>")
+
+    %% @mingle_stt_endpoint_final_merge_for_fin_visibility [ai-task, closed, 2026-02-20, ai]
+    mingle_stt_endpoint_final_merge_for_fin_visibility("endpoint final emit 병합 보정<br/><sub>Soniox endpoint 토큰 감지 시<br/>finalizedText만 보내던 경로를 수정해<br/>latestNonFinalText를 함께 합쳐 emit하도록<br/><fin> 토큰이 모바일 화면까지 보이게 보정</sub>")
+
+    %% @mingle_app_raw_fin_token_trace_overlay [ai-task, closed, 2026-02-20, ai]
+    mingle_app_raw_fin_token_trace_overlay("원본 토큰 트레이스 화면 오버레이 추가<br/><sub>Soniox 메시지의 raw token 배열을<br/>debug_tokens로 앱까지 전달하도록 확장하고<br/>isFinal·marker 위치·raw/normalized 비교를<br/>모바일 화면에서 즉시 보이도록 디버그 UI 추가</sub>")
+
+    %% @mingle_app_end_fin_marker_sanitize_full_disable [ai-task, closed, 2026-02-20, ai]
+    mingle_app_end_fin_marker_sanitize_full_disable("<end>/<fin> 제거 비활성화 범위 확장<br/><sub>사용자 요청에 맞춰 앱·STT 서버·finalize API·로그에서<br/>남아 있던 <end> 제거 정규화까지 잠시 끄고<br/>토큰이 원문 그대로 버블/파이프라인에 남도록 조정,<br/>추가로 토큰 트레이스 오버레이/디버그 로그는 정리</sub>")
+
+    %% @mingle_stt_env_local_priority_load [ai-task, closed, 2026-02-20, ai]
+    mingle_stt_env_local_priority_load("mingle-stt .env.local 우선 로딩 적용<br/><sub>ts-node 실행 시 기본 .env만 읽던 경로를<br/>.env.local 먼저, .env를 보조로 읽도록 변경해<br/>로컬 STT 서버에서 앱과 같은 환경변수 파일 정책을<br/>일관되게 맞추고 누락 키 오류를 줄이도록 보정</sub>")
+
+    %% @mingle_stt_endpoint_marker_tail_split_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_stt_endpoint_marker_tail_split_fix("endpoint 마커 이후 tail 분리 보정<br/><sub>동일 Soniox payload에서 <fin>/<end> 뒤에 붙는<br/>non-final tail이 직전 final 턴에 합쳐지던 문제를<br/>마커 기준으로 final/carry로 분리해 final 오염을 막고<br/>carry는 다음 partial로 유지되도록 서버 경계를 보정</sub>")
+
+    %% @mingle_stt_manual_finalize_burst_guard_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_stt_manual_finalize_burst_guard_fix("Soniox finalize 중복호출 가드 강화<br/><sub>무음 구간 finalize 요청이 소음 피크로 반복돼<br/><fin> 단독 final 버블이 연속 생성되던 경로를 추적해<br/>수동 finalize 재요청에 cooldown/진행신호 가드를 추가하고<br/>marker-only endpoint final은 무시하도록 보정</sub>")
+
+    %% @mingle_stt_stale_partial_carry_overlap_merge_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_stt_stale_partial_carry_overlap_merge_fix("Soniox stale partial carry 병합 보정<br/><sub>endpoint 시점 merged 텍스트를 단순 concat하면<br/>직전 partial(snapshot prefix)이 final 뒤에 다시 붙어<br/>carryText로 분리되어 2번째 가짜 턴이 생성되던 문제를<br/>final/non-final overlap 병합 규칙으로 중복 누적 차단</sub>")
+
+    %% @mingle_stt_front_raw_stream_logging_probe [ai-task, closed, 2026-02-21, ai]
+    mingle_stt_front_raw_stream_logging_probe("Soniox↔STT↔프론트 raw 스트림 로깅 추가<br/><sub>STT 서버 Soniox onmessage에서 event.data 원문을<br/>파싱 전 그대로 실시간 콘솔에 출력하고<br/>웹/네이티브 프론트에서도 STT 서버 수신 payload를<br/>가공 전 raw 문자열 그대로 출력해 경로를 추적</sub>")
+
+    %% @mingle_stt_front_log_minimal_fields_only [ai-task, closed, 2026-02-21, ai]
+    mingle_stt_front_log_minimal_fields_only("STT 로그 포맷 최소 필드로 축소<br/><sub>STT 서버는 tokens 수신 시 text 이어붙인 값과<br/>token_count/final_count만 출력하도록 정리하고<br/>웹/네이티브 프론트는 transcript 이벤트에서<br/>is_final과 text만 로그로 남기도록 단순화</sub>")
+
+    %% @mingle_stt_final_watermark_and_provisional_carry [ai-task, closed, 2026-02-21, ai]
+    mingle_stt_final_watermark_and_provisional_carry("Soniox final 워터마크 + provisional carry 적용<br/><sub>is_final 토큰은 end_ms 워터마크 이후 구간만 누적해<br/>중간 승격 시 앞부분 재누적/꼬리 중복을 차단하고<br/>endpoint 뒤 carry는 provisional 상태로 보존해<br/>진행 신호 전에는 재finalize되지 않도록 처리</sub>")
+
+    %% @mingle_stt_debug_log_cleanup_and_client_marker_boundary [ai-task, closed, 2026-02-21, ai]
+    mingle_stt_debug_log_cleanup_and_client_marker_boundary("STT 디버그 로그 제거 + 클라이언트 마커 경계 복구<br/><sub>Soniox token 요약/웹 transcript 디버그 로그를 정리해<br/>운영 콘솔 노이즈를 제거하고 조사 로그를 원복했으며<br/>클라이언트 normalize 경계에서 <end>/<fin>을 즉시 제거해<br/>후속 번역/저장/렌더 경로를 마커 비의존으로 단순화</sub>")
+
+    %% @mingle_app_aec_default_echo_on_alignment [ai-task, closed, 2026-02-19, ai]
+    mingle_app_aec_default_echo_on_alignment("AEC 기본값 Echo 허용으로 전환<br/><sub>기존 기본값 AEC ON(에코 차단)을<br/>웹/RN/iOS 경로별 fallback까지 OFF로 조정해<br/>신규 사용자 첫 진입 시 Echo 허용 상태를<br/>모든 실행 경로에서 일관되게 맞춤</sub>")
+
+    %% @mingle_app_tts_native_event_watchdog_milestone1 [ai-task, closed, 2026-02-19, ai]
+    mingle_app_tts_native_event_watchdog_milestone1("TTS 고착 방지 1차 마일스톤<br/><sub>네이티브 종료 이벤트 유실 시에도<br/>재생 상태가 영구 고착되지 않도록<br/>watchdog 타임아웃과 stopped 경로 큐 재개를<br/>LivePhoneDemo 상태머신에 먼저 보강</sub>")
+
+    %% @mingle_app_audio_session_owner_coordinator_milestone2 [ai-task, closed, 2026-02-19, ai]
+    mingle_app_audio_session_owner_coordinator_milestone2("오디오 세션 오너십 분리 2차 마일스톤<br/><sub>Native STT/TTS가 shared AVAudioSession을<br/>owner 카운터 기반으로 acquire/release 하도록 조정해<br/>STT stop 중에도 진행 중 TTS가 세션 비활성화에<br/>끊기지 않도록 네이티브 경계에서 정책을 고정</sub>")
+
+    %% @mingle_app_tts_playback_id_event_alignment_milestone3 [ai-task, closed, 2026-02-19, ai]
+    mingle_app_tts_playback_id_event_alignment_milestone3("TTS 재생ID 정합성 3차 마일스톤<br/><sub>웹↔RN↔iOS Native TTS 이벤트에 playbackId를<br/>동일하게 전달하도록 재생 식별 체인을 통일하고<br/>종료/중단/오류 이벤트를 playbackId 우선 매칭으로 처리해<br/>stale 이벤트 오매칭으로 인한 큐 상태 꼬임을 차단</sub>")
+
+    %% @mingle_app_tts_stop_policy_split_milestone4 [ai-task, closed, 2026-02-19, ai]
+    mingle_app_tts_stop_policy_split_milestone4("TTS 중단 정책 분리 4차 마일스톤<br/><sub>STT stop과 TTS stop 경로를 정책적으로 분리해<br/>녹음 중단이 native_tts_stop을 호출하지 않게 고정하고<br/>mute/off·force reset·unmount에서만 stop reason을 전달해<br/>재생중단 책임과 상태 정리를 예측 가능하게 정렬</sub>")
+
+    %% @mingle_app_tts_tail_noise_graceful_deactivate_milestone5 [ai-task, closed, 2026-02-19, ai]
+    mingle_app_tts_tail_noise_graceful_deactivate_milestone5("TTS 종료 꼬리잡음 완화 5차 마일스톤<br/><sub>Native 오디오 세션 deactivate를 즉시 해제 대신<br/>짧은 grace 지연 후 idle일 때만 내리도록 변경하고<br/>지연 구간 새 STT/TTS acquire가 오면 해제를 취소해<br/>끝음 직후 pop/click 노이즈를 줄이도록 정책 보강</sub>")
+
+    %% @mingle_app_audio_session_policy_polish_milestone6 [ai-task, closed, 2026-02-20, ai]
+    mingle_app_audio_session_policy_polish_milestone6("오디오 세션 정책 추가 폴리시 6차 완료<br/><sub>deactivate 옵션/지연 시간을 출력 경로별로 분기해<br/>speaker/receiver·wired·bluetooth/airplay/car별<br/>정책 테이블과 상세 로그를 네이티브에 고정하고<br/>STT 의도 우선 규칙을 회귀 체크리스트에 명시</sub>")
+
+    %% @mingle_app_audio_session_route_metrics_milestone7 [ai-task, opened, 2026-02-20, ai]
+    mingle_app_audio_session_route_metrics_milestone7("오디오 경로 품질 계측 7차 (추후)<br/><sub>실기기에서 스피커/블루투스/유선 경로별로<br/>tail noise와 세션 전환 체감 품질을 계측해<br/>delay/옵션 기본값을 데이터 기반으로 미세 튜닝하고<br/>회귀 로그 포맷을 운영 문서로 표준화</sub>")
+
+    %% @mingle_app_local_db_psql_reset_path [ai-task, closed, 2026-02-20, ai]
+    mingle_app_local_db_psql_reset_path("로컬 DB psql 리셋 경로 추가<br/><sub>mingle-app scripts에 app 스키마를<br/>DROP CASCADE 후 Prisma SQL 두 개를<br/>순차 적용하는 reset SQL 파일을 추가해<br/>재셋업 절차를 한 줄 명령으로 고정</sub>")
+
+    %% @mingle_app_rn_env_only_server_url_config [ai-task, closed, 2026-02-20, ai]
+    mingle_app_rn_env_only_server_url_config("RN 서버 URL 하드코딩 제거<br/><sub>rn/App.tsx의 WEB_APP_BASE_URL과<br/>DEFAULT_WS_URL 상수를 제거하고<br/>RN_WEB_APP_BASE_URL/RN_DEFAULT_WS_URL<br/>환경변수 경로로만 URL을 결정하도록 고정</sub>")
+
+    %% @mingle_app_rn_release_about_blank_crash_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_app_rn_release_about_blank_crash_fix("RN Release 즉시 크래시 복구<br/><sub>실기기 Release 실행 시 env 미설정으로<br/>about:blank WebView URI가 들어가며<br/>NSInvalidArgumentException으로 종료되던<br/>경로를 prod URL fallback+html fallback으로 차단</sub>")
+
+    %% @mingle_app_ios_runtime_config_xcconfig_bridge [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_runtime_config_xcconfig_bridge("RN iOS 런타임 URL 주입 경로 재정렬<br/><sub>devbox가 ios/devbox.runtime.xcconfig를 생성해<br/>MingleWebAppBaseURL/MingleDefaultWsURL을 주입하고<br/>NativeSTTModule constants로 Info.plist 값을 JS에 전달해<br/>env 누락 시 실서버 fallback되는 경로를 차단</sub>")
+
+    %% @mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix("devbox iOS URL 주석 파싱 크래시 수정<br/><sub>xcconfig의 URL을 scheme+host 키로 분리해<br/>// 주석 파싱으로 값이 잘리던 경로를 제거하고<br/>Native 모듈이 scheme/host를 합성한 URL을<br/>비동기 getRuntimeConfig로 JS에 전달해 초기 로드 보강</sub>")
+
+    %% @mingle_app_ios_runtime_ws_url_normalization_guard [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_runtime_ws_url_normalization_guard("iOS WS 런타임 URL 정규화 가드<br/><sub>Info.plist 값에 이중 따옴표/이스케이프가 섞여도<br/>Native/JS 양쪽에서 URL 후보를 정규화해<br/>ws 런타임 값이 누락으로 판정되는 경로를 막고<br/>WebView 오류 오버레이 재노출을 방지</sub>")
+
+    %% @mingle_app_ios_runtime_ws_boot_validation_relax [ai-task, closed, 2026-02-22, ai]
+    mingle_app_ios_runtime_ws_boot_validation_relax("iOS 부팅시 WS 필수 검증 완화<br/><sub>앱 초기 로드에서 WS URL 누락을 치명 오류로<br/>표시하던 오버레이 조건을 제거해 false alarm을 차단하고<br/>실제 STT 시작 시점에 payload wsUrl/runtime fallback으로<br/>최종 검증하도록 체크 지점을 역할에 맞게 분리</sub>")
+
+    %% @mingle_worktree_devbox_env_spacing_normalization [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_env_spacing_normalization("devbox env 빈 줄 누적 정리<br/><sub>managed block 갱신과 vault key 업서트 시<br/>앞쪽 빈 줄이 계속 쌓이던 경로를 수정하고<br/>.env.local 계열 파일을 무공백 포맷으로<br/>항상 자동 정리하도록 spacing 규칙을 고정</sub>")
+
+    %% @mingle_worktree_devbox_nextauth_default_env_guard [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_nextauth_default_env_guard("devbox NextAuth 기본값 가드 추가<br/><sub>auth 미사용 로컬 환경에서 매번 뜨던<br/>NEXTAUTH_URL/NEXTAUTH_SECRET 경고를 줄이기 위해<br/>devbox managed block에 NEXTAUTH_URL을 반영하고<br/>secret 미설정 시 기본 secret을 자동 주입하도록 보강</sub>")
+
+    %% @mingle_worktree_devbox_mobile_profile_resync_before_install [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_mobile_profile_resync_before_install("devbox mobile URL 재동기화 가드<br/><sub>mobile 명령이 기존 .devbox.env 값으로만<br/>빌드되어 이전 ngrok URL이 앱에 박히던 경로를<br/>실행 시작 시 profile 재적용으로 최신 URL/WS를<br/>반영한 뒤 빌드하도록 고정해 오프라인 URL 재발 방지</sub>")
+
+    %% @mingle_worktree_devbox_ngrok_stale_profile_refresh_fix [ai-task, closed, 2026-02-23, nam]
+    mingle_worktree_devbox_ngrok_stale_profile_refresh_fix("ngrok 과거 터널 링크 방지 보강<br/><sub>up/mobile 실행 시 stale ngrok를 프로세스명과<br/>포트 기준으로 선제 종료하고 새 링크가 확정되도록<br/>with-ios-clean-install 분기에서 정리 로직 강제 실행<br/>iOS xcconfig를 매번 재생성해 런타임 URL 주입을 최신화</sub>")
+
+    %% @mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive("devbox mobile clean-install ngrok 유지<br/><sub>device profile에서 up으로 이미 띄운 ngrok를<br/>mobile --with-ios-clean-install 실행 시<br/>강제 종료하지 않도록 mobile 경로 로직을 조정해<br/>2단계 설치 플로우에서 터널 단절을 방지</sub>")
+
+    %% @mingle_worktree_devbox_native_ios_auto_device_selection_parity [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_native_ios_auto_device_selection_parity("devbox 네이티브 iOS 자동 기기선택 정렬<br/><sub>mingle-ios 실기기 설치에서 --ios-coredevice-id 없이<br/>실행할 때 RN과 동일하게 자동 감지로 진행되도록<br/>devicectl 기반 우선 선택 + install 스크립트 auto-select를<br/>적용해 수동 deviceId 입력 의존을 완화</sub>")
+
+    %% @mingle_ios_signing_bundle_id_override_support [ai-task, closed, 2026-02-24, ai]
+    mingle_ios_signing_bundle_id_override_support("mingle-ios 번들ID 오버라이드 경로 추가<br/><sub>실기기/시뮬레이터 설치와 native 빌드 경로에서<br/>APP_BUNDLE_ID/MINGLE_IOS_BUNDLE_ID를 인자로 받아<br/>개인 Team 기준 고유 bundle id로 프로비저닝 생성이<br/>가능하도록 devbox 및 iOS 스크립트 인자를 확장</sub>")
+
+    %% @mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix [ai-task, closed, 2026-02-24, ai]
+    mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix("devbox dev URL 해석/Team 유지 보강<br/><sub>--device-app-env dev가 vault 경로를 강제 조회해<br/>설치 전 단계에서 실패하던 로직을 런타임 ngrok URL<br/>우선 해석으로 전환하고, iOS 스크립트의 xcodegen 실행을<br/>조건부로 바꿔 Xcode 수동 Team 설정이 덮어쓰기되지 않게 보강</sub>")
+
+    %% @mingle_ios_team_override_auto_detect_removal_fix [ai-task, closed, 2026-02-24, ai]
+    mingle_ios_team_override_auto_detect_removal_fix("mingle-ios Team 강제 주입 경로 제거<br/><sub>install-ios-device가 keychain 첫 인증서 Team을<br/>자동 선택해 Xcode 계정 Team과 충돌하던 경로를 제거하고<br/>명시 입력 또는 프로젝트에 저장된 Team만 사용하도록 바꿔<br/>잘못된 Team(None/미등록)으로 실패하던 실기기 빌드를 완화</sub>")
+
+    %% @mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix [ai-task, closed, 2026-02-25, ai]
+    mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix("devbox RN iOS 자동 탐지 ID 매핑 수정<br/><sub>RN 실기기 설치에서 xcodebuild destination id와<br/>devicectl coredevice id를 같은 값으로 처리해<br/>자동탐지 시 destination mismatch로 실패하던 경로를<br/>각 도구별 ID 탐지 로직 분리로 안정화</sub>")
+
+    %% @mingle_worktree_devbox_google_oauth_redirect_uri_auto_append [ai-task, closed, 2026-02-25, ai]
+    mingle_worktree_devbox_google_oauth_redirect_uri_auto_append("devbox ngrok redirect 자동 추가<br/><sub>device 프로필에서 ngrok URL이 바뀌면<br/>Google OAuth allowedRedirectUris에<br/>/api/auth/callback/google 경로를 자동 병합하고<br/>설정 부족/권한 오류는 경고로만 처리</sub>")
+    %% @mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix [ai-task, closed, 2026-02-25, ai]
+    mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix("devbox oauth fallback/경고 보강<br/><sub>vault app path가 비어도 secret/mingle-app/dev|prod와<br/>mingle-app/.env.local까지 AUTH_GOOGLE_ID를 탐색하고<br/>값이 없을 때는 조용히 스킵하지 않고 원인 경고를 출력해<br/>자동 병합 실패 원인을 실행 로그에서 즉시 확인 가능하게 보강</sub>")
+    %% @mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env [ai-task, closed, 2026-02-25, ai]
+    mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env("devbox 기본 Vault 경로 자동탐지<br/><sub>DEVBOX_VAULT_APP_PATH가 비어도<br/>secret/mingle-app/dev|prod를 자동 감지해<br/>up 실행 시 AUTH_GOOGLE_* 런타임 주입을 복구하고<br/>로그인 버튼 disabled 재발을 줄이도록 보강</sub>")
+    %% @mingle_worktree_devbox_google_redirect_sync_retry_on_same_host [ai-task, closed, 2026-02-25, ai]
+    mingle_worktree_devbox_google_redirect_sync_retry_on_same_host("devbox redirect 동기화 재시도 보강<br/><sub>ngrok host가 이전과 같으면 동기화를 건너뛰던<br/>조건을 제거해 profile/up 실행마다 redirect URI를<br/>재검증하고 누락 시 즉시 patch하도록 바꿔<br/>이전 실패 이후 same-host 상태에서도 자동 복구</sub>")
+    %% @mingle_stt_endpoint_only_frame_and_api_marker_guard [ai-task, closed, 2026-02-21, ai]
+    mingle_stt_endpoint_only_frame_and_api_marker_guard("endpoint-only final 누락과 API 방어 보강<br/><sub>Soniox가 endpoint marker만 단독으로 보내는<br/>프레임에서도 누적 텍스트가 있으면 final로<br/>확정되도록 STT 서버 조건을 보강하고<br/>API 단에서 <end>/<fin> 제거 방어를 복구</sub>")
+
+    %% @mingle_stt_endpoint_only_finalize_mode [ai-task, closed, 2026-02-19, ai]
+    mingle_stt_endpoint_only_finalize_mode("Soniox 분할 휴리스틱 임시 비활성화<br/><sub>STT 중계 서버의 발화 분리 조건에서<br/>newFinalText 기반 보조 휴리스틱을 잠시 제거하고<br/><end> 토큰 감지 경로에서만 final emit 하도록<br/>임시 운영 모드로 전환해 과분할 빈도를 점검</sub>")
+
+    %% @mingle_stt_finalize_heuristic_removed [ai-task, closed, 2026-02-19, ai]
+    mingle_stt_finalize_heuristic_removed("Soniox 분할 휴리스틱 코드 제거<br/><sub>임시 비활성화 상태로 남아 있던<br/>hadNonFinal 관련 상태/주석을 정리하고<br/><end> 토큰 기반 final emit 경로만 남겨<br/>분기 해석 혼선을 줄이도록 서버 코드를 단순화</sub>")
+
+    %% @mingle_stt_silence_200ms_manual_finalize [ai-task, closed, 2026-02-19, ai]
+    mingle_stt_silence_200ms_manual_finalize("Soniox 200ms 무음 수동 finalize 추가<br/><sub>중계 서버에서 PCM 청크 RMS를 계산해<br/>200ms 연속 무음 구간을 감지하면 Soniox에<br/>WebSocket finalize 요청을 1회 전송하도록 추가해<br/>end-only 모드의 과도한 장문 확정 지연을 완화</sub>")
+
+    %% @mingle_stt_silence_tuning_300ms_0006 [ai-task, closed, 2026-02-19, ai]
+    mingle_stt_silence_tuning_300ms_0006("Soniox 무음 튜닝 300ms/0.006 적용<br/><sub>200ms/0.008 설정에서 과분할이 잦아<br/>기본 임계값을 300ms와 0.006으로 조정해<br/>짧은 숨고르기/저레벨 구간에서 finalize 빈도를 낮추고<br/>발화 단위를 조금 더 길게 유지하도록 보정</sub>")
+
+    %% @mingle_stt_silence_retune_200ms_0008 [ai-task, closed, 2026-02-21, ai]
+    mingle_stt_silence_retune_200ms_0008("Soniox 무음 튜닝 200ms/0.008 재적용<br/><sub>최근 발화 경계 체감을 다시 빠르게 맞추기 위해<br/>수동 finalize 기본값을 300ms/0.006에서<br/>200ms와 0.008로 되돌려 짧은 무음에서<br/>턴 확정 반응성을 높이도록 재조정</sub>")
+
+    %% @mingle_stt_text_progress_silence_finalize_plan [ai-task, closed, 2026-02-23, ai]
+    mingle_stt_text_progress_silence_finalize_plan("Soniox 텍스트정체 finalize 구현<br/><sub>RMS 기반 무음 측정 경로를 제거하고<br/>실시간 텍스트 추가 정체 시간을 기준으로<br/>SONIOX_MANUAL_FINALIZE_SILENCE_MS 만료 시<br/>서버가 Soniox finalize를 요청하도록 전환</sub>")
+
+    %% @mingle_stt_soniox_compact_debug_log_fields [ai-task, closed, 2026-02-23, ai]
+    mingle_stt_soniox_compact_debug_log_fields("Soniox 디버그 로그 compact 포맷화<br/><sub>프레임 로그 payload를 전부 출력하던 경로를<br/>text/total_elapsed_ms/silence_elapsed_ms 중심으로<br/>압축해 로컬 재현 시 핵심 타이밍을 즉시 읽고<br/>250ms 기준 무음 판정 흐름을 빠르게 확인 가능하게 정리</sub>")
+
+    %% @mingle_stt_soniox_debug_logging_removed [ai-task, closed, 2026-02-23, ai]
+    mingle_stt_soniox_debug_logging_removed("Soniox 디버그 로그 출력 제거<br/><sub>rms/silence 타이밍 로그와 Soniox frame 로그를 삭제해<br/>운영 콘솔 노이즈를 없애고 finalize 판정로직만 유지<br/>토큰 기반 finalize 경로와 기존 종료 트래픽은 그대로 보존</sub>")
+
+    %% @mingle_stt_marker_token_visibility_debug_toggle [ai-task, closed, 2026-02-19, ai]
+    mingle_stt_marker_token_visibility_debug_toggle("Soniox 특수토큰 표시 디버그 모드<br/><sub>앱 화면에서 <end>/<fin> 토큰 유입 시점을<br/>직접 확인할 수 있도록 final/forced/pending 경로의<br/>토큰 제거 치환을 임시 주석 처리해<br/>원문 토큰이 그대로 보이게 서버를 보정</sub>")
+
+    %% @mingle_app_end_fin_marker_unification [ai-task, closed, 2026-02-19, ai]
+    mingle_app_end_fin_marker_unification("앱/번역/로그 end·fin 처리 통일<br/><sub>mingle-app의 STT 정규화와 finalize API,<br/>client-event 로그 정리 경로에서 기존 <end> 전용<br/>치환 정규식을 <end>|<fin> 공통 처리로 확장해<br/>토큰별 불일치 동작을 제거하고 일관성을 고정</sub>")
+
+    %% @mingle_app_marker_visibility_debug_enable [ai-task, closed, 2026-02-19, ai]
+    mingle_app_marker_visibility_debug_enable("앱 버블 토큰 표시 디버그 활성화<br/><sub>사용자 화면에서 <end>/<fin> 유입 시점을<br/>직접 확인하기 위해 STT 텍스트 정규화 함수의<br/>마커 제거 치환을 임시 주석 처리하고<br/>버블/partial 표시에서 원문 토큰 노출을 허용</sub>")
+
+    %% @mingle_stt_endpoint_detection_disabled_experiment [ai-task, closed, 2026-02-20, ai]
+    mingle_stt_endpoint_detection_disabled_experiment("Soniox endpoint detection 비활성 실험<br/><sub>사용자 요청으로 Soniox 설정의<br/>enable_endpoint_detection을 false로 전환해<br/><end> 자동 마커 생성 경로를 끄고<br/>수동 finalize/기타 경로 영향도를 관찰</sub>")
+
+    %% @mingle_stt_endpoint_delay_param_guard_fix [ai-task, closed, 2026-02-20, ai]
+    mingle_stt_endpoint_delay_param_guard_fix("Soniox endpoint 파라미터 호환성 수정<br/><sub>endpoint detection을 false로 둔 상태에서<br/>max_endpoint_delay_ms를 함께 보내면 400이 발생해<br/>해당 필드를 Soniox 초기 설정에서 제거해<br/>연결 직후 세션 종료(1005) 오류를 차단</sub>")
+
+    %% @mingle_marker_sanitization_restore_after_debug [ai-task, closed, 2026-02-20, ai]
+    mingle_marker_sanitization_restore_after_debug("마커 비노출 정책 원복 (디버그 종료)<br/><sub><end>/<fin> 토큰을 턴 경계 인식에는 유지하되<br/>STT 서버 final/forced/pending 정리와 앱 버블 정규화에서<br/>마커 제거 치환을 다시 활성화해 사용자 화면과<br/>번역 입력 경로에서 마커가 절대 보이지 않게 복구</sub>")
+
+    %% @mingle_app_usage_truth_policy [human-task, opened, 2026-02-16, user]
+    mingle_app_usage_truth_policy("사용시간 Source of Truth 정책 확정 필요<br/><sub>현재 클라 localStorage usage와 DB 집계를 병행하므로<br/>제한/과금/분석 기준을 서버 우선으로 둘지 결정하고<br/>초기 부트스트랩/동기화 시점(앱 시작·턴 종료)을<br/>정책으로 고정해야 일관된 사용량이 보장됨</sub>")
+
+    %% @tts_echo_reference_filter_research [ai-task, closed, 2026-02-16, ai]
+    tts_echo_reference_filter_research("iOS TTS 에코/볼륨/라우팅 3중 수정<br/><sub>overrideOutputAudioPort 제거로 이어폰 라우팅 복구<br/>isVoiceProcessingEnabled로 하드웨어 AEC 활성화<br/>Web Audio GainNode(4x)로 .playAndRecord<br/>스피커 볼륨 감소를 소프트웨어 보상</sub>")
+
+    %% @demo_limit_server_db_migration [ai-task, opened]
+    demo_limit_server_db_migration("데모 제한 서버 DB 기반 전환 (추후)<br/><sub>브라우저 localStorage 기준 60초 제한을<br/>서버 DB 세션/지문 기반 제한으로 마이그레이션<br/>우회 방지/멀티디바이스 일관성 정책 설계 필요</sub>")
+
+    %% @windows_loopback_capture_validation [ai-task, opened]
+    windows_loopback_capture_validation("Windows 루프백 캡처 검증 (추후)<br/><sub>WASAPI loopback 경로를 기준으로<br/>디스코드 출력 음성 캡처 가능 여부를<br/>헤드폰 사용 환경 포함해 실측 검증하고<br/>장치/포맷별 예외 케이스를 정리</sub>")
+
+    %% @macos_loopback_capture_validation [ai-task, opened]
+    macos_loopback_capture_validation("macOS 루프백 캡처 검증 (추후)<br/><sub>시스템 오디오 캡처 권한 승인 이후<br/>ScreenCaptureKit 경로에서 디스코드<br/>출력 음성을 안정적으로 수집 가능한지<br/>권한 거절/재요청 UX까지 점검</sub>")
+
+    %% @opencode_oh_my_setup [ai-task, closed]
+    opencode_oh_my_setup("OpenCode + Oh-My 설치 완료<br/><sub>opencode-ai와 oh-my-opencode를 설치하고<br/>OpenAI 중심 플래그로 기본 에이전트 설정을 생성해<br/>~/.config/opencode에 플러그인/모델 프리셋을<br/>즉시 사용 가능한 상태로 초기화</sub>")
+
+    %% @opencode_codex_oauth_pending [human-task, opened]
+    opencode_codex_oauth_pending("Codex OAuth 승인 대기<br/><sub>opencode auth login OpenAI(headless)에서<br/>장치 코드 발급까지 완료했고 브라우저 승인만 남음<br/>승인 완료 시 auth.json에 크리덴셜이 저장되어<br/>openai/gpt-5.2-codex 모델을 바로 실행 가능</sub>")
+
+    %% @ultimate_goal [end, opened]
+    ultimate_goal("Mingle Launch<br/><sub>소셜링 중심의 실시간 번역 앱으로<br/>외국인과 깊이 있는 대화를 나누고<br/>지속적인 관계를 만들어가는 서비스</sub>")
+
+    %% === CONNECTIONS ===
+    project_start --> structure_refinement
+    structure_refinement --> ui_ux_improvement
+    ui_ux_improvement --> gladia_stt_integration
+    gladia_stt_integration --> language_selection
+    language_selection --> mingle_landing_prototype
+    mingle_landing_prototype --> landing_i18n
+    landing_i18n --> landing_email_mockups
+    landing_email_mockups --> landing_ui_refinement
+    landing_ui_refinement --> click_analytics
+    click_analytics --> nextjs_fullstack_migration
+    nextjs_fullstack_migration --> landing_copy_update
+    landing_copy_update --> talk_to_world_section
+    talk_to_world_section --> gladia_user_onboarding
+    gladia_user_onboarding --> deepgram_integration
+    deepgram_integration --> fireworks_integration
+    fireworks_integration --> deepgram_multi
+    deepgram_multi --> deepgram_multi_fix
+    deepgram_multi --> gladia_stt_only
+    deepgram_multi --> soniox_integration
+    deepgram_multi_fix --> translation_engine_research
+    gladia_stt_only --> translation_engine_research
+    soniox_integration --> cleanup_and_usage_ui
+    cleanup_and_usage_ui --> gpt_translation
+    gpt_translation --> translation_engine_research
+    gpt_translation --> live_phone_demo
+    live_phone_demo --> gemini_translation
+    gemini_translation --> demo_ux_and_restructure
+    demo_ux_and_restructure --> demo_streaming_polish
+    demo_streaming_polish --> demo_usage_limit_ux
+    demo_usage_limit_ux --> demo_bugfix_db_logging
+    demo_bugfix_db_logging --> prisma_local_simplify
+    prisma_local_simplify --> stt_server_landing_merge
+    stt_server_landing_merge --> railway_stt_deploy
+    railway_stt_deploy --> chat_invite_feature
+    railway_stt_deploy --> global_stats_fix
+    translation_engine_research --> chat_invite_feature
+    translation_engine_research --> translator_feature_build
+    chat_invite_feature --> mobile_app_development
+    chat_invite_feature --> next_i18n_adoption
+    chat_invite_feature --> next_auth_adoption
+    chat_invite_feature --> instagram_crawling
+    next_auth_adoption --> google_oauth_login
+    next_i18n_adoption --> mobile_app_development
+    google_oauth_login --> mingle_app_rn_social_auth_gate_and_menu
+    mingle_app_rn_social_auth_gate_and_menu --> mingle_app_ios_google_oauth_disallowed_useragent_ua_fix
+    mingle_app_ios_google_oauth_disallowed_useragent_ua_fix --> mingle_app_rn_ios_native_browser_oauth_bridge
+    mingle_app_rn_ios_native_browser_oauth_bridge --> mingle_app_rn_ios_appdelegate_linking_module_fix
+    mingle_app_rn_ios_appdelegate_linking_module_fix --> mingle_app_rn_ios_native_oauth_callback_origin_fix
+    mingle_app_rn_ios_native_oauth_callback_origin_fix --> mingle_app_rn_ios_native_oauth_google_only_launcher
+    google_oauth_login --> mobile_app_development
+    translator_feature_build --> mobile_app_development
+    mobile_app_development --> capacitor_app_build
+    instagram_crawling --> seed_data_population
+    translation_engine_research --> tts_provider_research
+    tts_provider_research --> inworld_non_realtime_strategy
+    inworld_non_realtime_strategy --> gaming_tts_test_section_spec
+    gaming_tts_test_section_spec --> gaming_tts_test_section_apply
+    gaming_tts_test_section_apply --> gaming_tts_queue_ui_polish
+    gaming_tts_queue_ui_polish --> tts_mobile_lock_recovery
+    tts_mobile_lock_recovery --> mobile_tts_autounlock_and_feedback_guard
+    mobile_tts_autounlock_and_feedback_guard --> stt_graceful_stop_finalize_flush
+    stt_graceful_stop_finalize_flush --> soniox_provider_finalization_on_stop
+    soniox_provider_finalization_on_stop --> demo_limit_60s_inworld_tts_rate
+    demo_limit_60s_inworld_tts_rate --> tts_stt_concurrent_input_enable
+    tts_stt_concurrent_input_enable --> soniox_endpoint_finalize_immediate_tts
+    soniox_endpoint_finalize_immediate_tts --> stop_interrupt_local_finalize_fallback
+    stop_interrupt_local_finalize_fallback --> stop_dedupe_scope_fix_for_tts_chain
+    stop_dedupe_scope_fix_for_tts_chain --> stop_state_and_partial_translation_promote
+    stop_state_and_partial_translation_promote --> stop_immediate_finalize_and_translation_drain
+    stop_immediate_finalize_and_translation_drain --> forced_termination_finalize_hooks
+    forced_termination_finalize_hooks --> stop_fallback_translate_api_and_fast_restart
+    stop_fallback_translate_api_and_fast_restart --> stop_local_server_final_merge_and_tts_guard
+    stop_local_server_final_merge_and_tts_guard --> stop_stale_socket_guard_and_final_retranslate
+    stop_stale_socket_guard_and_final_retranslate --> stop_partial_gate_and_finalize_parser_harden
+    stop_partial_gate_and_finalize_parser_harden --> stop_finalize_retry_and_multi_provider_translate
+    stop_finalize_retry_and_multi_provider_translate --> stop_ack_server_final_turn_payload
+    stop_ack_server_final_turn_payload --> stop_translation_json_and_single_fallback
+    landing_copy_update --> gaming_socialhero_multilingual_copy_refresh
+    gaming_socialhero_multilingual_copy_refresh --> gaming_demo_disclaimer_i18n
+    mingle_landing_prototype --> landing_favicon_route_module_not_found_fix
+    stop_translation_json_and_single_fallback --> translation_decouple_http
+    translation_decouple_http --> finalize_inline_tts_bundle
+    finalize_inline_tts_bundle --> finalize_tts_double_playback_rootcause
+    finalize_tts_double_playback_rootcause --> finalize_tts_dedupe_alignment_fix
+    finalize_tts_dedupe_alignment_fix --> finalize_translate_first_tts_split --> tts_global_queue_sequential_playback --> tts_priority_queue_ordering --> ios_chrome_audio_player_reuse --> ios_safari_lock_resume_recovery --> mingle_app_test_section_migration --> landing_inline_tts_reenable --> tts_queue_race_retrigger_fix --> stt_background_stop_policy_update --> stt_background_auto_recovery --> stt_lock_resume_reconnect_removal --> stt_mic_button_tts_decouple --> tts_queue_watchdog_and_start_prime_guard --> tts_prime_failure_volume_recovery_fix --> stt_lock_resume_reconnect_restore_and_stop_click_tts_resume --> stt_stop_pipeline_without_output_close --> mingle_app_landing_test_section_rebase --> mingle_app_fullscreen_test_surface
+    mingle_app_fullscreen_test_surface --> mingle_app_remove_mock_statusbar
+    mingle_app_remove_mock_statusbar --> mingle_app_client_only_live_demo
+    mingle_app_client_only_live_demo --> mingle_app_favicon_sync
+    mingle_app_favicon_sync --> mingle_app_global_scroll_lock
+    mingle_app_global_scroll_lock --> mingle_app_under480_fullwidth_scale_shell
+    mingle_app_under480_fullwidth_scale_shell --> mingle_app_top_level_scale_only
+    mingle_app_top_level_scale_only --> mingle_app_fixed_footer_via_svh_and_flex_constraints
+    mingle_app_fixed_footer_via_svh_and_flex_constraints --> mingle_app_footer_bottom_anchor_with_frame_height_inheritance
+    mingle_app_footer_bottom_anchor_with_frame_height_inheritance --> shared_live_demo_core_package_split
+    shared_live_demo_core_package_split --> mingle_app_remove_60s_usage_limit
+    mingle_app_remove_60s_usage_limit --> mingle_app_ios_scaffold
+    mingle_app_remove_60s_usage_limit --> live_demo_core_demo_logic_split
+    mingle_app_ios_scaffold --> xcode_install_and_ios_device_build
+    xcode_install_and_ios_device_build --> capacitor_server_url_env_loading_fix
+    capacitor_server_url_env_loading_fix --> landing_social_version_route_block
+    landing_social_version_route_block --> normal_global_connect_to_explore_swap
+    capacitor_server_url_env_loading_fix --> ios_device_signing_and_run_validation
+    ios_device_signing_and_run_validation --> ios_safe_area_and_icon_sizing_fix
+    ios_safe_area_and_icon_sizing_fix --> ios_device_rebuild_and_run
+    ios_device_rebuild_and_run --> ios_cli_build_install_run --> mingle_app_git_push --> mingle_app_gitignore_cleanup_for_deploy --> mingle_app_ios_rebuild_and_sync_retry --> mingle_app_ios_run_blocked_coredevice_service --> mingle_app_vercel_git_autodeploy_link_fix --> mingle_app_ui_scale_and_safearea_tune --> mingle_app_ios_build_sync_and_run_retry --> mingle_app_ios_launch_via_xctrace_workaround --> mingle_app_secret_boundary_diagnosis --> vercel_monorepo_autodeploy_split_and_alias_check --> vercel_ignore_command_scope_fix
+    vercel_ignore_command_scope_fix --> vercel_dashboard_deploy_filter_check
+    vercel_dashboard_deploy_filter_check --> mingle_app_vercel_main_branch_only_deploy_guard
+    vercel_dashboard_deploy_filter_check --> live_demo_core_full_decouple
+    live_demo_core_full_decouple --> mingle_app_ios_tts_audio_route_stability_fix
+    mingle_app_ios_tts_audio_route_stability_fix --> mingle_app_tts_fallback_recovery_path
+    mingle_app_tts_fallback_recovery_path --> mingle_app_tts_diagnostics_logging
+    mingle_app_tts_diagnostics_logging --> mingle_app_tts_initial_history_queue_race_fix
+    mingle_app_tts_initial_history_queue_race_fix --> mingle_stt_service_split_from_landing
+    mingle_stt_service_split_from_landing --> mingle_stt_endpoint_only_finalize_mode
+    mingle_stt_endpoint_only_finalize_mode --> mingle_stt_finalize_heuristic_removed
+    mingle_stt_finalize_heuristic_removed --> mingle_stt_silence_200ms_manual_finalize
+    mingle_stt_silence_200ms_manual_finalize --> mingle_stt_silence_tuning_300ms_0006
+    mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_silence_retune_200ms_0008
+    mingle_stt_silence_retune_200ms_0008 --> mingle_stt_text_progress_silence_finalize_plan
+    mingle_stt_text_progress_silence_finalize_plan --> mingle_stt_soniox_compact_debug_log_fields
+    mingle_stt_soniox_compact_debug_log_fields --> mingle_stt_soniox_debug_logging_removed
+    mingle_stt_silence_tuning_300ms_0006 --> mingle_stt_marker_token_visibility_debug_toggle
+    mingle_stt_marker_token_visibility_debug_toggle --> mingle_stt_endpoint_detection_disabled_experiment
+    mingle_stt_endpoint_detection_disabled_experiment --> mingle_stt_endpoint_delay_param_guard_fix
+    mingle_stt_marker_token_visibility_debug_toggle --> mingle_app_end_fin_marker_unification
+    mingle_app_end_fin_marker_unification --> mingle_app_marker_visibility_debug_enable
+    mingle_app_marker_visibility_debug_enable --> mingle_marker_sanitization_restore_after_debug
+    mingle_stt_service_split_from_landing --> mingle_app_ios_native_tts_background_experiment
+    mingle_app_ios_native_tts_background_experiment --> mingle_app_ios_icon_from_favicon_apply
+    mingle_app_ios_icon_from_favicon_apply --> mingle_app_ios_native_tts_html_fallback_fix
+    mingle_app_ios_native_tts_html_fallback_fix --> mingle_app_ios_native_stt_module_path
+    mingle_app_ios_native_stt_module_path --> mingle_app_ios_native_stt_debug_logging
+    mingle_app_ios_native_stt_debug_logging --> mingle_app_ios_native_stt_permission_bootstrap
+    mingle_app_ios_native_stt_permission_bootstrap --> mingle_app_ios_native_plugin_registration_fix
+    mingle_stt_service_split_from_landing --> backend_frontend_boundary_audit
+    vercel_ignore_command_scope_fix --> backend_frontend_boundary_audit
+    backend_frontend_boundary_audit --> backend_vercel_change_scope
+    backend_vercel_change_scope --> mingle_app_db_schema_prisma_init
+    mingle_app_db_schema_prisma_init --> mingle_app_prisma_client_build_fix
+    mingle_app_prisma_client_build_fix --> mingle_app_database_schema_guard_autofix
+    mingle_app_prisma_client_build_fix --> mingle_app_local_db_psql_reset_path
+    mingle_app_database_schema_guard_autofix --> mingle_app_rn_workspace_alignment
+    mingle_app_rn_workspace_alignment --> mingle_app_capacitor_path_removal
+    mingle_app_capacitor_path_removal --> mingle_app_vercel_rn_typecheck_scope_fix
+    mingle_app_vercel_rn_typecheck_scope_fix --> mingle_app_rn_webview_native_stt_bridge
+    mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_social_auth_gate_and_menu
+    mingle_app_rn_webview_native_stt_bridge --> mingle_app_rn_env_only_server_url_config
+    mingle_app_rn_env_only_server_url_config --> mingle_app_rn_release_about_blank_crash_fix
+    mingle_app_rn_release_about_blank_crash_fix --> mingle_app_ios_runtime_config_xcconfig_bridge
+    mingle_app_ios_runtime_config_xcconfig_bridge --> mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix
+    mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix --> mingle_app_ios_runtime_ws_url_normalization_guard
+    mingle_app_ios_runtime_ws_url_normalization_guard --> mingle_app_ios_runtime_ws_boot_validation_relax
+    mingle_app_ios_runtime_ws_boot_validation_relax --> mingle_worktree_devbox_env_spacing_normalization
+    mingle_worktree_devbox_env_spacing_normalization --> mingle_worktree_devbox_nextauth_default_env_guard
+    mingle_worktree_devbox_nextauth_default_env_guard --> mingle_worktree_devbox_mobile_profile_resync_before_install
+    mingle_worktree_devbox_mobile_profile_resync_before_install --> mingle_worktree_devbox_ngrok_stale_profile_refresh_fix
+    mingle_worktree_devbox_ngrok_stale_profile_refresh_fix --> mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive
+    mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive --> mingle_worktree_devbox_native_ios_auto_device_selection_parity
+    mingle_worktree_devbox_native_ios_auto_device_selection_parity --> mingle_ios_signing_bundle_id_override_support
+    mingle_ios_signing_bundle_id_override_support --> mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix
+    mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix --> mingle_ios_team_override_auto_detect_removal_fix
+    mingle_worktree_devbox_native_ios_auto_device_selection_parity --> mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix
+    mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix --> mingle_worktree_devbox_google_oauth_redirect_uri_auto_append
+    mingle_worktree_devbox_google_oauth_redirect_uri_auto_append --> mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix
+    mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix --> mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env
+    mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env --> mingle_worktree_devbox_google_redirect_sync_retry_on_same_host
+    mingle_app_rn_webview_native_stt_bridge --> mingle_app_ios_native_stt_interruption_recovery
+    mingle_app_ios_native_stt_interruption_recovery --> mingle_app_ios_stt_mode_output_gain_tune
+    mingle_app_ios_stt_mode_output_gain_tune --> mingle_app_ios_stt_session_stability_rebalance
+    mingle_app_ios_stt_session_stability_rebalance --> mingle_app_ios_stt_tts_volume_reboost
+    mingle_app_ios_stt_tts_volume_reboost --> mingle_app_rn_branding_name_icon_sync
+    mingle_app_ios_stt_session_stability_rebalance --> mingle_app_async_nonblocking_db_write
+    mingle_app_async_nonblocking_db_write --> mingle_app_web_client_event_logging_fix
+    mingle_app_web_client_event_logging_fix --> mingle_app_og_image_locale_redirect_fix
+    mingle_app_og_image_locale_redirect_fix --> mingle_app_usage_truth_policy
+    mingle_app_remove_60s_usage_limit --> tts_echo_reference_filter_research
+    mingle_app_remove_60s_usage_limit --> windows_loopback_capture_validation
+    mingle_app_remove_60s_usage_limit --> macos_loopback_capture_validation
+    project_start --> opencode_oh_my_setup
+    opencode_oh_my_setup --> opencode_codex_oauth_pending
+    tts_echo_reference_filter_research --> mingle_app_ios_stt_tts_resilience_diagnostics
+    mingle_app_ios_stt_tts_resilience_diagnostics --> mingle_app_ios_dynamic_aec_mode_toggle
+    mingle_app_ios_dynamic_aec_mode_toggle --> mingle_app_ios_splash_cleanup
+    mingle_app_ios_splash_cleanup --> mingle_app_partial_translation_threshold_tune
+    mingle_app_partial_translation_threshold_tune --> mingle_app_tts_global_state
+    mingle_app_tts_global_state --> mingle_app_aec_toggle
+    mingle_app_aec_toggle --> mingle_app_echo_icon_and_canvas_400_restore
+    mingle_app_echo_icon_and_canvas_400_restore --> mingle_app_bottom_bar_usage_left_alignment
+    mingle_app_bottom_bar_usage_left_alignment --> mingle_app_finalize_prompt_context_tone_and_token_logs
+    mingle_app_finalize_prompt_context_tone_and_token_logs --> mingle_app_finalize_provider_error_logging
+    mingle_app_finalize_provider_error_logging --> mingle_app_finalize_gemini_only_single_attempt
+    mingle_app_finalize_gemini_only_single_attempt --> mingle_app_gemini_empty_response_deep_logging
+    mingle_app_gemini_empty_response_deep_logging --> mingle_app_gemini_response_schema_structured_output
+    mingle_app_gemini_response_schema_structured_output --> mingle_app_gemini_raw_response_logging
+    mingle_app_gemini_raw_response_logging --> mingle_app_finalize_current_state_fallback_and_target_guard
+    mingle_app_finalize_current_state_fallback_and_target_guard --> mingle_app_stt_leading_noise_chars_expand
+    mingle_app_stt_leading_noise_chars_expand --> mingle_app_finalize_prompt_minify_for_structured_output
+    mingle_app_finalize_prompt_minify_for_structured_output --> mingle_app_recent_turn_context_source_lang_filter_fix
+    mingle_app_recent_turn_context_source_lang_filter_fix --> mingle_app_finalize_immediate_prev_turn_context_boost
+    mingle_app_recent_turn_context_source_lang_filter_fix --> mingle_app_translation_bubble_target_snapshot_policy
+    mingle_app_translation_bubble_target_snapshot_policy --> mingle_app_turbopack_root_tailwind_resolution_fix
+    mingle_app_turbopack_root_tailwind_resolution_fix --> mingle_app_chat_scroll_overlay_and_threshold_tuning
+    mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_pc_scroll_pagination_anchor_regression_fix
+    mingle_app_pc_scroll_pagination_anchor_regression_fix --> mingle_app_mobile_scroll_overlay_visibility_hold_fix
+    mingle_app_mobile_scroll_overlay_visibility_hold_fix --> mingle_app_tdd_test_harness_plan
+    mingle_marker_sanitization_restore_after_debug --> mingle_app_final_duplicate_guard_experiment
+    mingle_app_final_duplicate_guard_experiment --> mingle_app_final_duplicate_guard_nonfinal_aware_refine
+    mingle_app_final_duplicate_guard_nonfinal_aware_refine --> mingle_app_mobile_safari_stt_no_log_rootcause
+    mingle_app_mobile_safari_stt_no_log_rootcause --> mingle_app_ngrok_dual_tunnel_overlay_setup
+    mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_app_final_dedupe_false_negative_fix
+    mingle_app_final_dedupe_false_negative_fix --> mingle_app_fin_marker_sanitize_temp_disable
+    mingle_app_fin_marker_sanitize_temp_disable --> mingle_stt_endpoint_final_merge_for_fin_visibility
+    mingle_stt_endpoint_final_merge_for_fin_visibility --> mingle_app_raw_fin_token_trace_overlay
+    mingle_app_raw_fin_token_trace_overlay --> mingle_app_end_fin_marker_sanitize_full_disable
+    mingle_app_end_fin_marker_sanitize_full_disable --> mingle_stt_env_local_priority_load
+    mingle_stt_env_local_priority_load --> mingle_stt_endpoint_marker_tail_split_fix
+    mingle_stt_endpoint_marker_tail_split_fix --> mingle_stt_manual_finalize_burst_guard_fix
+    mingle_stt_manual_finalize_burst_guard_fix --> mingle_stt_stale_partial_carry_overlap_merge_fix
+    mingle_stt_stale_partial_carry_overlap_merge_fix --> mingle_stt_front_raw_stream_logging_probe
+    mingle_stt_front_raw_stream_logging_probe --> mingle_stt_front_log_minimal_fields_only
+    mingle_stt_front_log_minimal_fields_only --> mingle_stt_final_watermark_and_provisional_carry
+    mingle_stt_final_watermark_and_provisional_carry --> mingle_stt_debug_log_cleanup_and_client_marker_boundary
+    mingle_stt_debug_log_cleanup_and_client_marker_boundary --> mingle_stt_endpoint_only_frame_and_api_marker_guard
+    mingle_app_tdd_test_harness_plan --> mingle_app_tdd_finalize_clientevent_unit_tests
+    mingle_app_tdd_finalize_clientevent_unit_tests --> mingle_app_tdd_finalize_route_mock_integration_tests
+    mingle_app_tdd_finalize_route_mock_integration_tests --> mingle_app_tdd_stt_hook_logic_unit_tests
+    mingle_app_tdd_stt_hook_logic_unit_tests --> mingle_app_tdd_stt_hook_server_integration_plan
+    mingle_app_tdd_stt_hook_server_integration_plan --> mingle_app_tdd_live_stt_finalize_integration_automation
+    mingle_app_tdd_live_stt_finalize_integration_automation --> mingle_app_tdd_live_regression_e2e_matrix_expansion
+    mingle_app_tdd_live_regression_e2e_matrix_expansion --> mingle_app_tdd_vitest_node20_compat_fix
+    mingle_app_tdd_vitest_node20_compat_fix --> mingle_app_tdd_github_actions_unit_ci
+    mingle_app_tdd_github_actions_unit_ci --> mingle_app_tdd_live_ci_orchestration_plan
+    mingle_app_tdd_live_ci_orchestration_plan --> mingle_app_tdd_live_ci_secret_provisioning
+    mingle_app_tdd_live_ci_secret_provisioning --> mingle_app_tdd_actions_job_if_secret_context_fix
+    mingle_app_tdd_actions_job_if_secret_context_fix --> mingle_app_tdd_live_ci_stt_build_start_runtime_fix
+    mingle_app_tdd_live_ci_stt_build_start_runtime_fix --> mingle_app_tdd_live_ci_ffmpeg_fixture_fix
+    mingle_app_tdd_live_ci_ffmpeg_fixture_fix --> mingle_app_tdd_live_ci_node20_websocket_polyfill
+    mingle_app_tdd_live_ci_node20_websocket_polyfill --> mingle_app_tdd_run8_green_validation
+    mingle_app_tdd_run8_green_validation --> mingle_app_live_fixture_autoskip_without_env
+    mingle_app_live_fixture_autoskip_without_env --> mingle_app_tdd_pr_only_trigger_without_post_merge_run
+    mingle_app_tdd_pr_only_trigger_without_post_merge_run --> mingle_app_tdd_main_push_direct_guard
+    mingle_app_tdd_main_push_direct_guard --> mingle_app_tdd_nonstraight_main_merge_guard
+    mingle_app_tdd_live_stt_finalize_integration_automation --> mingle_worktree_devbox_local_device_automation
+    mingle_app_ngrok_dual_tunnel_overlay_setup --> mingle_worktree_devbox_local_device_automation
+    mingle_worktree_devbox_local_device_automation --> mingle_worktree_devbox_bootstrap_env_seed_and_auto_install
+    mingle_worktree_devbox_bootstrap_env_seed_and_auto_install --> mingle_worktree_devbox_vault_secret_sync_option
+    mingle_worktree_devbox_vault_secret_sync_option --> mingle_worktree_devbox_vault_path_persist_and_auto_sync
+    mingle_worktree_devbox_vault_path_persist_and_auto_sync --> mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up
+    mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up --> mingle_worktree_devbox_device_split_ngrok_terminal_launch
+    mingle_worktree_devbox_device_split_ngrok_terminal_launch --> mingle_worktree_devbox_mobile_build_install_automation
+    mingle_worktree_devbox_mobile_build_install_automation --> mingle_app_ios_runtime_config_xcconfig_bridge
+    mingle_worktree_devbox_mobile_build_install_automation --> mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix
+    mingle_worktree_devbox_mobile_build_install_automation --> mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization
+    mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization --> mingle_worktree_devbox_ngrok_tunnel_name_collision_fix
+    mingle_worktree_devbox_ngrok_tunnel_name_collision_fix --> mingle_worktree_devbox_prisma_generate_autofix
+    mingle_worktree_devbox_prisma_generate_autofix --> mingle_worktree_devbox_prod_profile
+    mingle_worktree_devbox_prod_profile --> mingle_worktree_devbox_device_app_env_vault_switch
+    mingle_worktree_devbox_device_app_env_vault_switch --> mingle_worktree_device_prod_skip_runtime_start
+    mingle_worktree_device_prod_skip_runtime_start --> mingle_worktree_devbox_native_device_app_env_vault_key_fallback
+    mingle_worktree_devbox_native_device_app_env_vault_key_fallback --> mingle_worktree_devbox_stateless_default
+    mingle_worktree_devbox_stateless_default --> mingle_worktree_devbox_no_env_sync_on_up_init
+    mingle_worktree_devbox_no_env_sync_on_up_init --> mingle_worktree_devbox_runtime_vault_env_injection
+    mingle_app_live_fixture_autoskip_without_env --> mingle_app_ios_release_reinstall_with_env
+    mingle_app_ios_release_reinstall_with_env --> mingle_app_ios_top_tap_regression_hotfix
+    mingle_app_ios_top_tap_regression_hotfix --> mingle_app_ios_top_tap_pr9_reaudit_hardening
+    mingle_app_ios_top_tap_pr9_reaudit_hardening --> mingle_app_ios_notch_tap_margin_decouple
+    mingle_app_tdd_nonstraight_main_merge_guard --> vercel_deploy_rate_limit_blocker
+    vercel_deploy_rate_limit_blocker --> vercel_app_landing_main_branch_deploy_gate
+    vercel_app_landing_main_branch_deploy_gate --> vercel_deployment_enabled_double_star_pattern_fix
+    vercel_deployment_enabled_double_star_pattern_fix --> vercel_main_always_deploy_ignore_command_fix
+    vercel_main_always_deploy_ignore_command_fix --> mingle_stt_railway_main_branch_deploy_setting
+    mingle_app_chat_scroll_overlay_and_threshold_tuning --> mingle_app_aec_default_echo_on_alignment
+    mingle_app_aec_default_echo_on_alignment --> mingle_app_tts_native_event_watchdog_milestone1
+    mingle_app_tts_native_event_watchdog_milestone1 --> mingle_app_audio_session_owner_coordinator_milestone2
+    mingle_app_audio_session_owner_coordinator_milestone2 --> mingle_app_tts_playback_id_event_alignment_milestone3
+    mingle_app_tts_playback_id_event_alignment_milestone3 --> mingle_app_tts_stop_policy_split_milestone4
+    mingle_app_tts_stop_policy_split_milestone4 --> mingle_app_tts_tail_noise_graceful_deactivate_milestone5
+    mingle_app_tts_tail_noise_graceful_deactivate_milestone5 --> mingle_app_audio_session_policy_polish_milestone6
+    mingle_app_audio_session_policy_polish_milestone6 --> mingle_app_audio_session_route_metrics_milestone7
+    mingle_app_audio_session_route_metrics_milestone7 --> demo_limit_server_db_migration
+    demo_limit_server_db_migration --> chat_invite_feature
+    seed_data_population --> mobile_app_development
+    capacitor_app_build -.-> ultimate_goal
+    mobile_app_development -.-> ultimate_goal
+    opencode_codex_oauth_pending -.-> ultimate_goal
+    backend_vercel_change_scope -.-> ultimate_goal
+    mingle_app_local_db_psql_reset_path -.-> ultimate_goal
+    mingle_app_async_nonblocking_db_write -.-> ultimate_goal
+    mingle_app_web_client_event_logging_fix -.-> ultimate_goal
+    mingle_app_og_image_locale_redirect_fix -.-> ultimate_goal
+    mingle_app_ios_splash_cleanup -.-> ultimate_goal
+    mingle_app_ios_dynamic_aec_mode_toggle -.-> ultimate_goal
+    mingle_app_aec_toggle -.-> ultimate_goal
+    mingle_app_echo_icon_and_canvas_400_restore -.-> ultimate_goal
+    mingle_app_bottom_bar_usage_left_alignment -.-> ultimate_goal
+    mingle_app_finalize_prompt_context_tone_and_token_logs -.-> ultimate_goal
+    mingle_app_finalize_provider_error_logging -.-> ultimate_goal
+    mingle_app_finalize_gemini_only_single_attempt -.-> ultimate_goal
+    mingle_app_gemini_empty_response_deep_logging -.-> ultimate_goal
+    mingle_app_gemini_response_schema_structured_output -.-> ultimate_goal
+    mingle_app_gemini_raw_response_logging -.-> ultimate_goal
+    mingle_app_finalize_current_state_fallback_and_target_guard -.-> ultimate_goal
+    mingle_app_stt_leading_noise_chars_expand -.-> ultimate_goal
+    mingle_app_finalize_prompt_minify_for_structured_output -.-> ultimate_goal
+    mingle_app_recent_turn_context_source_lang_filter_fix -.-> ultimate_goal
+    mingle_app_finalize_immediate_prev_turn_context_boost -.-> ultimate_goal
+    mingle_app_translation_bubble_target_snapshot_policy -.-> ultimate_goal
+    mingle_app_turbopack_root_tailwind_resolution_fix -.-> ultimate_goal
+    mingle_app_chat_scroll_overlay_and_threshold_tuning -.-> ultimate_goal
+    mingle_app_pc_scroll_pagination_anchor_regression_fix -.-> ultimate_goal
+    mingle_app_mobile_scroll_overlay_visibility_hold_fix -.-> ultimate_goal
+    mingle_app_tdd_test_harness_plan -.-> ultimate_goal
+    mingle_app_final_duplicate_guard_experiment -.-> ultimate_goal
+    mingle_app_final_duplicate_guard_nonfinal_aware_refine -.-> ultimate_goal
+    mingle_app_mobile_safari_stt_no_log_rootcause -.-> ultimate_goal
+    mingle_app_ngrok_dual_tunnel_overlay_setup -.-> ultimate_goal
+    mingle_app_final_dedupe_false_negative_fix -.-> ultimate_goal
+    mingle_app_fin_marker_sanitize_temp_disable -.-> ultimate_goal
+    mingle_app_tdd_finalize_clientevent_unit_tests -.-> ultimate_goal
+    mingle_app_tdd_finalize_route_mock_integration_tests -.-> ultimate_goal
+    mingle_app_tdd_stt_hook_logic_unit_tests -.-> ultimate_goal
+    mingle_app_tdd_stt_hook_server_integration_plan -.-> ultimate_goal
+    mingle_app_tdd_live_stt_finalize_integration_automation -.-> ultimate_goal
+    mingle_app_tdd_live_regression_e2e_matrix_expansion -.-> ultimate_goal
+    mingle_app_tdd_vitest_node20_compat_fix -.-> ultimate_goal
+    mingle_app_tdd_github_actions_unit_ci -.-> ultimate_goal
+    mingle_app_tdd_live_ci_orchestration_plan -.-> ultimate_goal
+    mingle_app_tdd_live_ci_secret_provisioning -.-> ultimate_goal
+    mingle_app_tdd_actions_job_if_secret_context_fix -.-> ultimate_goal
+    mingle_app_tdd_live_ci_stt_build_start_runtime_fix -.-> ultimate_goal
+    mingle_app_tdd_live_ci_ffmpeg_fixture_fix -.-> ultimate_goal
+    mingle_app_tdd_live_ci_node20_websocket_polyfill -.-> ultimate_goal
+    mingle_app_tdd_run8_green_validation -.-> ultimate_goal
+    mingle_app_live_fixture_autoskip_without_env -.-> ultimate_goal
+    mingle_app_tdd_pr_only_trigger_without_post_merge_run -.-> ultimate_goal
+    mingle_app_tdd_main_push_direct_guard -.-> ultimate_goal
+    mingle_app_tdd_nonstraight_main_merge_guard -.-> ultimate_goal
+    mingle_worktree_devbox_local_device_automation -.-> ultimate_goal
+    mingle_worktree_devbox_bootstrap_env_seed_and_auto_install -.-> ultimate_goal
+    mingle_worktree_devbox_vault_secret_sync_option -.-> ultimate_goal
+    mingle_worktree_devbox_vault_path_persist_and_auto_sync -.-> ultimate_goal
+    mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up -.-> ultimate_goal
+    mingle_worktree_devbox_device_split_ngrok_terminal_launch -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_build_install_automation -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization -.-> ultimate_goal
+    mingle_worktree_devbox_ngrok_tunnel_name_collision_fix -.-> ultimate_goal
+    mingle_worktree_devbox_prisma_generate_autofix -.-> ultimate_goal
+    mingle_app_ios_release_reinstall_with_env -.-> ultimate_goal
+    mingle_app_ios_top_tap_regression_hotfix -.-> ultimate_goal
+    mingle_app_ios_top_tap_pr9_reaudit_hardening -.-> ultimate_goal
+    mingle_app_ios_notch_tap_margin_decouple -.-> ultimate_goal
+    vercel_deploy_rate_limit_blocker -.-> ultimate_goal
+    vercel_app_landing_main_branch_deploy_gate -.-> ultimate_goal
+    vercel_deployment_enabled_double_star_pattern_fix -.-> ultimate_goal
+    vercel_main_always_deploy_ignore_command_fix -.-> ultimate_goal
+    mingle_stt_railway_main_branch_deploy_setting -.-> ultimate_goal
+    mingle_app_aec_default_echo_on_alignment -.-> ultimate_goal
+    mingle_app_tts_native_event_watchdog_milestone1 -.-> ultimate_goal
+    mingle_app_audio_session_owner_coordinator_milestone2 -.-> ultimate_goal
+    mingle_app_tts_playback_id_event_alignment_milestone3 -.-> ultimate_goal
+    mingle_app_tts_stop_policy_split_milestone4 -.-> ultimate_goal
+    mingle_app_tts_tail_noise_graceful_deactivate_milestone5 -.-> ultimate_goal
+    mingle_app_audio_session_policy_polish_milestone6 -.-> ultimate_goal
+    mingle_app_audio_session_route_metrics_milestone7 -.-> ultimate_goal
+    mingle_stt_endpoint_only_finalize_mode -.-> ultimate_goal
+    mingle_stt_finalize_heuristic_removed -.-> ultimate_goal
+    mingle_stt_silence_200ms_manual_finalize -.-> ultimate_goal
+    mingle_stt_silence_tuning_300ms_0006 -.-> ultimate_goal
+    mingle_stt_silence_retune_200ms_0008 -.-> ultimate_goal
+    mingle_stt_text_progress_silence_finalize_plan -.-> ultimate_goal
+    mingle_stt_marker_token_visibility_debug_toggle -.-> ultimate_goal
+    mingle_stt_endpoint_detection_disabled_experiment -.-> ultimate_goal
+    mingle_stt_endpoint_delay_param_guard_fix -.-> ultimate_goal
+    mingle_app_end_fin_marker_unification -.-> ultimate_goal
+    mingle_app_marker_visibility_debug_enable -.-> ultimate_goal
+    mingle_marker_sanitization_restore_after_debug -.-> ultimate_goal
+    mingle_app_usage_truth_policy -.-> ultimate_goal
+    mingle_app_rn_env_only_server_url_config -.-> ultimate_goal
+    mingle_stt_endpoint_final_merge_for_fin_visibility -.-> ultimate_goal
+    mingle_app_raw_fin_token_trace_overlay -.-> ultimate_goal
+    mingle_app_end_fin_marker_sanitize_full_disable -.-> ultimate_goal
+    mingle_stt_env_local_priority_load -.-> ultimate_goal
+    mingle_stt_endpoint_marker_tail_split_fix -.-> ultimate_goal
+    mingle_stt_manual_finalize_burst_guard_fix -.-> ultimate_goal
+    mingle_stt_stale_partial_carry_overlap_merge_fix -.-> ultimate_goal
+    mingle_stt_front_raw_stream_logging_probe -.-> ultimate_goal
+    mingle_stt_front_log_minimal_fields_only -.-> ultimate_goal
+    mingle_stt_final_watermark_and_provisional_carry -.-> ultimate_goal
+    mingle_stt_debug_log_cleanup_and_client_marker_boundary -.-> ultimate_goal
+    mingle_app_database_schema_guard_autofix -.-> ultimate_goal
+    mingle_app_vercel_main_branch_only_deploy_guard -.-> ultimate_goal
+    mingle_app_rn_release_about_blank_crash_fix -.-> ultimate_goal
+    mingle_app_ios_runtime_config_xcconfig_bridge -.-> ultimate_goal
+    mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix -.-> ultimate_goal
+    mingle_app_ios_runtime_ws_url_normalization_guard -.-> ultimate_goal
+    mingle_app_ios_runtime_ws_boot_validation_relax -.-> ultimate_goal
+    mingle_worktree_devbox_env_spacing_normalization -.-> ultimate_goal
+    mingle_worktree_devbox_nextauth_default_env_guard -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_profile_resync_before_install -.-> ultimate_goal
+    mingle_worktree_devbox_ngrok_stale_profile_refresh_fix -.-> ultimate_goal
+    mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_auto_device_selection_parity -.-> ultimate_goal
+    mingle_ios_signing_bundle_id_override_support -.-> ultimate_goal
+    mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix -.-> ultimate_goal
+    mingle_ios_team_override_auto_detect_removal_fix -.-> ultimate_goal
+    mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix -.-> ultimate_goal
+    mingle_worktree_devbox_google_oauth_redirect_uri_auto_append -.-> ultimate_goal
+    mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix -.-> ultimate_goal
+    mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env -.-> ultimate_goal
+    mingle_worktree_devbox_google_redirect_sync_retry_on_same_host -.-> ultimate_goal
+    mingle_app_rn_social_auth_gate_and_menu -.-> ultimate_goal
+    mingle_app_ios_google_oauth_disallowed_useragent_ua_fix -.-> ultimate_goal
+    mingle_app_rn_ios_native_browser_oauth_bridge -.-> ultimate_goal
+    mingle_app_rn_ios_appdelegate_linking_module_fix -.-> ultimate_goal
+    mingle_app_rn_ios_native_oauth_callback_origin_fix -.-> ultimate_goal
+    mingle_app_rn_ios_native_oauth_google_only_launcher -.-> ultimate_goal
+    mingle_stt_soniox_debug_logging_removed -.-> ultimate_goal
+    mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
+    mingle_worktree_devbox_env_spacing_normalization --> mingle_ios_native_swiftui_workspace
+    mingle_ios_native_swiftui_workspace --> mingle_ios_device_signing_account_setup
+    mingle_ios_native_swiftui_workspace --> mingle_worktree_devbox_native_ios_runtime_and_test_path
+    mingle_worktree_devbox_native_ios_runtime_and_test_path --> mingle_worktree_devbox_native_ios_simulator_mobile_command
+    mingle_worktree_devbox_native_ios_simulator_mobile_command --> mingle_worktree_devbox_main_merge_conflict_resolution
+    mingle_worktree_devbox_native_ios_runtime_and_test_path --> mingle_ios_native_stop_finalize_parity_hardening
+    mingle_ios_native_stop_finalize_parity_hardening --> mingle_ios_native_install_path_hardening
+    mingle_ios_native_install_path_hardening --> mingle_worktree_devbox_ios_native_build_command
+    mingle_worktree_devbox_ios_native_build_command --> mingle_worktree_devbox_ios_native_uninstall_command
+    mingle_worktree_devbox_ios_native_uninstall_command --> mingle_worktree_devbox_native_ios_clean_install_apply
+    mingle_worktree_devbox_ios_native_build_command --> mingle_ios_native_chat_ui_parity_refresh
+    mingle_ios_native_chat_ui_parity_refresh --> mingle_ios_native_livephonedemo_ui_full_parity
+    mingle_ios_native_livephonedemo_ui_full_parity --> mingle_ios_native_ws_stale_callback_guard_and_retry_recovery
+    mingle_ios_native_ws_stale_callback_guard_and_retry_recovery --> mingle_ios_native_audio_tap_safety_fix
+    mingle_ios_native_swiftui_workspace -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_runtime_and_test_path -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_simulator_mobile_command -.-> ultimate_goal
+    mingle_worktree_devbox_main_merge_conflict_resolution -.-> ultimate_goal
+    mingle_ios_native_stop_finalize_parity_hardening -.-> ultimate_goal
+    mingle_worktree_devbox_ios_native_build_command -.-> ultimate_goal
+    mingle_ios_native_chat_ui_parity_refresh -.-> ultimate_goal
+    mingle_ios_native_livephonedemo_ui_full_parity -.-> ultimate_goal
+    mingle_ios_native_ws_stale_callback_guard_and_retry_recovery -.-> ultimate_goal
+    mingle_ios_native_audio_tap_safety_fix -.-> ultimate_goal
+    mingle_worktree_devbox_ios_native_uninstall_command -.-> ultimate_goal
+    mingle_worktree_devbox_native_ios_clean_install_apply -.-> ultimate_goal
+    mingle_ios_device_signing_account_setup -.-> ultimate_goal
+
+    %% @mingle_ios_native_swiftui_workspace [ai-task, closed]
+    mingle_ios_native_swiftui_workspace("mingle-ios 네이티브 분리 구축<br/><sub>기존 mingle-app 코드를 수정하지 않고<br/>SwiftUI + AVAudioEngine + WebSocket으로<br/>STT 워크플로우 파서/번역 연동 iOS 앱을<br/>mingle-ios 폴더에 독립 생성 및 빌드 검증</sub>")
+
+    %% @mingle_worktree_devbox_native_ios_runtime_and_test_path [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_native_ios_runtime_and_test_path("devbox 네이티브 iOS 경로 통합<br/><sub>scripts/devbox에 ios-runtime 분기와<br/>ios-coredevice-id 옵션을 추가해 RN/Native<br/>설치 흐름을 분리하고 mingle-ios URL 주입<br/>test --target ios-native|all 실행 경로를 확장</sub>")
+
+    %% @mingle_worktree_devbox_native_ios_simulator_mobile_command [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_native_ios_simulator_mobile_command("devbox iOS 시뮬레이터 설치 명령 추가<br/><sub>mobile/up에 ios-native-target 옵션을 도입해<br/>native 경로를 device/simulator로 선택 분기하고<br/>mingle-ios install-ios-simulator 스크립트로<br/>빌드/설치/실행까지 한 명령으로 연결</sub>")
+
+    %% @mingle_worktree_devbox_main_merge_conflict_resolution [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_main_merge_conflict_resolution("devbox main 변경 동기화 머지<br/><sub>main에 추가된 --log-file 및<br/>devbox 스크립트/문서 변경을<br/>현재 브랜치로 머지하고 README와<br/>가이드 충돌을 양쪽 기능 보존으로 정리</sub>")
+
+    %% @mingle_ios_native_stop_finalize_parity_hardening [ai-task, closed, 2026-02-23, ai]
+    mingle_ios_native_stop_finalize_parity_hardening("iOS stop/finalize 정합성 보강<br/><sub>vizvibe closed 이슈 중 stop/final 관련을<br/>Swift 네이티브 파이프라인에 동일 반영하고<br/>ack final_turn 파싱·로컬 final 병합·중복 차단,<br/>stopping partial 게이트와 타임아웃 종료를 고정</sub>")
+
+    %% @mingle_ios_native_install_path_hardening [ai-task, closed, 2026-02-23, ai]
+    mingle_ios_native_install_path_hardening("iOS 네이티브 설치 경로 하드닝<br/><sub>Info.plist ATS 전역 예외를 제거하고<br/>localhost/127.0.0.1 예외로 범위를 제한했으며<br/>실기기/시뮬레이터 자동 선택은<br/>복수 후보 시 실패로 전환해 ID 명시를 유도</sub>")
+
+    %% @mingle_worktree_devbox_ios_native_build_command [ai-task, closed, 2026-02-23, ai]
+    mingle_worktree_devbox_ios_native_build_command("devbox mingle-ios 전용 빌드 명령 추가<br/><sub>scripts/devbox ios-native-build를 도입해<br/>설치 없이 native iOS 빌드만 실행 가능하게 하고<br/>.devbox.env 유무에 따라 URL 주입/기본값을 분기해<br/>시뮬레이터 점유 없이 빌드 워크플로우를 분리</sub>")
+
+    %% @mingle_ios_native_chat_ui_parity_refresh [ai-task, closed, 2026-02-23, ai]
+    mingle_ios_native_chat_ui_parity_refresh("mingle-ios 채팅 UI/UX 패리티 적용<br/><sub>설정 폼 리스트 중심 화면을 교체해<br/>턴별 카드(원문/번역 분리) 타임라인을 구성하고<br/>하단 중앙 재생 버튼으로 STT 시작/중지를 연결해<br/>하이브리드 앱과 유사한 사용 흐름을 네이티브에 이식</sub>")
+
+    %% @mingle_ios_native_livephonedemo_ui_full_parity [ai-task, closed, 2026-02-23, ai]
+    mingle_ios_native_livephonedemo_ui_full_parity("mingle-ios LivePhoneDemo UI 완성<br/><sub>버블 폭/좌측 정렬/모서리 형태를<br/>웹 LivePhoneDemo 규칙에 맞춰 재구성하고<br/>하단 컨트롤 바의 사용량/버튼 비율과<br/>pending 도트 애니메이션을 동일 UX로 보정</sub>")
+
+    %% @mingle_ios_native_ws_stale_callback_guard_and_retry_recovery [ai-task, closed, 2026-02-24, ai]
+    mingle_ios_native_ws_stale_callback_guard_and_retry_recovery("mingle-ios 재생 재시도 레이스 안정화<br/><sub>크래시 로그를 기반으로 마이크 권한 콜백의<br/>메인 액터 격리 위반 경로를 점검/정리하고<br/>이전 WebSocket 세션의 stale close 이벤트가<br/>신규 녹음을 끊지 않도록 세션 가드를 추가</sub>")
+
+    %% @mingle_ios_native_audio_tap_safety_fix [ai-task, closed, 2026-02-25, ai]
+    mingle_ios_native_audio_tap_safety_fix("mingle-ios 재생 직후 CFRelease 트랩 완화<br/><sub>재생 버튼 직후 AudioSession 경로에서 발생한<br/>CFRelease(NULL) 런타임 트랩을 기준으로<br/>오디오 탭 설치 상태를 추적해 removeTap 호출을<br/>조건화하고 inputFormat 기반 재설치로 경합을 완화</sub>")
+
+    %% @mingle_worktree_devbox_ios_native_uninstall_command [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_ios_native_uninstall_command("devbox iOS 네이티브 uninstall 명령 추가<br/><sub>scripts/devbox ios-native-uninstall을 도입해<br/>시뮬레이터/실기기에서 bundle id 기준 제거를 지원하고<br/>simulator 이름/UDID, device id 옵션을 분리해<br/>삭제 후 재설치 워크플로우를 한 도구로 통합</sub>")
+
+    %% @mingle_worktree_devbox_native_ios_clean_install_apply [ai-task, closed, 2026-02-24, ai]
+    mingle_worktree_devbox_native_ios_clean_install_apply("devbox clean-install 네이티브 경로 반영<br/><sub>--with-ios-clean-install 플래그를 RN 전용에서<br/>native iOS 설치 경로(시뮬레이터/실기기)까지 확장해<br/>기존 앱을 먼저 제거한 뒤 빌드/설치를 이어서 수행해<br/>서버 미기동/구버전 잔존으로 인한 재현 오차를 축소</sub>")
+
+    %% @mingle_ios_device_signing_account_setup [human-task, opened]
+    mingle_ios_device_signing_account_setup("실기기 서명 계정 연결 필요<br/><sub>Xcode Accounts에 Apple ID를 연결하고<br/>개발 프로비저닝 프로필을 생성해야<br/>install-ios-device 스크립트로 iPhone에<br/>설치/실행을 완료할 수 있음</sub>")
+
+    %% === RECENT WORK HIGHLIGHT ===
+    subgraph recent [RECENT]
+        mingle_app_rn_ios_native_oauth_google_only_launcher
+    end
+
+    %% === STYLES ===
+    %% Start node (closed, purple)
+    style project_start fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:2px
+
+    %% Ultimate Goal (opened, green)
+    style ultimate_goal fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+
+    %% Closed tasks (soft purple)
+    style structure_refinement fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ui_ux_improvement fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gladia_stt_integration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style language_selection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_landing_prototype fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style landing_i18n fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style landing_email_mockups fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style landing_ui_refinement fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style click_analytics fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style nextjs_fullstack_migration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style landing_copy_update fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style talk_to_world_section fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Blocker node (closed, purple)
+    style gladia_user_onboarding fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    style deepgram_integration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    style fireworks_integration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style deepgram_multi fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent nodes (now closed)
+    style deepgram_multi_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gladia_stt_only fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style soniox_integration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style cleanup_and_usage_ui fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style gpt_translation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style live_phone_demo fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style gemini_translation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style demo_ux_and_restructure fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style demo_streaming_polish fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style demo_usage_limit_ux fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style demo_bugfix_db_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style prisma_local_simplify fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style stt_server_landing_merge fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Previous recent node (now closed)
+    style railway_stt_deploy fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Closed recent-complete node
+    style global_stats_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Completed tasks in this run
+    style translation_engine_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_provider_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style inworld_non_realtime_strategy fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style chat_invite_feature fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mobile_app_development fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style next_i18n_adoption fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style next_auth_adoption fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style google_oauth_login fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style capacitor_app_build fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style translator_feature_build fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style seed_data_population fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style instagram_crawling fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    %% Recent node (highlighted purple)
+    style gaming_tts_test_section_apply fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gaming_tts_test_section_spec fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gaming_tts_queue_ui_polish fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_mobile_lock_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mobile_tts_autounlock_and_feedback_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_graceful_stop_finalize_flush fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style soniox_provider_finalization_on_stop fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style demo_limit_60s_inworld_tts_rate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_stt_concurrent_input_enable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style soniox_endpoint_finalize_immediate_tts fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_interrupt_local_finalize_fallback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_dedupe_scope_fix_for_tts_chain fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_state_and_partial_translation_promote fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_immediate_finalize_and_translation_drain fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style forced_termination_finalize_hooks fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_fallback_translate_api_and_fast_restart fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_local_server_final_merge_and_tts_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_stale_socket_guard_and_final_retranslate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_partial_gate_and_finalize_parser_harden fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_finalize_retry_and_multi_provider_translate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_ack_server_final_turn_payload fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stop_translation_json_and_single_fallback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gaming_socialhero_multilingual_copy_refresh fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style gaming_demo_disclaimer_i18n fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style landing_favicon_route_module_not_found_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style finalize_inline_tts_bundle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style finalize_translate_first_tts_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_global_queue_sequential_playback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_priority_queue_ordering fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_chrome_audio_player_reuse fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_safari_lock_resume_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_test_section_migration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style landing_inline_tts_reenable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_queue_race_retrigger_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_background_stop_policy_update fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_background_auto_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_lock_resume_reconnect_removal fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_mic_button_tts_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_queue_watchdog_and_start_prime_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_prime_failure_volume_recovery_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_lock_resume_reconnect_restore_and_stop_click_tts_resume fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_stop_pipeline_without_output_close fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_landing_test_section_rebase fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_fullscreen_test_surface fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_remove_mock_statusbar fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_client_only_live_demo fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_favicon_sync fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_global_scroll_lock fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_under480_fullwidth_scale_shell fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_top_level_scale_only fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_fixed_footer_via_svh_and_flex_constraints fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_footer_bottom_anchor_with_frame_height_inheritance fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_scaffold fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style live_demo_core_demo_logic_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style xcode_install_and_ios_device_build fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style capacitor_server_url_env_loading_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style landing_social_version_route_block fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style normal_global_connect_to_explore_swap fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_device_signing_and_run_validation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_safe_area_and_icon_sizing_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_device_rebuild_and_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_cli_build_install_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_git_push fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_gitignore_cleanup_for_deploy fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_rebuild_and_sync_retry fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_run_blocked_coredevice_service fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
+    style mingle_app_vercel_git_autodeploy_link_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ui_scale_and_safearea_tune fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_build_sync_and_run_retry fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
+    style mingle_app_ios_launch_via_xctrace_workaround fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_secret_boundary_diagnosis fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_monorepo_autodeploy_split_and_alias_check fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_ignore_command_scope_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_dashboard_deploy_filter_check fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style live_demo_core_full_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_tts_audio_route_stability_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_fallback_recovery_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_diagnostics_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_initial_history_queue_race_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_service_split_from_landing fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_native_tts_background_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_icon_from_favicon_apply fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_native_tts_html_fallback_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_native_stt_module_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_native_stt_debug_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style backend_frontend_boundary_audit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_native_stt_permission_bootstrap fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_native_plugin_registration_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style backend_vercel_change_scope fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_db_schema_prisma_init fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_prisma_client_build_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_database_schema_guard_autofix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_workspace_alignment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_capacitor_path_removal fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_vercel_rn_typecheck_scope_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_webview_native_stt_bridge fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_native_stt_interruption_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_stt_mode_output_gain_tune fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_stt_session_stability_rebalance fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_stt_tts_volume_reboost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_branding_name_icon_sync fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_async_nonblocking_db_write fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_web_client_event_logging_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_og_image_locale_redirect_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_stt_tts_resilience_diagnostics fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_ios_splash_cleanup fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_partial_translation_threshold_tune fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_global_state fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_aec_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_echo_icon_and_canvas_400_restore fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_bottom_bar_usage_left_alignment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_finalize_prompt_context_tone_and_token_logs fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_finalize_provider_error_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_finalize_gemini_only_single_attempt fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_gemini_empty_response_deep_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_gemini_response_schema_structured_output fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_gemini_raw_response_logging fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_finalize_current_state_fallback_and_target_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_stt_leading_noise_chars_expand fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_finalize_prompt_minify_for_structured_output fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_recent_turn_context_source_lang_filter_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_translation_bubble_target_snapshot_policy fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_turbopack_root_tailwind_resolution_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_chat_scroll_overlay_and_threshold_tuning fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_aec_default_echo_on_alignment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_native_event_watchdog_milestone1 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_audio_session_owner_coordinator_milestone2 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_playback_id_event_alignment_milestone3 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_stop_policy_split_milestone4 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tts_tail_noise_graceful_deactivate_milestone5 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_audio_session_policy_polish_milestone6 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_audio_session_route_metrics_milestone7 fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_pc_scroll_pagination_anchor_regression_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_mobile_scroll_overlay_visibility_hold_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_test_harness_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_finalize_clientevent_unit_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_finalize_route_mock_integration_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_stt_hook_logic_unit_tests fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_stt_hook_server_integration_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_stt_finalize_integration_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_regression_e2e_matrix_expansion fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_vitest_node20_compat_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_github_actions_unit_ci fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_ci_orchestration_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_ci_secret_provisioning fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_actions_job_if_secret_context_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_ci_stt_build_start_runtime_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_ci_ffmpeg_fixture_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_live_ci_node20_websocket_polyfill fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_run8_green_validation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_live_fixture_autoskip_without_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_pr_only_trigger_without_post_merge_run fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_main_push_direct_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_tdd_nonstraight_main_merge_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_local_device_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_bootstrap_env_seed_and_auto_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_vault_secret_sync_option fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_vault_path_persist_and_auto_sync fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ngrok_inspector_isolation_and_one_command_up fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_device_split_ngrok_terminal_launch fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_build_install_automation fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_deps_and_ruby_bundle_stabilization fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ngrok_tunnel_name_collision_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_prisma_generate_autofix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_prod_profile fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_device_app_env_vault_switch fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_device_prod_skip_runtime_start fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_native_device_app_env_vault_key_fallback fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_stateless_default fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_no_env_sync_on_up_init fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_worktree_devbox_runtime_vault_env_injection fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:1px
+    style mingle_app_ios_release_reinstall_with_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_top_tap_regression_hotfix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_top_tap_pr9_reaudit_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_notch_tap_margin_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_deploy_rate_limit_blocker fill:#1a1a2e,stroke:#f87171,color:#fca5a5,stroke-width:1px
+    style vercel_app_landing_main_branch_deploy_gate fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_deployment_enabled_double_star_pattern_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style vercel_main_always_deploy_ignore_command_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_railway_main_branch_deploy_setting fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_local_db_psql_reset_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_env_only_server_url_config fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_vercel_main_branch_only_deploy_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_final_duplicate_guard_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_final_duplicate_guard_nonfinal_aware_refine fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_mobile_safari_stt_no_log_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ngrok_dual_tunnel_overlay_setup fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_final_dedupe_false_negative_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_fin_marker_sanitize_temp_disable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_endpoint_final_merge_for_fin_visibility fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_raw_fin_token_trace_overlay fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_end_fin_marker_sanitize_full_disable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_env_local_priority_load fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_endpoint_marker_tail_split_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_manual_finalize_burst_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_stale_partial_carry_overlap_merge_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_front_raw_stream_logging_probe fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_front_log_minimal_fields_only fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_final_watermark_and_provisional_carry fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_release_about_blank_crash_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_debug_log_cleanup_and_client_marker_boundary fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_endpoint_only_frame_and_api_marker_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_runtime_config_xcconfig_bridge fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ios_xcconfig_url_comment_escape_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_runtime_ws_url_normalization_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_runtime_ws_boot_validation_relax fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_env_spacing_normalization fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_swiftui_workspace fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_runtime_and_test_path fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_simulator_mobile_command fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_main_merge_conflict_resolution fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_stop_finalize_parity_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_install_path_hardening fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ios_native_build_command fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_chat_ui_parity_refresh fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_livephonedemo_ui_full_parity fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_ws_stale_callback_guard_and_retry_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_native_audio_tap_safety_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ios_native_uninstall_command fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_clean_install_apply fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_ios_device_signing_account_setup fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style mingle_app_finalize_immediate_prev_turn_context_boost fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_endpoint_only_finalize_mode fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_finalize_heuristic_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_silence_200ms_manual_finalize fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_silence_tuning_300ms_0006 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_silence_retune_200ms_0008 fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_text_progress_silence_finalize_plan fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_nextauth_default_env_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_soniox_compact_debug_log_fields fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_soniox_debug_logging_removed fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_profile_resync_before_install fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_ngrok_stale_profile_refresh_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_mobile_clean_install_keep_ngrok_alive fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_native_ios_auto_device_selection_parity fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_signing_bundle_id_override_support fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_devbox_device_env_dev_runtime_url_and_team_preserve_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_ios_team_override_auto_detect_removal_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_rn_ios_destination_id_autodetect_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_google_oauth_redirect_uri_auto_append fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_google_oauth_redirect_uri_fallback_and_warning_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_default_vault_path_autodetect_for_runtime_env fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_worktree_devbox_google_redirect_sync_retry_on_same_host fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_social_auth_gate_and_menu fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_google_oauth_disallowed_useragent_ua_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_ios_native_browser_oauth_bridge fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_ios_appdelegate_linking_module_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_ios_native_oauth_callback_origin_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_ios_native_oauth_google_only_launcher fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_end_fin_marker_unification fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_marker_visibility_debug_enable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_marker_sanitization_restore_after_debug fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_usage_truth_policy fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style tts_echo_reference_filter_research fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style demo_limit_server_db_migration fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style windows_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style macos_loopback_capture_validation fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+    style opencode_oh_my_setup fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
+
+    %% Last active node (highlighted purple)
+    style mingle_app_rn_ios_native_oauth_google_only_launcher fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_worktree_devbox_runtime_vault_env_injection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style finalize_tts_dedupe_alignment_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style finalize_translate_first_tts_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_global_queue_sequential_playback fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_priority_queue_ordering fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_chrome_audio_player_reuse fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style ios_safari_lock_resume_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_test_section_migration fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style landing_inline_tts_reenable fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_queue_race_retrigger_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_background_stop_policy_update fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_background_auto_recovery fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_lock_resume_reconnect_removal fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_mic_button_tts_decouple fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_queue_watchdog_and_start_prime_guard fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style tts_prime_failure_volume_recovery_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_lock_resume_reconnect_restore_and_stop_click_tts_resume fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style stt_stop_pipeline_without_output_close fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_landing_test_section_rebase fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_fullscreen_test_surface fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_remove_mock_statusbar fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_client_only_live_demo fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_favicon_sync fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_global_scroll_lock fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_under480_fullwidth_scale_shell fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_top_level_scale_only fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_fixed_footer_via_svh_and_flex_constraints fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_footer_bottom_anchor_with_frame_height_inheritance fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style shared_live_demo_core_package_split fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_remove_60s_usage_limit fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_ios_scaffold fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style normal_global_connect_to_explore_swap fill:#a78bfa,color:#c4b5fd,stroke-width:1px
+
+    %% Blocked subgraph style (red dashed)
+    %% Recent subgraph style
+    style recent fill:transparent,stroke:#c084fc,color:#c084fc,stroke-width:2px,stroke-dasharray:5 5
