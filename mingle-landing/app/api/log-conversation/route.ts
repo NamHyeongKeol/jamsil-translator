@@ -1,5 +1,3 @@
-import { legacyApiGoneResponse } from '@/server/api/versioning/legacy-route'
+import { postLogConversationForWebLandingV1 } from '@/server/api/controllers/web/landing/v1/log-conversation-controller'
 
-export async function POST() {
-  return legacyApiGoneResponse('/api/web/landing/v1/log-conversation')
-}
+export const POST = postLogConversationForWebLandingV1

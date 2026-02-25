@@ -1,5 +1,3 @@
-import { legacyApiGoneResponse } from '@/server/api/versioning/legacy-route'
+import { postSubscribeForWebLandingV1 } from '@/server/api/controllers/web/landing/v1/subscribe-controller'
 
-export async function POST() {
-  return legacyApiGoneResponse('/api/web/landing/v1/subscribe')
-}
+export const POST = postSubscribeForWebLandingV1

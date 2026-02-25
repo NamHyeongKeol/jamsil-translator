@@ -1,5 +1,3 @@
-import { legacyApiGoneResponse } from '@/server/api/versioning/legacy-route'
+import { getClicksForWebLandingV1 } from '@/server/api/controllers/web/landing/v1/clicks-controller'
 
-export async function GET() {
-  return legacyApiGoneResponse('/api/web/landing/v1/clicks')
-}
+export const GET = getClicksForWebLandingV1
