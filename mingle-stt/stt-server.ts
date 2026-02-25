@@ -18,8 +18,8 @@ const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen';
 const FIREWORKS_WS_URL = 'wss://audio-streaming.api.fireworks.ai/v1/audio/transcriptions/streaming';
 const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
 const SONIOX_MANUAL_FINALIZE_SILENCE_MS = (() => {
-    const raw = Number(process.env.SONIOX_MANUAL_FINALIZE_SILENCE_MS || '250');
-    if (!Number.isFinite(raw)) return 250;
+    const raw = Number(process.env.SONIOX_MANUAL_FINALIZE_SILENCE_MS || '500');
+    if (!Number.isFinite(raw)) return 500;
     return Math.max(100, Math.min(1000, Math.floor(raw)));
 })();
 const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
@@ -665,7 +665,22 @@ wss.on('connection', (clientWs) => {
             ): boolean => {
                 if (tokenEndMs !== null) return tokenEndMs > watermarkMs;
                 if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
-                return true;
+                // No timestamp → conservative: don't count as beyond watermark.
+                // The token's TEXT still gets accumulated, but it won't drive
+                // progress/carry-promotion decisions.
+                return false;
+            };
+            // Returns true only when a token with an actual timestamp is beyond
+            // the watermark.  Used for carry-promotion gating to avoid false
+            // triggers from timestamp-less tokens.
+            const isTokenTimestampedBeyondWatermark = (
+                tokenStartMs: number | null,
+                tokenEndMs: number | null,
+                watermarkMs: number,
+            ): boolean => {
+                if (tokenEndMs !== null) return tokenEndMs > watermarkMs;
+                if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
+                return false;
             };
 
             const splitTurnAtFirstEndpointMarker = (text: string): { finalText: string; carryText: string } => {
@@ -794,6 +809,7 @@ wss.on('connection', (clientWs) => {
                     let hasEndpointToken = false;
                     let endpointMarkerText = '';
                     let hasProgressTokenBeyondWatermark = false;
+                    let hasTimestampedProgressBeyondWatermark = false;
                     let rawFinalText = '';
                     let rawNonFinalText = '';
                     let rawEndpointText = '';
@@ -879,6 +895,9 @@ wss.on('connection', (clientWs) => {
                             if (!includeByWatermark) continue;
                             newFinalText += tokenText;
                             hasProgressTokenBeyondWatermark = true;
+                            if (isTokenTimestampedBeyondWatermark(tokenStartMs, tokenEndMs, lastFinalizedEndMs)) {
+                                hasTimestampedProgressBeyondWatermark = true;
+                            }
                             if (tokenEndMs !== null && tokenEndMs > maxSeenFinalEndMs) {
                                 maxSeenFinalEndMs = tokenEndMs;
                             }
@@ -886,6 +905,9 @@ wss.on('connection', (clientWs) => {
                             if (!includeByWatermark) continue;
                             rebuiltNonFinalText += tokenText;
                             hasProgressTokenBeyondWatermark = true;
+                            if (isTokenTimestampedBeyondWatermark(tokenStartMs, tokenEndMs, lastFinalizedEndMs)) {
+                                hasTimestampedProgressBeyondWatermark = true;
+                            }
                         }
                     }
 
@@ -906,7 +928,7 @@ wss.on('connection', (clientWs) => {
                     // latestNonFinalText is replaced with the fresh non-final text.
                     if (latestNonFinalIsProvisionalCarry && previousNonFinalText.trim()) {
                         const carryRaw = stripEndpointMarkers(previousNonFinalText).trim();
-                        if (carryRaw && hasProgressTokenBeyondWatermark) {
+                        if (carryRaw && hasTimestampedProgressBeyondWatermark) {
                             // Cancel carry expiry timer since new speech arrived.
                             clearSonioxCarryExpiryTimer();
                             // Check if Soniox re-included the carry in its new tokens
@@ -1010,25 +1032,25 @@ wss.on('connection', (clientWs) => {
                                 mergedAtEndpoint.length,
                             );
 
-                            // --- Word-boundary snap-back ---
+                            // --- Word-boundary snap-forward ---
                             // If the boundary falls mid-word (e.g. "lif|e", "sta|y"),
-                            // snap back to the last space so we don't split a word
-                            // across utterances.  Safety: only snap back if the
-                            // resulting carry won't exceed 50% of the total text
-                            // (prevents the "almost everything becomes carry" bug).
+                            // snap FORWARD to the next space so the complete word
+                            // stays in the current utterance.  Snap-back would remove
+                            // the last word entirely, causing "넘어가면 안 되는 단어가
+                            // carry로 넘어가는" 문제.
                             if (
                                 snapshotBoundary > 0
                                 && snapshotBoundary < mergedAtEndpoint.length
                                 && mergedAtEndpoint[snapshotBoundary] !== ' '
                                 && mergedAtEndpoint[snapshotBoundary - 1] !== ' '
                             ) {
-                                const lastSpace = mergedAtEndpoint.lastIndexOf(' ', snapshotBoundary - 1);
-                                if (lastSpace > 0) {
-                                    const carryLenAfterSnap = mergedAtEndpoint.length - lastSpace;
-                                    // Only snap back if carry stays under 50% of total
-                                    if (carryLenAfterSnap <= mergedAtEndpoint.length * 0.5) {
-                                        snapshotBoundary = lastSpace;
-                                    }
+                                const nextSpace = mergedAtEndpoint.indexOf(' ', snapshotBoundary);
+                                if (nextSpace > 0) {
+                                    snapshotBoundary = nextSpace;
+                                } else {
+                                    // No space after boundary → include all text,
+                                    // nothing to carry.
+                                    snapshotBoundary = mergedAtEndpoint.length;
                                 }
                             }
 
