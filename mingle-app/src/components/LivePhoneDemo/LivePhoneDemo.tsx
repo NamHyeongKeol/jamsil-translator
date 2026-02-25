@@ -126,6 +126,7 @@ export interface LivePhoneDemoRef {
 interface LivePhoneDemoProps {
   onLimitReached?: () => void
   enableAutoTTS?: boolean
+  uiLocale: string
   tapPlayToStartLabel: string
   usageLimitReachedLabel: string
   usageLimitRetryHintLabel: string
@@ -201,6 +202,7 @@ async function saveConversation(utterances: Utterance[], selectedLanguages: stri
 const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function LivePhoneDemo({
   onLimitReached,
   enableAutoTTS = false,
+  uiLocale,
   tapPlayToStartLabel,
   usageLimitReachedLabel,
   usageLimitRetryHintLabel,
@@ -1128,13 +1130,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       scrollMetrics.thumbTop + (scrollMetrics.thumbHeight / 2),
     ),
   )
+  const navSurfaceClassName = 'bg-white'
 
   return (
     <PhoneFrame>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Header */}
         <div
-          className="relative shrink-0 flex items-center justify-between border-b border-gray-100"
+          className={`relative z-40 shrink-0 flex items-center justify-between ${navSurfaceClassName}`}
           style={{
             paddingTop: "max(calc(env(safe-area-inset-top) + 20px), 24px)",
             paddingBottom: "10px",
@@ -1181,6 +1184,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 onClose={() => setLangSelectorOpen(false)}
                 selectedLanguages={selectedLanguages}
                 onToggleLanguage={handleToggleLanguage}
+                uiLocale={uiLocale}
                 disabled={isActive}
                 triggerRef={langSelectorButtonRef}
               />
@@ -1194,7 +1198,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   setMenuOpen(o => !o)
                 }}
                 disabled={isAuthActionPending}
-                className="inline-flex h-11 min-w-[44px] items-center justify-center rounded-xl bg-gray-100 px-3 text-gray-700 shadow-sm transition-colors hover:bg-gray-200 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className={`inline-flex h-11 min-w-[44px] items-center justify-center px-2 text-gray-700 transition-colors hover:text-gray-900 active:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60 ${navSurfaceClassName}`}
                 aria-label={menuLabel}
                 aria-expanded={menuOpen}
               >
@@ -1203,7 +1207,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               {menuOpen && (
                 <div
                   ref={menuPanelRef}
-                  className="absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg"
+                  className={`absolute right-0 top-full z-50 mt-1 w-44 border border-gray-200 p-0 ${navSurfaceClassName}`}
                 >
                   <button
                     type="button"
@@ -1212,7 +1216,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                       onLogout()
                     }}
                     disabled={isAuthActionPending}
-                    className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <LogOut size={15} strokeWidth={2} />
                     <span>{logoutLabel}</span>
@@ -1224,7 +1228,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                       onDeleteAccount()
                     }}
                     disabled={isAuthActionPending}
-                    className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Trash2 size={15} strokeWidth={2} />
                     <span>{deleteAccountLabel}</span>
