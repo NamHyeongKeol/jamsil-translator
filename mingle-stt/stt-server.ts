@@ -882,9 +882,35 @@ wss.on('connection', (clientWs) => {
                         newFinalText += endpointMarkerText;
                     }
 
+                    // --- Carry promotion ---
+                    // After a snapshot-based endpoint split, carry text (e.g.
+                    // "Right now") is parked in latestNonFinalText as provisional.
+                    // Soniox already considers those tokens finalized and won't
+                    // re-send them in subsequent frames.  When new progress tokens
+                    // arrive for continued speech, we must promote the carry into
+                    // finalizedText as a prefix so it won't be overwritten when
+                    // latestNonFinalText is replaced with the fresh non-final text.
+                    if (latestNonFinalIsProvisionalCarry && previousNonFinalText.trim()) {
+                        const carryPrefix = stripEndpointMarkers(previousNonFinalText).trim();
+                        if (carryPrefix && hasProgressTokenBeyondWatermark) {
+                            // Check if Soniox re-included the carry in its new tokens
+                            // (sometimes overlapping tokens are re-sent).
+                            const incomingClean = stripEndpointMarkers(
+                                `${stripEndpointMarkers(newFinalText)}${rebuiltNonFinalText}`,
+                            ).trim();
+                            if (incomingClean.startsWith(carryPrefix)) {
+                                // Soniox re-included the carry; no promotion needed.
+                                latestNonFinalIsProvisionalCarry = false;
+                            } else {
+                                // Soniox moved past carry; promote it as prefix.
+                                finalizedText = carryPrefix + finalizedText;
+                                latestNonFinalIsProvisionalCarry = false;
+                            }
+                        }
+                    }
+
                     if (newFinalText) {
                         finalizedText += newFinalText;
-                        latestNonFinalIsProvisionalCarry = false;
                         if (maxSeenFinalEndMs > lastFinalizedEndMs) {
                             lastFinalizedEndMs = maxSeenFinalEndMs;
                         }
