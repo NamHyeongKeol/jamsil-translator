@@ -36,16 +36,22 @@ type VersionGateState =
   | {
       status: 'force_update';
       updateUrl: string;
+      title: string;
       message: string;
+      updateButtonLabel: string;
       clientVersion: string;
       latestVersion: string;
     };
 type VersionPolicyResponse = {
   action: VersionPolicyAction;
+  locale?: string;
   updateUrl?: string;
+  title?: string;
   message?: string;
   latestVersion?: string;
   clientVersion?: string;
+  updateButtonLabel?: string;
+  laterButtonLabel?: string;
 };
 
 function readRuntimeEnvValue(keys: string[]): string {
@@ -267,6 +273,7 @@ function App(): React.JSX.Element {
       body: JSON.stringify({
         clientVersion,
         clientBuild,
+        locale,
       }),
     })
       .then(async (response) => {
@@ -285,6 +292,12 @@ function App(): React.JSX.Element {
             message: typeof policy.message === 'string' && policy.message.trim()
               ? policy.message.trim()
               : '최신 버전으로 업데이트가 필요합니다.',
+            title: typeof policy.title === 'string' && policy.title.trim()
+              ? policy.title.trim()
+              : '업데이트 필요',
+            updateButtonLabel: typeof policy.updateButtonLabel === 'string' && policy.updateButtonLabel.trim()
+              ? policy.updateButtonLabel.trim()
+              : '업데이트',
             clientVersion: typeof policy.clientVersion === 'string' ? policy.clientVersion : clientVersion,
             latestVersion: typeof policy.latestVersion === 'string' ? policy.latestVersion : '',
           });
@@ -295,17 +308,26 @@ function App(): React.JSX.Element {
         if (policy.action === 'recommend_update' && !recommendPromptShownRef.current) {
           recommendPromptShownRef.current = true;
           const updateUrl = typeof policy.updateUrl === 'string' ? policy.updateUrl : '';
+          const alertTitle = typeof policy.title === 'string' && policy.title.trim()
+            ? policy.title.trim()
+            : '업데이트 권장';
           const message = typeof policy.message === 'string' && policy.message.trim()
             ? policy.message.trim()
             : '새 버전 업데이트를 권장합니다.';
+          const updateLabel = typeof policy.updateButtonLabel === 'string' && policy.updateButtonLabel.trim()
+            ? policy.updateButtonLabel.trim()
+            : '업데이트';
+          const laterLabel = typeof policy.laterButtonLabel === 'string' && policy.laterButtonLabel.trim()
+            ? policy.laterButtonLabel.trim()
+            : '나중에';
           if (updateUrl) {
             Alert.alert(
-              '업데이트 권장',
+              alertTitle,
               message,
               [
-                { text: '나중에', style: 'cancel' },
+                { text: laterLabel, style: 'cancel' },
                 {
-                  text: '업데이트',
+                  text: updateLabel,
                   onPress: () => {
                     void Linking.openURL(updateUrl);
                   },
@@ -313,7 +335,7 @@ function App(): React.JSX.Element {
               ],
             );
           } else {
-            Alert.alert('업데이트 권장', message);
+            Alert.alert(alertTitle, message);
           }
         }
       })
@@ -648,11 +670,11 @@ function App(): React.JSX.Element {
       ) : null}
       {versionGate.status === 'force_update' ? (
         <View style={styles.versionOverlay}>
-          <Text style={styles.versionTitle}>업데이트 필요</Text>
+          <Text style={styles.versionTitle}>{versionGate.title}</Text>
           <Text style={styles.versionDescription}>{versionGate.message}</Text>
           {versionGate.clientVersion || versionGate.latestVersion ? (
             <Text style={styles.versionMeta}>
-              현재 {versionGate.clientVersion || 'unknown'} / 최신 {versionGate.latestVersion || 'unknown'}
+              {versionGate.clientVersion || 'unknown'} → {versionGate.latestVersion || 'unknown'}
             </Text>
           ) : null}
           <Pressable
@@ -664,7 +686,7 @@ function App(): React.JSX.Element {
               pressed ? styles.updateButtonPressed : null,
             ]}
           >
-            <Text style={styles.updateButtonText}>업데이트</Text>
+            <Text style={styles.updateButtonText}>{versionGate.updateButtonLabel}</Text>
           </Pressable>
         </View>
       ) : null}

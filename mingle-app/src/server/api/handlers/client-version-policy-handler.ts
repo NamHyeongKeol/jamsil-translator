@@ -2,10 +2,55 @@ import { NextRequest, NextResponse } from 'next/server'
 
 type VersionTuple = [number, number, number]
 type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none'
+type SupportedLocale = 'ko' | 'en' | 'ja'
 
 const DEFAULT_MIN_SUPPORTED_VERSION = '1.0.0'
-const DEFAULT_FORCE_MESSAGE = '현재 버전에서는 서비스를 사용할 수 없습니다. 최신 버전으로 업데이트해 주세요.'
-const DEFAULT_RECOMMEND_MESSAGE = '새 버전이 출시되었습니다. 더 안정적인 사용을 위해 업데이트를 권장합니다.'
+
+const FORCE_MESSAGES: Record<SupportedLocale, string> = {
+  ko: '현재 버전에서는 서비스를 사용할 수 없습니다. 최신 버전으로 업데이트해 주세요.',
+  en: 'This version is no longer supported. Please update to the latest version.',
+  ja: 'このバージョンはサポートされていません。最新バージョンにアップデートしてください。',
+}
+
+const RECOMMEND_MESSAGES: Record<SupportedLocale, string> = {
+  ko: '새 버전이 출시되었습니다. 더 안정적인 사용을 위해 업데이트를 권장합니다.',
+  en: 'A new version is available. We recommend updating for a better experience.',
+  ja: '新しいバージョンが利用可能です。より安定した利用のためにアップデートをお勧めします。',
+}
+
+const FORCE_UPDATE_TITLE: Record<SupportedLocale, string> = {
+  ko: '업데이트 필요',
+  en: 'Update Required',
+  ja: 'アップデートが必要です',
+}
+
+const RECOMMEND_UPDATE_TITLE: Record<SupportedLocale, string> = {
+  ko: '업데이트 권장',
+  en: 'Update Recommended',
+  ja: 'アップデート推奨',
+}
+
+const UPDATE_BUTTON_LABEL: Record<SupportedLocale, string> = {
+  ko: '업데이트',
+  en: 'Update',
+  ja: 'アップデート',
+}
+
+const LATER_BUTTON_LABEL: Record<SupportedLocale, string> = {
+  ko: '나중에',
+  en: 'Later',
+  ja: 'あとで',
+}
+
+const SUPPORTED_LOCALES = new Set<SupportedLocale>(['ko', 'en', 'ja'])
+const DEFAULT_LOCALE: SupportedLocale = 'en'
+
+function resolveLocale(raw: unknown): SupportedLocale {
+  if (typeof raw !== 'string') return DEFAULT_LOCALE
+  const normalized = raw.trim().split(/[-_]/)[0]?.toLowerCase() || ''
+  if (SUPPORTED_LOCALES.has(normalized as SupportedLocale)) return normalized as SupportedLocale
+  return DEFAULT_LOCALE
+}
 
 function normalizeVersionString(raw: string): string {
   return raw.trim().replace(/^v/i, '')
@@ -71,6 +116,7 @@ export async function handleIosClientVersionPolicy(
     // tolerate empty/invalid body and treat as missing client version
   }
 
+  const locale = resolveLocale(body.locale)
   const clientVersionRaw = typeof body.clientVersion === 'string' ? body.clientVersion : ''
   const clientBuildRaw = typeof body.clientBuild === 'string' ? body.clientBuild.trim() : ''
   const clientVersion = parseSemver3(clientVersionRaw)
@@ -89,19 +135,34 @@ export async function handleIosClientVersionPolicy(
     recommendBelowVersion: recommendedVersion,
   })
 
+  const envForceMessage = process.env.IOS_CLIENT_FORCE_UPDATE_MESSAGE?.trim()
+  const envRecommendMessage = process.env.IOS_CLIENT_RECOMMEND_UPDATE_MESSAGE?.trim()
+
+  const message = action === 'force_update'
+    ? (envForceMessage || FORCE_MESSAGES[locale])
+    : action === 'recommend_update'
+      ? (envRecommendMessage || RECOMMEND_MESSAGES[locale])
+      : ''
+
+  const title = action === 'force_update'
+    ? FORCE_UPDATE_TITLE[locale]
+    : action === 'recommend_update'
+      ? RECOMMEND_UPDATE_TITLE[locale]
+      : ''
+
   const responseBody = {
     action,
+    locale,
     clientVersion: clientVersion ? formatVersion(clientVersion) : normalizeVersionString(clientVersionRaw),
     clientBuild: clientBuildRaw,
     minSupportedVersion: formatVersion(minSupportedVersion),
     recommendedBelowVersion: recommendedVersion ? formatVersion(recommendedVersion) : '',
     latestVersion: formatVersion(latestVersion),
     updateUrl: process.env.IOS_APPSTORE_URL || '',
-    message: action === 'force_update'
-      ? (process.env.IOS_CLIENT_FORCE_UPDATE_MESSAGE || DEFAULT_FORCE_MESSAGE)
-      : action === 'recommend_update'
-        ? (process.env.IOS_CLIENT_RECOMMEND_UPDATE_MESSAGE || DEFAULT_RECOMMEND_MESSAGE)
-        : '',
+    title,
+    message,
+    updateButtonLabel: UPDATE_BUTTON_LABEL[locale],
+    laterButtonLabel: LATER_BUTTON_LABEL[locale],
   }
 
   return NextResponse.json(responseBody, { status: 200 })
