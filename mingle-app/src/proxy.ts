@@ -25,13 +25,33 @@ const LOCALE_ALIASES: Record<string, AppLocale> = {
   "zh-mo": "zh-TW",
 };
 
-function resolveSupportedLocaleTag(rawValue: string): AppLocale | null {
+function resolveZhLocale(normalized: string): AppLocale | null {
+  if (normalized === "zh" || normalized.startsWith("zh-")) {
+    if (
+      normalized.includes("-tw")
+      || normalized.includes("-hant")
+      || normalized.includes("-hk")
+      || normalized.includes("-mo")
+    ) {
+      return "zh-TW";
+    }
+    return "zh-CN";
+  }
+  return null;
+}
+
+export function resolveSupportedLocaleTag(rawValue: string): AppLocale | null {
   const normalized = rawValue.trim().replace(/_/g, "-").toLowerCase();
   if (!normalized) return null;
 
   const directMatch = LOCALE_ALIASES[normalized];
   if (directMatch && isSupportedLocale(directMatch)) {
     return directMatch;
+  }
+
+  const zhResolved = resolveZhLocale(normalized);
+  if (zhResolved) {
+    return zhResolved;
   }
 
   const base = normalized.split("-")[0];

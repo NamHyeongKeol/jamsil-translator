@@ -17,7 +17,6 @@ const LANGUAGES = [
   { code: "th", flag: "🇹🇭", englishName: "Thai" },
   { code: "vi", flag: "🇻🇳", englishName: "Vietnamese" },
   { code: "it", flag: "🇮🇹", englishName: "Italian" },
-  { code: "id", flag: "🇮🇩", englishName: "Indonesian" },
 ];
 
 const SORTED_LANGUAGES = [...LANGUAGES].sort((a, b) => {
