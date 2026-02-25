@@ -1207,7 +1207,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               {menuOpen && (
                 <div
                   ref={menuPanelRef}
-                  className={`absolute right-0 top-0 z-50 w-44 p-0 ${navSurfaceClassName}`}
+                  className={`absolute right-0 top-full z-50 mt-1 w-44 border border-gray-200 p-0 ${navSurfaceClassName}`}
                 >
                   <button
                     type="button"
