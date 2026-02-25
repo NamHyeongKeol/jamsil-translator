@@ -61,12 +61,6 @@ function getWindowWithNativeAuthCache(): MingleWindowWithNativeAuthCache | null 
   return window as MingleWindowWithNativeAuthCache;
 }
 
-function isNgrokFreeHost(hostname: string): boolean {
-  const normalized = hostname.trim().toLowerCase();
-  if (!normalized) return false;
-  return normalized.endsWith(".ngrok-free.dev") || normalized.endsWith(".ngrok-free.app");
-}
-
 export default function MingleHome(props: MingleHomeProps) {
   const { status } = useSession();
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -164,11 +158,7 @@ export default function MingleHome(props: MingleHomeProps) {
   const handleSocialSignIn = useCallback((provider: "apple" | "google") => {
     setIsSigningIn(true);
     const nativeBridgeEnabled = typeof window !== "undefined" && isNativeAuthBridgeEnabled();
-    // Free ngrok browser interstitial cannot be bypassed via query params in external browsers.
-    // Keep OAuth inside RN WebView on ngrok hosts to avoid "Visit Site" interruption.
-    const shouldUseNativeBridge = nativeBridgeEnabled
-      && !isNgrokFreeHost(typeof window !== "undefined" ? window.location.hostname : "");
-    if (shouldUseNativeBridge) {
+    if (nativeBridgeEnabled) {
       try {
         const startUrl = new URL("/api/native-auth/start", window.location.origin);
         startUrl.searchParams.set("provider", provider);
