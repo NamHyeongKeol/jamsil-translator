@@ -18,6 +18,7 @@ type MingleHomeProps = {
 };
 
 const NATIVE_AUTH_EVENT = "mingle:native-auth";
+const NATIVE_AUTH_FLOW_TIMEOUT_MS = 45_000;
 type NativeAuthProvider = "apple" | "google";
 type NativeAuthStartCommand = {
   type: "native_auth_start";
@@ -56,7 +57,15 @@ export default function MingleHome(props: MingleHomeProps) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const pendingNativeProviderRef = useRef<NativeAuthProvider | null>(null);
+  const nativeAuthTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const callbackUrl = useMemo(() => `/${props.locale}/translator`, [props.locale]);
+
+  const clearNativeAuthTimeout = useCallback(() => {
+    if (nativeAuthTimeoutRef.current) {
+      clearTimeout(nativeAuthTimeoutRef.current);
+      nativeAuthTimeoutRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -66,10 +75,11 @@ export default function MingleHome(props: MingleHomeProps) {
 
   useEffect(() => {
     if (status !== "loading") {
+      clearNativeAuthTimeout();
       setIsSigningIn(false);
       pendingNativeProviderRef.current = null;
     }
-  }, [status]);
+  }, [clearNativeAuthTimeout, status]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -82,6 +92,8 @@ export default function MingleHome(props: MingleHomeProps) {
       if (detail.type === "status") {
         return;
       }
+
+      clearNativeAuthTimeout();
 
       const pendingProvider = pendingNativeProviderRef.current;
       if (pendingProvider && detail.provider !== pendingProvider) {
@@ -140,9 +152,17 @@ export default function MingleHome(props: MingleHomeProps) {
           },
         };
         pendingNativeProviderRef.current = provider;
+        clearNativeAuthTimeout();
+        nativeAuthTimeoutRef.current = setTimeout(() => {
+          if (pendingNativeProviderRef.current !== provider) return;
+          pendingNativeProviderRef.current = null;
+          setIsSigningIn(false);
+          window.alert(props.dictionary.profile.nativeSignInFailed);
+        }, NATIVE_AUTH_FLOW_TIMEOUT_MS);
         window.ReactNativeWebView?.postMessage(JSON.stringify(command));
         return;
       } catch {
+        clearNativeAuthTimeout();
         pendingNativeProviderRef.current = null;
         setIsSigningIn(false);
         window.alert(props.dictionary.profile.nativeSignInFailed);
@@ -153,7 +173,13 @@ export default function MingleHome(props: MingleHomeProps) {
     void signIn(provider, { callbackUrl }).catch(() => {
       setIsSigningIn(false);
     });
-  }, [callbackUrl, props.dictionary.profile.nativeSignInFailed]);
+  }, [callbackUrl, clearNativeAuthTimeout, props.dictionary.profile.nativeSignInFailed]);
+
+  useEffect(() => {
+    return () => {
+      clearNativeAuthTimeout();
+    };
+  }, [clearNativeAuthTimeout]);
 
   const handleSignOut = useCallback(() => {
     if (isDeletingAccount) return;

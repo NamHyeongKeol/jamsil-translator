@@ -8,6 +8,25 @@ type AppRouteContext = {
   }>;
 };
 
+function summarizeText(rawValue: string, maxLength: number): string {
+  const normalized = rawValue.trim().replace(/\s+/g, " ");
+  if (!normalized) return "";
+  return normalized.slice(0, maxLength);
+}
+
+function summarizeCallbackUrl(rawValue: string): string {
+  const trimmed = rawValue.trim();
+  if (!trimmed) return "-";
+  try {
+    const parsed = new URL(trimmed);
+    const pathname = parsed.pathname || "/";
+    const host = parsed.host || "-";
+    return `${host}${pathname}`.slice(0, 120);
+  } catch {
+    return summarizeText(trimmed, 120) || "-";
+  }
+}
+
 function resolveAction(nextauth: string[] | undefined): string {
   const action = nextauth?.[0];
   if (typeof action !== "string") return "";
@@ -30,10 +49,22 @@ function resolveRouteAuthOptions(nextauth: string[] | undefined) {
 
 export async function GET(request: NextRequest, context: AppRouteContext) {
   const params = await context.params;
+  const action = resolveAction(params?.nextauth);
+  const provider = summarizeText(params?.nextauth?.[1] || "-", 48) || "-";
+  const callbackUrl = summarizeCallbackUrl(request.nextUrl.searchParams.get("callbackUrl") || "");
+  console.info(
+    `[nextauth] method=GET action=${action || "-"} provider=${provider} callback=${callbackUrl}`,
+  );
   return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(params?.nextauth));
 }
 
 export async function POST(request: NextRequest, context: AppRouteContext) {
   const params = await context.params;
+  const action = resolveAction(params?.nextauth);
+  const provider = summarizeText(params?.nextauth?.[1] || "-", 48) || "-";
+  const callbackUrl = summarizeCallbackUrl(request.nextUrl.searchParams.get("callbackUrl") || "");
+  console.info(
+    `[nextauth] method=POST action=${action || "-"} provider=${provider} callback=${callbackUrl}`,
+  );
   return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(params?.nextauth));
 }
