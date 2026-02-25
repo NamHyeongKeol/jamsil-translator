@@ -79,6 +79,10 @@ log() {
   printf '[devbox] %s\n' "$*"
 }
 
+warn() {
+  printf '[devbox] warning: %s\n' "$*" >&2
+}
+
 die() {
   printf '[devbox] %s\n' "$*" >&2
   exit 1
@@ -115,11 +119,41 @@ Global Options:
   --log-file PATH|auto  Save combined devbox stdout/stderr to PATH.
                         Relative paths resolve from repository root.
                         auto -> .devbox-logs/devbox-<worktree>-<timestamp>.log
+
+Environment:
+  DEVBOX_NGROK_WEB_DOMAIN  Optional fixed ngrok domain for devbox_web tunnel.
+                           Example: abcdef.ngrok-free.app
 EOF
 }
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
+}
+
+trim_whitespace() {
+  local value="${1:-}"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+is_truthy() {
+  local raw="${1:-}"
+  local value
+  value="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+  case "$value" in
+    1|true|yes|y|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+normalize_domain_input() {
+  local value
+  value="$(trim_whitespace "${1:-}")"
+  value="${value#https://}"
+  value="${value#http://}"
+  value="${value%%/*}"
+  printf '%s' "$value"
 }
 
 is_numeric() {
@@ -260,6 +294,110 @@ read_env_value_from_vault() {
   value="$(vault kv get -format=json "$path" 2>/dev/null | jq -r --arg key "$key" '.data.data[$key] // ""')"
   [[ "$value" == "null" ]] && value=""
   [[ -n "$value" ]] && printf '%s' "$value"
+}
+
+can_read_vault_path() {
+  local path="$1"
+  [[ -n "$path" ]] || return 1
+  command -v vault >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  vault kv get -format=json "$path" >/dev/null 2>&1
+}
+
+auto_detect_default_vault_path() {
+  local target="$1"
+  local candidate=""
+  local -a candidates=()
+
+  case "$target" in
+    app)
+      candidates=("secret/mingle-app/dev" "secret/mingle-app/prod")
+      ;;
+    stt)
+      candidates=("secret/mingle-stt/dev" "secret/mingle-stt/prod")
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  for candidate in "${candidates[@]}"; do
+    if can_read_vault_path "$candidate"; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+try_read_env_value_from_vault_path() {
+  local path="$1"
+  local key="$2"
+  local value=""
+
+  [[ -n "$path" ]] || return 1
+  [[ -n "$key" ]] || return 1
+  command -v vault >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+
+  value="$(read_env_value_from_vault "$path" "$key" || true)"
+  [[ -n "$value" ]] || return 1
+  printf '%s' "$value"
+}
+
+read_app_setting_value() {
+  local key="$1"
+  local value=""
+  local path=""
+  local seen_paths=""
+  local -a candidate_paths=()
+
+  [[ -n "$key" ]] || return 1
+
+  value="${!key:-}"
+  if [[ -n "$value" ]]; then
+    printf '%s' "$value"
+    return 0
+  fi
+
+  if [[ -n "${DEVBOX_VAULT_APP_PATH:-}" ]] && command -v vault >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    value="$(read_env_value_from_vault "$DEVBOX_VAULT_APP_PATH" "$key" || true)"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  fi
+
+  if [[ -f "$APP_ENV_FILE" ]]; then
+    value="$(read_env_value_from_file "$key" "$APP_ENV_FILE" || true)"
+    value="$(trim_whitespace "$value")"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  fi
+
+  candidate_paths+=("${DEVBOX_VAULT_APP_PATH:-}")
+  candidate_paths+=("secret/mingle-app/dev")
+  candidate_paths+=("secret/mingle-app/prod")
+
+  for path in "${candidate_paths[@]}"; do
+    path="$(trim_whitespace "$path")"
+    [[ -n "$path" ]] || continue
+    if printf '%s\n' "$seen_paths" | grep -Fxq -- "$path"; then
+      continue
+    fi
+    seen_paths="${seen_paths}${seen_paths:+$'\n'}$path"
+
+    value="$(try_read_env_value_from_vault_path "$path" "$key" || true)"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 derive_worktree_name() {
@@ -626,12 +764,30 @@ resolve_vault_paths() {
   local stt_override="${2:-}"
   local app_path="${DEVBOX_VAULT_APP_PATH:-}"
   local stt_path="${DEVBOX_VAULT_STT_PATH:-}"
+  local detected_app_path=""
+  local detected_stt_path=""
 
   if [[ -n "$app_override" ]]; then
     app_path="$app_override"
   fi
   if [[ -n "$stt_override" ]]; then
     stt_path="$stt_override"
+  fi
+
+  if [[ -z "$app_path" ]]; then
+    detected_app_path="$(auto_detect_default_vault_path "app" || true)"
+    if [[ -n "$detected_app_path" ]]; then
+      app_path="$detected_app_path"
+      log "auto-detected vault app path: $app_path"
+    fi
+  fi
+
+  if [[ -z "$stt_path" ]]; then
+    detected_stt_path="$(auto_detect_default_vault_path "stt" || true)"
+    if [[ -n "$detected_stt_path" ]]; then
+      stt_path="$detected_stt_path"
+      log "auto-detected vault stt path: $stt_path"
+    fi
   fi
 
   DEVBOX_VAULT_APP_PATH="$app_path"
@@ -854,7 +1010,20 @@ EOF
   upsert_managed_block "$STT_ENV_FILE" "$block"
 }
 
+resolve_ngrok_web_domain() {
+  local raw=""
+  local domain=""
+  raw="$(read_app_setting_value DEVBOX_NGROK_WEB_DOMAIN || true)"
+  domain="$(normalize_domain_input "$raw")"
+  [[ -n "$domain" ]] || return 1
+  validate_host "$domain"
+  printf '%s' "$domain"
+}
+
 write_ngrok_local_config() {
+  local ngrok_web_domain=""
+  ngrok_web_domain="$(resolve_ngrok_web_domain || true)"
+
   cat > "$NGROK_LOCAL_CONFIG" <<EOF
 version: "3"
 agent:
@@ -863,6 +1032,15 @@ tunnels:
   devbox_web:
     addr: $DEVBOX_WEB_PORT
     proto: http
+EOF
+
+  if [[ -n "$ngrok_web_domain" ]]; then
+    cat >> "$NGROK_LOCAL_CONFIG" <<EOF
+    domain: $ngrok_web_domain
+EOF
+  fi
+
+  cat >> "$NGROK_LOCAL_CONFIG" <<EOF
   devbox_stt:
     addr: $DEVBOX_STT_PORT
     proto: http
@@ -1044,8 +1222,53 @@ normalize_android_variant() {
   esac
 }
 
-detect_ios_device_udid() {
+detect_ios_coredevice_id() {
   command -v xcrun >/dev/null 2>&1 || return 1
+  xcrun devicectl list devices 2>/dev/null | awk '
+      /connected|available \(paired\)/ {
+        if (match($0, /[0-9A-F-]{36}/)) {
+          id = substr($0, RSTART, RLENGTH)
+          if ($0 ~ / connected/) {
+            print id
+            exit
+          }
+          if (first == "") first = id
+        }
+      }
+      END {
+        if (first != "") print first
+      }
+    ' | head -n 1
+}
+
+detect_ios_xcode_destination_udid() {
+  command -v xcodebuild >/dev/null 2>&1 || return 1
+  local workspace="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace"
+  [[ -d "$workspace" ]] || return 1
+
+  xcodebuild \
+    -workspace "$workspace" \
+    -scheme rnnative \
+    -showdestinations 2>/dev/null | awk '
+      /platform:iOS/ && /id:/ && /name:/ {
+        line = $0
+        if (line ~ /Any iOS Device/) next
+        if (line ~ /error:[^,}]*not connected/) next
+        id = ""
+        if (match(line, /id:[^,}]+/)) {
+          id = substr(line, RSTART + 3, RLENGTH - 3)
+          gsub(/[[:space:]]/, "", id)
+        }
+        if (id == "" || id ~ /placeholder/) next
+        print id
+        exit
+      }
+    '
+}
+
+detect_ios_device_udid() {
+  # Backward-compatible alias used by native paths.
+  # For RN xcodebuild destination, use detect_ios_xcode_destination_udid.
   local coredevice_id=""
   coredevice_id="$(
     xcrun devicectl list devices 2>/dev/null | awk '
@@ -1069,9 +1292,7 @@ detect_ios_device_udid() {
     return 0
   fi
 
-  xcrun xctrace list devices 2>/dev/null | \
-    sed -nE '/Simulator/d; s/^.*\([^)]*\)[[:space:]]+\(([A-Fa-f0-9-]{8,})\)$/\1/p' | \
-    head -n 1
+  detect_ios_xcode_destination_udid || true
 }
 
 detect_android_device_serial() {
@@ -1164,15 +1385,21 @@ run_ios_mobile_install() {
   local requested_udid="${1:-}"
   local configuration="$2"
   local with_clean_install="${3:-0}"
-  local udid="$requested_udid"
+  local destination_udid="$requested_udid"
+  local coredevice_id=""
 
-  if [[ -z "$udid" ]]; then
-    udid="$(detect_ios_device_udid || true)"
+  if [[ -z "$destination_udid" ]]; then
+    destination_udid="$(detect_ios_xcode_destination_udid || true)"
   fi
 
-  if [[ -z "$udid" ]]; then
+  if [[ -z "$destination_udid" ]]; then
     log "iOS device not detected; skipping iOS build/install"
     return 0
+  fi
+  coredevice_id="$(detect_ios_coredevice_id || true)"
+  if [[ -z "$coredevice_id" ]]; then
+    # Fallback for environments where only xcodebuild destination id is visible.
+    coredevice_id="$destination_udid"
   fi
 
   require_cmd xcodebuild
@@ -1186,8 +1413,8 @@ run_ios_mobile_install() {
   bundle_id="$(resolve_ios_bundle_id)"
 
   if [[ "$with_clean_install" -eq 1 && -n "$bundle_id" ]]; then
-    log "uninstalling existing iOS app before reinstall: $bundle_id"
-    xcrun devicectl device uninstall app --device "$udid" "$bundle_id" || \
+    log "uninstalling existing iOS app before reinstall: $bundle_id (device=$coredevice_id)"
+    xcrun devicectl device uninstall app --device "$coredevice_id" "$bundle_id" || \
       log "iOS uninstall skipped (app may not be installed)"
   fi
 
@@ -1200,14 +1427,14 @@ run_ios_mobile_install() {
 
   mkdir -p "$(dirname "$derived_data_path")"
 
-  log "building iOS app ($configuration) for device: $udid"
+  log "building iOS app ($configuration) for destination: $destination_udid"
   (
     cd "$ROOT_DIR/mingle-app/rn/ios"
     xcodebuild \
       -workspace rnnative.xcworkspace \
       -scheme rnnative \
       -configuration "$configuration" \
-      -destination "id=$udid" \
+      -destination "id=$destination_udid" \
       -derivedDataPath "$derived_data_path" \
       -xcconfig "$RN_IOS_RUNTIME_XCCONFIG" \
       build
@@ -1215,12 +1442,12 @@ run_ios_mobile_install() {
 
   [[ -d "$app_path" ]] || die "built iOS app not found: $app_path"
 
-  log "installing iOS app on device: $udid"
-  xcrun devicectl device install app --device "$udid" "$app_path"
+  log "installing iOS app on device: $coredevice_id"
+  xcrun devicectl device install app --device "$coredevice_id" "$app_path"
 
   if [[ -n "$bundle_id" ]]; then
     log "launching iOS app bundle: $bundle_id"
-    xcrun devicectl device process launch --device "$udid" "$bundle_id" >/dev/null 2>&1 || \
+    xcrun devicectl device process launch --device "$coredevice_id" "$bundle_id" >/dev/null 2>&1 || \
       log "iOS app launch skipped (manual launch may be required)"
   fi
 }
@@ -1238,7 +1465,7 @@ run_native_ios_mobile_install() {
 
   local coredevice_id="$requested_coredevice_id"
   if [[ -z "$coredevice_id" ]]; then
-    coredevice_id="$(detect_ios_device_udid || true)"
+    coredevice_id="$(detect_ios_coredevice_id || true)"
   fi
 
   if [[ "$with_clean_install" -eq 1 && -n "$bundle_id" && -n "$coredevice_id" ]]; then
@@ -1547,7 +1774,199 @@ wait_for_ngrok_tunnels() {
   return 1
 }
 
+resolve_google_cloud_project() {
+  local project=""
+
+  project="$(read_app_setting_value DEVBOX_GOOGLE_CLOUD_PROJECT || true)"
+  [[ -z "$project" ]] && project="$(read_app_setting_value GOOGLE_CLOUD_PROJECT || true)"
+  [[ -z "$project" ]] && project="$(read_app_setting_value GCLOUD_PROJECT || true)"
+  if [[ -z "$project" ]] && command -v gcloud >/dev/null 2>&1; then
+    project="$(gcloud config get-value core/project 2>/dev/null || true)"
+    if [[ "$project" == "(unset)" ]]; then
+      project=""
+    fi
+  fi
+
+  printf '%s' "$(trim_whitespace "$project")"
+}
+
+resolve_google_access_token() {
+  local token_cmd=""
+  local token=""
+
+  token_cmd="$(read_app_setting_value DEVBOX_GOOGLE_ACCESS_TOKEN_CMD || true)"
+  if [[ -n "$token_cmd" ]]; then
+    token="$(bash -lc "$token_cmd" 2>/dev/null || true)"
+  elif command -v gcloud >/dev/null 2>&1; then
+    token="$(gcloud auth print-access-token 2>/dev/null || true)"
+  fi
+
+  printf '%s' "$(trim_whitespace "$token")"
+}
+
+build_google_redirect_uris_for_site() {
+  local site_url="$1"
+  local paths_raw=""
+  local item trimmed normalized
+  local -a items=()
+
+  paths_raw="$(read_app_setting_value DEVBOX_GOOGLE_REDIRECT_PATHS || true)"
+  if [[ -z "$paths_raw" ]]; then
+    paths_raw="/api/auth/callback/google"
+  fi
+
+  IFS=',' read -r -a items <<< "$paths_raw"
+  for item in "${items[@]}"; do
+    trimmed="$(trim_whitespace "$item")"
+    [[ -n "$trimmed" ]] || continue
+
+    if [[ "$trimmed" =~ ^https?:// ]]; then
+      printf '%s\n' "${trimmed%/}"
+      continue
+    fi
+
+    normalized="$trimmed"
+    [[ "$normalized" == /* ]] || normalized="/$normalized"
+    printf '%s%s\n' "${site_url%/}" "$normalized"
+  done | awk 'NF && !seen[$0]++'
+}
+
+sync_google_oauth_redirect_uris_for_site_change() {
+  local previous_site_url="${1:-}"
+  local current_site_url="${2:-}"
+  local enabled_raw=""
+  local client_id=""
+  local location=""
+  local project=""
+  local token=""
+  local encoded_client_id=""
+  local endpoint=""
+  local current_client_json=""
+  local updated=0
+  local current_uri=""
+  local desired_uri=""
+  local found=0
+  local uris_json=""
+  local payload=""
+  local -a desired_redirect_uris=()
+  local -a merged_redirect_uris=()
+
+  [[ -n "$current_site_url" ]] || return 0
+  [[ "$current_site_url" =~ ^https:// ]] || return 0
+
+  enabled_raw="$(read_app_setting_value DEVBOX_GOOGLE_REDIRECT_SYNC_ENABLED || true)"
+  if [[ -n "$enabled_raw" ]] && ! is_truthy "$enabled_raw"; then
+    log "google oauth redirect sync disabled (DEVBOX_GOOGLE_REDIRECT_SYNC_ENABLED=$enabled_raw)"
+    return 0
+  fi
+
+  if [[ "$current_site_url" == "$previous_site_url" ]]; then
+    log "google oauth redirect sync check: ngrok host unchanged; validating redirect URI presence"
+  fi
+
+  client_id="$(read_app_setting_value DEVBOX_GOOGLE_OAUTH_CLIENT_ID || true)"
+  [[ -z "$client_id" ]] && client_id="$(read_app_setting_value AUTH_GOOGLE_ID || true)"
+  client_id="$(trim_whitespace "$client_id")"
+  if [[ -z "$client_id" ]]; then
+    warn "skipping google redirect sync: missing oauth client id (set AUTH_GOOGLE_ID in secret/mingle-app/dev|prod or DEVBOX_GOOGLE_OAUTH_CLIENT_ID)"
+    return 0
+  fi
+
+  location="$(read_app_setting_value DEVBOX_GOOGLE_OAUTH_LOCATION || true)"
+  location="$(trim_whitespace "$location")"
+  [[ -n "$location" ]] || location="global"
+
+  project="$(resolve_google_cloud_project)"
+  if [[ -z "$project" ]]; then
+    warn "skipping google redirect sync: missing project id (set DEVBOX_GOOGLE_CLOUD_PROJECT or gcloud core/project)"
+    return 0
+  fi
+
+  while IFS= read -r desired_uri; do
+    desired_uri="$(trim_whitespace "$desired_uri")"
+    [[ -n "$desired_uri" ]] || continue
+    desired_redirect_uris+=("$desired_uri")
+  done < <(build_google_redirect_uris_for_site "$current_site_url")
+
+  if [[ "${#desired_redirect_uris[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  token="$(resolve_google_access_token)"
+  if [[ -z "$token" ]]; then
+    warn "skipping google redirect sync: missing access token (run gcloud auth login or set DEVBOX_GOOGLE_ACCESS_TOKEN_CMD)"
+    return 0
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    warn "skipping google redirect sync: jq not found"
+    return 0
+  fi
+  if ! command -v curl >/dev/null 2>&1; then
+    warn "skipping google redirect sync: curl not found"
+    return 0
+  fi
+
+  encoded_client_id="$(printf '%s' "$client_id" | jq -sRr @uri)"
+  endpoint="https://iam.googleapis.com/v1/projects/${project}/locations/${location}/oauthClients/${encoded_client_id}"
+  current_client_json="$(curl -fsS \
+    -H "Authorization: Bearer $token" \
+    -H "X-Goog-User-Project: $project" \
+    "$endpoint" 2>/dev/null || true)"
+  if [[ -z "$current_client_json" ]]; then
+    warn "google redirect sync skipped: failed to load oauth client (project=$project location=$location client=$client_id)"
+    return 0
+  fi
+
+  while IFS= read -r current_uri; do
+    current_uri="$(trim_whitespace "$current_uri")"
+    [[ -n "$current_uri" ]] || continue
+    merged_redirect_uris+=("$current_uri")
+  done < <(printf '%s' "$current_client_json" | jq -r '.allowedRedirectUris[]?' 2>/dev/null || true)
+
+  for desired_uri in "${desired_redirect_uris[@]}"; do
+    found=0
+    for current_uri in "${merged_redirect_uris[@]}"; do
+      if [[ "$current_uri" == "$desired_uri" ]]; then
+        found=1
+        break
+      fi
+    done
+    if [[ "$found" -eq 0 ]]; then
+      merged_redirect_uris+=("$desired_uri")
+      updated=1
+    fi
+  done
+
+  if [[ "$updated" -eq 0 ]]; then
+    log "google oauth redirect URI already present for current ngrok host"
+    return 0
+  fi
+
+  uris_json="$(printf '%s\n' "${merged_redirect_uris[@]}" | jq -R . | jq -s 'map(select(length>0))')"
+  payload="$(jq -cn --argjson uris "$uris_json" '{allowedRedirectUris: $uris}')"
+  if ! curl -fsS -X PATCH \
+    -H "Authorization: Bearer $token" \
+    -H "X-Goog-User-Project: $project" \
+    -H "Content-Type: application/json" \
+    "$endpoint?update_mask=allowed_redirect_uris" \
+    --data "$payload" >/dev/null 2>&1; then
+    if ! curl -fsS -X PATCH \
+      -H "Authorization: Bearer $token" \
+      -H "X-Goog-User-Project: $project" \
+      -H "Content-Type: application/json" \
+      "$endpoint?updateMask=allowedRedirectUris" \
+      --data "$payload" >/dev/null 2>&1; then
+      warn "google redirect sync failed while patching oauth client (project=$project location=$location client=$client_id)"
+      return 0
+    fi
+  fi
+
+  log "google oauth redirect URI synced for ngrok host: ${desired_redirect_uris[*]}"
+}
+
 set_device_profile_values() {
+  local previous_site_url="${DEVBOX_SITE_URL:-}"
   read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"
 
   DEVBOX_PROFILE="device"
@@ -1560,6 +1979,7 @@ set_device_profile_values() {
 
   validate_https_url "ngrok web url" "$DEVBOX_SITE_URL"
   validate_wss_url "ngrok stt url" "$DEVBOX_RN_WS_URL"
+  sync_google_oauth_redirect_uris_for_site_change "$previous_site_url" "$DEVBOX_SITE_URL"
 }
 
 resolve_device_app_env_override() {
@@ -2283,7 +2703,7 @@ cmd_ios_native_uninstall() {
 
   local coredevice_id="$ios_coredevice_id"
   if [[ -z "$coredevice_id" ]]; then
-    coredevice_id="$(detect_ios_device_udid || true)"
+    coredevice_id="$(detect_ios_coredevice_id || true)"
   fi
   [[ -n "$coredevice_id" ]] || die "iOS device not detected; specify --ios-coredevice-id"
 
@@ -2354,12 +2774,19 @@ cmd_test() {
 
 cmd_status() {
   require_devbox_env
+  local ngrok_web_domain="(auto)"
+  local detected_ngrok_web_domain=""
+  detected_ngrok_web_domain="$(resolve_ngrok_web_domain || true)"
+  if [[ -n "$detected_ngrok_web_domain" ]]; then
+    ngrok_web_domain="$detected_ngrok_web_domain"
+  fi
 
   cat <<EOF
 [devbox] worktree: $DEVBOX_WORKTREE_NAME
 [devbox] profile:  $DEVBOX_PROFILE
 [devbox] ports:    web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT metro=$DEVBOX_METRO_PORT
 [devbox] ngrok:    inspector=http://127.0.0.1:$DEVBOX_NGROK_API_PORT
+[devbox] ngrok-web-domain: $ngrok_web_domain
 
 PC Web      : $DEVBOX_SITE_URL
 iOS Web     : $DEVBOX_SITE_URL
