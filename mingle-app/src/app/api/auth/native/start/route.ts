@@ -1,6 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveNativeOAuthProvider, resolveSafeCallbackPath } from "@/lib/native-auth-bridge";
 
+function normalizeOriginCandidate(rawValue: string | null | undefined): string | null {
+  if (typeof rawValue !== "string") return null;
+  const trimmed = rawValue.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    if (!parsed.host) return null;
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return null;
+  }
+}
+
+function resolveExternalOrigin(request: NextRequest): string {
+  const forwardedUrl = normalizeOriginCandidate(request.headers.get("x-forwarded-url"));
+  if (forwardedUrl) return forwardedUrl;
+
+  const forwardedProto = (request.headers.get("x-forwarded-proto") || "")
+    .split(",")[0]
+    ?.trim()
+    .toLowerCase();
+  const forwardedHost = (request.headers.get("x-forwarded-host") || "")
+    .split(",")[0]
+    ?.trim();
+  if (forwardedProto && forwardedHost) {
+    const forwardedOrigin = normalizeOriginCandidate(`${forwardedProto}://${forwardedHost}`);
+    if (forwardedOrigin) return forwardedOrigin;
+  }
+
+  const envOrigin = normalizeOriginCandidate(process.env.NEXTAUTH_URL)
+    ?? normalizeOriginCandidate(process.env.NEXT_PUBLIC_SITE_URL);
+  if (envOrigin) return envOrigin;
+
+  return request.nextUrl.origin;
+}
+
 export async function GET(request: NextRequest) {
   const provider = resolveNativeOAuthProvider(request.nextUrl.searchParams.get("provider"));
   if (!provider) {
@@ -8,11 +46,12 @@ export async function GET(request: NextRequest) {
   }
 
   const callbackPath = resolveSafeCallbackPath(request.nextUrl.searchParams.get("callbackUrl"), "/");
-  const completeUrl = new URL("/api/auth/native/complete", request.nextUrl.origin);
+  const externalOrigin = resolveExternalOrigin(request);
+  const completeUrl = new URL("/api/auth/native/complete", externalOrigin);
   completeUrl.searchParams.set("provider", provider);
   completeUrl.searchParams.set("callbackUrl", callbackPath);
 
-  const signInUrl = new URL(`/api/auth/signin/${provider}`, request.nextUrl.origin);
+  const signInUrl = new URL(`/api/auth/signin/${provider}`, externalOrigin);
   signInUrl.searchParams.set("callbackUrl", completeUrl.toString());
 
   return NextResponse.redirect(signInUrl);

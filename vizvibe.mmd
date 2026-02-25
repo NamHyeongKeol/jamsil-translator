@@ -133,6 +133,9 @@ flowchart TD
     %% @mingle_app_rn_ios_appdelegate_linking_module_fix [ai-task, closed, 2026-02-25, ai]
     mingle_app_rn_ios_appdelegate_linking_module_fix("RN iOS AppDelegate Linking 모듈 참조 수정<br/><sub>딥링크 복귀 연결을 위해 추가한 import에서<br/>React_RCTLinking 모듈명이 실제 Pod에 없어<br/>Release 빌드가 즉시 실패하던 경로를 확인하고<br/>React 모듈 경유 RCTLinkingManager 호출로 정정</sub>")
 
+    %% @mingle_app_rn_ios_native_oauth_callback_origin_fix [ai-task, closed, 2026-02-25, ai]
+    mingle_app_rn_ios_native_oauth_callback_origin_fix("RN iOS OAuth callback origin 고정<br/><sub>네이티브 브라우저 로그인 시작 시 프록시 환경에서<br/>callbackUrl/signIn URL이 localhost로 생성돼<br/>iPhone Chrome에서 인증 후 복귀가 끊기던 문제를<br/>x-forwarded/NEXTAUTH_URL 우선 origin 해석으로 수정</sub>")
+
     %% @capacitor_app_build [ai-task, closed]
     capacitor_app_build("Capacitor 앱 빌드 검증<br/><sub>웹 앱을 Capacitor로 패키징하여<br/>iOS/Android 네이티브 빌드 파이프라인과<br/>런타임 동작 가능성을 점검</sub>")
 
@@ -942,6 +945,7 @@ flowchart TD
     mingle_app_rn_social_auth_gate_and_menu --> mingle_app_ios_google_oauth_disallowed_useragent_ua_fix
     mingle_app_ios_google_oauth_disallowed_useragent_ua_fix --> mingle_app_rn_ios_native_browser_oauth_bridge
     mingle_app_rn_ios_native_browser_oauth_bridge --> mingle_app_rn_ios_appdelegate_linking_module_fix
+    mingle_app_rn_ios_appdelegate_linking_module_fix --> mingle_app_rn_ios_native_oauth_callback_origin_fix
     google_oauth_login --> mobile_app_development
     translator_feature_build --> mobile_app_development
     mobile_app_development --> capacitor_app_build
@@ -1307,6 +1311,7 @@ flowchart TD
     mingle_app_ios_google_oauth_disallowed_useragent_ua_fix -.-> ultimate_goal
     mingle_app_rn_ios_native_browser_oauth_bridge -.-> ultimate_goal
     mingle_app_rn_ios_appdelegate_linking_module_fix -.-> ultimate_goal
+    mingle_app_rn_ios_native_oauth_callback_origin_fix -.-> ultimate_goal
     mingle_stt_soniox_debug_logging_removed -.-> ultimate_goal
     mingle_stt_endpoint_only_frame_and_api_marker_guard -.-> ultimate_goal
     mingle_worktree_devbox_env_spacing_normalization --> mingle_ios_native_swiftui_workspace
@@ -1381,7 +1386,7 @@ flowchart TD
 
     %% === RECENT WORK HIGHLIGHT ===
     subgraph recent [RECENT]
-        mingle_app_rn_ios_appdelegate_linking_module_fix
+        mingle_app_rn_ios_native_oauth_callback_origin_fix
     end
 
     %% === STYLES ===
@@ -1736,6 +1741,7 @@ flowchart TD
     style mingle_app_ios_google_oauth_disallowed_useragent_ua_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_ios_native_browser_oauth_bridge fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_app_rn_ios_appdelegate_linking_module_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_ios_native_oauth_callback_origin_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_marker_token_visibility_debug_toggle fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_detection_disabled_experiment fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_stt_endpoint_delay_param_guard_fix fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
@@ -1751,7 +1757,7 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_app_rn_ios_appdelegate_linking_module_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_rn_ios_native_oauth_callback_origin_fix fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
     style mingle_worktree_devbox_runtime_vault_env_injection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
