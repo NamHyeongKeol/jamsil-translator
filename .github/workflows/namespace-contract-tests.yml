@@ -24,15 +24,16 @@ concurrency:
 
 jobs:
   app-namespace-contracts:
-    name: App Namespace Contracts (${{ matrix.api_namespace }})
+    name: App Namespace Contracts (${{ matrix.name }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        api_namespace:
-          - web/app/v1
-          - mobile/ios/v1
-          - mobile/android/v1
+        include:
+          - name: legacy-empty
+            api_namespace: ""
+          - name: ios-v1.0.0
+            api_namespace: ios/v1.0.0
     steps:
       - name: Checkout
         uses: actions/checkout@v4
