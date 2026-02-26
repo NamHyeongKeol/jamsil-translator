@@ -28,10 +28,10 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
 const SONIOX_SPEAKER_IDLE_FINALIZE_MS = (() => {
-    const fallback = Math.max(1800, SONIOX_MANUAL_FINALIZE_SILENCE_MS + 1300);
+    const fallback = Math.max(4500, SONIOX_MANUAL_FINALIZE_SILENCE_MS + 3500);
     const raw = Number(process.env.SONIOX_SPEAKER_IDLE_FINALIZE_MS || String(fallback));
     if (!Number.isFinite(raw)) return fallback;
-    return Math.max(1000, Math.min(7000, Math.floor(raw)));
+    return Math.max(2500, Math.min(12000, Math.floor(raw)));
 })();
 
 const server = createServer();
@@ -752,10 +752,10 @@ wss.on('connection', (clientWs) => {
                 if (!speaker) return null;
 
                 const numeric = /^(\d+)$/.exec(speaker);
-                if (numeric) return `speaker_${numeric[1]}`;
+                if (numeric) return `speaker_${String(Number(numeric[1]))}`;
 
                 const speakerWithNumber = /^speaker(?:[_\s-]+)?(\d+)$/.exec(speaker);
-                if (speakerWithNumber) return `speaker_${speakerWithNumber[1]}`;
+                if (speakerWithNumber) return `speaker_${String(Number(speakerWithNumber[1]))}`;
 
                 const sanitized = speaker.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
                 if (!sanitized) return null;
@@ -1287,10 +1287,10 @@ wss.on('connection', (clientWs) => {
         if (!speaker) return undefined;
 
         const numeric = /^(\d+)$/.exec(speaker);
-        if (numeric) return `speaker_${numeric[1]}`;
+        if (numeric) return `speaker_${String(Number(numeric[1]))}`;
 
         const speakerWithNumber = /^speaker(?:[_\s-]+)?(\d+)$/.exec(speaker);
-        if (speakerWithNumber) return `speaker_${speakerWithNumber[1]}`;
+        if (speakerWithNumber) return `speaker_${String(Number(speakerWithNumber[1]))}`;
 
         const sanitized = speaker.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
         if (!sanitized) return undefined;

@@ -141,10 +141,10 @@ function normalizeSpeakerId(rawSpeaker: unknown): string | null {
   if (!speaker) return null
 
   const numeric = /^(\d+)$/.exec(speaker)
-  if (numeric) return `speaker_${numeric[1]}`
+  if (numeric) return `speaker_${String(Number(numeric[1]))}`
 
   const speakerWithNumber = /^speaker(?:[_\s-]+)?(\d+)$/.exec(speaker)
-  if (speakerWithNumber) return `speaker_${speakerWithNumber[1]}`
+  if (speakerWithNumber) return `speaker_${String(Number(speakerWithNumber[1]))}`
 
   const sanitized = speaker.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
   if (!sanitized) return null
@@ -261,10 +261,10 @@ export function resolveSpeakerForTranscript(
   partialTurns: Record<string, SpeakerResolutionPartialTurn>,
 ): string {
   const normalizedSpeaker = normalizeSpeakerId(rawSpeaker)
-  if (normalizedSpeaker) return normalizedSpeaker
+  if (normalizedSpeaker && normalizedSpeaker !== 'speaker_unknown') return normalizedSpeaker
 
   const speakers = Object.keys(partialTurns)
-  if (speakers.length === 0) return 'speaker_unknown'
+  if (speakers.length === 0) return normalizedSpeaker || 'speaker_unknown'
   if (speakers.length === 1) return speakers[0]
 
   const normalizedText = normalizeSttTurnText(rawText || '')
@@ -329,7 +329,7 @@ export function resolveSpeakerForTranscript(
 
   if (candidates.length === 0) {
     if (languageMatchedSpeakers.length === 1) return languageMatchedSpeakers[0]
-    return 'speaker_unknown'
+    return normalizedSpeaker || 'speaker_unknown'
   }
 
   candidates.sort((a, b) => {
@@ -345,7 +345,7 @@ export function resolveSpeakerForTranscript(
   if (best.score !== next.score) return best.speaker
   if (best.textLength !== next.textLength) return best.speaker
   if (best.updatedAtMs !== next.updatedAtMs) return best.speaker
-  return 'speaker_unknown'
+  return normalizedSpeaker || 'speaker_unknown'
 }
 
 export interface BuildFinalizedUtterancePayloadInput {
@@ -566,6 +566,7 @@ interface PartialTurn {
   text: string
   language: string
   translations: Record<string, string>
+  startedAtMs: number
   updatedAtMs: number
 }
 
@@ -985,10 +986,16 @@ export default function useRealtimeSTT({
     delete partialTurnMetaRef.current[speaker]
   }, [])
 
-  const upsertPartialTurn = useCallback((speaker: string, patch: Omit<PartialTurn, 'speaker' | 'updatedAtMs'> & { updatedAtMs?: number }) => {
+  const upsertPartialTurn = useCallback((speaker: string, patch: Omit<PartialTurn, 'speaker' | 'startedAtMs' | 'updatedAtMs'> & {
+    startedAtMs?: number
+    updatedAtMs?: number
+  }) => {
     const normalizedSpeaker = normalizeSpeakerId(speaker) || 'speaker_unknown'
     setPartialTurnsState((prev) => {
       const prevTurn = prev[normalizedSpeaker]
+      const nextStartedAtMs = typeof patch.startedAtMs === 'number'
+        ? patch.startedAtMs
+        : (prevTurn?.startedAtMs || Date.now())
       const nextUpdatedAtMs = typeof patch.updatedAtMs === 'number'
         ? patch.updatedAtMs
         : (prevTurn && prevTurn.text === patch.text && prevTurn.language === patch.language
@@ -999,12 +1006,14 @@ export default function useRealtimeSTT({
         text: patch.text,
         language: patch.language,
         translations: patch.translations,
+        startedAtMs: nextStartedAtMs,
         updatedAtMs: nextUpdatedAtMs,
       }
       if (
         prevTurn
         && prevTurn.text === next.text
         && prevTurn.language === next.language
+        && prevTurn.startedAtMs === next.startedAtMs
         && prevTurn.updatedAtMs === next.updatedAtMs
       ) {
         let translationsChanged = false
@@ -1806,8 +1815,10 @@ export default function useRealtimeSTT({
         )
       } else {
         const partialMeta = getPartialTurnMeta(speakerKey)
-        if (!partialMeta.turnStartedAtMs && text) {
-          partialMeta.turnStartedAtMs = Date.now()
+        let turnStartedAtMs = partialMeta.turnStartedAtMs
+        if (!turnStartedAtMs && text) {
+          turnStartedAtMs = Date.now()
+          partialMeta.turnStartedAtMs = turnStartedAtMs
           void logClientEvent({
             eventType: 'stt_turn_started',
             sourceLanguage: lang,
@@ -1822,6 +1833,7 @@ export default function useRealtimeSTT({
           text,
           language: lang,
           translations: previousTurn?.translations || {},
+          startedAtMs: turnStartedAtMs || previousTurn?.startedAtMs || Date.now(),
         })
       }
     }
@@ -2187,7 +2199,11 @@ export default function useRealtimeSTT({
   const partialTurns = useMemo<PartialTurn[]>(() => {
     return Object.values(partialTurnsState)
       .filter((turn) => turn.text.trim().length > 0)
-      .sort((a, b) => a.updatedAtMs - b.updatedAtMs)
+      .sort((a, b) => {
+        if (a.startedAtMs !== b.startedAtMs) return a.startedAtMs - b.startedAtMs
+        if (a.updatedAtMs !== b.updatedAtMs) return a.updatedAtMs - b.updatedAtMs
+        return a.speaker.localeCompare(b.speaker)
+      })
   }, [partialTurnsState])
   const legacyPartialTurn = partialTurns[partialTurns.length - 1] || null
   const partialTranscript = legacyPartialTurn?.text || ''
