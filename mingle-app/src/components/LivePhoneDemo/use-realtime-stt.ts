@@ -21,6 +21,8 @@ const LS_KEY_STT_DEBUG = 'mingle_stt_debug'
 const NATIVE_STT_QUERY_KEY = 'nativeStt'
 const NATIVE_STT_EVENT = 'mingle:native-stt'
 const RECENT_TURN_CONTEXT_WINDOW_MS = 10_000
+const SPEAKER_FINAL_DUPLICATE_WINDOW_MS = 15_000
+const SPEAKER_FINAL_CONTINUATION_WINDOW_MS = 12_000
 
 type ConnectionStatus = 'idle' | 'connecting' | 'ready' | 'error'
 
@@ -415,6 +417,120 @@ export function buildFinalizedUtterancePayload(
     createdAtMs,
     utterance,
     currentTurnPreviousState,
+  }
+}
+
+export interface FinalizedUtteranceUpsertResult {
+  utterances: Utterance[]
+  utteranceId: string | null
+  mode: 'inserted' | 'replaced' | 'skipped'
+}
+
+function compareUtteranceChronologicalOrder(a: Utterance, b: Utterance): number {
+  const aCreatedAtMs = inferUtteranceCreatedAtMs(a) ?? 0
+  const bCreatedAtMs = inferUtteranceCreatedAtMs(b) ?? 0
+  if (aCreatedAtMs !== bCreatedAtMs) return aCreatedAtMs - bCreatedAtMs
+  return a.id.localeCompare(b.id)
+}
+
+function insertUtteranceChronologically(
+  utterances: Utterance[],
+  finalizedUtterance: Utterance,
+): Utterance[] {
+  const existingIndex = utterances.findIndex((utterance) => utterance.id === finalizedUtterance.id)
+  if (existingIndex >= 0) {
+    const next = [...utterances]
+    next[existingIndex] = finalizedUtterance
+    return next
+  }
+
+  const insertIndex = utterances.findIndex((utterance) => (
+    compareUtteranceChronologicalOrder(finalizedUtterance, utterance) < 0
+  ))
+  if (insertIndex < 0) return [...utterances, finalizedUtterance]
+  return [
+    ...utterances.slice(0, insertIndex),
+    finalizedUtterance,
+    ...utterances.slice(insertIndex),
+  ]
+}
+
+export function upsertFinalizedUtterance(
+  utterances: Utterance[],
+  finalizedUtterance: Utterance,
+  nowMs: number,
+): FinalizedUtteranceUpsertResult {
+  const finalizedText = normalizeSttTurnText(finalizedUtterance.originalText || '')
+  if (!finalizedText) {
+    return {
+      utterances,
+      utteranceId: null,
+      mode: 'skipped',
+    }
+  }
+
+  const finalizedSpeaker = normalizeSpeakerId(finalizedUtterance.speaker)
+  const finalizedLanguage = normalizeLangForCompare(finalizedUtterance.originalLang)
+
+  if (finalizedSpeaker) {
+    for (let i = utterances.length - 1; i >= 0; i -= 1) {
+      const candidate = utterances[i]
+      const candidateSpeaker = normalizeSpeakerId(candidate.speaker)
+      if (candidateSpeaker !== finalizedSpeaker) continue
+
+      const candidateCreatedAtMs = inferUtteranceCreatedAtMs(candidate)
+      if (candidateCreatedAtMs === null) continue
+      const ageMs = Math.max(0, nowMs - candidateCreatedAtMs)
+      if (ageMs > SPEAKER_FINAL_DUPLICATE_WINDOW_MS) break
+
+      if (
+        finalizedLanguage
+        && normalizeLangForCompare(candidate.originalLang) !== finalizedLanguage
+      ) {
+        continue
+      }
+
+      const candidateText = normalizeSttTurnText(candidate.originalText || '')
+      if (!candidateText) continue
+
+      if (candidateText === finalizedText) {
+        return {
+          utterances,
+          utteranceId: candidate.id,
+          mode: 'skipped',
+        }
+      }
+
+      if (
+        ageMs <= SPEAKER_FINAL_CONTINUATION_WINDOW_MS
+        && finalizedText.startsWith(candidateText)
+      ) {
+        const replaced: Utterance = {
+          ...candidate,
+          originalText: finalizedUtterance.originalText,
+          originalLang: finalizedUtterance.originalLang,
+          speaker: finalizedUtterance.speaker,
+          targetLanguages: finalizedUtterance.targetLanguages,
+          translations: finalizedUtterance.translations,
+          translationFinalized: finalizedUtterance.translationFinalized,
+        }
+        const next = [...utterances]
+        next[i] = replaced
+        return {
+          utterances: next,
+          utteranceId: candidate.id,
+          mode: 'replaced',
+        }
+      }
+
+      break
+    }
+  }
+
+  return {
+    utterances: insertUtteranceChronologically(utterances, finalizedUtterance),
+    utteranceId: finalizedUtterance.id,
+    mode: 'inserted',
   }
 }
 
@@ -1163,6 +1279,9 @@ export default function useRealtimeSTT({
     speakerRaw: string,
     rawText: string,
     rawLang: string,
+    options?: {
+      turnStartedAtMs?: number | null
+    },
   ): LocalFinalizeResult | null => {
     const speaker = normalizeSpeakerId(speakerRaw) || 'speaker_unknown'
     const partialTurn = partialTurnsRef.current[speaker]
@@ -1189,6 +1308,11 @@ export default function useRealtimeSTT({
     stopFinalizeDedupRef.current.set(sig, now + 5000)
 
     utteranceIdRef.current += 1
+    const createdAtMs = (
+      typeof options?.turnStartedAtMs === 'number'
+      && Number.isFinite(options.turnStartedAtMs)
+      && options.turnStartedAtMs > 0
+    ) ? Math.floor(options.turnStartedAtMs) : now
     const localPayload = buildFinalizedUtterancePayload({
       rawText,
       rawLanguage: lang,
@@ -1196,7 +1320,7 @@ export default function useRealtimeSTT({
       languages,
       partialTranslations: partialTurn?.translations || {},
       utteranceSerial: utteranceIdRef.current,
-      nowMs: now,
+      nowMs: createdAtMs,
       previousStateSourceLanguage: partialTurn?.language || lang,
       previousStateSourceText: partialTurn?.text || rawText,
     })
@@ -1215,11 +1339,21 @@ export default function useRealtimeSTT({
       && Object.keys(localPayload.currentTurnPreviousState.translations).length > 0
     ) ? localPayload.currentTurnPreviousState : (fallbackCurrentTurnPreviousState || localPayload.currentTurnPreviousState)
 
-    setUtterances(prev => [...prev, localPayload.utterance])
+    const upserted = upsertFinalizedUtterance(
+      utterancesRef.current,
+      localPayload.utterance,
+      now,
+    )
+    if (upserted.mode === 'skipped' || !upserted.utteranceId) {
+      clearSinglePartialTurn(speaker, true)
+      return null
+    }
+    utterancesRef.current = upserted.utterances
+    setUtterances(upserted.utterances)
     clearSinglePartialTurn(speaker, true)
 
     return {
-      utteranceId: localPayload.utteranceId,
+      utteranceId: upserted.utteranceId,
       text: localPayload.text,
       lang: localPayload.language,
       speaker,
@@ -1328,10 +1462,16 @@ export default function useRealtimeSTT({
       })
 
       const partialMeta = getPartialTurnMeta(partialTurn.speaker)
-      const result = finalizePendingLocally(partialTurn.speaker, partialTurn.text, partialTurn.language || 'unknown')
+      const turnStartedAtMs = partialMeta.turnStartedAtMs
+      const result = finalizePendingLocally(
+        partialTurn.speaker,
+        partialTurn.text,
+        partialTurn.language || 'unknown',
+        { turnStartedAtMs },
+      )
       if (!result) continue
-      const sttDurationMs = partialMeta.turnStartedAtMs
-        ? Math.max(0, Date.now() - partialMeta.turnStartedAtMs)
+      const sttDurationMs = turnStartedAtMs
+        ? Math.max(0, Date.now() - turnStartedAtMs)
         : undefined
       finalizedResults.push({ result, sttDurationMs })
     }
@@ -1603,12 +1743,18 @@ export default function useRealtimeSTT({
 
         const partialTurn = partialTurnsRef.current[speakerKey]
         const partialMeta = getPartialTurnMeta(speakerKey)
-        const sttDurationMs = partialMeta.turnStartedAtMs
-          ? Math.max(0, now - partialMeta.turnStartedAtMs)
+        const turnStartedAtMs = partialMeta.turnStartedAtMs
+        const sttDurationMs = turnStartedAtMs
+          ? Math.max(0, now - turnStartedAtMs)
           : undefined
         partialMeta.turnStartedAtMs = null
 
         utteranceIdRef.current += 1
+        const finalizedCreatedAtMs = (
+          typeof turnStartedAtMs === 'number'
+          && Number.isFinite(turnStartedAtMs)
+          && turnStartedAtMs > 0
+        ) ? Math.floor(turnStartedAtMs) : now
         const finalizedPayload = buildFinalizedUtterancePayload({
           rawText,
           rawLanguage: lang,
@@ -1616,7 +1762,7 @@ export default function useRealtimeSTT({
           languages,
           partialTranslations: partialTurn?.translations || {},
           utteranceSerial: utteranceIdRef.current,
-          nowMs: now,
+          nowMs: finalizedCreatedAtMs,
           previousStateSourceLanguage: partialTurn?.language || lang,
           previousStateSourceText: partialTurn?.text || text,
         })
@@ -1632,12 +1778,22 @@ export default function useRealtimeSTT({
           finalizedPayload.currentTurnPreviousState
           && Object.keys(finalizedPayload.currentTurnPreviousState.translations).length > 0
         ) ? finalizedPayload.currentTurnPreviousState : (fallbackCurrentTurnPreviousState || finalizedPayload.currentTurnPreviousState)
-        setUtterances(u => [...u, finalizedPayload.utterance])
+        const upserted = upsertFinalizedUtterance(
+          utterancesRef.current,
+          finalizedPayload.utterance,
+          now,
+        )
+        if (upserted.mode === 'skipped' || !upserted.utteranceId) {
+          clearSinglePartialTurn(speakerKey, true)
+          return
+        }
+        utterancesRef.current = upserted.utterances
+        setUtterances(upserted.utterances)
         clearSinglePartialTurn(speakerKey, true)
 
         finalizeTurnWithTranslation(
           {
-            utteranceId: finalizedPayload.utteranceId,
+            utteranceId: upserted.utteranceId,
             text: finalizedPayload.text,
             lang: finalizedPayload.language,
             speaker: speakerKey,

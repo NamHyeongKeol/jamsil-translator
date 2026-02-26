@@ -4,6 +4,7 @@ import {
   getWsUrl,
   parseSttTranscriptMessage,
   resolveSpeakerForTranscript,
+  upsertFinalizedUtterance,
 } from './use-realtime-stt'
 
 describe('use-realtime-stt pure logic', () => {
@@ -237,5 +238,106 @@ describe('use-realtime-stt pure logic', () => {
 
     expect(built?.speaker).toBe('speaker_2')
     expect(built?.utterance.speaker).toBe('speaker_2')
+  })
+
+  it('inserts finalized utterance using created-at order, not finalize order', () => {
+    const result = upsertFinalizedUtterance(
+      [
+        {
+          id: 'u-1000-1',
+          originalText: 'A first',
+          originalLang: 'ko',
+          speaker: 'speaker_1',
+          translations: {},
+          createdAtMs: 1000,
+        },
+        {
+          id: 'u-3000-1',
+          originalText: 'B first',
+          originalLang: 'en',
+          speaker: 'speaker_2',
+          translations: {},
+          createdAtMs: 3000,
+        },
+      ],
+      {
+        id: 'u-2000-1',
+        originalText: 'A final later',
+        originalLang: 'ko',
+        speaker: 'speaker_1',
+        translations: {},
+        createdAtMs: 2000,
+      },
+      4000,
+    )
+
+    expect(result.mode).toBe('inserted')
+    expect(result.utteranceId).toBe('u-2000-1')
+    expect(result.utterances.map((utterance) => utterance.id)).toEqual([
+      'u-1000-1',
+      'u-2000-1',
+      'u-3000-1',
+    ])
+  })
+
+  it('skips duplicate finalized text from same speaker in recent window', () => {
+    const result = upsertFinalizedUtterance(
+      [
+        {
+          id: 'u-1000-1',
+          originalText: '죽어야 되는.',
+          originalLang: 'ko',
+          speaker: 'speaker_1',
+          translations: {},
+          createdAtMs: 1000,
+        },
+      ],
+      {
+        id: 'u-2000-1',
+        originalText: '죽어야 되는.',
+        originalLang: 'ko',
+        speaker: 'speaker_1',
+        translations: {},
+        createdAtMs: 2000,
+      },
+      3000,
+    )
+
+    expect(result.mode).toBe('skipped')
+    expect(result.utteranceId).toBe('u-1000-1')
+    expect(result.utterances).toHaveLength(1)
+  })
+
+  it('replaces previous speaker utterance when new final is a continuation', () => {
+    const result = upsertFinalizedUtterance(
+      [
+        {
+          id: 'u-1000-1',
+          originalText: '죽어야 되는.',
+          originalLang: 'ko',
+          speaker: 'speaker_1',
+          translations: {
+            en: 'have to die.',
+          },
+          createdAtMs: 1000,
+        },
+      ],
+      {
+        id: 'u-2000-1',
+        originalText: '죽어야 되는. 발화가 있으면.',
+        originalLang: 'ko',
+        speaker: 'speaker_1',
+        translations: {},
+        createdAtMs: 2000,
+      },
+      2500,
+    )
+
+    expect(result.mode).toBe('replaced')
+    expect(result.utteranceId).toBe('u-1000-1')
+    expect(result.utterances).toHaveLength(1)
+    expect(result.utterances[0].id).toBe('u-1000-1')
+    expect(result.utterances[0].originalText).toBe('죽어야 되는. 발화가 있으면.')
+    expect(result.utterances[0].translations).toEqual({})
   })
 })

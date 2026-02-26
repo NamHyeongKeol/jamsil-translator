@@ -28,10 +28,10 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
 const SONIOX_SPEAKER_IDLE_FINALIZE_MS = (() => {
-    const fallback = SONIOX_MANUAL_FINALIZE_SILENCE_MS + 300;
+    const fallback = Math.max(1800, SONIOX_MANUAL_FINALIZE_SILENCE_MS + 1300);
     const raw = Number(process.env.SONIOX_SPEAKER_IDLE_FINALIZE_MS || String(fallback));
     if (!Number.isFinite(raw)) return fallback;
-    return Math.max(400, Math.min(4000, Math.floor(raw)));
+    return Math.max(1000, Math.min(7000, Math.floor(raw)));
 })();
 
 const server = createServer();
@@ -783,7 +783,6 @@ wss.on('connection', (clientWs) => {
                 state.finalizedText = '';
                 state.latestNonFinalText = '';
                 state.latestNonFinalIsProvisionalCarry = false;
-                state.lastFinalizedEndMs = -1;
                 state.finalizeSnapshotTextLen = null;
                 state.currentMergedTextLen = 0;
                 if (state.carryExpiryTimer) {
