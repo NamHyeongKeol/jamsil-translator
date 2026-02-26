@@ -1,6 +1,6 @@
 import MingleHome from "@/components/mingle-home";
 import { getDictionary, isSupportedLocale } from "@/i18n";
-import { isGoogleOAuthConfigured } from "@/lib/auth-options";
+import { isAppleOAuthConfigured, isGoogleOAuthConfigured } from "@/lib/auth-options";
 import { notFound } from "next/navigation";
 
 type TranslatorPageProps = {
@@ -19,6 +19,7 @@ export default async function TranslatorPage({ params }: TranslatorPageProps) {
   return (
     <MingleHome
       dictionary={getDictionary(locale)}
+      appleOAuthEnabled={isAppleOAuthConfigured()}
       googleOAuthEnabled={isGoogleOAuthConfigured()}
       locale={locale}
     />

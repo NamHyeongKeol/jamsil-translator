@@ -1,0 +1,20 @@
+import { createProfileLocalizedDictionary } from "@/i18n/dictionaries/create-profile-localized-dictionary";
+
+export const arDictionary = createProfileLocalizedDictionary({
+  authTitle: "المصادقة",
+  loginRequiredTitle: "تسجيل الدخول مطلوب",
+  loginRequiredDescription: "يرجى تسجيل الدخول باستخدام Apple أو Google لاستخدام المترجم.",
+  loginLoading: "جارٍ التحقق من جلستك...",
+  signedInAs: "تم تسجيل الدخول باسم",
+  loginApple: "تسجيل الدخول عبر Apple",
+  loginGoogle: "تسجيل الدخول عبر Google",
+  loginDemo: "تسجيل دخول تجريبي",
+  logout: "تسجيل الخروج",
+  deleteAccount: "حذف الحساب",
+  menuLabel: "القائمة",
+  deleteAccountConfirm: "هل تريد حذف بيانات الحساب وتسجيل الخروج الآن؟",
+  deleteAccountFailed: "فشل حذف الحساب. يرجى المحاولة مرة أخرى.",
+  appleNotConfigured: "متغيرات بيئة Apple OAuth غير موجودة، لذلك تسجيل الدخول عبر Apple غير متاح.",
+  googleNotConfigured: "متغيرات بيئة Google OAuth غير موجودة، لذلك يتوفر فقط تسجيل الدخول التجريبي.",
+  nativeSignInFailed: "فشل تسجيل الدخول الأصلي. يرجى المحاولة مرة أخرى.",
+});

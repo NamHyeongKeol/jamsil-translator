@@ -1,15 +1,35 @@
 This is the `mingle-app/rn` React Native workspace.
 
 - Root scripts (from `/Users/nam/mingle/mingle-app`):
-  - `pnpm rn:install`
-  - `pnpm rn:pods`
-  - `pnpm rn:start`
-  - `pnpm rn:ios`
+- `pnpm rn:install`
+- `pnpm rn:pods`
+- `pnpm rn:start`
+- `pnpm rn:ios:env-check`
+- `pnpm rn:ios`
 
 RN 앱은 아래 env를 필요로 합니다.
 
-- `RN_WEB_APP_BASE_URL` (fallback: `NEXT_PUBLIC_SITE_URL`)
-- `RN_DEFAULT_WS_URL` (fallback: `NEXT_PUBLIC_WS_URL`)
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_WS_URL`
+- `NEXT_PUBLIC_API_NAMESPACE` (iOS 필수: `ios/v1.0.0`)
+- `RN_CLIENT_VERSION` (optional, fallback: `CFBundleShortVersionString`)
+- `RN_CLIENT_BUILD` (optional, fallback: `CFBundleVersion`)
+
+RN WebView는 `apiNamespace` 쿼리로 웹에 전달합니다.
+값이 없거나 플랫폼 기준값과 다르면 WebView를 로드하지 않고 오류를 표시합니다.
+`pnpm rn:ios`는 실행 전에 `NEXT_PUBLIC_API_NAMESPACE=ios/v1.0.0`을 검증합니다.
+
+iOS 앱은 시작 시 `/api/ios/v1.0.0/client/version-policy`를 호출해
+`force_update | recommend_update | none` 정책을 반영합니다.
+
+iOS 런타임 URL은 `Info.plist`의 아래 키를 우선 사용합니다.
+
+- `MingleWebAppBaseURL`
+- `MingleDefaultWsURL`
+
+`scripts/devbox`는 iOS 디바이스 빌드 시 `rn/ios/devbox.runtime.xcconfig`를 생성/주입해
+위 값을 워크트리/ngrok URL로 덮어씁니다. devbox를 쓰지 않는 일반 빌드는
+Xcode 프로젝트 기본값(프로덕션 URL)을 사용합니다.
 
 This project was bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 

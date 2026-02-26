@@ -1,3 +1,5 @@
+import { buildLandingApiPath } from '@/lib/api-contract'
+
 // Collect common user/browser info for all tracking calls
 export function getUserInfo() {
   return {
@@ -16,7 +18,7 @@ export function getUserInfo() {
 // Log button click with user info
 export async function logButtonClick(buttonType: string) {
   try {
-    await fetch('/api/log-click', {
+    await fetch(buildLandingApiPath('/log-click'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -33,7 +35,7 @@ export async function logButtonClick(buttonType: string) {
 // Log page visit with user info
 export async function logVisit(pageLanguage: string) {
   try {
-    await fetch('/api/log-visit', {
+    await fetch(buildLandingApiPath('/log-visit'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

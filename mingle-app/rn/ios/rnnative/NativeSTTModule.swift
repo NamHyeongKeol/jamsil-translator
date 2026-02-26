@@ -240,6 +240,96 @@ class NativeSTTModule: RCTEventEmitter {
         false
     }
 
+    private static func readRuntimeConfigValue(_ key: String) -> String {
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String else {
+            return ""
+        }
+        var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        while value.hasPrefix("\""), value.hasSuffix("\""), value.count >= 2 {
+            value = String(value.dropFirst().dropLast())
+        }
+        value = value.replacingOccurrences(of: "\\/", with: "/")
+        value = value.replacingOccurrences(of: "\\\"", with: "\"")
+        value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.isEmpty || value.hasPrefix("$(") {
+            return ""
+        }
+        return value
+    }
+
+    private static func readRuntimeConfigURL(
+        schemeKey: String,
+        hostKey: String,
+        legacyKey: String
+    ) -> String {
+        let scheme = Self.readRuntimeConfigValue(schemeKey)
+        let host = Self.readRuntimeConfigValue(hostKey)
+        if !scheme.isEmpty && !host.isEmpty {
+            let combined = "\(scheme)://\(host)"
+            if let parsed = URLComponents(string: combined),
+               let parsedScheme = parsed.scheme,
+               let parsedHost = parsed.host,
+               !parsedScheme.isEmpty,
+               !parsedHost.isEmpty {
+                return combined
+            }
+        }
+        let legacy = Self.readRuntimeConfigValue(legacyKey)
+        if legacy.isEmpty {
+            return ""
+        }
+        if let parsed = URLComponents(string: legacy),
+           let parsedScheme = parsed.scheme,
+           let parsedHost = parsed.host,
+           !parsedScheme.isEmpty,
+           !parsedHost.isEmpty {
+            return legacy
+        }
+        return ""
+    }
+
+    override func constantsToExport() -> [AnyHashable: Any]! {
+        return [
+            "runtimeConfig": [
+                "webAppBaseUrl": Self.readRuntimeConfigURL(
+                    schemeKey: "MingleWebAppScheme",
+                    hostKey: "MingleWebAppHost",
+                    legacyKey: "MingleWebAppBaseURL"
+                ),
+                "defaultWsUrl": Self.readRuntimeConfigURL(
+                    schemeKey: "MingleDefaultWsScheme",
+                    hostKey: "MingleDefaultWsHost",
+                    legacyKey: "MingleDefaultWsURL"
+                ),
+                "apiNamespace": Self.readRuntimeConfigValue("MingleApiNamespace"),
+                "clientVersion": Self.readRuntimeConfigValue("CFBundleShortVersionString"),
+                "clientBuild": Self.readRuntimeConfigValue("CFBundleVersion"),
+            ],
+        ]
+    }
+
+    @objc(getRuntimeConfig:rejecter:)
+    func getRuntimeConfig(
+        _ resolve: RCTPromiseResolveBlock,
+        rejecter reject: RCTPromiseRejectBlock
+    ) {
+        resolve([
+            "webAppBaseUrl": Self.readRuntimeConfigURL(
+                schemeKey: "MingleWebAppScheme",
+                hostKey: "MingleWebAppHost",
+                legacyKey: "MingleWebAppBaseURL"
+            ),
+            "defaultWsUrl": Self.readRuntimeConfigURL(
+                schemeKey: "MingleDefaultWsScheme",
+                hostKey: "MingleDefaultWsHost",
+                legacyKey: "MingleDefaultWsURL"
+            ),
+            "apiNamespace": Self.readRuntimeConfigValue("MingleApiNamespace"),
+            "clientVersion": Self.readRuntimeConfigValue("CFBundleShortVersionString"),
+            "clientBuild": Self.readRuntimeConfigValue("CFBundleVersion"),
+        ])
+    }
+
     override func supportedEvents() -> [String]! {
         ["status", "message", "error", "close"]
     }
@@ -256,22 +346,23 @@ class NativeSTTModule: RCTEventEmitter {
         stopAndCleanup(reason: nil)
     }
 
-    private func configureAudioSession() throws {
+    private func configureAudioSession(aecEnabled: Bool) throws {
         let audioSession = AVAudioSession.sharedInstance()
-        NSLog("[NativeSTTModule] configureAudioSession category=%@ mode=%@ sampleRate=%.0f",
-              audioSession.category.rawValue, audioSession.mode.rawValue, audioSession.sampleRate)
-        // Keep full-duplex (record + playback) but avoid voiceChat processing that
-        // pushes output into low "call-like" playback on iOS.
+        // .voiceChat → iOS system-level AEC (works with AVAudioPlayer TTS)
+        // .default   → no system AEC, full speaker volume, echo allowed
+        let mode: AVAudioSession.Mode = aecEnabled ? .voiceChat : .default
+        NSLog("[NativeSTTModule] configureAudioSession aec=%d mode=%@ category=%@ sampleRate=%.0f",
+              aecEnabled ? 1 : 0, mode.rawValue, audioSession.category.rawValue, audioSession.sampleRate)
         try audioSession.setCategory(
             .playAndRecord,
-            mode: .default,
+            mode: mode,
             options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
         )
         try? audioSession.setPreferredSampleRate(48_000)
         try? audioSession.setPreferredIOBufferDuration(0.02)
         try audioSession.setActive(true, options: [])
-        NSLog("[NativeSTTModule] audioSession active sampleRate=%.0f ioBufferDuration=%.4f",
-              audioSession.sampleRate, audioSession.ioBufferDuration)
+        NSLog("[NativeSTTModule] audioSession active mode=%@ sampleRate=%.0f ioBufferDuration=%.4f",
+              mode.rawValue, audioSession.sampleRate, audioSession.ioBufferDuration)
     }
 
     private func installAudioObserversIfNeeded() {
@@ -375,7 +466,7 @@ class NativeSTTModule: RCTEventEmitter {
             }
 
             do {
-                try self.configureAudioSession()
+                try self.configureAudioSession(aecEnabled: self.isAecEnabled)
             } catch {
                 self.emitError("audio_reconfigure_failed(\(reason)): \(error.localizedDescription)")
                 return
@@ -638,7 +729,7 @@ class NativeSTTModule: RCTEventEmitter {
               wsUrlString, languages.joined(separator: ","), sttModel, aecEnabled ? 1 : 0)
 
         do {
-            try configureAudioSession()
+            try configureAudioSession(aecEnabled: aecEnabled)
             let audioSession = AVAudioSession.sharedInstance()
             let route = audioSession.currentRoute
             let inputs = route.inputs.map { "\($0.portName)(\($0.portType.rawValue))" }.joined(separator: ",")
@@ -828,8 +919,14 @@ class NativeSTTModule: RCTEventEmitter {
             return
         }
 
-        // Hot-swap voice processing on the live audio engine.
-        // Stop engine → reset engine (VP state change) → re-install tap → restart.
+        // Hot-swap: reconfigure audio session mode + voice processing.
+        // .voiceChat provides system-level AEC; .default gives full volume.
+        do {
+            try configureAudioSession(aecEnabled: enabled)
+        } catch {
+            NSLog("[NativeSTTModule] reconfigure session after AEC toggle FAILED: %@", error.localizedDescription)
+        }
+
         removeTapIfNeeded()
         if audioEngine.isRunning {
             audioEngine.stop()

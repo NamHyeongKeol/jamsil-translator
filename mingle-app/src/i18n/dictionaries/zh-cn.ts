@@ -1,0 +1,20 @@
+import { createProfileLocalizedDictionary } from "@/i18n/dictionaries/create-profile-localized-dictionary";
+
+export const zhCnDictionary = createProfileLocalizedDictionary({
+  authTitle: "身份验证",
+  loginRequiredTitle: "需要登录",
+  loginRequiredDescription: "请使用 Apple 或 Google 登录后再使用翻译器。",
+  loginLoading: "正在检查登录状态...",
+  signedInAs: "当前登录",
+  loginApple: "使用 Apple 登录",
+  loginGoogle: "使用 Google 登录",
+  loginDemo: "演示登录",
+  logout: "退出登录",
+  deleteAccount: "删除账号",
+  menuLabel: "菜单",
+  deleteAccountConfirm: "确定删除账号数据并立即退出登录吗？",
+  deleteAccountFailed: "删除账号失败，请重试。",
+  appleNotConfigured: "缺少 Apple OAuth 环境变量，无法使用 Apple 登录。",
+  googleNotConfigured: "缺少 Google OAuth 环境变量，仅可使用演示登录。",
+  nativeSignInFailed: "原生登录失败，请重试。",
+});

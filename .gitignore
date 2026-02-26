@@ -33,6 +33,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.devbox.env
+ngrok.mobile.local.yml
+.devbox-cache/
+.devbox-logs/
+mingle-app/rn/ios/devbox.runtime.xcconfig
 
 # vercel
 .vercel
@@ -44,4 +49,9 @@ next-env.d.ts
 /src/generated/prisma
 
 .claude/
+.codex/
 .worktrees/
+
+# mingle-ios build artifacts
+mingle-ios/.derived-data-simulator/
+.gem/

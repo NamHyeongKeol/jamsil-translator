@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight, ChevronDown } from 'lucide-react'
+import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight, ChevronDown, Menu, LogOut, Trash2 } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
 import { useTtsSettings } from '@/context/tts-settings'
+import { buildClientApiPath } from '@/lib/api-contract'
 import {
   AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
   deriveScrollAutoFollowState,
@@ -125,6 +126,7 @@ export interface LivePhoneDemoRef {
 interface LivePhoneDemoProps {
   onLimitReached?: () => void
   enableAutoTTS?: boolean
+  uiLocale: string
   tapPlayToStartLabel: string
   usageLimitReachedLabel: string
   usageLimitRetryHintLabel: string
@@ -132,6 +134,12 @@ interface LivePhoneDemoProps {
   connectionFailedLabel: string
   muteTtsLabel: string
   unmuteTtsLabel: string
+  menuLabel: string
+  logoutLabel: string
+  deleteAccountLabel: string
+  onLogout: () => void
+  onDeleteAccount: () => void
+  isAuthActionPending?: boolean
 }
 
 const TTS_AUDIO_WAIT_TIMEOUT_MS = 3000
@@ -162,11 +170,39 @@ function EchoInputRouteIcon({ echoAllowed }: { echoAllowed: boolean }) {
   )
 }
 
-
+async function saveConversation(utterances: Utterance[], selectedLanguages: string[], usageSec: number) {
+  try {
+    await fetch(buildClientApiPath('/log/client-event'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventType: 'stt_session_stopped',
+        metadata: {
+          utterances,
+          selectedLanguages,
+          usageSec,
+        },
+        clientContext: {
+          screenWidth: window.screen.width,
+          screenHeight: window.screen.height,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          platform: navigator.platform,
+          language: navigator.language,
+          referrer: document.referrer || null,
+          pathname: window.location.pathname,
+          fullUrl: window.location.href,
+          queryParams: window.location.search || null,
+          usageSec,
+        },
+      }),
+    })
+  } catch { /* silently fail */ }
+}
 
 const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function LivePhoneDemo({
   onLimitReached,
   enableAutoTTS = false,
+  uiLocale,
   tapPlayToStartLabel,
   usageLimitReachedLabel,
   usageLimitRetryHintLabel,
@@ -174,6 +210,12 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   connectionFailedLabel,
   muteTtsLabel,
   unmuteTtsLabel,
+  menuLabel,
+  logoutLabel,
+  deleteAccountLabel,
+  onLogout,
+  onDeleteAccount,
+  isAuthActionPending = false,
 }, ref) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
     if (typeof window === 'undefined') return ['en', 'ko', 'ja']
@@ -183,6 +225,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     } catch { return ['en', 'ko', 'ja'] }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const { ttsEnabled: isSoundEnabled, setTtsEnabled: setIsSoundEnabled, aecEnabled, setAecEnabled } = useTtsSettings()
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const utterancesRef = useRef<Utterance[]>([])
@@ -202,6 +245,8 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const processTtsQueueRef = useRef<() => void>(() => {})
   const stopClickResumeTimerIdsRef = useRef<number[]>([])
   const langSelectorButtonRef = useRef<HTMLButtonElement | null>(null)
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const menuPanelRef = useRef<HTMLDivElement | null>(null)
   const [isNativeUiBridgeEnabled] = useState(() => {
     if (typeof window === 'undefined') return false
     return isNativeUiBridgeEnabledFromSearch(window.location.search || '')
@@ -219,6 +264,31 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       localStorage.setItem(LS_KEY_LANGUAGES, JSON.stringify(selectedLanguages))
     } catch { /* ignore */ }
   }, [selectedLanguages])
+
+  useEffect(() => {
+    if (!menuOpen) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (!target) return
+      if (menuButtonRef.current?.contains(target)) return
+      if (menuPanelRef.current?.contains(target)) return
+      setMenuOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [menuOpen])
 
   const ensureAudioPlayer = useCallback(() => {
     if (playerAudioRef.current) return playerAudioRef.current
@@ -1049,13 +1119,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       scrollMetrics.thumbTop + (scrollMetrics.thumbHeight / 2),
     ),
   )
+  const navSurfaceClassName = 'bg-white'
 
   return (
     <PhoneFrame>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Header */}
         <div
-          className="relative shrink-0 flex items-center justify-between border-b border-gray-100"
+          className={`relative z-40 shrink-0 flex items-center justify-between ${navSurfaceClassName}`}
           style={{
             paddingTop: "max(calc(env(safe-area-inset-top) + 20px), 24px)",
             paddingBottom: "10px",
@@ -1075,31 +1146,85 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           <span className="text-[2.05rem] font-extrabold leading-[1.08] bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
             Mingle
           </span>
-          <div className="relative flex items-center gap-1.5">
-            <button
-              ref={langSelectorButtonRef}
-              onClick={() => !isActive && setLangSelectorOpen(o => !o)}
-              disabled={isActive}
-              className="flex items-center gap-1 disabled:opacity-60"
-            >
-              {selectedLanguages.map((lang) => (
-                <span
-                  key={lang}
-                  className="text-[1.35rem]"
-                  title={lang.toUpperCase()}
+          <div className="relative flex items-center gap-1">
+            <div className="relative mr-1.5">
+              <button
+                ref={langSelectorButtonRef}
+                onClick={() => {
+                  if (isActive) return
+                  setMenuOpen(false)
+                  setLangSelectorOpen(o => !o)
+                }}
+                disabled={isActive}
+                className="flex items-center gap-1 disabled:opacity-60"
+              >
+                {selectedLanguages.map((lang) => (
+                  <span
+                    key={lang}
+                    className="text-[1.35rem]"
+                    title={lang.toUpperCase()}
+                  >
+                    {FLAG_MAP[lang] || '🌐'}
+                  </span>
+                ))}
+              </button>
+              <LanguageSelector
+                isOpen={langSelectorOpen}
+                onClose={() => setLangSelectorOpen(false)}
+                selectedLanguages={selectedLanguages}
+                onToggleLanguage={handleToggleLanguage}
+                uiLocale={uiLocale}
+                disabled={isActive}
+                triggerRef={langSelectorButtonRef}
+              />
+            </div>
+            <div className="relative">
+              <button
+                ref={menuButtonRef}
+                type="button"
+                onClick={() => {
+                  setLangSelectorOpen(false)
+                  setMenuOpen(o => !o)
+                }}
+                disabled={isAuthActionPending}
+                className={`inline-flex h-11 min-w-[44px] items-center justify-center px-2 text-gray-700 transition-colors hover:text-gray-900 active:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60 ${navSurfaceClassName}`}
+                aria-label={menuLabel}
+                aria-expanded={menuOpen}
+              >
+                <Menu size={16} strokeWidth={2} />
+              </button>
+              {menuOpen && (
+                <div
+                  ref={menuPanelRef}
+                  className={`absolute right-0 top-full z-50 mt-1 w-44 border border-gray-200 p-0 ${navSurfaceClassName}`}
                 >
-                  {FLAG_MAP[lang] || '🌐'}
-                </span>
-              ))}
-            </button>
-            <LanguageSelector
-              isOpen={langSelectorOpen}
-              onClose={() => setLangSelectorOpen(false)}
-              selectedLanguages={selectedLanguages}
-              onToggleLanguage={handleToggleLanguage}
-              disabled={isActive}
-              triggerRef={langSelectorButtonRef}
-            />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onLogout()
+                    }}
+                    disabled={isAuthActionPending}
+                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <LogOut size={15} strokeWidth={2} />
+                    <span>{logoutLabel}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onDeleteAccount()
+                    }}
+                    disabled={isAuthActionPending}
+                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Trash2 size={15} strokeWidth={2} />
+                    <span>{deleteAccountLabel}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

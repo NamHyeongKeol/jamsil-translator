@@ -285,7 +285,14 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
+				NEXT_PUBLIC_API_NAMESPACE = ios/v1.0.0;
+				NEXT_PUBLIC_SITE_HOST = "mingle-app-xi.vercel.app";
+				NEXT_PUBLIC_SITE_SCHEME = https;
+				NEXT_PUBLIC_SITE_URL = "https://mingle-app-xi.vercel.app";
+				NEXT_PUBLIC_WS_HOST = mingle.up.railway.app;
+				NEXT_PUBLIC_WS_SCHEME = wss;
+				NEXT_PUBLIC_WS_URL = "wss://mingle.up.railway.app";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -316,7 +323,14 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
+				NEXT_PUBLIC_API_NAMESPACE = ios/v1.0.0;
+				NEXT_PUBLIC_SITE_HOST = "mingle-app-xi.vercel.app";
+				NEXT_PUBLIC_SITE_SCHEME = https;
+				NEXT_PUBLIC_SITE_URL = "https://mingle-app-xi.vercel.app";
+				NEXT_PUBLIC_WS_HOST = mingle.up.railway.app;
+				NEXT_PUBLIC_WS_SCHEME = wss;
+				NEXT_PUBLIC_WS_URL = "wss://mingle.up.railway.app";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

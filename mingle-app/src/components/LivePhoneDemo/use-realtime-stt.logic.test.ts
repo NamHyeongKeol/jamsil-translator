@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFinalizedUtterancePayload,
   getWsUrl,
-  isRecentDuplicateFinalBySpeaker,
   parseSttTranscriptMessage,
 } from './use-realtime-stt'
 
@@ -66,25 +65,8 @@ describe('use-realtime-stt pure logic', () => {
       rawText: ' <fin> ... Hello there ',
       text: 'Hello there',
       language: 'en-US',
-      speaker: 'speaker_unknown',
       isFinal: true,
     })
-  })
-
-  it('normalizes speaker field from transcript payload', () => {
-    const parsed = parseSttTranscriptMessage({
-      type: 'transcript',
-      data: {
-        is_final: false,
-        utterance: {
-          text: 'hello',
-          language: 'en',
-          speaker: 'speaker 2',
-        },
-      },
-    })
-
-    expect(parsed?.speaker).toBe('speaker_2')
   })
 
   it('returns null for malformed non-transcript payloads', () => {
@@ -112,12 +94,10 @@ describe('use-realtime-stt pure logic', () => {
     expect(built?.utteranceId).toBe('u-1700000000000-7')
     expect(built?.text).toBe('hello everyone')
     expect(built?.language).toBe('en-US')
-    expect(built?.speaker).toBe('speaker_unknown')
     expect(built?.utterance).toEqual({
       id: 'u-1700000000000-7',
       originalText: 'hello everyone',
       originalLang: 'en-US',
-      speaker: 'speaker_unknown',
       targetLanguages: ['ko', 'ja'],
       translations: {
         ko: '안녕하세요',
@@ -150,56 +130,5 @@ describe('use-realtime-stt pure logic', () => {
     })
 
     expect(built).toBeNull()
-  })
-
-  it('detects recent duplicate final per speaker even when another speaker interleaves', () => {
-    const now = 1_700_000_000_000
-    const utterances = [
-      {
-        id: 'u-1699999999950-1',
-        createdAtMs: now - 50,
-        originalText: 'Hello',
-        originalLang: 'en',
-        speaker: 'speaker_1',
-      },
-      {
-        id: 'u-1699999999970-2',
-        createdAtMs: now - 30,
-        originalText: 'Hi',
-        originalLang: 'en',
-        speaker: 'speaker_2',
-      },
-    ]
-
-    expect(isRecentDuplicateFinalBySpeaker(
-      utterances,
-      'Hello',
-      'en',
-      'speaker_1',
-      now,
-      700,
-    )).toBe(true)
-  })
-
-  it('does not treat other speaker recent utterance as duplicate', () => {
-    const now = 1_700_000_000_000
-    const utterances = [
-      {
-        id: 'u-1699999999970-2',
-        createdAtMs: now - 30,
-        originalText: 'Hello',
-        originalLang: 'en',
-        speaker: 'speaker_2',
-      },
-    ]
-
-    expect(isRecentDuplicateFinalBySpeaker(
-      utterances,
-      'Hello',
-      'en',
-      'speaker_1',
-      now,
-      700,
-    )).toBe(false)
   })
 })
