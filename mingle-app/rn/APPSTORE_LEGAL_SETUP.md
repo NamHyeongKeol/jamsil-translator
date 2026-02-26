@@ -19,21 +19,21 @@ Files:
 
 ## 2) Production URLs to use in App Store Connect
 
-Use your production domain. Current default runtime domain in iOS project is:
+Use your production domain:
 
-- `https://mingle-app-xi.vercel.app`
+- `https://app.minglelabs.xyz`
 
 Recommended values:
 
-- Privacy Policy URL: `https://mingle-app-xi.vercel.app/legal/privacy-policy.html`
-- Terms of Use URL: `https://mingle-app-xi.vercel.app/legal/terms-of-use.html`
-- Support URL (if same site): `https://mingle-app-xi.vercel.app/`
+- Privacy Policy URL: `https://app.minglelabs.xyz/legal/privacy-policy.html`
+- Terms of Use URL: `https://app.minglelabs.xyz/legal/terms-of-use.html`
+- Support URL (if same site): `https://app.minglelabs.xyz/`
 
 Locale examples:
 
-- Korean Privacy: `https://mingle-app-xi.vercel.app/legal/ko/privacy-policy.html`
-- Japanese Terms: `https://mingle-app-xi.vercel.app/legal/ja/terms-of-use.html`
-- Simplified Chinese Privacy: `https://mingle-app-xi.vercel.app/legal/zh-cn/privacy-policy.html`
+- Korean Privacy: `https://app.minglelabs.xyz/legal/ko/privacy-policy.html`
+- Japanese Terms: `https://app.minglelabs.xyz/legal/ja/terms-of-use.html`
+- Simplified Chinese Privacy: `https://app.minglelabs.xyz/legal/zh-cn/privacy-policy.html`
 
 ## 3) App Store Connect input mapping
 
