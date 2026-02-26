@@ -4,6 +4,14 @@ import { resolve } from 'path';
 import { WebSocket, WebSocketServer } from 'ws';
 import fetch from 'node-fetch';
 import { config as loadDotenv } from 'dotenv';
+import {
+    type SegmentationStrategy,
+    type TokenFrameContext,
+    readSegmentationStrategyId,
+    createSegmentationStrategy,
+    stripEndpointMarkers,
+    SilenceTimerStrategy,
+} from './segmentation-strategy';
 
 const envCandidates = ['.env.local', '.env'];
 for (const filename of envCandidates) {
@@ -27,6 +35,7 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     if (!Number.isFinite(raw)) return 1200;
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
+const SONIOX_SEGMENTATION_STRATEGY_ID = readSegmentationStrategyId();
 
 const server = createServer();
 const wss = new WebSocketServer({ server });
@@ -57,24 +66,11 @@ wss.on('connection', (clientWs) => {
     let selectedLanguages: string[] = [];
     let finalizePendingTurnFromProvider: (() => Promise<FinalTurnPayload | null>) | null = null;
     let sonioxStopRequested = false;
-    let sonioxHasPendingTranscript = false;
-    let sonioxManualFinalizeSent = false;
-    let sonioxLastManualFinalizeAtMs = 0;
-    let sonioxLastTranscriptProgressAtMs = 0;
-    let sonioxManualFinalizeTimer: NodeJS.Timeout | null = null;
-    let sonioxManualFinalizeDueAtMs = 0;
+    let sonioxSegmentationStrategy: SegmentationStrategy | null = null;
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
     const fireworksApiKey = process.env.FIREWORKS_API_KEY;
     const sonioxApiKey = process.env.SONIOX_API_KEY;
-
-    const clearSonioxManualFinalizeTimer = () => {
-        if (sonioxManualFinalizeTimer) {
-            clearTimeout(sonioxManualFinalizeTimer);
-            sonioxManualFinalizeTimer = null;
-        }
-        sonioxManualFinalizeDueAtMs = 0;
-    };
 
     const cleanup = () => {
         isClientConnected = false;
@@ -92,88 +88,20 @@ wss.on('connection', (clientWs) => {
             }
             sttWs = null;
         }
-        clearSonioxManualFinalizeTimer();
-        sonioxHasPendingTranscript = false;
-        sonioxManualFinalizeSent = false;
-        sonioxLastManualFinalizeAtMs = 0;
-        sonioxLastTranscriptProgressAtMs = 0;
+        if (sonioxSegmentationStrategy) {
+            sonioxSegmentationStrategy.dispose();
+            if (sonioxSegmentationStrategy instanceof SilenceTimerStrategy) {
+                sonioxSegmentationStrategy.resetState();
+            }
+        }
     };
 
     const resetSonioxSegmentState = () => {
-        clearSonioxManualFinalizeTimer();
-        sonioxHasPendingTranscript = false;
-        sonioxManualFinalizeSent = false;
-        sonioxLastManualFinalizeAtMs = 0;
-        sonioxLastTranscriptProgressAtMs = 0;
-    };
-
-    const maybeTriggerSonioxManualFinalize = () => {
-        if (currentModel !== 'soniox') return;
-        if (!sttWs || sttWs.readyState !== WebSocket.OPEN) return;
-        if (sonioxStopRequested) return;
-        if (!sonioxHasPendingTranscript) {
-            clearSonioxManualFinalizeTimer();
-            return;
+        if (sonioxSegmentationStrategy) {
+            if (sonioxSegmentationStrategy instanceof SilenceTimerStrategy) {
+                sonioxSegmentationStrategy.resetState();
+            }
         }
-        if (sonioxManualFinalizeSent) return;
-
-        const now = Date.now();
-        if (sonioxLastTranscriptProgressAtMs <= 0) {
-            sonioxLastTranscriptProgressAtMs = now;
-        }
-        const elapsedSinceTranscriptProgressMs = now - sonioxLastTranscriptProgressAtMs;
-        if (elapsedSinceTranscriptProgressMs < SONIOX_MANUAL_FINALIZE_SILENCE_MS) {
-            const waitMs = Math.max(1, SONIOX_MANUAL_FINALIZE_SILENCE_MS - elapsedSinceTranscriptProgressMs);
-            clearSonioxManualFinalizeTimer();
-            sonioxManualFinalizeTimer = setTimeout(
-                () => maybeTriggerSonioxManualFinalize(),
-                waitMs,
-            );
-            sonioxManualFinalizeDueAtMs = now + waitMs;
-            return;
-        }
-
-        const elapsedSinceLastManualFinalizeMs = now - sonioxLastManualFinalizeAtMs;
-        if (elapsedSinceLastManualFinalizeMs < SONIOX_MANUAL_FINALIZE_COOLDOWN_MS) {
-            const waitMs = Math.max(1, SONIOX_MANUAL_FINALIZE_COOLDOWN_MS - elapsedSinceLastManualFinalizeMs);
-            clearSonioxManualFinalizeTimer();
-            sonioxManualFinalizeTimer = setTimeout(
-                () => maybeTriggerSonioxManualFinalize(),
-                waitMs,
-            );
-            sonioxManualFinalizeDueAtMs = now + waitMs;
-            return;
-        }
-
-        try {
-            sttWs.send(JSON.stringify({ type: 'finalize' }));
-            sonioxManualFinalizeSent = true;
-            sonioxLastManualFinalizeAtMs = now;
-            clearSonioxManualFinalizeTimer();
-        } catch (error) {
-            console.error('Soniox manual finalize send failed:', error);
-        }
-    };
-
-    const scheduleSonioxManualFinalizeFromTranscriptProgress = () => {
-        if (currentModel !== 'soniox') return;
-        if (sonioxStopRequested) return;
-        if (!sonioxHasPendingTranscript) {
-            clearSonioxManualFinalizeTimer();
-            return;
-        }
-
-        const now = Date.now();
-        sonioxLastTranscriptProgressAtMs = now;
-        if (sonioxManualFinalizeSent) return;
-
-        const waitMs = SONIOX_MANUAL_FINALIZE_SILENCE_MS;
-        clearSonioxManualFinalizeTimer();
-        sonioxManualFinalizeTimer = setTimeout(
-            () => maybeTriggerSonioxManualFinalize(),
-            waitMs,
-        );
-        sonioxManualFinalizeDueAtMs = now + waitMs;
     };
 
     // ===== GLADIA 연결 =====
@@ -608,6 +536,27 @@ wss.on('connection', (clientWs) => {
             sttWs = new WebSocket(SONIOX_WS_URL);
             resetSonioxSegmentState();
 
+            // 전략 객체 생성
+            const localSttWs = sttWs;
+            sonioxSegmentationStrategy = createSegmentationStrategy(
+                SONIOX_SEGMENTATION_STRATEGY_ID,
+                {
+                    silenceMs: SONIOX_MANUAL_FINALIZE_SILENCE_MS,
+                    cooldownMs: SONIOX_MANUAL_FINALIZE_COOLDOWN_MS,
+                    sendFinalize: () => {
+                        if (!localSttWs || localSttWs.readyState !== WebSocket.OPEN) return;
+                        if (sonioxStopRequested) return;
+                        try {
+                            localSttWs.send(JSON.stringify({ type: 'finalize' }));
+                        } catch (error) {
+                            console.error('Soniox manual finalize send failed:', error);
+                        }
+                    },
+                },
+            );
+            const strategy = sonioxSegmentationStrategy;
+            console.log(`[conn:${connId}] soniox segmentation strategy=${strategy.id}`);
+
             // 토큰 누적 상태 (Soniox는 토큰 단위로 반환)
             let finalizedText = '';
             let latestNonFinalText = '';
@@ -615,11 +564,6 @@ wss.on('connection', (clientWs) => {
             let lastFinalizedEndMs = -1;
             let detectedLang = config.languages[0] || 'en';
             sonioxStopRequested = false;
-            const stripEndpointMarkers = (text: string): string => text.replace(/<\/?(?:end|fin)>/ig, '');
-            const extractFirstEndpointMarker = (text: string): string => {
-                const match = /<\/?(?:end|fin)>/i.exec(text);
-                return match ? match[0] : '<fin>';
-            };
             const composeTurnText = (finalText: string, nonFinalText: string): string => {
                 return `${finalText || ''}${nonFinalText || ''}`.trim();
             };
@@ -635,21 +579,6 @@ wss.on('connection', (clientWs) => {
                 if (tokenEndMs !== null) return tokenEndMs > watermarkMs;
                 if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
                 return true;
-            };
-
-            const splitTurnAtFirstEndpointMarker = (text: string): { finalText: string; carryText: string } => {
-                const markerMatch = /<\/?(?:end|fin)>/i.exec(text);
-                if (!markerMatch) {
-                    return {
-                        finalText: text.trim(),
-                        carryText: '',
-                    };
-                }
-                const markerEndIndex = markerMatch.index + markerMatch[0].length;
-                return {
-                    finalText: text.slice(0, markerEndIndex).trim(),
-                    carryText: text.slice(markerEndIndex).trim(),
-                };
             };
 
             const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
@@ -703,6 +632,7 @@ wss.on('connection', (clientWs) => {
                     enable_endpoint_detection: false,
                     enable_language_identification: true,
                     enable_speaker_diarization: true,
+                    ...strategy.sonioxConfigOverrides(),
                 };
                 sttWs!.send(JSON.stringify(sonioxConfig));
 
@@ -901,45 +831,33 @@ wss.on('connection', (clientWs) => {
                         latestNonFinalText = '';
                     }
 
+                    // === 전략에 transcript progress 알림 ===
                     const previousMergedSnapshot = composeTurnText(previousFinalizedText, previousNonFinalText);
                     const mergedSnapshot = composeTurnText(finalizedText, latestNonFinalText);
                     const previousMergedTextForIdle = stripEndpointMarkers(previousMergedSnapshot);
                     const mergedTextForIdle = stripEndpointMarkers(mergedSnapshot);
-                    sonioxHasPendingTranscript = mergedSnapshot.length > 0
+                    const hasPendingTranscript = mergedSnapshot.length > 0
                         && !(latestNonFinalIsProvisionalCarry && !finalizedText.trim());
                     const transcriptAdded = mergedTextForIdle.length > previousMergedTextForIdle.length;
-                    if (transcriptAdded) {
-                        // Re-arm manual finalize only when transcript text is added.
-                        sonioxManualFinalizeSent = false;
-                        scheduleSonioxManualFinalizeFromTranscriptProgress();
-                    } else if (!sonioxHasPendingTranscript) {
-                        clearSonioxManualFinalizeTimer();
-                    }
+                    strategy.onTranscriptProgress(hasPendingTranscript, transcriptAdded);
 
-                    // 발화 완료 판단:
-                    // Soniox endpoint(<end>/<fin>) 토큰이 포함된 경우에만 완료 처리
-                    const mergedHasEndpointMarker = /<\/?(?:end|fin)>/i.test(mergedSnapshot);
-                    const hasPendingTextSnapshot = stripEndpointMarkers(mergedSnapshot).trim().length > 0;
-                    let endpointFinalized = false;
-                    let endpointFinalText = '';
-                    let endpointCarryText = '';
-                    if (hasEndpointToken && (hasProgressTokenBeyondWatermark || mergedHasEndpointMarker || hasPendingTextSnapshot)) {
-                        const mergedAtEndpoint = composeTurnText(finalizedText, latestNonFinalText);
-                        const { finalText, carryText } = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
-                        let finalTextToEmit = finalText;
-                        let carryTextToEmit = carryText;
+                    // === 전략에 발화 완료 판단 위임 ===
+                    const tokenFrameCtx: TokenFrameContext = {
+                        finalizedText,
+                        nonFinalText: latestNonFinalText,
+                        hasEndpointMarker: hasEndpointToken,
+                        endpointMarkerText: endpointMarkerText,
+                        hasTextContent: stripEndpointMarkers(mergedSnapshot).trim().length > 0,
+                        hasProgressTokenBeyondWatermark,
+                        hadPendingTextBeforeFrame,
+                        detectedLanguage: detectedLang,
+                        isProvisionalCarry: latestNonFinalIsProvisionalCarry,
+                    };
+                    const decision = strategy.onTokenFrame(tokenFrameCtx);
 
-                        if (!stripEndpointMarkers(finalTextToEmit).trim() && carryTextToEmit) {
-                            // Some Soniox finalize bursts can place endpoint marker before stale non-final tail.
-                            // Recover readable final text as "<tail><fin>" instead of marker-only final.
-                            finalTextToEmit = `${carryTextToEmit}${extractFirstEndpointMarker(finalTextToEmit)}`.trim();
-                            carryTextToEmit = '';
-                        }
-
-                        if (stripEndpointMarkers(finalTextToEmit).trim()) {
-                            emitFinalTurn(finalTextToEmit, detectedLang);
-                            endpointFinalized = true;
-                            endpointFinalText = finalTextToEmit;
+                    if (decision.action === 'finalize') {
+                        if (stripEndpointMarkers(decision.text).trim()) {
+                            emitFinalTurn(decision.text, detectedLang);
                         } else {
                             // Ignore marker-only finals to avoid <fin>-only bubble floods.
                             finalizedText = '';
@@ -949,14 +867,11 @@ wss.on('connection', (clientWs) => {
                         }
 
                         // Keep trailing text after endpoint marker as next-turn partial
-                        // so it does not contaminate the just-finished final turn.
-                        if (carryTextToEmit) {
-                            endpointCarryText = carryTextToEmit;
-                            latestNonFinalText = carryTextToEmit;
+                        if (decision.carryText) {
+                            latestNonFinalText = decision.carryText;
                             latestNonFinalIsProvisionalCarry = true;
-                            sonioxHasPendingTranscript = false;
-                            sonioxManualFinalizeSent = true;
-                            clearSonioxManualFinalizeTimer();
+                            // Suppress timer for carry text
+                            strategy.onTranscriptProgress(false, false);
 
                             if (clientWs.readyState === WebSocket.OPEN) {
                                 clientWs.send(JSON.stringify({
@@ -964,7 +879,7 @@ wss.on('connection', (clientWs) => {
                                     data: {
                                         is_final: false,
                                         utterance: {
-                                            text: carryTextToEmit,
+                                            text: decision.carryText,
                                             language: detectedLang,
                                         },
                                     },
@@ -972,6 +887,15 @@ wss.on('connection', (clientWs) => {
                             }
                         } else {
                             latestNonFinalIsProvisionalCarry = false;
+                        }
+                    } else if (decision.action === 'send-finalize-command') {
+                        // LLM 전략 등에서 직접 finalize 명령 전송 요청
+                        if (sttWs && sttWs.readyState === WebSocket.OPEN && !sonioxStopRequested) {
+                            try {
+                                sttWs.send(JSON.stringify({ type: 'finalize' }));
+                            } catch (error) {
+                                console.error('Soniox finalize send failed:', error);
+                            }
                         }
                     }
 
@@ -1043,7 +967,9 @@ wss.on('connection', (clientWs) => {
             const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
             const cleanedPendingText = pendingText.trim();
             sonioxStopRequested = currentModel === 'soniox';
-            clearSonioxManualFinalizeTimer();
+            if (sonioxSegmentationStrategy) {
+                sonioxSegmentationStrategy.dispose();
+            }
 
             let finalizedTurn: FinalTurnPayload | null = null;
 
@@ -1123,6 +1049,6 @@ wss.on('connection', (clientWs) => {
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`[stt-server] listening on 0.0.0.0:${PORT}`);
     console.log(
-        `[stt-server] soniox_finalize_tuning silenceMs=${SONIOX_MANUAL_FINALIZE_SILENCE_MS} cooldownMs=${SONIOX_MANUAL_FINALIZE_COOLDOWN_MS}`,
+        `[stt-server] soniox_finalize_tuning silenceMs=${SONIOX_MANUAL_FINALIZE_SILENCE_MS} cooldownMs=${SONIOX_MANUAL_FINALIZE_COOLDOWN_MS} strategy=${SONIOX_SEGMENTATION_STRATEGY_ID}`,
     );
 });
