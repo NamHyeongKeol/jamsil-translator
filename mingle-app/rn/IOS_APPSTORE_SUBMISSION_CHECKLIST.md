@@ -20,6 +20,9 @@ Date: 2026-02-21
 - [ ] Fill Export Compliance (encryption) questionnaire
 - [ ] Upload metadata:
   - app description, keywords, support/privacy URLs
+  - suggested legal URLs (prod):
+    - `https://mingle-app-xi.vercel.app/legal/privacy-policy.html`
+    - `https://mingle-app-xi.vercel.app/legal/terms-of-use.html`
   - age rating, categories
   - screenshots (required device sets)
 - [ ] Submit TestFlight build and run smoke QA on real devices
