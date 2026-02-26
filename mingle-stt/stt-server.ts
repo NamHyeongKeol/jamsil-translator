@@ -18,8 +18,8 @@ const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen';
 const FIREWORKS_WS_URL = 'wss://audio-streaming.api.fireworks.ai/v1/audio/transcriptions/streaming';
 const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
 const SONIOX_MANUAL_FINALIZE_SILENCE_MS = (() => {
-    const raw = Number(process.env.SONIOX_MANUAL_FINALIZE_SILENCE_MS || '250');
-    if (!Number.isFinite(raw)) return 250;
+    const raw = Number(process.env.SONIOX_MANUAL_FINALIZE_SILENCE_MS || '500');
+    if (!Number.isFinite(raw)) return 500;
     return Math.max(100, Math.min(1000, Math.floor(raw)));
 })();
 const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
@@ -63,6 +63,20 @@ wss.on('connection', (clientWs) => {
     let sonioxLastTranscriptProgressAtMs = 0;
     let sonioxManualFinalizeTimer: NodeJS.Timeout | null = null;
     let sonioxManualFinalizeDueAtMs = 0;
+    // Snapshot of accumulated merged-text length (final + non-final) at the
+    // moment we send { type: 'finalize' } to Soniox.  When the <fin> response
+    // eventually arrives, text beyond this boundary was spoken *after* the
+    // finalize request and should become carry for the next utterance.
+    let sonioxFinalizeSnapshotTextLen: number | null = null;
+    // Mirror of `(finalizedText + latestNonFinalText).length` from inside
+    // startSonioxConnection,
+    // kept in connection scope so maybeTriggerSonioxManualFinalize can read it.
+    let sonioxCurrentMergedTextLen = 0;
+    // --- Carry expiry timer ---
+    // When carry text is parked (latestNonFinalIsProvisionalCarry), this timer
+    // fires after silence+cooldown to finalize the carry as its own utterance
+    // if no new speech arrives.  This does NOT touch the normal finalize flow.
+    let sonioxCarryExpiryTimer: NodeJS.Timeout | null = null;
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
     const fireworksApiKey = process.env.FIREWORKS_API_KEY;
@@ -74,6 +88,13 @@ wss.on('connection', (clientWs) => {
             sonioxManualFinalizeTimer = null;
         }
         sonioxManualFinalizeDueAtMs = 0;
+    };
+
+    const clearSonioxCarryExpiryTimer = () => {
+        if (sonioxCarryExpiryTimer) {
+            clearTimeout(sonioxCarryExpiryTimer);
+            sonioxCarryExpiryTimer = null;
+        }
     };
 
     const cleanup = () => {
@@ -93,6 +114,7 @@ wss.on('connection', (clientWs) => {
             sttWs = null;
         }
         clearSonioxManualFinalizeTimer();
+        clearSonioxCarryExpiryTimer();
         sonioxHasPendingTranscript = false;
         sonioxManualFinalizeSent = false;
         sonioxLastManualFinalizeAtMs = 0;
@@ -101,10 +123,13 @@ wss.on('connection', (clientWs) => {
 
     const resetSonioxSegmentState = () => {
         clearSonioxManualFinalizeTimer();
+        clearSonioxCarryExpiryTimer();
         sonioxHasPendingTranscript = false;
         sonioxManualFinalizeSent = false;
         sonioxLastManualFinalizeAtMs = 0;
         sonioxLastTranscriptProgressAtMs = 0;
+        sonioxFinalizeSnapshotTextLen = null;
+        sonioxCurrentMergedTextLen = 0;
     };
 
     const maybeTriggerSonioxManualFinalize = () => {
@@ -146,12 +171,18 @@ wss.on('connection', (clientWs) => {
         }
 
         try {
+            // Capture snapshot of accumulated text length before sending
+            // finalize.  Tokens arriving after this point belong to the
+            // *next* utterance, even though Soniox may place them before
+            // the <fin> marker in its response.
+            sonioxFinalizeSnapshotTextLen = sonioxCurrentMergedTextLen;
             sttWs.send(JSON.stringify({ type: 'finalize' }));
             sonioxManualFinalizeSent = true;
             sonioxLastManualFinalizeAtMs = now;
             clearSonioxManualFinalizeTimer();
         } catch (error) {
             console.error('Soniox manual finalize send failed:', error);
+            sonioxFinalizeSnapshotTextLen = null;
         }
     };
 
@@ -634,7 +665,38 @@ wss.on('connection', (clientWs) => {
             ): boolean => {
                 if (tokenEndMs !== null) return tokenEndMs > watermarkMs;
                 if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
+                // No timestamp -> keep text (don't drop words), but treat as
+                // non-timestamped progress for carry-promotion gating.
                 return true;
+            };
+            // Returns true only when a token with an actual timestamp is beyond
+            // the watermark.  Used for carry-promotion gating to avoid false
+            // triggers from timestamp-less tokens.
+            const isTokenTimestampedBeyondWatermark = (
+                tokenStartMs: number | null,
+                tokenEndMs: number | null,
+                watermarkMs: number,
+            ): boolean => {
+                if (tokenEndMs !== null) return tokenEndMs > watermarkMs;
+                if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
+                return false;
+            };
+            // Forward-snap only when the boundary cuts through an ASCII word.
+            // This avoids swallowing whole no-space-script suffixes (ko/ja/zh).
+            const isAsciiWordChar = (char: string): boolean => /[A-Za-z0-9']/u.test(char);
+            const snapBoundaryForwardInsideAsciiWord = (text: string, boundary: number): number => {
+                if (boundary <= 0 || boundary >= text.length) return boundary;
+                const prevChar = text[boundary - 1] || '';
+                const currChar = text[boundary] || '';
+                if (!isAsciiWordChar(prevChar) || !isAsciiWordChar(currChar)) {
+                    return boundary;
+                }
+
+                let snapped = boundary;
+                while (snapped < text.length && isAsciiWordChar(text[snapped])) {
+                    snapped += 1;
+                }
+                return snapped;
             };
 
             const splitTurnAtFirstEndpointMarker = (text: string): { finalText: string; carryText: string } => {
@@ -763,6 +825,7 @@ wss.on('connection', (clientWs) => {
                     let hasEndpointToken = false;
                     let endpointMarkerText = '';
                     let hasProgressTokenBeyondWatermark = false;
+                    let hasTimestampedProgressBeyondWatermark = false;
                     let rawFinalText = '';
                     let rawNonFinalText = '';
                     let rawEndpointText = '';
@@ -848,6 +911,9 @@ wss.on('connection', (clientWs) => {
                             if (!includeByWatermark) continue;
                             newFinalText += tokenText;
                             hasProgressTokenBeyondWatermark = true;
+                            if (isTokenTimestampedBeyondWatermark(tokenStartMs, tokenEndMs, lastFinalizedEndMs)) {
+                                hasTimestampedProgressBeyondWatermark = true;
+                            }
                             if (tokenEndMs !== null && tokenEndMs > maxSeenFinalEndMs) {
                                 maxSeenFinalEndMs = tokenEndMs;
                             }
@@ -855,6 +921,9 @@ wss.on('connection', (clientWs) => {
                             if (!includeByWatermark) continue;
                             rebuiltNonFinalText += tokenText;
                             hasProgressTokenBeyondWatermark = true;
+                            if (isTokenTimestampedBeyondWatermark(tokenStartMs, tokenEndMs, lastFinalizedEndMs)) {
+                                hasTimestampedProgressBeyondWatermark = true;
+                            }
                         }
                     }
 
@@ -865,9 +934,43 @@ wss.on('connection', (clientWs) => {
                         newFinalText += endpointMarkerText;
                     }
 
+                    // --- Carry promotion ---
+                    // After a snapshot-based endpoint split, carry text (e.g.
+                    // "Right now") is parked in latestNonFinalText as provisional.
+                    // Soniox already considers those tokens finalized and won't
+                    // re-send them in subsequent frames.  When new progress tokens
+                    // arrive for continued speech, we must promote the carry into
+                    // finalizedText as a prefix so it won't be overwritten when
+                    // latestNonFinalText is replaced with the fresh non-final text.
+                    if (latestNonFinalIsProvisionalCarry && previousNonFinalText.trim()) {
+                        const carryRaw = stripEndpointMarkers(previousNonFinalText).trim();
+                        if (carryRaw && hasTimestampedProgressBeyondWatermark) {
+                            // Cancel carry expiry timer since new speech arrived.
+                            clearSonioxCarryExpiryTimer();
+                            // Check if Soniox re-included the carry in its new tokens
+                            // (sometimes overlapping tokens are re-sent).
+                            const incomingClean = stripEndpointMarkers(
+                                `${stripEndpointMarkers(newFinalText)}${rebuiltNonFinalText}`,
+                            ).trim();
+                            if (incomingClean.startsWith(carryRaw)) {
+                                // Soniox re-included the carry; no promotion needed.
+                                latestNonFinalIsProvisionalCarry = false;
+                            } else {
+                                // Soniox moved past carry; promote it as prefix.
+                                // Strip trailing sentence-ending punctuation since the
+                                // carry is merging into the MIDDLE of the next utterance.
+                                // e.g. "Don't be." → "Don't be" when prefixed.
+                                const carryPrefix = carryRaw.replace(/[.!?]+\s*$/, '').trim();
+                                if (carryPrefix) {
+                                    finalizedText = carryPrefix + ' ' + finalizedText;
+                                }
+                                latestNonFinalIsProvisionalCarry = false;
+                            }
+                        }
+                    }
+
                     if (newFinalText) {
                         finalizedText += newFinalText;
-                        latestNonFinalIsProvisionalCarry = false;
                         if (maxSeenFinalEndMs > lastFinalizedEndMs) {
                             lastFinalizedEndMs = maxSeenFinalEndMs;
                         }
@@ -903,6 +1006,7 @@ wss.on('connection', (clientWs) => {
 
                     const previousMergedSnapshot = composeTurnText(previousFinalizedText, previousNonFinalText);
                     const mergedSnapshot = composeTurnText(finalizedText, latestNonFinalText);
+                    sonioxCurrentMergedTextLen = mergedSnapshot.length;
                     const previousMergedTextForIdle = stripEndpointMarkers(previousMergedSnapshot);
                     const mergedTextForIdle = stripEndpointMarkers(mergedSnapshot);
                     sonioxHasPendingTranscript = mergedSnapshot.length > 0
@@ -925,11 +1029,53 @@ wss.on('connection', (clientWs) => {
                     let endpointCarryText = '';
                     if (hasEndpointToken && (hasProgressTokenBeyondWatermark || mergedHasEndpointMarker || hasPendingTextSnapshot)) {
                         const mergedAtEndpoint = composeTurnText(finalizedText, latestNonFinalText);
-                        const { finalText, carryText } = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
-                        let finalTextToEmit = finalText;
-                        let carryTextToEmit = carryText;
 
-                        if (!stripEndpointMarkers(finalTextToEmit).trim() && carryTextToEmit) {
+                        // --- Snapshot-based split ---
+                        // When we sent { type: 'finalize' } to Soniox, we recorded
+                        // the length of merged text (`finalized + non-final`) at
+                        // that instant. Any text added after that boundary belongs
+                        // to the next utterance, even if Soniox reports endpoint
+                        // markers later in the same burst.
+                        let finalTextToEmit: string;
+                        let carryTextToEmit: string;
+                        let usedSnapshotBoundary = false;
+
+                        if (sonioxFinalizeSnapshotTextLen !== null && sonioxFinalizeSnapshotTextLen >= 0) {
+                            // Use merged text boundary so pre-finalize non-final tail
+                            // stays in the finalized utterance instead of leaking.
+                            let snapshotBoundary = Math.min(
+                                Math.max(0, sonioxFinalizeSnapshotTextLen),
+                                mergedAtEndpoint.length,
+                            );
+
+                            // --- Word-boundary snap-forward ---
+                            // Only snap-forward when the split is inside an ASCII word.
+                            // For no-space scripts, keep raw boundary to avoid moving
+                            // the entire suffix into current final utterance.
+                            snapshotBoundary = snapBoundaryForwardInsideAsciiWord(
+                                mergedAtEndpoint,
+                                snapshotBoundary,
+                            );
+
+                            const textUpToSnapshot = mergedAtEndpoint.slice(0, snapshotBoundary);
+                            const textAfterSnapshot = mergedAtEndpoint.slice(snapshotBoundary);
+
+                            // The utterance text is: snapshot prefix + endpoint marker.
+                            // Carry is: text added after snapshot boundary.
+                            const marker = extractFirstEndpointMarker(mergedAtEndpoint);
+                            finalTextToEmit = `${stripEndpointMarkers(textUpToSnapshot).trim()}${marker}`.trim();
+                            carryTextToEmit = stripEndpointMarkers(textAfterSnapshot).trim();
+                            usedSnapshotBoundary = true;
+                            sonioxFinalizeSnapshotTextLen = null;
+                        } else {
+                            // No snapshot (e.g. Soniox-initiated endpoint, not our
+                            // manual finalize).  Fall back to marker-position split.
+                            const split = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
+                            finalTextToEmit = split.finalText;
+                            carryTextToEmit = split.carryText;
+                        }
+
+                        if (!stripEndpointMarkers(finalTextToEmit).trim() && carryTextToEmit && !usedSnapshotBoundary) {
                             // Some Soniox finalize bursts can place endpoint marker before stale non-final tail.
                             // Recover readable final text as "<tail><fin>" instead of marker-only final.
                             finalTextToEmit = `${carryTextToEmit}${extractFirstEndpointMarker(finalTextToEmit)}`.trim();
@@ -943,6 +1089,7 @@ wss.on('connection', (clientWs) => {
                         } else {
                             // Ignore marker-only finals to avoid <fin>-only bubble floods.
                             finalizedText = '';
+                            sonioxCurrentMergedTextLen = 0;
                             latestNonFinalText = '';
                             latestNonFinalIsProvisionalCarry = false;
                             resetSonioxSegmentState();
@@ -954,9 +1101,33 @@ wss.on('connection', (clientWs) => {
                             endpointCarryText = carryTextToEmit;
                             latestNonFinalText = carryTextToEmit;
                             latestNonFinalIsProvisionalCarry = true;
+                            // Keep the normal finalize state untouched — carry is
+                            // provisional and does NOT count as pending transcript
+                            // for the normal finalize flow.
                             sonioxHasPendingTranscript = false;
                             sonioxManualFinalizeSent = true;
                             clearSonioxManualFinalizeTimer();
+
+                            // --- Carry expiry ---
+                            // If no new speech arrives within silence+cooldown,
+                            // finalize the carry as its own utterance.
+                            clearSonioxCarryExpiryTimer();
+                            const carryExpiryMs = SONIOX_MANUAL_FINALIZE_SILENCE_MS + SONIOX_MANUAL_FINALIZE_COOLDOWN_MS;
+                            sonioxCarryExpiryTimer = setTimeout(() => {
+                                sonioxCarryExpiryTimer = null;
+                                // Only fire if carry is still pending (hasn't been
+                                // promoted or consumed by new speech).
+                                if (
+                                    latestNonFinalIsProvisionalCarry
+                                    && latestNonFinalText.trim()
+                                    && !finalizedText.trim()
+                                ) {
+                                    const carryText = composeTurnText('', latestNonFinalText);
+                                    if (carryText) {
+                                        emitFinalTurn(carryText, detectedLang);
+                                    }
+                                }
+                            }, carryExpiryMs);
 
                             if (clientWs.readyState === WebSocket.OPEN) {
                                 clientWs.send(JSON.stringify({
