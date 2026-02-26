@@ -956,6 +956,7 @@ wss.on('connection', (clientWs) => {
 
                     let anyPendingTranscript = false;
                     let hadTranscriptProgress = false;
+                    let hasProvisionalCarryInFrame = false;
 
                     for (const [speaker, speakerTokens] of tokensBySpeaker.entries()) {
                         const state = ensureSpeakerState(speaker);
@@ -1181,6 +1182,7 @@ wss.on('connection', (clientWs) => {
                             if (carryTextToEmit) {
                                 state.latestNonFinalText = carryTextToEmit;
                                 state.latestNonFinalIsProvisionalCarry = true;
+                                hasProvisionalCarryInFrame = true;
                                 sonioxManualFinalizeSent = true;
                                 clearSonioxManualFinalizeTimer();
 
@@ -1213,7 +1215,10 @@ wss.on('connection', (clientWs) => {
                     sonioxCurrentMergedTextLen = Array.from(sonioxSpeakerStates.values())
                         .reduce((sum, state) => sum + state.currentMergedTextLen, 0);
                     sonioxHasPendingTranscript = anyPendingTranscript;
-                    if (hadTranscriptProgress) {
+                    if (hasProvisionalCarryInFrame) {
+                        sonioxManualFinalizeSent = true;
+                        clearSonioxManualFinalizeTimer();
+                    } else if (hadTranscriptProgress) {
                         sonioxManualFinalizeSent = false;
                         scheduleSonioxManualFinalizeFromTranscriptProgress();
                     } else if (!sonioxHasPendingTranscript) {
@@ -1304,61 +1309,69 @@ wss.on('connection', (clientWs) => {
         }
 
         if (data?.type === 'stop_recording') {
-            const pendingText = (data?.data?.pending_text || '').toString();
-            const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
-            const pendingTurnsRaw = Array.isArray(data?.data?.pending_turns) ? data.data.pending_turns : [];
-            const pendingTurns = pendingTurnsRaw
-                .map((item: any) => ({
-                    text: (item?.text || '').toString().trim(),
-                    language: (item?.language || '').toString().trim() || 'unknown',
-                    speaker: typeof item?.speaker === 'string' ? item.speaker.trim() : '',
-                }))
-                .filter((item: { text: string; language: string; speaker: string }) => item.text.length > 0);
-            const cleanedPendingText = pendingText.trim();
-            sonioxStopRequested = currentModel === 'soniox';
-            clearSonioxManualFinalizeTimer();
+            void (async () => {
+                const pendingText = (data?.data?.pending_text || '').toString();
+                const pendingLang = data?.data?.pending_language || selectedLanguages[0] || 'unknown';
+                const pendingTurnsRaw = Array.isArray(data?.data?.pending_turns) ? data.data.pending_turns : [];
+                const pendingTurns = pendingTurnsRaw
+                    .map((item: any) => ({
+                        text: (item?.text || '').toString().trim(),
+                        language: (item?.language || '').toString().trim() || 'unknown',
+                        speaker: typeof item?.speaker === 'string' ? item.speaker.trim() : '',
+                    }))
+                    .filter((item: { text: string; language: string; speaker: string }) => item.text.length > 0);
+                const cleanedPendingText = pendingText.trim();
+                sonioxStopRequested = currentModel === 'soniox';
+                clearSonioxManualFinalizeTimer();
 
-            const finalizedTurns: FinalTurnPayload[] = [];
+                const finalizedTurns: FinalTurnPayload[] = [];
 
-            // User-initiated stop: finalize what the user currently sees.
-            if (pendingTurns.length > 0) {
-                for (const turn of pendingTurns) {
-                    const finalized = sendForcedFinalTurn(turn.text, turn.language, turn.speaker);
-                    if (finalized) {
-                        finalizedTurns.push(finalized);
+                try {
+                    // User-initiated stop: finalize what the user currently sees.
+                    if (pendingTurns.length > 0) {
+                        for (const turn of pendingTurns) {
+                            const finalized = sendForcedFinalTurn(turn.text, turn.language, turn.speaker);
+                            if (finalized) {
+                                finalizedTurns.push(finalized);
+                            }
+                        }
+                    } else if (cleanedPendingText) {
+                        const finalized = sendForcedFinalTurn(pendingText, pendingLang);
+                        if (finalized) {
+                            finalizedTurns.push(finalized);
+                        }
+                    } else if (finalizePendingTurnFromProvider) {
+                        const finalized = await finalizePendingTurnFromProvider();
+                        if (finalized) {
+                            finalizedTurns.push(finalized);
+                        }
                     }
-                }
-            } else if (cleanedPendingText) {
-                const finalized = sendForcedFinalTurn(pendingText, pendingLang);
-                if (finalized) {
-                    finalizedTurns.push(finalized);
-                }
-            } else if (finalizePendingTurnFromProvider) {
-                // Synchronous path: just emit transcript, no async translation.
-                void finalizePendingTurnFromProvider();
-            }
+                } catch (stopError) {
+                    console.error('Error finalizing pending turn on stop:', stopError);
+                } finally {
+                    if (sttWs && (sttWs.readyState === WebSocket.OPEN || sttWs.readyState === WebSocket.CONNECTING)) {
+                        sttWs.close();
+                    }
 
-            if (sttWs && (sttWs.readyState === WebSocket.OPEN || sttWs.readyState === WebSocket.CONNECTING)) {
-                sttWs.close();
-            }
-
-            if (clientWs.readyState === WebSocket.OPEN) {
-                clientWs.send(JSON.stringify({
-                    type: 'stop_recording_ack',
-                    data: {
-                        finalized: finalizedTurns.length > 0,
-                        final_turn: finalizedTurns[0] || null,
-                        final_turns: finalizedTurns,
-                    },
-                }));
-                // Close client socket after ack.
-                setTimeout(() => {
                     if (clientWs.readyState === WebSocket.OPEN) {
-                        clientWs.close();
+                        clientWs.send(JSON.stringify({
+                            type: 'stop_recording_ack',
+                            data: {
+                                finalized: finalizedTurns.length > 0,
+                                final_turn: finalizedTurns[0] || null,
+                                final_turns: finalizedTurns,
+                            },
+                        }));
+                        // Close client socket after ack.
+                        setTimeout(() => {
+                            if (clientWs.readyState === WebSocket.OPEN) {
+                                clientWs.close();
+                            }
+                        }, 50);
                     }
-                }, 50);
-            }
-            sonioxStopRequested = false;
+                    sonioxStopRequested = false;
+                }
+            })();
             return;
         }
 

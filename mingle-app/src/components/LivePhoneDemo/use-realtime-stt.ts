@@ -246,6 +246,106 @@ export function parseSttTranscriptMessage(
   return parsed
 }
 
+export interface SpeakerResolutionPartialTurn {
+  text: string
+  language?: string
+  updatedAtMs?: number
+}
+
+export function resolveSpeakerForTranscript(
+  rawSpeaker: unknown,
+  rawText: string,
+  rawLanguage: string,
+  partialTurns: Record<string, SpeakerResolutionPartialTurn>,
+): string {
+  const normalizedSpeaker = normalizeSpeakerId(rawSpeaker)
+  if (normalizedSpeaker) return normalizedSpeaker
+
+  const speakers = Object.keys(partialTurns)
+  if (speakers.length === 0) return 'speaker_unknown'
+  if (speakers.length === 1) return speakers[0]
+
+  const normalizedText = normalizeSttTurnText(rawText || '')
+  const normalizedLang = normalizeLangForCompare(rawLanguage || '')
+  const languageMatchedSpeakers = normalizedLang
+    ? speakers.filter((speaker) => {
+      const turn = partialTurns[speaker]
+      return normalizeLangForCompare(turn?.language || '') === normalizedLang
+    })
+    : []
+
+  if (!normalizedText) {
+    if (languageMatchedSpeakers.length === 1) return languageMatchedSpeakers[0]
+    return 'speaker_unknown'
+  }
+
+  type SpeakerCandidate = {
+    speaker: string
+    score: number
+    textLength: number
+    updatedAtMs: number
+  }
+
+  const candidates: SpeakerCandidate[] = []
+  for (const speaker of speakers) {
+    const turn = partialTurns[speaker]
+    if (!turn) continue
+    const partialText = normalizeSttTurnText(turn.text || '')
+    if (!partialText) continue
+
+    let score = 0
+    const partialLang = normalizeLangForCompare(turn.language || '')
+    if (normalizedLang && partialLang && partialLang === normalizedLang) {
+      score += 5
+    }
+
+    if (partialText === normalizedText) {
+      score += 100
+    } else if (normalizedText.endsWith(partialText)) {
+      score += 80
+    } else if (partialText.endsWith(normalizedText)) {
+      score += 60
+    } else if (normalizedText.startsWith(partialText)) {
+      score += 50
+    } else if (partialText.startsWith(normalizedText)) {
+      score += 40
+    } else if (normalizedText.includes(partialText)) {
+      score += 30
+    } else if (partialText.includes(normalizedText)) {
+      score += 20
+    } else {
+      continue
+    }
+
+    candidates.push({
+      speaker,
+      score,
+      textLength: partialText.length,
+      updatedAtMs: Number.isFinite(turn.updatedAtMs) ? Number(turn.updatedAtMs) : 0,
+    })
+  }
+
+  if (candidates.length === 0) {
+    if (languageMatchedSpeakers.length === 1) return languageMatchedSpeakers[0]
+    return 'speaker_unknown'
+  }
+
+  candidates.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score
+    if (b.textLength !== a.textLength) return b.textLength - a.textLength
+    if (b.updatedAtMs !== a.updatedAtMs) return b.updatedAtMs - a.updatedAtMs
+    return a.speaker.localeCompare(b.speaker)
+  })
+
+  if (candidates.length === 1) return candidates[0].speaker
+  const best = candidates[0]
+  const next = candidates[1]
+  if (best.score !== next.score) return best.speaker
+  if (best.textLength !== next.textLength) return best.speaker
+  if (best.updatedAtMs !== next.updatedAtMs) return best.speaker
+  return 'speaker_unknown'
+}
+
 export interface BuildFinalizedUtterancePayloadInput {
   rawText: string
   rawLanguage: string
@@ -1422,27 +1522,17 @@ export default function useRealtimeSTT({
     resetToIdle()
   }, [finalizeAllPendingLocally, finalizeTurnWithTranslation, logClientEvent, resetToIdle])
 
-  const resolveSpeakerForTranscript = useCallback((rawSpeaker?: string, rawText?: string): string => {
-    const normalizedSpeaker = normalizeSpeakerId(rawSpeaker)
-    if (normalizedSpeaker) return normalizedSpeaker
-
-    const speakers = Object.keys(partialTurnsRef.current)
-    if (speakers.length === 1) return speakers[0]
-
-    const normalizedText = normalizeSttTurnText(rawText || '')
-    if (normalizedText) {
-      for (const speaker of speakers) {
-        const partialTurn = partialTurnsRef.current[speaker]
-        if (!partialTurn) continue
-        const partialText = normalizeSttTurnText(partialTurn.text)
-        if (!partialText) continue
-        if (partialText === normalizedText) return speaker
-        if (normalizedText.endsWith(partialText)) return speaker
-        if (partialText.endsWith(normalizedText)) return speaker
-      }
-    }
-
-    return 'speaker_unknown'
+  const resolveSpeakerForTranscriptFromState = useCallback((
+    rawSpeaker?: string,
+    rawText?: string,
+    rawLanguage?: string,
+  ): string => {
+    return resolveSpeakerForTranscript(
+      rawSpeaker,
+      rawText || '',
+      rawLanguage || '',
+      partialTurnsRef.current,
+    )
   }, [])
 
   const handleSttServerMessage = useCallback((message: Record<string, unknown>) => {
@@ -1486,7 +1576,7 @@ export default function useRealtimeSTT({
     const transcript = parseSttTranscriptMessage(message)
     if (transcript) {
       const { rawText, text, language: lang, speaker, isFinal } = transcript
-      const speakerKey = resolveSpeakerForTranscript(speaker, text)
+      const speakerKey = resolveSpeakerForTranscriptFromState(speaker, text, lang)
 
       if (isStoppingRef.current && !isFinal) {
         return
@@ -1586,7 +1676,7 @@ export default function useRealtimeSTT({
     languages,
     logClientEvent,
     normalizedUsageLimitSec,
-    resolveSpeakerForTranscript,
+    resolveSpeakerForTranscriptFromState,
     startAudioProcessing,
     stopRecordingGracefully,
     upsertPartialTurn,

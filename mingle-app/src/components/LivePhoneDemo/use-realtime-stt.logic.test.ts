@@ -3,6 +3,7 @@ import {
   buildFinalizedUtterancePayload,
   getWsUrl,
   parseSttTranscriptMessage,
+  resolveSpeakerForTranscript,
 } from './use-realtime-stt'
 
 describe('use-realtime-stt pure logic', () => {
@@ -105,6 +106,50 @@ describe('use-realtime-stt pure logic', () => {
     })
 
     expect(parsed?.speaker).toBe('speaker_3')
+  })
+
+  it('resolves unknown final speaker to matching partial speaker', () => {
+    const speaker = resolveSpeakerForTranscript(
+      undefined,
+      'hello from speaker two',
+      'en',
+      {
+        speaker_1: {
+          text: 'hello from speaker one',
+          language: 'en',
+          updatedAtMs: 100,
+        },
+        speaker_2: {
+          text: 'hello from speaker two',
+          language: 'en',
+          updatedAtMs: 110,
+        },
+      },
+    )
+
+    expect(speaker).toBe('speaker_2')
+  })
+
+  it('keeps speaker_unknown when partial matches are ambiguous', () => {
+    const speaker = resolveSpeakerForTranscript(
+      undefined,
+      'same text',
+      'en',
+      {
+        speaker_1: {
+          text: 'same text',
+          language: 'en',
+          updatedAtMs: 100,
+        },
+        speaker_2: {
+          text: 'same text',
+          language: 'en',
+          updatedAtMs: 100,
+        },
+      },
+    )
+
+    expect(speaker).toBe('speaker_unknown')
   })
 
   it('builds finalized utterance payload with source-language filtering', () => {
