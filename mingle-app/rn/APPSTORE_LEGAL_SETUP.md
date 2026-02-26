@@ -1,0 +1,53 @@
+# App Store Legal Setup (Mingle iOS)
+
+Date: 2026-02-26
+
+## 1) Legal documents created in this repo
+
+- Privacy Policy (public URL path, default EN): `/legal/privacy-policy.html`
+- Terms of Use (public URL path, default EN): `/legal/terms-of-use.html`
+- Legal index page: `/legal/`
+- Locale paths (15 supported locales): `/legal/<locale>/privacy-policy.html`, `/legal/<locale>/terms-of-use.html`
+
+Files:
+
+- `mingle-app/public/legal/privacy-policy.html`
+- `mingle-app/public/legal/terms-of-use.html`
+- `mingle-app/public/legal/index.html`
+- `mingle-app/public/legal/<locale>/privacy-policy.html`
+- `mingle-app/public/legal/<locale>/terms-of-use.html`
+
+## 2) Production URLs to use in App Store Connect
+
+Use your production domain:
+
+- `https://app.minglelabs.xyz`
+
+Recommended values:
+
+- Privacy Policy URL: `https://app.minglelabs.xyz/legal/privacy-policy.html`
+- Terms of Use URL: `https://app.minglelabs.xyz/legal/terms-of-use.html`
+- Support URL (if same site): `https://app.minglelabs.xyz/`
+
+Locale examples:
+
+- Korean Privacy: `https://app.minglelabs.xyz/legal/ko/privacy-policy.html`
+- Japanese Terms: `https://app.minglelabs.xyz/legal/ja/terms-of-use.html`
+- Simplified Chinese Privacy: `https://app.minglelabs.xyz/legal/zh-cn/privacy-policy.html`
+
+## 3) App Store Connect input mapping
+
+- App Information -> Privacy Policy URL:
+  - set to `/legal/privacy-policy.html`
+- App Information -> Support URL:
+  - set to your support page (or website root)
+- App Information -> License Agreement:
+  - keep Apple standard EULA, or paste a custom EULA if legal team requires it
+- App Store -> App Description:
+  - if you sell auto-renewable subscriptions, include Terms and Privacy URLs in description text as well
+
+## 4) Final pre-submit checks
+
+- Verify both legal URLs return HTTP 200 in production.
+- Verify policy/terms pages are reachable without login.
+- Verify legal contact email/domain in both documents is correct for your company.
