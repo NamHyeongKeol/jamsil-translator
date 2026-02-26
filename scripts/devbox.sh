@@ -822,8 +822,7 @@ push_env_file_to_vault_path() {
     return 0
   fi
 
-  vault kv put "$path" "${kv_args[@]}" >/dev/null || die "failed to push ${target} env keys to vault path: $path"
-  log "pushed ${count} keys to vault (${target}, put)"
+  die "failed to push ${target} env keys to vault path: $path (patch failed; refusing destructive kv put fallback)"
 }
 
 push_env_to_vault_paths() {
