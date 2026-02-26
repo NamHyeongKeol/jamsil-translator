@@ -25,6 +25,9 @@ scripts/devbox bootstrap \
   --vault-app-path secret/mingle-app/dev \
   --vault-stt-path secret/mingle-stt/dev
 
+# 2-c) (선택) .env.local -> Vault로 업로드
+scripts/devbox bootstrap --vault-push
+
 # 3) 현재 상태 확인
 scripts/devbox status
 
@@ -81,6 +84,9 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
   - RN 워크스페이스 의존성(`mingle-app/rn`) 자동 설치/점검
   - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
     불일치/누락 시 `pod install` 자동 동기화
+  - `--vault-app-path`, `--vault-stt-path`로 Vault 경로를 초기값으로 저장 가능
+  - `--vault-addr`, `--vault-namespace`, `--set-env KEY=VALUE`로
+    런타임 환경변수(`.devbox.runtime.env`)를 저장/적용 가능
 
 - `scripts/devbox bootstrap`
   - main 워크트리의 `mingle-app/.env.local`, `mingle-stt/.env.local`을 현재 워크트리에 시드
@@ -93,6 +99,10 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
     - `--vault-app-path <path>`
     - `--vault-stt-path <path>`
   - `.devbox.env`가 있으면 전달한 Vault 경로를 저장하고 재적용
+  - `--vault-push`를 주면 `mingle-app/.env.local`, `mingle-stt/.env.local`의
+    비관리 키를 Vault 경로로 업로드
+  - `--vault-addr`, `--vault-namespace`, `--set-env KEY=VALUE`로
+    런타임 환경변수(`.devbox.runtime.env`)를 저장/적용 가능
 
 - `scripts/devbox profile --profile local --host <LAN_IP>`
   - 같은 네트워크에서 실기기 직접 접속할 때 사용
@@ -102,6 +112,13 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
   - 현재 워크트리 ngrok inspector(`DEVBOX_NGROK_API_PORT`)에서 `devbox_web`, `devbox_stt` 터널 URL을 읽어
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
+
+- `scripts/devbox gateway --mode dev|run`
+  - 기본 OpenClaw 루트(`/Users/nam/openclaw`)에서 gateway 실행
+  - `--openclaw-root <PATH>`로 루트 변경 가능
+  - `--mode dev`: `pnpm gateway:dev`
+  - `--mode run -- --bind loopback --port 18789`: `openclaw gateway run` 인자 전달
+
 - `scripts/devbox up --profile device --device-app-env dev|prod`
   - 모바일 앱 빌드 URL을
     `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 직접 읽어 주입
@@ -184,6 +201,7 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
 ## 생성/수정 파일
 
 - `.devbox.env`
+- `.devbox.runtime.env` (init/bootstrap의 `--set-env`, `--vault-addr`, `--vault-namespace`)
 - `mingle-app/.env.local` (필요 시 시드/Vault 비관리키 동기화)
 - `mingle-stt/.env.local` (필요 시 시드/Vault 비관리키 동기화)
 - `ngrok.mobile.local.yml`

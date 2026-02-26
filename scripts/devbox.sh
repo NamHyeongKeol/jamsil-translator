@@ -6,6 +6,7 @@ ROOT_CANON="$(cd "$ROOT_DIR" && pwd -P)"
 LOCAL_TOOLS_BIN="$ROOT_DIR/.tools/bin"
 DEVBOX_LOG_DIR="$ROOT_DIR/.devbox-logs"
 DEVBOX_ENV_FILE="$ROOT_DIR/.devbox.env"
+DEVBOX_RUNTIME_ENV_FILE="$ROOT_DIR/.devbox.runtime.env"
 APP_ENV_FILE="$ROOT_DIR/mingle-app/.env.local"
 STT_ENV_FILE="$ROOT_DIR/mingle-stt/.env.local"
 NGROK_LOCAL_CONFIG="$ROOT_DIR/ngrok.mobile.local.yml"
@@ -78,6 +79,7 @@ DEVBOX_VAULT_APP_PATH=""
 DEVBOX_VAULT_STT_PATH=""
 DEVBOX_NGROK_API_PORT=""
 DEVBOX_LOG_FILE=""
+DEVBOX_OPENCLAW_ROOT=""
 
 log() {
   printf '[devbox] %s\n' "$*"
@@ -96,10 +98,11 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/devbox [--log-file PATH|auto] <command> [options]
-  scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--ngrok-api-port N] [--host HOST]
-  scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--ngrok-api-port N] [--host HOST] [--vault-app-path PATH] [--vault-stt-path PATH] [--vault-addr URL] [--vault-namespace NS] [--set-env KEY=VALUE]
+  scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH] [--vault-push] [--vault-addr URL] [--vault-namespace NS] [--set-env KEY=VALUE]
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
+  scripts/devbox gateway [--openclaw-root PATH] [--mode dev|run] [--]
   scripts/devbox ios-native-build [--ios-configuration Debug|Release] [--ios-coredevice-id ID]
   scripts/devbox ios-native-uninstall [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-coredevice-id ID] [--bundle-id ID]
   scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod]
@@ -109,9 +112,10 @@ Usage:
 
 Commands:
   init         Generate worktree-specific ports/config/env files.
-  bootstrap    Seed env files from main/Vault and install dependencies.
+  bootstrap    Seed env files from main/Vault, optionally push local env to Vault, and install dependencies.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
+  gateway      Run OpenClaw gateway from configured openclaw root.
   ios-native-build Build mingle-ios only (no install).
   ios-native-uninstall Uninstall mingle-ios app from simulator/device.
   mobile       Build/install RN/native iOS and Android apps (device/simulator).
@@ -127,6 +131,7 @@ Global Options:
 Environment:
   DEVBOX_NGROK_WEB_DOMAIN  Optional fixed ngrok domain for devbox_web tunnel.
                            Example: abcdef.ngrok-free.app
+  Values persisted by init/bootstrap --set-env are stored in .devbox.runtime.env.
 EOF
 }
 
@@ -233,6 +238,20 @@ is_valid_env_key() {
   [[ "${1:-}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
 }
 
+parse_env_assignment() {
+  local assignment="$1"
+  local key=""
+  local value=""
+
+  [[ "$assignment" == *=* ]] || die "invalid --set-env value (expected KEY=VALUE): $assignment"
+  key="${assignment%%=*}"
+  value="${assignment#*=}"
+  key="$(trim_whitespace "$key")"
+  is_valid_env_key "$key" || die "invalid env key in --set-env: $key"
+  ensure_single_line_value "$key" "$value"
+  printf '%s\n%s\n' "$key" "$value"
+}
+
 is_managed_key_for_target() {
   local target="$1"
   local key="$2"
@@ -255,6 +274,14 @@ is_managed_key_for_target() {
       ;;
   esac
   return 1
+}
+
+apply_persisted_runtime_env() {
+  [[ -f "$DEVBOX_RUNTIME_ENV_FILE" ]] || return 0
+  set -a
+  # shellcheck disable=SC1090
+  . "$DEVBOX_RUNTIME_ENV_FILE"
+  set +a
 }
 
 format_env_value_for_dotenv() {
@@ -706,6 +733,101 @@ upsert_non_managed_env_entry() {
   fi
 }
 
+persist_runtime_env_entry() {
+  local key="$1"
+  local value="$2"
+  upsert_non_managed_env_entry "$DEVBOX_RUNTIME_ENV_FILE" "$key" "$value"
+  normalize_file_spacing "$DEVBOX_RUNTIME_ENV_FILE"
+  export "$key=$value"
+}
+
+decode_dotenv_value() {
+  local raw="$1"
+  local value
+  value="$(trim_whitespace "$raw")"
+
+  if [[ "$value" == \"*\" && "$value" == *\" && ${#value} -ge 2 ]]; then
+    value="${value:1:${#value}-2}"
+    value="${value//\\\"/\"}"
+    value="${value//\\\\/\\}"
+    value="${value//\\t/$'\t'}"
+    value="${value//\\r/$'\r'}"
+    value="${value//\\n/$'\n'}"
+    printf '%s' "$value"
+    return 0
+  fi
+
+  if [[ "$value" == \'*\' && "$value" == *\' && ${#value} -ge 2 ]]; then
+    value="${value:1:${#value}-2}"
+    value="$(printf '%s' "$value" | sed "s/'\"'\"'/\'/g")"
+    printf '%s' "$value"
+    return 0
+  fi
+
+  value="$(printf '%s' "$value" | sed -E 's/[[:space:]]+#.*$//')"
+  value="$(trim_whitespace "$value")"
+  printf '%s' "$value"
+}
+
+push_env_file_to_vault_path() {
+  local target="$1"
+  local path="$2"
+  local file="$3"
+  [[ -n "$path" ]] || return 0
+  [[ -f "$file" ]] || {
+    warn "skip vault push (${target}): env file not found: $file"
+    return 0
+  }
+
+  require_cmd vault
+  local line raw_line key value_raw value count
+  local -a kv_args=()
+  count=0
+
+  while IFS= read -r raw_line || [[ -n "$raw_line" ]]; do
+    line="${raw_line%$'\r'}"
+    line="$(trim_whitespace "$line")"
+    [[ -n "$line" ]] || continue
+    [[ "${line:0:1}" == "#" ]] && continue
+    line="$(printf '%s' "$line" | sed -E 's/^export[[:space:]]+//')"
+    [[ "$line" == *=* ]] || continue
+
+    key="${line%%=*}"
+    value_raw="${line#*=}"
+    key="$(trim_whitespace "$key")"
+    is_valid_env_key "$key" || continue
+    if is_managed_key_for_target "$target" "$key"; then
+      continue
+    fi
+
+    value="$(decode_dotenv_value "$value_raw")"
+    ensure_single_line_value "$key" "$value"
+    kv_args+=("${key}=${value}")
+    count=$((count + 1))
+  done < "$file"
+
+  if [[ "$count" -eq 0 ]]; then
+    log "no non-managed keys to push from ${target} env: $file"
+    return 0
+  fi
+
+  log "pushing ${count} keys from ${target} env to vault path: $path"
+  if vault kv patch "$path" "${kv_args[@]}" >/dev/null 2>&1; then
+    log "pushed ${count} keys to vault (${target}, patch)"
+    return 0
+  fi
+
+  vault kv put "$path" "${kv_args[@]}" >/dev/null || die "failed to push ${target} env keys to vault path: $path"
+  log "pushed ${count} keys to vault (${target}, put)"
+}
+
+push_env_to_vault_paths() {
+  local app_path="${1:-}"
+  local stt_path="${2:-}"
+  push_env_file_to_vault_path "app" "$app_path" "$APP_ENV_FILE"
+  push_env_file_to_vault_path "stt" "$stt_path" "$STT_ENV_FILE"
+}
+
 sync_env_from_vault_path() {
   local target="$1"
   local path="$2"
@@ -822,6 +944,17 @@ resolve_vault_paths() {
   DEVBOX_VAULT_STT_PATH="$stt_path"
 }
 
+resolve_openclaw_root() {
+  local root="${DEVBOX_OPENCLAW_ROOT:-}"
+  if [[ -z "$root" ]]; then
+    root="$(read_app_setting_value DEVBOX_OPENCLAW_ROOT || true)"
+  fi
+  if [[ -z "$root" ]]; then
+    root="/Users/nam/openclaw"
+  fi
+  printf '%s' "$root"
+}
+
 remove_managed_block() {
   local file="$1"
   local out="$2"
@@ -907,6 +1040,7 @@ write_devbox_env() {
   ensure_single_line_value "DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_APP_PATH"
   ensure_single_line_value "DEVBOX_VAULT_STT_PATH" "$DEVBOX_VAULT_STT_PATH"
   ensure_single_line_value "DEVBOX_NGROK_API_PORT" "$DEVBOX_NGROK_API_PORT"
+  ensure_single_line_value "DEVBOX_OPENCLAW_ROOT" "$DEVBOX_OPENCLAW_ROOT"
 
   cat > "$DEVBOX_ENV_FILE" <<EOF
 DEVBOX_WORKTREE_NAME=$DEVBOX_WORKTREE_NAME
@@ -924,6 +1058,7 @@ DEVBOX_TEST_WS_URL=$DEVBOX_TEST_WS_URL
 DEVBOX_VAULT_APP_PATH=$DEVBOX_VAULT_APP_PATH
 DEVBOX_VAULT_STT_PATH=$DEVBOX_VAULT_STT_PATH
 DEVBOX_NGROK_API_PORT=$DEVBOX_NGROK_API_PORT
+DEVBOX_OPENCLAW_ROOT=$DEVBOX_OPENCLAW_ROOT
 EOF
 }
 
@@ -939,7 +1074,7 @@ load_devbox_env() {
     [[ "$key" =~ ^[A-Z0-9_]+$ ]] || die "invalid key in $DEVBOX_ENV_FILE: $key"
 
     case "$key" in
-      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH|DEVBOX_NGROK_API_PORT)
+      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH|DEVBOX_NGROK_API_PORT|DEVBOX_OPENCLAW_ROOT)
         printf -v "$key" '%s' "$value"
         ;;
       *)
@@ -2173,11 +2308,16 @@ wait_for_any_child_exit() {
 cmd_init() {
   require_cmd pnpm
   local web_port="" stt_port="" metro_port="" ngrok_api_port="" host="127.0.0.1"
+  local vault_app_override="" vault_stt_override=""
+  local vault_addr_override="" vault_namespace_override="" openclaw_root_override=""
+  local assignment payload key value
+  local -a runtime_env_assignments=()
 
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
     DEVBOX_VAULT_APP_PATH="$(read_env_value_from_file DEVBOX_VAULT_APP_PATH "$DEVBOX_ENV_FILE")"
     DEVBOX_VAULT_STT_PATH="$(read_env_value_from_file DEVBOX_VAULT_STT_PATH "$DEVBOX_ENV_FILE")"
     ngrok_api_port="$(read_env_value_from_file DEVBOX_NGROK_API_PORT "$DEVBOX_ENV_FILE")"
+    DEVBOX_OPENCLAW_ROOT="$(read_env_value_from_file DEVBOX_OPENCLAW_ROOT "$DEVBOX_ENV_FILE")"
   fi
 
   while [[ $# -gt 0 ]]; do
@@ -2187,9 +2327,23 @@ cmd_init() {
       --metro-port) metro_port="${2:-}"; shift 2 ;;
       --ngrok-api-port) ngrok_api_port="${2:-}"; shift 2 ;;
       --host) host="${2:-}"; shift 2 ;;
+      --vault-app-path) vault_app_override="${2:-}"; shift 2 ;;
+      --vault-stt-path) vault_stt_override="${2:-}"; shift 2 ;;
+      --vault-addr) vault_addr_override="${2:-}"; shift 2 ;;
+      --vault-namespace) vault_namespace_override="${2:-}"; shift 2 ;;
+      --openclaw-root) openclaw_root_override="${2:-}"; shift 2 ;;
+      --set-env) runtime_env_assignments+=("${2:-}"); shift 2 ;;
       *) die "unknown option for init: $1" ;;
     esac
   done
+
+  resolve_vault_paths "$vault_app_override" "$vault_stt_override"
+  if [[ -n "$openclaw_root_override" ]]; then
+    DEVBOX_OPENCLAW_ROOT="$openclaw_root_override"
+  fi
+  if [[ -z "$DEVBOX_OPENCLAW_ROOT" ]]; then
+    DEVBOX_OPENCLAW_ROOT="$(resolve_openclaw_root)"
+  fi
 
   DEVBOX_WORKTREE_NAME="$(derive_worktree_name)"
   calc_default_ports
@@ -2223,6 +2377,18 @@ cmd_init() {
   set_local_profile_values "$host"
 
   save_and_refresh
+  if [[ -n "$vault_addr_override" ]]; then
+    persist_runtime_env_entry "VAULT_ADDR" "$vault_addr_override"
+  fi
+  if [[ -n "$vault_namespace_override" ]]; then
+    persist_runtime_env_entry "VAULT_NAMESPACE" "$vault_namespace_override"
+  fi
+  for assignment in "${runtime_env_assignments[@]}"; do
+    payload="$(parse_env_assignment "$assignment")"
+    key="$(printf '%s\n' "$payload" | sed -n '1p')"
+    value="$(printf '%s\n' "$payload" | sed -n '2p')"
+    persist_runtime_env_entry "$key" "$value"
+  done
   ensure_rn_workspace_dependencies
   ensure_ios_pods_if_needed
 
@@ -2234,11 +2400,20 @@ cmd_bootstrap() {
   require_cmd pnpm
   local vault_app_override=""
   local vault_stt_override=""
+  local vault_push=0
+  local vault_addr_override="" vault_namespace_override="" openclaw_root_override=""
+  local assignment payload key value
+  local -a runtime_env_assignments=()
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --vault-app-path) vault_app_override="${2:-}"; shift 2 ;;
       --vault-stt-path) vault_stt_override="${2:-}"; shift 2 ;;
+      --vault-push) vault_push=1; shift ;;
+      --vault-addr) vault_addr_override="${2:-}"; shift 2 ;;
+      --vault-namespace) vault_namespace_override="${2:-}"; shift 2 ;;
+      --openclaw-root) openclaw_root_override="${2:-}"; shift 2 ;;
+      --set-env) runtime_env_assignments+=("${2:-}"); shift 2 ;;
       *) die "unknown option for bootstrap: $1" ;;
     esac
   done
@@ -2246,9 +2421,34 @@ cmd_bootstrap() {
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
     require_devbox_env
   fi
+
+  if [[ -n "$vault_addr_override" ]]; then
+    persist_runtime_env_entry "VAULT_ADDR" "$vault_addr_override"
+  fi
+  if [[ -n "$vault_namespace_override" ]]; then
+    persist_runtime_env_entry "VAULT_NAMESPACE" "$vault_namespace_override"
+  fi
+  for assignment in "${runtime_env_assignments[@]}"; do
+    payload="$(parse_env_assignment "$assignment")"
+    key="$(printf '%s\n' "$payload" | sed -n '1p')"
+    value="$(printf '%s\n' "$payload" | sed -n '2p')"
+    persist_runtime_env_entry "$key" "$value"
+  done
+
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
+  if [[ -n "$openclaw_root_override" ]]; then
+    DEVBOX_OPENCLAW_ROOT="$openclaw_root_override"
+  fi
+  if [[ -z "$DEVBOX_OPENCLAW_ROOT" ]]; then
+    DEVBOX_OPENCLAW_ROOT="$(resolve_openclaw_root)"
+  fi
 
   seed_env_from_main_worktree
+  if [[ "$vault_push" -eq 1 ]]; then
+    [[ -n "$DEVBOX_VAULT_APP_PATH" ]] || die "missing vault app path for --vault-push (set --vault-app-path or bootstrap once with detected path)"
+    [[ -n "$DEVBOX_VAULT_STT_PATH" ]] || die "missing vault stt path for --vault-push (set --vault-stt-path or bootstrap once with detected path)"
+    push_env_to_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
+  fi
   sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
   ensure_workspace_dependencies
   ensure_rn_workspace_dependencies
@@ -2283,6 +2483,71 @@ cmd_ngrok_config() {
   require_devbox_env
   write_ngrok_local_config
   log "wrote $NGROK_LOCAL_CONFIG"
+}
+
+cmd_gateway() {
+  require_cmd pnpm
+  local openclaw_root=""
+  local mode="dev"
+  local dry_run=0
+  local -a passthrough=()
+  local -a cmd=()
+
+  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    require_devbox_env
+  fi
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --openclaw-root) openclaw_root="${2:-}"; shift 2 ;;
+      --mode) mode="${2:-}"; shift 2 ;;
+      --dry-run) dry_run=1; shift ;;
+      --) shift; passthrough+=("$@"); break ;;
+      *)
+        passthrough+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ -z "$openclaw_root" ]]; then
+    openclaw_root="$(resolve_openclaw_root)"
+  fi
+  [[ -n "$openclaw_root" ]] || die "unable to resolve openclaw root (use --openclaw-root)"
+  [[ -d "$openclaw_root" ]] || die "openclaw root not found: $openclaw_root"
+
+  case "$mode" in
+    dev)
+      [[ "${#passthrough[@]}" -eq 0 ]] || die "--mode dev does not accept extra args (use --mode run -- ...)"
+      cmd=(pnpm --dir "$openclaw_root" gateway:dev)
+      ;;
+    run)
+      cmd=(pnpm --dir "$openclaw_root" openclaw gateway run)
+      ;;
+    *)
+      die "invalid --mode: $mode (expected dev|run)"
+      ;;
+  esac
+
+  log "openclaw gateway command (mode=$mode, root=$openclaw_root)"
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf '%q ' "${cmd[@]}"
+    if [[ "${#passthrough[@]}" -gt 0 ]]; then
+      printf '%q ' "${passthrough[@]}"
+    fi
+    printf '\n'
+    return 0
+  fi
+
+  if [[ "$mode" == "run" ]]; then
+    if [[ "${#passthrough[@]}" -gt 0 ]]; then
+      "${cmd[@]}" "${passthrough[@]}"
+    else
+      "${cmd[@]}"
+    fi
+  else
+    "${cmd[@]}"
+  fi
 }
 
 cmd_mobile() {
@@ -2874,9 +3139,11 @@ Android App : NEXT_PUBLIC_SITE_URL=$DEVBOX_SITE_URL | NEXT_PUBLIC_WS_URL=$DEVBOX
 Live Test   : MINGLE_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL | MINGLE_TEST_WS_URL=$DEVBOX_TEST_WS_URL
 Vault App   : ${DEVBOX_VAULT_APP_PATH:-"(unset)"}
 Vault STT   : ${DEVBOX_VAULT_STT_PATH:-"(unset)"}
+OpenClaw    : root=${DEVBOX_OPENCLAW_ROOT:-$(resolve_openclaw_root)}
 
 Files:
 - $DEVBOX_ENV_FILE
+- $DEVBOX_RUNTIME_ENV_FILE
 - $APP_ENV_FILE
 - $STT_ENV_FILE
 - $NGROK_LOCAL_CONFIG
@@ -2885,6 +3152,9 @@ Files:
 Run:
 - scripts/devbox up --profile local
 - scripts/devbox up --profile device
+- scripts/devbox bootstrap --vault-push
+- scripts/devbox gateway --mode dev
+- scripts/devbox gateway --mode run -- --bind loopback --port 18789
 - scripts/devbox up --profile device --device-app-env dev --with-ios-install
 - scripts/devbox up --profile device --device-app-env prod --with-ios-install
 - scripts/devbox up --profile device --with-mobile-install
@@ -2968,6 +3238,8 @@ main() {
     enable_log_capture "$DEVBOX_LOG_FILE"
   fi
 
+  apply_persisted_runtime_env
+
   local cmd="help"
   if [[ "${#filtered_args[@]}" -gt 0 ]]; then
     cmd="${filtered_args[0]}"
@@ -2987,6 +3259,7 @@ main() {
     profile-local) cmd_profile --profile local "$@" ;;
     profile-device|profile-ngrok) cmd_profile --profile device "$@" ;;
     ngrok-config) cmd_ngrok_config "$@" ;;
+    gateway|openclaw-gateway) cmd_gateway "$@" ;;
     ios-native-build|ios-build-native) cmd_ios_native_build "$@" ;;
     ios-native-uninstall|ios-uninstall-native|ios-native-remove) cmd_ios_native_uninstall "$@" ;;
     mobile) cmd_mobile "$@" ;;
