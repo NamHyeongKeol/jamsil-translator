@@ -74,6 +74,53 @@ scripts/devbox test --target all
 scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --ios-runtime native --ios-native-target simulator --ios-simulator-udid <UDID> --ios-configuration Debug
 ```
 
+## 재부팅 후 실행 순서 (Codex 전달용)
+
+아래 순서대로 실행하면 됩니다. (`.devbox.env`, `.devbox.runtime.env`가 이미 있는 기준)
+
+### A) 로컬 개발(ngrok 없이)
+
+```bash
+cd /Users/nam/.codex/worktrees/5387/mingle
+git checkout <브랜치>
+
+# Vault 세션이 만료된 경우만
+vault login
+
+# 의존성/환경 복구 (안전하게 항상 실행 가능)
+scripts/devbox bootstrap
+
+# OpenClaw gateway가 필요하면 (별도 터미널)
+scripts/devbox gateway --mode dev
+
+# mingle-stt + mingle-app 실행
+scripts/devbox up --profile local
+```
+
+### B) 실기기 전체(앱 재설치 + ngrok + 서버 2개)
+
+```bash
+cd /Users/nam/.codex/worktrees/5387/mingle
+git checkout <브랜치>
+
+# Vault 세션이 만료된 경우만
+vault login
+
+scripts/devbox bootstrap
+scripts/devbox up --profile device --with-ios-install --with-ios-clean-install --ios-runtime rn
+```
+
+### C) 로컬 `.env.local` 값을 Vault에 다시 반영해야 할 때
+
+```bash
+scripts/devbox bootstrap --vault-push
+```
+
+노트:
+- `init/bootstrap`에서 저장한 `--set-env`, `--vault-addr`, `--vault-namespace` 값은
+  `.devbox.runtime.env`에 남고, 이후 `scripts/devbox ...` 실행 시 자동 로드됩니다.
+- `.devbox.env`가 없으면 `scripts/devbox up ...`이 `init`을 자동 실행합니다.
+
 ## 주요 명령
 
 - `scripts/devbox init`
