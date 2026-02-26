@@ -665,10 +665,9 @@ wss.on('connection', (clientWs) => {
             ): boolean => {
                 if (tokenEndMs !== null) return tokenEndMs > watermarkMs;
                 if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
-                // No timestamp → conservative: don't count as beyond watermark.
-                // The token's TEXT still gets accumulated, but it won't drive
-                // progress/carry-promotion decisions.
-                return false;
+                // No timestamp -> keep text (don't drop words), but treat as
+                // non-timestamped progress for carry-promotion gating.
+                return true;
             };
             // Returns true only when a token with an actual timestamp is beyond
             // the watermark.  Used for carry-promotion gating to avoid false
@@ -681,6 +680,23 @@ wss.on('connection', (clientWs) => {
                 if (tokenEndMs !== null) return tokenEndMs > watermarkMs;
                 if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
                 return false;
+            };
+            // Forward-snap only when the boundary cuts through an ASCII word.
+            // This avoids swallowing whole no-space-script suffixes (ko/ja/zh).
+            const isAsciiWordChar = (char: string): boolean => /[A-Za-z0-9']/u.test(char);
+            const snapBoundaryForwardInsideAsciiWord = (text: string, boundary: number): number => {
+                if (boundary <= 0 || boundary >= text.length) return boundary;
+                const prevChar = text[boundary - 1] || '';
+                const currChar = text[boundary] || '';
+                if (!isAsciiWordChar(prevChar) || !isAsciiWordChar(currChar)) {
+                    return boundary;
+                }
+
+                let snapped = boundary;
+                while (snapped < text.length && isAsciiWordChar(text[snapped])) {
+                    snapped += 1;
+                }
+                return snapped;
             };
 
             const splitTurnAtFirstEndpointMarker = (text: string): { finalText: string; carryText: string } => {
@@ -1033,26 +1049,13 @@ wss.on('connection', (clientWs) => {
                             );
 
                             // --- Word-boundary snap-forward ---
-                            // If the boundary falls mid-word (e.g. "lif|e", "sta|y"),
-                            // snap FORWARD to the next space so the complete word
-                            // stays in the current utterance.  Snap-back would remove
-                            // the last word entirely, causing "넘어가면 안 되는 단어가
-                            // carry로 넘어가는" 문제.
-                            if (
-                                snapshotBoundary > 0
-                                && snapshotBoundary < mergedAtEndpoint.length
-                                && mergedAtEndpoint[snapshotBoundary] !== ' '
-                                && mergedAtEndpoint[snapshotBoundary - 1] !== ' '
-                            ) {
-                                const nextSpace = mergedAtEndpoint.indexOf(' ', snapshotBoundary);
-                                if (nextSpace > 0) {
-                                    snapshotBoundary = nextSpace;
-                                } else {
-                                    // No space after boundary → include all text,
-                                    // nothing to carry.
-                                    snapshotBoundary = mergedAtEndpoint.length;
-                                }
-                            }
+                            // Only snap-forward when the split is inside an ASCII word.
+                            // For no-space scripts, keep raw boundary to avoid moving
+                            // the entire suffix into current final utterance.
+                            snapshotBoundary = snapBoundaryForwardInsideAsciiWord(
+                                mergedAtEndpoint,
+                                snapshotBoundary,
+                            );
 
                             const textUpToSnapshot = mergedAtEndpoint.slice(0, snapshotBoundary);
                             const textAfterSnapshot = mergedAtEndpoint.slice(snapshotBoundary);
