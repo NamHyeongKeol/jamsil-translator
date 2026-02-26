@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight, ChevronDown, Menu, LogOut, Trash2 } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
@@ -110,6 +110,21 @@ function findTopVisibleUtteranceDateLabel(container: HTMLDivElement, locale: str
     return formatScrollDateLabel(createdAtMs, locale)
   }
   return ''
+}
+
+function inferUtteranceCreatedAtMs(utterance: Utterance): number | null {
+  if (typeof utterance.createdAtMs === 'number' && Number.isFinite(utterance.createdAtMs) && utterance.createdAtMs > 0) {
+    return Math.floor(utterance.createdAtMs)
+  }
+  const match = /^u-(\d+)-/.exec(utterance.id)
+  if (!match) return null
+  const parsed = Number(match[1])
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+  return Math.floor(parsed)
+}
+
+function normalizeSpeakerForTimeline(rawSpeaker: string | undefined): string {
+  return (rawSpeaker || '').trim().toLowerCase()
 }
 
 const FLAG_MAP: Record<string, string> = {
@@ -638,6 +653,62 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   useEffect(() => {
     utterancesRef.current = utterances
   }, [utterances])
+
+  const messageTimeline = useMemo(() => {
+    type TimelineItem =
+      | {
+        kind: 'final'
+        key: string
+        sortMs: number
+        utterance: Utterance
+      }
+      | {
+        kind: 'partial'
+        key: string
+        sortMs: number
+        partialTurn: (typeof partialTurns)[number]
+      }
+
+    const finalizedTurnKeys = new Set<string>()
+    for (const utterance of utterances) {
+      const speaker = normalizeSpeakerForTimeline(utterance.speaker)
+      const createdAtMs = inferUtteranceCreatedAtMs(utterance)
+      if (!speaker || createdAtMs === null) continue
+      finalizedTurnKeys.add(`${speaker}::${createdAtMs}`)
+    }
+
+    const items: TimelineItem[] = utterances.map((utterance) => ({
+      kind: 'final',
+      key: `final-${utterance.id}`,
+      sortMs: inferUtteranceCreatedAtMs(utterance) ?? Number.MAX_SAFE_INTEGER,
+      utterance,
+    }))
+
+    for (const partialTurn of partialTurns) {
+      const speaker = normalizeSpeakerForTimeline(partialTurn.speaker)
+      const startedAtMs = (
+        Number.isFinite(partialTurn.startedAtMs) && partialTurn.startedAtMs > 0
+      ) ? Math.floor(partialTurn.startedAtMs) : Number.MAX_SAFE_INTEGER
+
+      // If this turn already finalized in the same slot, hide transient partial duplicate.
+      if (speaker && finalizedTurnKeys.has(`${speaker}::${startedAtMs}`)) continue
+
+      items.push({
+        kind: 'partial',
+        key: `partial-${partialTurn.speaker}-${startedAtMs}`,
+        sortMs: startedAtMs,
+        partialTurn,
+      })
+    }
+
+    items.sort((a, b) => {
+      if (a.sortMs !== b.sortMs) return a.sortMs - b.sortMs
+      if (a.kind !== b.kind) return a.kind === 'final' ? -1 : 1
+      return a.key.localeCompare(b.key)
+    })
+
+    return items
+  }, [partialTurns, utterances])
 
   // Re-evaluate queue after utterance state commit.
   // This closes the race where inline TTS arrives before translationFinalized state is rendered.
@@ -1250,38 +1321,39 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               ···
             </button>
           )}
-          <AnimatePresence mode="popLayout">
-            {utterances.map((u) => {
-              const isBubbleSpeaking = speakingItem?.utteranceId === u.id
+          {messageTimeline.map((timelineItem) => {
+            if (timelineItem.kind === 'final') {
+              const utterance = timelineItem.utterance
+              const isBubbleSpeaking = speakingItem?.utteranceId === utterance.id
+              const createdAtMs = inferUtteranceCreatedAtMs(utterance)
               return (
                 <div
-                  key={u.id}
-                  data-utterance-created-at={
-                    (typeof u.createdAtMs === 'number' && Number.isFinite(u.createdAtMs))
-                      ? String(Math.floor(u.createdAtMs))
-                      : ''
-                  }
+                  key={timelineItem.key}
+                  data-utterance-created-at={createdAtMs === null ? '' : String(createdAtMs)}
                 >
                   <ChatBubble
-                    utterance={u}
+                    utterance={utterance}
                     isSpeaking={isBubbleSpeaking}
                     speakingLanguage={isBubbleSpeaking ? (speakingItem?.language ?? null) : null}
                   />
                 </div>
               )
-            })}
-          </AnimatePresence>
+            }
 
-          {partialTurns.map((partialTurn) => {
+            const partialTurn = timelineItem.partialTurn
             const detectedLang = partialTurn.language
             const availablePartialTranslations = Object.entries(partialTurn.translations || {})
               .filter(([lang, text]) => selectedLanguages.includes(lang) && lang !== detectedLang && text.trim().length > 0)
             const pendingPartialLangs = selectedLanguages
               .filter((lang) => lang !== detectedLang && !partialTurn.translations?.[lang])
+            const partialStartedAt = (
+              Number.isFinite(partialTurn.startedAtMs) && partialTurn.startedAtMs > 0
+            ) ? Math.floor(partialTurn.startedAtMs) : ''
 
             return (
               <motion.div
-                key={`partial-${partialTurn.speaker}`}
+                key={timelineItem.key}
+                data-utterance-created-at={partialStartedAt === '' ? '' : String(partialStartedAt)}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex flex-col gap-1"

@@ -756,6 +756,8 @@ wss.on('connection', (clientWs) => {
 
                 const speakerWithNumber = /^speaker(?:[_\s-]+)?(\d+)$/.exec(speaker);
                 if (speakerWithNumber) return `speaker_${String(Number(speakerWithNumber[1]))}`;
+                const shortSpeakerWithNumber = /^(?:s|spk)(?:[_\s-]+)?(\d+)$/.exec(speaker);
+                if (shortSpeakerWithNumber) return `speaker_${String(Number(shortSpeakerWithNumber[1]))}`;
 
                 const sanitized = speaker.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
                 if (!sanitized) return null;
@@ -1291,6 +1293,8 @@ wss.on('connection', (clientWs) => {
 
         const speakerWithNumber = /^speaker(?:[_\s-]+)?(\d+)$/.exec(speaker);
         if (speakerWithNumber) return `speaker_${String(Number(speakerWithNumber[1]))}`;
+        const shortSpeakerWithNumber = /^(?:s|spk)(?:[_\s-]+)?(\d+)$/.exec(speaker);
+        if (shortSpeakerWithNumber) return `speaker_${String(Number(shortSpeakerWithNumber[1]))}`;
 
         const sanitized = speaker.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
         if (!sanitized) return undefined;

@@ -93,6 +93,22 @@ describe('use-realtime-stt pure logic', () => {
     expect(parsed?.speaker).toBe('speaker_2')
   })
 
+  it('normalizes short speaker aliases from transcript payload', () => {
+    const parsed = parseSttTranscriptMessage({
+      type: 'transcript',
+      data: {
+        is_final: false,
+        utterance: {
+          text: 'hello',
+          language: 'en',
+          speaker: 'S-02',
+        },
+      },
+    })
+
+    expect(parsed?.speaker).toBe('speaker_2')
+  })
+
   it('falls back to top-level speaker when utterance speaker is missing', () => {
     const parsed = parseSttTranscriptMessage({
       type: 'transcript',
@@ -260,6 +276,21 @@ describe('use-realtime-stt pure logic', () => {
 
     expect(built?.speaker).toBe('speaker_2')
     expect(built?.utterance.speaker).toBe('speaker_2')
+  })
+
+  it('normalizes short speaker aliases in finalized payload', () => {
+    const built = buildFinalizedUtterancePayload({
+      rawText: 'hello',
+      rawLanguage: 'en',
+      rawSpeaker: 'spk1',
+      languages: ['en', 'ko'],
+      partialTranslations: {},
+      utteranceSerial: 11,
+      nowMs: 1700000000000,
+    })
+
+    expect(built?.speaker).toBe('speaker_1')
+    expect(built?.utterance.speaker).toBe('speaker_1')
   })
 
   it('inserts finalized utterance using created-at order, not finalize order', () => {

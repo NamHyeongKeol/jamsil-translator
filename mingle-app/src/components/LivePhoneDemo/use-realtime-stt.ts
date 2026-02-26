@@ -145,6 +145,8 @@ function normalizeSpeakerId(rawSpeaker: unknown): string | null {
 
   const speakerWithNumber = /^speaker(?:[_\s-]+)?(\d+)$/.exec(speaker)
   if (speakerWithNumber) return `speaker_${String(Number(speakerWithNumber[1]))}`
+  const shortSpeakerWithNumber = /^(?:s|spk)(?:[_\s-]+)?(\d+)$/.exec(speaker)
+  if (shortSpeakerWithNumber) return `speaker_${String(Number(shortSpeakerWithNumber[1]))}`
 
   const sanitized = speaker.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
   if (!sanitized) return null
@@ -2241,7 +2243,6 @@ export default function useRealtimeSTT({
       .filter((turn) => turn.text.trim().length > 0)
       .sort((a, b) => {
         if (a.startedAtMs !== b.startedAtMs) return a.startedAtMs - b.startedAtMs
-        if (a.updatedAtMs !== b.updatedAtMs) return a.updatedAtMs - b.updatedAtMs
         return a.speaker.localeCompare(b.speaker)
       })
   }, [partialTurnsState])
