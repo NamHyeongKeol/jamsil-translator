@@ -112,7 +112,7 @@ Usage:
 
 Commands:
   init         Generate worktree-specific ports/config/env files.
-  bootstrap    Seed env files from main/Vault, optionally push local env to Vault, and install dependencies.
+  bootstrap    Read-only for .env.local; install deps and optionally push local env keys to Vault.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
   gateway      Run OpenClaw gateway from configured openclaw root.
@@ -2443,13 +2443,12 @@ cmd_bootstrap() {
     DEVBOX_OPENCLAW_ROOT="$(resolve_openclaw_root)"
   fi
 
-  seed_env_from_main_worktree
   if [[ "$vault_push" -eq 1 ]]; then
     [[ -n "$DEVBOX_VAULT_APP_PATH" ]] || die "missing vault app path for --vault-push (set --vault-app-path or bootstrap once with detected path)"
     [[ -n "$DEVBOX_VAULT_STT_PATH" ]] || die "missing vault stt path for --vault-push (set --vault-stt-path or bootstrap once with detected path)"
     push_env_to_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
   fi
-  sync_env_from_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
+  log "bootstrap is read-only for .env.local (no seed/sync writes)"
   ensure_workspace_dependencies
   ensure_rn_workspace_dependencies
   ensure_ios_pods_if_needed
@@ -2752,7 +2751,7 @@ cmd_up() {
   android_variant="$(normalize_android_variant "$android_variant")"
 
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
-  log "stateless mode: skipping automatic vault -> .env.local sync (use scripts/devbox bootstrap when needed)"
+  log "stateless mode: skipping automatic vault -> .env.local sync (.env.local is user-managed)"
   local runtime_app_env_file=""
   local runtime_stt_env_file=""
   local runtime_nextauth_secret=""

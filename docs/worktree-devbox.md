@@ -17,10 +17,10 @@
 # 1) 워크트리에서 1회 초기화
 scripts/devbox init
 
-# 2) 메인 워크트리 env 시드 + 의존성 설치
+# 2) 읽기 전용 bootstrap + 의존성 설치
 scripts/devbox bootstrap
 
-# 2-b) (선택) Vault에서 env 키 동기화
+# 2-b) (선택) Vault 경로 저장
 scripts/devbox bootstrap \
   --vault-app-path secret/mingle-app/dev \
   --vault-stt-path secret/mingle-stt/dev
@@ -136,13 +136,13 @@ scripts/devbox bootstrap --vault-push
     런타임 환경변수(`.devbox.runtime.env`)를 저장/적용 가능
 
 - `scripts/devbox bootstrap`
-  - main 워크트리의 `mingle-app/.env.local`, `mingle-stt/.env.local`을 현재 워크트리에 시드
+  - `.env.local`을 수정하지 않는 읽기 전용 동작
   - `mingle-app`, `mingle-stt` 의존성(`pnpm install`) 자동 설치
   - `mingle-app/rn` 의존성(`pnpm install`) 자동 설치
   - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
     불일치/누락 시 `pod install` 자동 동기화
   - `mingle-app/node_modules/.prisma/client` 생성물이 없으면 `db:generate` 자동 실행
-  - 옵션으로 Vault KV 경로를 주면 해당 키를 비관리 영역에 반영
+  - 옵션으로 Vault KV 경로를 저장
     - `--vault-app-path <path>`
     - `--vault-stt-path <path>`
   - `.devbox.env`가 있으면 전달한 Vault 경로를 저장하고 재적용
@@ -177,11 +177,10 @@ scripts/devbox bootstrap --vault-push
 - `scripts/devbox up --profile local|device`
   - `.devbox.env`가 없으면 `init`을 자동 실행(1커맨드 온보딩)
   - 의존성 설치를 자동 수행(Prisma client 누락 시 `db:generate` 포함)
-  - `up`은 기본적으로 `.env.local` 자동 시드/동기화를 수행하지 않음
+  - `up`은 `.env.local` 자동 시드/동기화를 수행하지 않음
   - 저장된 Vault 경로가 있으면 비관리 키(API key 등)를
     서버 프로세스 환경변수로 런타임 주입(파일 미기록)
-  - Vault 비관리키를 파일에 반영하려면 `bootstrap`을 명시적으로 실행
-    (`--vault-app-path/--vault-stt-path` 지원)
+  - `.env.local` 갱신은 devbox가 수행하지 않음(수동 편집 원칙)
   - `mingle-stt` + `mingle-app` 동시 실행
   - `device` 프로필에서 ngrok이 없으면 iTerm/Terminal에 별도 탭/패널로 ngrok 실행 시도
     (실패 시 기존 인라인 실행으로 폴백)
@@ -249,8 +248,8 @@ scripts/devbox bootstrap --vault-push
 
 - `.devbox.env`
 - `.devbox.runtime.env` (init/bootstrap의 `--set-env`, `--vault-addr`, `--vault-namespace`)
-- `mingle-app/.env.local` (필요 시 시드/Vault 비관리키 동기화)
-- `mingle-stt/.env.local` (필요 시 시드/Vault 비관리키 동기화)
+- `mingle-app/.env.local` (devbox는 읽기/참조만 함)
+- `mingle-stt/.env.local` (devbox는 읽기/참조만 함)
 - `ngrok.mobile.local.yml`
 - `.devbox-logs/` (`--log-file` 사용 시 생성, gitignore)
 
@@ -258,5 +257,5 @@ scripts/devbox bootstrap --vault-push
 
 - `vault` CLI와 `jq`가 로컬에 설치되어 있어야 합니다.
 - `vault login` 등으로 인증이 선행되어야 합니다.
-- Vault 동기화는 devbox 관리 키(`PORT`, `NEXT_PUBLIC_SITE_URL` 등)는 덮어쓰지 않고,
-  비관리 키만 반영합니다.
+- devbox는 Vault 값을 `.env.local`에 자동 반영하지 않습니다(런타임 주입만 수행).
+- `--vault-push`는 `.env.local`의 비관리 키를 Vault로 업로드합니다.

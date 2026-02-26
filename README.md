@@ -57,20 +57,17 @@ scripts/devbox status
 ```
 
 - 상세 가이드: `docs/worktree-devbox.md`
-- `scripts/devbox bootstrap`은 main 워크트리의 `mingle-app/.env.local`,
-  `mingle-stt/.env.local`을 시드하고 필요한 의존성을 자동 설치합니다.
-  또한 `@prisma/client` 생성물이 없으면 `db:generate`를 자동 실행합니다.
-  RN 워크스페이스 의존성과 iOS Pods도 자동 점검하며,
-  `Podfile.lock`/`Pods/Manifest.lock` 불일치 시 `pod install`로 자동 동기화합니다.
-- Vault 사용 시 `--vault-app-path`, `--vault-stt-path`로 비관리 env 키를 동기화할 수 있습니다.
-  한 번 지정하면 `.devbox.env`에 저장되어 이후 `bootstrap`에서 자동 재사용됩니다.
+- `scripts/devbox bootstrap`은 `.env.local`을 수정하지 않는 읽기 전용 동작이며,
+  의존성 설치와 검증만 수행합니다.
+  (`@prisma/client` 생성물이 없으면 `db:generate` 자동 실행, RN/Pods 점검 포함)
+- Vault 사용 시 `--vault-app-path`, `--vault-stt-path`를 저장해 이후 재사용할 수 있습니다.
 - `scripts/devbox bootstrap --vault-push`를 사용하면
   `mingle-app/.env.local`, `mingle-stt/.env.local`의 비관리 키를 Vault로 업로드할 수 있습니다.
 - `scripts/devbox init|bootstrap --vault-addr ... --vault-namespace ... --set-env KEY=VALUE`로
   공통 런타임 환경변수를 `.devbox.runtime.env`에 저장해 재부팅 후 자동 적용할 수 있습니다.
 - `scripts/devbox gateway --mode dev|run`으로 `/Users/nam/openclaw`의 gateway 실행을 devbox 명령으로 통합할 수 있습니다.
-- devbox 기본 동작은 `.env.local` 관리블록 갱신 없이(stateless) ngrok/xcconfig 기준으로 동작합니다.
-- `scripts/devbox up`/`init`/`mobile`은 기본적으로 `.env.local`을 자동 동기화하지 않습니다.
+- devbox 기본 동작은 `.env.local`을 건드리지 않고(stateless) ngrok/xcconfig 기준으로 동작합니다.
+- `scripts/devbox up`/`init`/`mobile`/`bootstrap`은 `.env.local` 자동 동기화를 하지 않습니다.
 - `scripts/devbox up`은 저장된 Vault 경로가 있으면 비관리 키(API key 등)를
   서버 프로세스 환경변수로 런타임 주입합니다(파일 미기록).
 - `--profile device`는 ngrok(`devbox_web`/`devbox_stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
