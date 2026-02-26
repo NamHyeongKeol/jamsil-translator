@@ -28,10 +28,10 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
 const SONIOX_SPEAKER_IDLE_FINALIZE_MS = (() => {
-    const fallback = Math.max(4500, SONIOX_MANUAL_FINALIZE_SILENCE_MS + 3500);
+    const fallback = Math.max(2200, SONIOX_MANUAL_FINALIZE_SILENCE_MS + 1200);
     const raw = Number(process.env.SONIOX_SPEAKER_IDLE_FINALIZE_MS || String(fallback));
     if (!Number.isFinite(raw)) return fallback;
-    return Math.max(2500, Math.min(12000, Math.floor(raw)));
+    return Math.max(1200, Math.min(12000, Math.floor(raw)));
 })();
 
 const server = createServer();
@@ -61,6 +61,8 @@ interface SonioxSpeakerTurnState {
     finalizeSnapshotTextLen: number | null;
     currentMergedTextLen: number;
     carryExpiryTimer: NodeJS.Timeout | null;
+    idleFinalizeTimer: NodeJS.Timeout | null;
+    idleFinalizeDueAtMs: number;
 }
 
 let connectionCounter = 0;
@@ -121,6 +123,11 @@ wss.on('connection', (clientWs) => {
                 clearTimeout(state.carryExpiryTimer);
                 state.carryExpiryTimer = null;
             }
+            if (state.idleFinalizeTimer) {
+                clearTimeout(state.idleFinalizeTimer);
+                state.idleFinalizeTimer = null;
+            }
+            state.idleFinalizeDueAtMs = 0;
         }
     };
 
@@ -766,19 +773,22 @@ wss.on('connection', (clientWs) => {
                 return `speaker_${sanitized}`;
             };
 
-            const getSpeakerFromToken = (token: Record<string, unknown>): string => {
-                const fromToken = normalizeSpeakerId(
+            const extractSpeakerFromToken = (token: Record<string, unknown>): string | null => {
+                return normalizeSpeakerId(
                     token.speaker
                     ?? token.speaker_id
                     ?? token.speakerId
                     ?? token.spk
                     ?? token.diarization_speaker,
                 );
-                if (fromToken) {
-                    lastObservedSpeakerId = fromToken;
-                    return fromToken;
+            };
+
+            const clearSpeakerIdleFinalizeTimer = (state: SonioxSpeakerTurnState) => {
+                if (state.idleFinalizeTimer) {
+                    clearTimeout(state.idleFinalizeTimer);
+                    state.idleFinalizeTimer = null;
                 }
-                return lastObservedSpeakerId || 'speaker_unknown';
+                state.idleFinalizeDueAtMs = 0;
             };
 
             const clearSpeakerState = (state: SonioxSpeakerTurnState) => {
@@ -787,10 +797,12 @@ wss.on('connection', (clientWs) => {
                 state.latestNonFinalIsProvisionalCarry = false;
                 state.finalizeSnapshotTextLen = null;
                 state.currentMergedTextLen = 0;
+                state.lastActivityAtMs = 0;
                 if (state.carryExpiryTimer) {
                     clearTimeout(state.carryExpiryTimer);
                     state.carryExpiryTimer = null;
                 }
+                clearSpeakerIdleFinalizeTimer(state);
             };
 
             const ensureSpeakerState = (speaker: string, languageFallback?: string): SonioxSpeakerTurnState => {
@@ -813,9 +825,17 @@ wss.on('connection', (clientWs) => {
                     finalizeSnapshotTextLen: null,
                     currentMergedTextLen: 0,
                     carryExpiryTimer: null,
+                    idleFinalizeTimer: null,
+                    idleFinalizeDueAtMs: 0,
                 };
                 sonioxSpeakerStates.set(normalizedSpeaker, created);
                 return created;
+            };
+
+            const hasPendingTranscriptForSpeaker = (state: SonioxSpeakerTurnState): boolean => {
+                const mergedSnapshot = composeTurnText(state.finalizedText, state.latestNonFinalText);
+                return mergedSnapshot.length > 0
+                    && !(state.latestNonFinalIsProvisionalCarry && !state.finalizedText.trim());
             };
 
             const emitPartialTurn = (speaker: string, text: string, language: string) => {
@@ -864,6 +884,37 @@ wss.on('connection', (clientWs) => {
                     language: cleanedLang,
                     speaker: cleanedSpeaker,
                 };
+            };
+
+            const scheduleSpeakerIdleFinalize = (state: SonioxSpeakerTurnState, activityAtMs: number) => {
+                if (activityAtMs <= 0) return;
+                clearSpeakerIdleFinalizeTimer(state);
+                const dueAtMs = activityAtMs + SONIOX_SPEAKER_IDLE_FINALIZE_MS;
+                const waitMs = Math.max(1, dueAtMs - Date.now());
+                state.idleFinalizeDueAtMs = dueAtMs;
+                state.idleFinalizeTimer = setTimeout(() => {
+                    state.idleFinalizeTimer = null;
+                    state.idleFinalizeDueAtMs = 0;
+                    if (!isClientConnected) return;
+                    if (currentModel !== 'soniox') return;
+                    if (sonioxStopRequested) return;
+                    if (state.lastActivityAtMs !== activityAtMs) return;
+                    const idleMs = Date.now() - state.lastActivityAtMs;
+                    if (idleMs < SONIOX_SPEAKER_IDLE_FINALIZE_MS) {
+                        scheduleSpeakerIdleFinalize(state, state.lastActivityAtMs);
+                        return;
+                    }
+                    if (state.latestNonFinalIsProvisionalCarry && !state.finalizedText.trim()) return;
+                    const merged = composeTurnText(state.finalizedText, state.latestNonFinalText);
+                    if (!merged) return;
+                    emitFinalTurn(state.speaker, merged, state.detectedLang);
+                    sonioxHasPendingTranscript = Array.from(sonioxSpeakerStates.values()).some((speakerState) => (
+                        hasPendingTranscriptForSpeaker(speakerState)
+                    ));
+                    if (!sonioxHasPendingTranscript) {
+                        clearSonioxManualFinalizeTimer();
+                    }
+                }, waitMs);
             };
 
             finalizePendingTurnFromProvider = async () => {
@@ -953,9 +1004,52 @@ wss.on('connection', (clientWs) => {
                     }
                     const frameNow = Date.now();
 
+                    const explicitSpeakersInFrame = new Set<string>();
+                    for (const token of tokens) {
+                        const explicitSpeaker = extractSpeakerFromToken(token as unknown as Record<string, unknown>);
+                        if (!explicitSpeaker) continue;
+                        explicitSpeakersInFrame.add(explicitSpeaker);
+                    }
+
+                    const getSinglePendingSpeaker = (): string | null => {
+                        let selected: string | null = null;
+                        for (const state of sonioxSpeakerStates.values()) {
+                            if (!hasPendingTranscriptForSpeaker(state)) continue;
+                            if (selected && selected !== state.speaker) return null;
+                            selected = state.speaker;
+                        }
+                        return selected;
+                    };
+
+                    const resolveSpeakerForTokenInFrame = (token: SonioxToken): string => {
+                        const explicitSpeaker = extractSpeakerFromToken(token as unknown as Record<string, unknown>);
+                        if (explicitSpeaker) {
+                            lastObservedSpeakerId = explicitSpeaker;
+                            return explicitSpeaker;
+                        }
+                        if (explicitSpeakersInFrame.size === 1) {
+                            const onlySpeaker = explicitSpeakersInFrame.values().next().value as string;
+                            lastObservedSpeakerId = onlySpeaker;
+                            return onlySpeaker;
+                        }
+                        if (explicitSpeakersInFrame.size === 0) {
+                            const singlePendingSpeaker = getSinglePendingSpeaker();
+                            if (singlePendingSpeaker) {
+                                return singlePendingSpeaker;
+                            }
+                            if (lastObservedSpeakerId && lastObservedSpeakerId !== 'speaker_unknown') {
+                                return lastObservedSpeakerId;
+                            }
+                        }
+                        return 'speaker_unknown';
+                    };
+
                     const tokensBySpeaker = new Map<string, SonioxToken[]>();
                     for (const token of tokens) {
-                        const speaker = getSpeakerFromToken(token as unknown as Record<string, unknown>);
+                        const speaker = resolveSpeakerForTokenInFrame(token);
+                        if (speaker === 'speaker_unknown' && explicitSpeakersInFrame.size > 1) {
+                            continue;
+                        }
                         const grouped = tokensBySpeaker.get(speaker);
                         if (grouped) {
                             grouped.push(token);
@@ -1134,6 +1228,7 @@ wss.on('connection', (clientWs) => {
                         if (mergedTextForIdle !== previousMergedTextForIdle) {
                             state.lastActivityAtMs = frameNow;
                             speakersWithActivityInFrame.add(state.speaker);
+                            scheduleSpeakerIdleFinalize(state, frameNow);
                         }
                         const transcriptAdded = mergedTextForIdle.length > previousMergedTextForIdle.length;
                         if (transcriptAdded) {
