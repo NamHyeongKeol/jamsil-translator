@@ -29,7 +29,7 @@ const privacyDoc = {
   key: "privacy",
   fileName: "privacy-policy.html",
   title: "Mingle Privacy Policy",
-  description: "Privacy Policy for Mingle mobile and web services.",
+  description: "How Mingle handles personal data for mobile and web services.",
   intro:
     'This Privacy Policy explains how Mingle Labs, Inc. ("Mingle," "we," "our," or "us") collects, uses, shares, and protects personal data when you use the Mingle mobile app, website, and related services (collectively, the "Service").',
   sections: [
@@ -49,7 +49,14 @@ const privacyDoc = {
       ],
     },
     {
-      heading: "3. How We Use Personal Data",
+      heading: "3. Audio Processing and Non-Retention",
+      paragraphs: [
+        "Mingle processes microphone audio in real time to provide speech recognition and translation. Raw audio is streamed for processing and is not stored by Mingle after the request is completed.",
+        "Mingle does not keep a retained archive of raw voice recordings for model training. We may keep limited non-audio technical diagnostics (for example, error codes and timing metrics) for security, abuse prevention, and service reliability.",
+      ],
+    },
+    {
+      heading: "4. How We Use Personal Data",
       list: [
         "Provide, maintain, and improve real-time translation features.",
         "Authenticate users and secure user sessions.",
@@ -60,40 +67,44 @@ const privacyDoc = {
       ],
     },
     {
-      heading: "4. Legal Bases (EEA/UK)",
+      heading: "5. Legal Bases (EEA/UK)",
       paragraphs: [
         "Where required by law, we rely on one or more legal bases: performance of a contract, legitimate interests (for security and service improvement), legal obligations, and consent (for specific optional processing where requested).",
       ],
     },
     {
-      heading: "5. How We Share Information",
+      heading: "6. How We Share Information",
       paragraphs: ["We do not sell personal data. We may share data with:"],
       list: [
-        "Service Providers: hosting, analytics, storage, authentication, customer support, and infrastructure vendors that process data under contract.",
+        "Service Providers: hosting, storage, authentication, customer support, analytics, crash reporting, and other infrastructure vendors that process data under contract.",
+        "Soniox: audio stream and related context needed for speech-to-text processing.",
+        "Inworld: text and language context needed for voice generation features and synthesized audio delivery.",
+        "Google: account authentication and text-based service operations where used. Mingle does not send raw voice audio to Google for speech processing.",
         "Legal/Safety Requests: when required by law or necessary to protect rights, safety, and security.",
         "Corporate Transactions: in connection with merger, financing, acquisition, bankruptcy, or asset transfer.",
       ],
     },
     {
-      heading: "6. International Data Transfers",
+      heading: "7. International Data Transfers",
       paragraphs: [
         "Your data may be processed in countries other than your own. Where required, we use contractual and organizational safeguards designed to protect transferred data.",
       ],
     },
     {
-      heading: "7. Retention",
+      heading: "8. Retention",
       paragraphs: [
-        "We keep data only as long as needed for the purposes described in this Policy, including to provide the Service, resolve disputes, maintain security, and meet legal requirements.",
+        "We keep personal data only as long as needed for the purposes described in this Policy, including to provide the Service, resolve disputes, maintain security, and meet legal requirements.",
+        "For clarity, raw microphone audio used for real-time translation is not stored as a retained user-content archive.",
       ],
     },
     {
-      heading: "8. Security",
+      heading: "9. Security",
       paragraphs: [
         "We use commercially reasonable technical and organizational safeguards, including access controls and encryption in transit. No method of transmission or storage is completely secure; therefore, absolute security cannot be guaranteed.",
       ],
     },
     {
-      heading: "9. Your Rights and Choices",
+      heading: "10. Your Rights and Choices",
       paragraphs: ["Depending on your location, you may have rights to:"],
       list: [
         "access, correct, or delete personal data;",
@@ -105,29 +116,29 @@ const privacyDoc = {
         "You can submit requests by contacting us at legal@minglelabs.app.",
     },
     {
-      heading: "10. Children",
+      heading: "11. Children",
       paragraphs: [
         "The Service is not directed to children under 13 (or the equivalent minimum age in your jurisdiction). If we learn we collected personal data from a child without valid permission, we will delete the data as required by law.",
       ],
     },
     {
-      heading: "11. Third-Party Services",
+      heading: "12. Third-Party Services",
       paragraphs: [
         "The Service may contain links or integrations to third-party services. Their privacy practices are governed by their own policies.",
       ],
     },
     {
-      heading: "12. Changes to This Policy",
+      heading: "13. Changes to This Policy",
       paragraphs: [
         'We may update this Privacy Policy from time to time. We will post the updated version on this page and update the "Last updated" date.',
       ],
     },
     {
-      heading: "13. Contact",
+      heading: "14. Contact",
       paragraphs: [
-        "Mingle Labs, Inc.",
+        "Mingle Labs, Inc. (Republic of Korea)",
         "Email: legal@minglelabs.app",
-        "Website: https://mingle-app-xi.vercel.app",
+        "Website: https://app.minglelabs.xyz",
       ],
     },
   ],
@@ -139,13 +150,14 @@ const termsDoc = {
   key: "terms",
   fileName: "terms-of-use.html",
   title: "Mingle Terms of Use",
-  description: "Terms of Use for Mingle mobile and web services.",
+  description: "Terms of Use for Mingle mobile and web translation services.",
   intro:
-    'These Terms of Use ("Terms") govern your use of Mingle services provided by Mingle Labs, Inc. ("Mingle," "we," "our," or "us"). By using the Service, you agree to these Terms.',
+    'These Terms of Use ("Terms") govern your use of Mingle services provided by Mingle Labs, Inc. ("Mingle," "we," "our," or "us"), a company organized under the laws of the Republic of Korea. By using the Service, you agree to these Terms.',
   sections: [
     {
       heading: "1. Eligibility and Account",
       list: [
+        "You must be at least 13 years old (or the minimum digital consent age in your jurisdiction) to use the Service.",
         "You must provide accurate account information and keep it up to date.",
         "You are responsible for all activity under your account credentials.",
         "You must not share credentials in a way that compromises account security.",
@@ -198,6 +210,7 @@ const termsDoc = {
       heading: "8. Disclaimers",
       paragraphs: [
         'The Service is provided on an "as is" and "as available" basis. To the fullest extent permitted by law, Mingle disclaims all warranties, express or implied, including merchantability, fitness for a particular purpose, and non-infringement.',
+        "Translation output is generated by automated systems and may contain errors, omissions, or ambiguities. You must not rely on translation output as the sole basis for legal, medical, safety-critical, or other high-risk decisions where accuracy is essential.",
       ],
     },
     {
@@ -219,9 +232,10 @@ const termsDoc = {
       ],
     },
     {
-      heading: "12. Governing Law",
+      heading: "12. Governing Law and Jurisdiction",
       paragraphs: [
-        "These Terms are governed by applicable law in the jurisdiction where Mingle Labs, Inc. is incorporated, unless mandatory consumer protection law requires otherwise.",
+        "These Terms are governed by the laws of the Republic of Korea, without regard to conflict-of-law principles.",
+        "Unless mandatory law provides otherwise, disputes arising out of or in connection with these Terms will be subject to the exclusive jurisdiction of the courts located in Seoul, Republic of Korea.",
       ],
     },
     {
@@ -233,9 +247,9 @@ const termsDoc = {
     {
       heading: "14. Contact",
       paragraphs: [
-        "Mingle Labs, Inc.",
+        "Mingle Labs, Inc. (Republic of Korea)",
         "Email: legal@minglelabs.app",
-        "Website: https://mingle-app-xi.vercel.app",
+        "Website: https://app.minglelabs.xyz",
       ],
     },
   ],
@@ -253,19 +267,19 @@ function escapeHtml(value) {
 }
 
 function linkify(value) {
-  const escaped = escapeHtml(value);
-  if (escaped === "Email: legal@minglelabs.app") {
-    return 'Email: <a href="mailto:legal@minglelabs.app">legal@minglelabs.app</a>';
-  }
-  if (escaped === "Website: https://mingle-app-xi.vercel.app") {
-    return 'Website: <a href="https://mingle-app-xi.vercel.app">https://mingle-app-xi.vercel.app</a>';
-  }
-  if (escaped.includes("https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")) {
-    return escaped.replace(
-      "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
-      '<a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener noreferrer">https://www.apple.com/legal/internet-services/itunes/dev/stdeula/</a>',
-    );
-  }
+  let escaped = escapeHtml(value);
+  escaped = escaped.replaceAll(
+    "legal@minglelabs.app",
+    '<a href="mailto:legal@minglelabs.app">legal@minglelabs.app</a>',
+  );
+  escaped = escaped.replaceAll(
+    "https://app.minglelabs.xyz",
+    '<a href="https://app.minglelabs.xyz">https://app.minglelabs.xyz</a>',
+  );
+  escaped = escaped.replaceAll(
+    "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+    '<a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noopener noreferrer">https://www.apple.com/legal/internet-services/itunes/dev/stdeula/</a>',
+  );
   return escaped;
 }
 
@@ -327,6 +341,16 @@ function renderDocumentHtml(doc, locale, textMap) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Mingle" />
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeHtml(title)}" />
+    <meta name="twitter:description" content="${escapeHtml(description)}" />
+    <meta name="twitter:image" content="/og-image.png" />
     <style>
       :root {
         --bg: #f6f7fb;
