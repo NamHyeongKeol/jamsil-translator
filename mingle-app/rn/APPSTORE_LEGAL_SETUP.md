@@ -4,15 +4,18 @@ Date: 2026-02-26
 
 ## 1) Legal documents created in this repo
 
-- Privacy Policy (public URL path): `/legal/privacy-policy.html`
-- Terms of Use (public URL path): `/legal/terms-of-use.html`
+- Privacy Policy (public URL path, default EN): `/legal/privacy-policy.html`
+- Terms of Use (public URL path, default EN): `/legal/terms-of-use.html`
 - Legal index page: `/legal/`
+- Locale paths (15 supported locales): `/legal/<locale>/privacy-policy.html`, `/legal/<locale>/terms-of-use.html`
 
 Files:
 
 - `mingle-app/public/legal/privacy-policy.html`
 - `mingle-app/public/legal/terms-of-use.html`
 - `mingle-app/public/legal/index.html`
+- `mingle-app/public/legal/<locale>/privacy-policy.html`
+- `mingle-app/public/legal/<locale>/terms-of-use.html`
 
 ## 2) Production URLs to use in App Store Connect
 
@@ -25,6 +28,12 @@ Recommended values:
 - Privacy Policy URL: `https://mingle-app-xi.vercel.app/legal/privacy-policy.html`
 - Terms of Use URL: `https://mingle-app-xi.vercel.app/legal/terms-of-use.html`
 - Support URL (if same site): `https://mingle-app-xi.vercel.app/`
+
+Locale examples:
+
+- Korean Privacy: `https://mingle-app-xi.vercel.app/legal/ko/privacy-policy.html`
+- Japanese Terms: `https://mingle-app-xi.vercel.app/legal/ja/terms-of-use.html`
+- Simplified Chinese Privacy: `https://mingle-app-xi.vercel.app/legal/zh-cn/privacy-policy.html`
 
 ## 3) App Store Connect input mapping
 

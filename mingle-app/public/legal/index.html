@@ -7,16 +7,15 @@
     <style>
       body {
         margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-          sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         background: #f6f8fd;
         color: #162033;
       }
 
       main {
-        max-width: 760px;
-        margin: 48px auto;
-        padding: 0 16px;
+        max-width: 960px;
+        margin: 40px auto;
+        padding: 0 16px 24px;
       }
 
       .card {
@@ -34,8 +33,21 @@
         color: #0d6efd;
       }
 
-      li {
-        margin: 8px 0;
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #e6ebf5;
+        padding: 10px 8px;
+        text-align: left;
+        font-size: 0.95rem;
+      }
+
+      th {
+        background: #f8faff;
       }
     </style>
   </head>
@@ -43,10 +55,29 @@
     <main>
       <section class="card">
         <h1>Mingle Legal Documents</h1>
-        <ul>
-          <li><a href="/legal/privacy-policy.html">Privacy Policy</a></li>
-          <li><a href="/legal/terms-of-use.html">Terms of Use</a></li>
-        </ul>
+        <p>Supported language set (15 locales) for App Store and user trust pages.</p>
+        <table>
+          <thead>
+            <tr><th>Language</th><th>Locale</th><th>Privacy</th><th>Terms</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>English</td><td>en</td><td><a href="/legal/en/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/en/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Korean</td><td>ko</td><td><a href="/legal/ko/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/ko/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Japanese</td><td>ja</td><td><a href="/legal/ja/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/ja/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Chinese (Simplified)</td><td>zh-CN</td><td><a href="/legal/zh-cn/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/zh-cn/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Chinese (Traditional)</td><td>zh-TW</td><td><a href="/legal/zh-tw/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/zh-tw/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>French</td><td>fr</td><td><a href="/legal/fr/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/fr/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>German</td><td>de</td><td><a href="/legal/de/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/de/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Spanish</td><td>es</td><td><a href="/legal/es/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/es/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Portuguese</td><td>pt</td><td><a href="/legal/pt/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/pt/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Italian</td><td>it</td><td><a href="/legal/it/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/it/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Russian</td><td>ru</td><td><a href="/legal/ru/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/ru/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Arabic</td><td>ar</td><td><a href="/legal/ar/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/ar/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Hindi</td><td>hi</td><td><a href="/legal/hi/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/hi/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Thai</td><td>th</td><td><a href="/legal/th/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/th/terms-of-use.html">Terms of Use</a></td></tr>
+<tr><td>Vietnamese</td><td>vi</td><td><a href="/legal/vi/privacy-policy.html">Privacy Policy</a></td><td><a href="/legal/vi/terms-of-use.html">Terms of Use</a></td></tr>
+          </tbody>
+        </table>
       </section>
     </main>
   </body>

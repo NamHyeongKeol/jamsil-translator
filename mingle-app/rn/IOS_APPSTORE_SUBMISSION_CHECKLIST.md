@@ -23,6 +23,8 @@ Date: 2026-02-21
   - suggested legal URLs (prod):
     - `https://mingle-app-xi.vercel.app/legal/privacy-policy.html`
     - `https://mingle-app-xi.vercel.app/legal/terms-of-use.html`
+  - locale-specific legal docs (15 locales):
+    - `https://mingle-app-xi.vercel.app/legal/` (language index)
   - age rating, categories
   - screenshots (required device sets)
 - [ ] Submit TestFlight build and run smoke QA on real devices
