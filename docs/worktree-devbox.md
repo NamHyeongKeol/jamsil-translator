@@ -76,7 +76,7 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
 
 ## 재부팅 후 실행 순서 (Codex 전달용)
 
-아래 순서대로 실행하면 됩니다. (`.devbox.env`, `.devbox.runtime.env`가 이미 있는 기준)
+아래 순서대로 실행하면 됩니다. (`.devbox.env`가 이미 있는 기준)
 
 ### A) 로컬 개발(ngrok 없이)
 
@@ -117,9 +117,9 @@ scripts/devbox bootstrap --vault-push
 ```
 
 노트:
-- `init/bootstrap`에서 저장한 `--set-env`, `--vault-addr`, `--vault-namespace` 값은
-  `.devbox.runtime.env`에 남고, 이후 `scripts/devbox ...` 실행 시 자동 로드됩니다.
 - `.devbox.env`가 없으면 `scripts/devbox up ...`이 `init`을 자동 실행합니다.
+- Vault CLI 환경(`VAULT_ADDR`, `VAULT_NAMESPACE`)은
+  셸(`.zshrc`) 또는 `mingle-app/.env.local`/`mingle-stt/.env.local`에 두면 자동 참조됩니다.
 
 ## 주요 명령
 
@@ -132,8 +132,6 @@ scripts/devbox bootstrap --vault-push
   - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
     불일치/누락 시 `pod install` 자동 동기화
   - `--vault-app-path`, `--vault-stt-path`로 Vault 경로를 초기값으로 저장 가능
-  - `--vault-addr`, `--vault-namespace`, `--set-env KEY=VALUE`로
-    런타임 환경변수(`.devbox.runtime.env`)를 저장/적용 가능
 
 - `scripts/devbox bootstrap`
   - `.env.local`을 수정하지 않는 읽기 전용 동작
@@ -148,8 +146,6 @@ scripts/devbox bootstrap --vault-push
   - `.devbox.env`가 있으면 전달한 Vault 경로를 저장하고 재적용
   - `--vault-push`를 주면 `mingle-app/.env.local`, `mingle-stt/.env.local`의
     비관리 키를 Vault 경로로 업로드
-  - `--vault-addr`, `--vault-namespace`, `--set-env KEY=VALUE`로
-    런타임 환경변수(`.devbox.runtime.env`)를 저장/적용 가능
 
 - `scripts/devbox profile --profile local --host <LAN_IP>`
   - 같은 네트워크에서 실기기 직접 접속할 때 사용
@@ -247,7 +243,6 @@ scripts/devbox bootstrap --vault-push
 ## 생성/수정 파일
 
 - `.devbox.env`
-- `.devbox.runtime.env` (init/bootstrap의 `--set-env`, `--vault-addr`, `--vault-namespace`)
 - `mingle-app/.env.local` (devbox는 읽기/참조만 함)
 - `mingle-stt/.env.local` (devbox는 읽기/참조만 함)
 - `ngrok.mobile.local.yml`
@@ -257,5 +252,6 @@ scripts/devbox bootstrap --vault-push
 
 - `vault` CLI와 `jq`가 로컬에 설치되어 있어야 합니다.
 - `vault login` 등으로 인증이 선행되어야 합니다.
+- `VAULT_ADDR`/`VAULT_NAMESPACE`는 셸(`.zshrc`) 또는 `.env.local`에 둘 수 있습니다.
 - devbox는 Vault 값을 `.env.local`에 자동 반영하지 않습니다(런타임 주입만 수행).
 - `--vault-push`는 `.env.local`의 비관리 키를 Vault로 업로드합니다.

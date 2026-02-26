@@ -6,7 +6,6 @@ ROOT_CANON="$(cd "$ROOT_DIR" && pwd -P)"
 LOCAL_TOOLS_BIN="$ROOT_DIR/.tools/bin"
 DEVBOX_LOG_DIR="$ROOT_DIR/.devbox-logs"
 DEVBOX_ENV_FILE="$ROOT_DIR/.devbox.env"
-DEVBOX_RUNTIME_ENV_FILE="$ROOT_DIR/.devbox.runtime.env"
 APP_ENV_FILE="$ROOT_DIR/mingle-app/.env.local"
 STT_ENV_FILE="$ROOT_DIR/mingle-stt/.env.local"
 NGROK_LOCAL_CONFIG="$ROOT_DIR/ngrok.mobile.local.yml"
@@ -98,8 +97,8 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/devbox [--log-file PATH|auto] <command> [options]
-  scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--ngrok-api-port N] [--host HOST] [--vault-app-path PATH] [--vault-stt-path PATH] [--vault-addr URL] [--vault-namespace NS] [--set-env KEY=VALUE]
-  scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH] [--vault-push] [--vault-addr URL] [--vault-namespace NS] [--set-env KEY=VALUE]
+  scripts/devbox init [--web-port N] [--stt-port N] [--metro-port N] [--ngrok-api-port N] [--host HOST] [--vault-app-path PATH] [--vault-stt-path PATH] [--openclaw-root PATH]
+  scripts/devbox bootstrap [--vault-app-path PATH] [--vault-stt-path PATH] [--vault-push] [--openclaw-root PATH]
   scripts/devbox profile --profile local|device [--host HOST]
   scripts/devbox ngrok-config
   scripts/devbox gateway [--openclaw-root PATH] [--mode dev|run] [--]
@@ -131,7 +130,6 @@ Global Options:
 Environment:
   DEVBOX_NGROK_WEB_DOMAIN  Optional fixed ngrok domain for devbox_web tunnel.
                            Example: abcdef.ngrok-free.app
-  Values persisted by init/bootstrap --set-env are stored in .devbox.runtime.env.
 EOF
 }
 
@@ -238,20 +236,6 @@ is_valid_env_key() {
   [[ "${1:-}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
 }
 
-parse_env_assignment() {
-  local assignment="$1"
-  local key=""
-  local value=""
-
-  [[ "$assignment" == *=* ]] || die "invalid --set-env value (expected KEY=VALUE): $assignment"
-  key="${assignment%%=*}"
-  value="${assignment#*=}"
-  key="$(trim_whitespace "$key")"
-  is_valid_env_key "$key" || die "invalid env key in --set-env: $key"
-  ensure_single_line_value "$key" "$value"
-  printf '%s\n%s\n' "$key" "$value"
-}
-
 is_managed_key_for_target() {
   local target="$1"
   local key="$2"
@@ -274,14 +258,6 @@ is_managed_key_for_target() {
       ;;
   esac
   return 1
-}
-
-apply_persisted_runtime_env() {
-  [[ -f "$DEVBOX_RUNTIME_ENV_FILE" ]] || return 0
-  set -a
-  # shellcheck disable=SC1090
-  . "$DEVBOX_RUNTIME_ENV_FILE"
-  set +a
 }
 
 format_env_value_for_dotenv() {
@@ -332,6 +308,40 @@ read_env_value_from_file() {
   awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file"
 }
 
+read_vault_cli_env_value_from_local_env_files() {
+  local key="$1"
+  local value=""
+  local file=""
+  for file in "$APP_ENV_FILE" "$STT_ENV_FILE"; do
+    [[ -f "$file" ]] || continue
+    value="$(read_env_value_from_file "$key" "$file" || true)"
+    value="$(decode_dotenv_value "$value")"
+    value="$(trim_whitespace "$value")"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  done
+  return 1
+}
+
+prepare_vault_cli_env() {
+  local value=""
+  if [[ -z "${VAULT_ADDR:-}" ]]; then
+    value="$(read_vault_cli_env_value_from_local_env_files "VAULT_ADDR" || true)"
+    if [[ -n "$value" ]]; then
+      export VAULT_ADDR="$value"
+    fi
+  fi
+
+  if [[ -z "${VAULT_NAMESPACE:-}" ]]; then
+    value="$(read_vault_cli_env_value_from_local_env_files "VAULT_NAMESPACE" || true)"
+    if [[ -n "$value" ]]; then
+      export VAULT_NAMESPACE="$value"
+    fi
+  fi
+}
+
 read_env_value_from_vault() {
   local path="$1"
   local key="$2"
@@ -342,6 +352,7 @@ read_env_value_from_vault() {
 
   require_cmd vault
   require_cmd jq
+  prepare_vault_cli_env
 
   value="$(vault kv get -format=json "$path" 2>/dev/null | jq -r --arg key "$key" '.data.data[$key] // ""')"
   [[ "$value" == "null" ]] && value=""
@@ -353,6 +364,7 @@ can_read_vault_path() {
   [[ -n "$path" ]] || return 1
   command -v vault >/dev/null 2>&1 || return 1
   command -v jq >/dev/null 2>&1 || return 1
+  prepare_vault_cli_env
   vault kv get -format=json "$path" >/dev/null 2>&1
 }
 
@@ -733,14 +745,6 @@ upsert_non_managed_env_entry() {
   fi
 }
 
-persist_runtime_env_entry() {
-  local key="$1"
-  local value="$2"
-  upsert_non_managed_env_entry "$DEVBOX_RUNTIME_ENV_FILE" "$key" "$value"
-  normalize_file_spacing "$DEVBOX_RUNTIME_ENV_FILE"
-  export "$key=$value"
-}
-
 decode_dotenv_value() {
   local raw="$1"
   local value
@@ -780,6 +784,7 @@ push_env_file_to_vault_path() {
   }
 
   require_cmd vault
+  prepare_vault_cli_env
   local line raw_line key value_raw value count
   local -a kv_args=()
   count=0
@@ -836,6 +841,7 @@ sync_env_from_vault_path() {
 
   require_cmd vault
   require_cmd jq
+  prepare_vault_cli_env
 
   log "syncing ${target} env from vault path: $path"
 
@@ -881,6 +887,7 @@ write_runtime_env_from_vault_path() {
 
   require_cmd vault
   require_cmd jq
+  prepare_vault_cli_env
   log "loading ${target} runtime env from vault path: $path"
 
   local payload
@@ -2309,9 +2316,7 @@ cmd_init() {
   require_cmd pnpm
   local web_port="" stt_port="" metro_port="" ngrok_api_port="" host="127.0.0.1"
   local vault_app_override="" vault_stt_override=""
-  local vault_addr_override="" vault_namespace_override="" openclaw_root_override=""
-  local assignment payload key value
-  local -a runtime_env_assignments=()
+  local openclaw_root_override=""
 
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
     DEVBOX_VAULT_APP_PATH="$(read_env_value_from_file DEVBOX_VAULT_APP_PATH "$DEVBOX_ENV_FILE")"
@@ -2329,10 +2334,7 @@ cmd_init() {
       --host) host="${2:-}"; shift 2 ;;
       --vault-app-path) vault_app_override="${2:-}"; shift 2 ;;
       --vault-stt-path) vault_stt_override="${2:-}"; shift 2 ;;
-      --vault-addr) vault_addr_override="${2:-}"; shift 2 ;;
-      --vault-namespace) vault_namespace_override="${2:-}"; shift 2 ;;
       --openclaw-root) openclaw_root_override="${2:-}"; shift 2 ;;
-      --set-env) runtime_env_assignments+=("${2:-}"); shift 2 ;;
       *) die "unknown option for init: $1" ;;
     esac
   done
@@ -2377,18 +2379,6 @@ cmd_init() {
   set_local_profile_values "$host"
 
   save_and_refresh
-  if [[ -n "$vault_addr_override" ]]; then
-    persist_runtime_env_entry "VAULT_ADDR" "$vault_addr_override"
-  fi
-  if [[ -n "$vault_namespace_override" ]]; then
-    persist_runtime_env_entry "VAULT_NAMESPACE" "$vault_namespace_override"
-  fi
-  for assignment in "${runtime_env_assignments[@]}"; do
-    payload="$(parse_env_assignment "$assignment")"
-    key="$(printf '%s\n' "$payload" | sed -n '1p')"
-    value="$(printf '%s\n' "$payload" | sed -n '2p')"
-    persist_runtime_env_entry "$key" "$value"
-  done
   ensure_rn_workspace_dependencies
   ensure_ios_pods_if_needed
 
@@ -2401,19 +2391,14 @@ cmd_bootstrap() {
   local vault_app_override=""
   local vault_stt_override=""
   local vault_push=0
-  local vault_addr_override="" vault_namespace_override="" openclaw_root_override=""
-  local assignment payload key value
-  local -a runtime_env_assignments=()
+  local openclaw_root_override=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --vault-app-path) vault_app_override="${2:-}"; shift 2 ;;
       --vault-stt-path) vault_stt_override="${2:-}"; shift 2 ;;
       --vault-push) vault_push=1; shift ;;
-      --vault-addr) vault_addr_override="${2:-}"; shift 2 ;;
-      --vault-namespace) vault_namespace_override="${2:-}"; shift 2 ;;
       --openclaw-root) openclaw_root_override="${2:-}"; shift 2 ;;
-      --set-env) runtime_env_assignments+=("${2:-}"); shift 2 ;;
       *) die "unknown option for bootstrap: $1" ;;
     esac
   done
@@ -2421,19 +2406,6 @@ cmd_bootstrap() {
   if [[ -f "$DEVBOX_ENV_FILE" ]]; then
     require_devbox_env
   fi
-
-  if [[ -n "$vault_addr_override" ]]; then
-    persist_runtime_env_entry "VAULT_ADDR" "$vault_addr_override"
-  fi
-  if [[ -n "$vault_namespace_override" ]]; then
-    persist_runtime_env_entry "VAULT_NAMESPACE" "$vault_namespace_override"
-  fi
-  for assignment in "${runtime_env_assignments[@]}"; do
-    payload="$(parse_env_assignment "$assignment")"
-    key="$(printf '%s\n' "$payload" | sed -n '1p')"
-    value="$(printf '%s\n' "$payload" | sed -n '2p')"
-    persist_runtime_env_entry "$key" "$value"
-  done
 
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
   if [[ -n "$openclaw_root_override" ]]; then
@@ -3142,7 +3114,6 @@ OpenClaw    : root=${DEVBOX_OPENCLAW_ROOT:-$(resolve_openclaw_root)}
 
 Files:
 - $DEVBOX_ENV_FILE
-- $DEVBOX_RUNTIME_ENV_FILE
 - $APP_ENV_FILE
 - $STT_ENV_FILE
 - $NGROK_LOCAL_CONFIG
@@ -3236,8 +3207,6 @@ main() {
     DEVBOX_LOG_FILE="$(resolve_log_file_path "$log_file_option")"
     enable_log_capture "$DEVBOX_LOG_FILE"
   fi
-
-  apply_persisted_runtime_env
 
   local cmd="help"
   if [[ "${#filtered_args[@]}" -gt 0 ]]; then

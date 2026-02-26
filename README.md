@@ -31,8 +31,6 @@ scripts/devbox bootstrap
 # scripts/devbox bootstrap --vault-app-path secret/mingle-app/dev --vault-stt-path secret/mingle-stt/dev
 # .env.local 값을 Vault에 업로드하려면 (선택)
 # scripts/devbox bootstrap --vault-push
-# 런타임 env를 저장하려면 (선택)
-# scripts/devbox init --vault-addr https://vault.example.com --set-env DEVBOX_ENFORCE_POD_INSTALL_ON_LOCK_MISMATCH=1
 scripts/devbox up --profile local
 scripts/devbox up --profile device
 scripts/devbox up --profile device --device-app-env dev
@@ -63,8 +61,8 @@ scripts/devbox status
 - Vault 사용 시 `--vault-app-path`, `--vault-stt-path`를 저장해 이후 재사용할 수 있습니다.
 - `scripts/devbox bootstrap --vault-push`를 사용하면
   `mingle-app/.env.local`, `mingle-stt/.env.local`의 비관리 키를 Vault로 업로드할 수 있습니다.
-- `scripts/devbox init|bootstrap --vault-addr ... --vault-namespace ... --set-env KEY=VALUE`로
-  공통 런타임 환경변수를 `.devbox.runtime.env`에 저장해 재부팅 후 자동 적용할 수 있습니다.
+- Vault CLI 환경(`VAULT_ADDR`, `VAULT_NAMESPACE`)은 셸(`.zshrc`) 또는
+  `mingle-app/.env.local`/`mingle-stt/.env.local`에 두면 devbox가 자동 참조합니다.
 - `scripts/devbox gateway --mode dev|run`으로 `/Users/nam/openclaw`의 gateway 실행을 devbox 명령으로 통합할 수 있습니다.
 - devbox 기본 동작은 `.env.local`을 건드리지 않고(stateless) ngrok/xcconfig 기준으로 동작합니다.
 - `scripts/devbox up`/`init`/`mobile`/`bootstrap`은 `.env.local` 자동 동기화를 하지 않습니다.
