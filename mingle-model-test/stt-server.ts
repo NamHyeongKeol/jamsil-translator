@@ -518,9 +518,24 @@ wss.on('connection', (clientWs) => {
             // 토큰 누적 상태 (Soniox는 토큰 단위로 반환)
             let finalizedText = '';
             let detectedLang = config.languages[0] || 'en';
+            let detectedSpeaker = 'speaker_unknown';
             let hadNonFinal = false;
             let lastPartialTranslateTime = 0;
             let partialTranslateInFlight = false;
+            const normalizeSpeakerId = (rawSpeaker: unknown): string | null => {
+                if (typeof rawSpeaker !== 'string') return null;
+                const speaker = rawSpeaker.trim().toLowerCase();
+                if (!speaker) return null;
+                const numeric = /^(\d+)$/.exec(speaker);
+                if (numeric) return `speaker_${numeric[1]}`;
+                const speakerWithNumber = /^speaker(?:[_\s-]+)?(\d+)$/.exec(speaker);
+                if (speakerWithNumber) return `speaker_${speakerWithNumber[1]}`;
+                const sanitized = speaker.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+                if (!sanitized) return null;
+                if (sanitized.startsWith('speaker_')) return sanitized;
+                if (sanitized === 'speaker') return null;
+                return `speaker_${sanitized}`;
+            };
 
             sttWs.onopen = () => {
                 const sonioxConfig = {
@@ -583,6 +598,16 @@ wss.on('connection', (clientWs) => {
                         if (token.language) {
                             detectedLang = token.language;
                         }
+                        const tokenSpeaker = normalizeSpeakerId(
+                            token.speaker
+                            ?? token.speaker_id
+                            ?? token.speakerId
+                            ?? token.spk
+                            ?? token.diarization_speaker,
+                        );
+                        if (tokenSpeaker) {
+                            detectedSpeaker = tokenSpeaker;
+                        }
                         if (token.is_final) {
                             newFinalText += token.text;
                         } else {
@@ -603,6 +628,7 @@ wss.on('connection', (clientWs) => {
                                 utterance: {
                                     text: fullText.trim(),
                                     language: detectedLang,
+                                    speaker: detectedSpeaker,
                                 },
                             },
                         };
@@ -627,6 +653,7 @@ wss.on('connection', (clientWs) => {
                                 utterance: {
                                     text: finalText,
                                     language: detectedLang,
+                                    speaker: detectedSpeaker,
                                 },
                             },
                         };
@@ -664,6 +691,7 @@ wss.on('connection', (clientWs) => {
                             utterance: {
                                 text: remainingText,
                                 language: detectedLang,
+                                speaker: detectedSpeaker,
                             },
                         },
                     };

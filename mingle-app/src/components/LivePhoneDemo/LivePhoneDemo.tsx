@@ -1275,25 +1275,15 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               .filter(([lang, text]) => selectedLanguages.includes(lang) && lang !== detectedLang && text.trim().length > 0)
             const pendingPartialLangs = selectedLanguages
               .filter((lang) => lang !== detectedLang && !partialTurn.translations?.[lang])
-            const speakerLabel = partialTurn.speaker
-              .replace(/^speaker_/i, 'S')
-              .replace(/^speaker\s+/i, 'S')
-              .replace(/^speaker/i, 'SPK')
-              .toUpperCase()
 
             return (
               <motion.div
-                key={`partial-${partialTurn.speaker}`}
+                key={`partial-${partialTurn.speaker}-${partialTurn.updatedAtMs}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex flex-col gap-1"
               >
                 <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-600 text-[10px] font-semibold px-1.5 py-0.5">
-                      {speakerLabel}
-                    </span>
-                  </div>
                   <p className="text-sm text-gray-400 leading-snug">
                     {partialTurn.text}
                     <span className="inline-block w-1 h-3 ml-0.5 bg-amber-400 rounded-full animate-pulse" />

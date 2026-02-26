@@ -148,19 +148,8 @@ function SpeakingIndicator() {
   )
 }
 
-function formatSpeakerLabel(rawSpeaker?: string): string | null {
-  const speaker = (rawSpeaker || '').trim()
-  if (!speaker) return null
-  const numbered = /(\d+)$/.exec(speaker)
-  if (numbered) return `S${numbered[1]}`
-  const compact = speaker.replace(/^speaker[_\s-]*/i, '').replace(/[^a-z0-9]/gi, '')
-  if (!compact) return null
-  return `S-${compact.slice(0, 4).toUpperCase()}`
-}
-
 function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
   const flag = FLAG_MAP[utterance.originalLang] || '🌐'
-  const speakerLabel = formatSpeakerLabel(utterance.speaker)
   // Keep target language list fixed per utterance so language toggles
   // do not retroactively add/remove bubbles on old messages.
   const targetLangs = buildTargetLanguagesForUtterance(utterance)
@@ -191,11 +180,6 @@ function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: 
             <span className="text-xs font-semibold text-gray-400 uppercase">
               {utterance.originalLang}
             </span>
-            {speakerLabel && (
-              <span className="inline-flex items-center rounded-full bg-gray-100 text-[10px] font-semibold text-gray-500 px-1.5 py-0.5">
-                {speakerLabel}
-              </span>
-            )}
           </div>
           {timestamp && (
             <span className="text-[11px] text-black/[0.34] tabular-nums whitespace-nowrap">{timestamp}</span>

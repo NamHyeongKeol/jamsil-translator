@@ -91,6 +91,22 @@ describe('use-realtime-stt pure logic', () => {
     expect(parsed?.speaker).toBe('speaker_2')
   })
 
+  it('falls back to top-level speaker when utterance speaker is missing', () => {
+    const parsed = parseSttTranscriptMessage({
+      type: 'transcript',
+      data: {
+        is_final: false,
+        speaker: '3',
+        utterance: {
+          text: 'hello',
+          language: 'en',
+        },
+      },
+    })
+
+    expect(parsed?.speaker).toBe('speaker_3')
+  })
+
   it('builds finalized utterance payload with source-language filtering', () => {
     const built = buildFinalizedUtterancePayload({
       rawText: ' <end> hello everyone ',
@@ -161,5 +177,20 @@ describe('use-realtime-stt pure logic', () => {
 
     expect(built?.speaker).toBe('speaker_7')
     expect(built?.utterance.speaker).toBe('speaker_7')
+  })
+
+  it('normalizes numeric speaker ids in finalized payload', () => {
+    const built = buildFinalizedUtterancePayload({
+      rawText: 'hello',
+      rawLanguage: 'en',
+      rawSpeaker: '2',
+      languages: ['en', 'ko'],
+      partialTranslations: {},
+      utteranceSerial: 10,
+      nowMs: 1700000000000,
+    })
+
+    expect(built?.speaker).toBe('speaker_2')
+    expect(built?.utterance.speaker).toBe('speaker_2')
   })
 })
