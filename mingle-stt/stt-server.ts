@@ -27,6 +27,12 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     if (!Number.isFinite(raw)) return 1200;
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
+const SONIOX_SPEAKER_IDLE_FINALIZE_MS = (() => {
+    const fallback = SONIOX_MANUAL_FINALIZE_SILENCE_MS + 300;
+    const raw = Number(process.env.SONIOX_SPEAKER_IDLE_FINALIZE_MS || String(fallback));
+    if (!Number.isFinite(raw)) return fallback;
+    return Math.max(400, Math.min(4000, Math.floor(raw)));
+})();
 
 const server = createServer();
 const wss = new WebSocketServer({ server });
@@ -49,6 +55,7 @@ interface SonioxSpeakerTurnState {
     finalizedText: string;
     latestNonFinalText: string;
     latestNonFinalIsProvisionalCarry: boolean;
+    lastActivityAtMs: number;
     lastFinalizedEndMs: number;
     detectedLang: string;
     finalizeSnapshotTextLen: number | null;
@@ -799,6 +806,7 @@ wss.on('connection', (clientWs) => {
                     finalizedText: '',
                     latestNonFinalText: '',
                     latestNonFinalIsProvisionalCarry: false,
+                    lastActivityAtMs: 0,
                     lastFinalizedEndMs: -1,
                     detectedLang: (languageFallback || config.languages[0] || 'unknown').trim() || 'unknown',
                     finalizeSnapshotTextLen: null,
@@ -942,6 +950,7 @@ wss.on('connection', (clientWs) => {
                     if (tokens.length === 0) {
                         return;
                     }
+                    const frameNow = Date.now();
 
                     const tokensBySpeaker = new Map<string, SonioxToken[]>();
                     for (const token of tokens) {
@@ -954,9 +963,9 @@ wss.on('connection', (clientWs) => {
                         }
                     }
 
-                    let anyPendingTranscript = false;
                     let hadTranscriptProgress = false;
                     let hasProvisionalCarryInFrame = false;
+                    const speakersWithActivityInFrame = new Set<string>();
 
                     for (const [speaker, speakerTokens] of tokensBySpeaker.entries()) {
                         const state = ensureSpeakerState(speaker);
@@ -1121,9 +1130,10 @@ wss.on('connection', (clientWs) => {
                         state.currentMergedTextLen = mergedSnapshot.length;
                         const previousMergedTextForIdle = stripEndpointMarkers(previousMergedSnapshot);
                         const mergedTextForIdle = stripEndpointMarkers(mergedSnapshot);
-                        const stateHasPendingTranscript = mergedSnapshot.length > 0
-                            && !(state.latestNonFinalIsProvisionalCarry && !state.finalizedText.trim());
-                        anyPendingTranscript = anyPendingTranscript || stateHasPendingTranscript;
+                        if (mergedTextForIdle !== previousMergedTextForIdle) {
+                            state.lastActivityAtMs = frameNow;
+                            speakersWithActivityInFrame.add(state.speaker);
+                        }
                         const transcriptAdded = mergedTextForIdle.length > previousMergedTextForIdle.length;
                         if (transcriptAdded) {
                             hadTranscriptProgress = true;
@@ -1212,9 +1222,24 @@ wss.on('connection', (clientWs) => {
                         }
                     }
 
+                    for (const state of sonioxSpeakerStates.values()) {
+                        if (speakersWithActivityInFrame.has(state.speaker)) continue;
+                        if (state.lastActivityAtMs <= 0) continue;
+                        const idleMs = frameNow - state.lastActivityAtMs;
+                        if (idleMs < SONIOX_SPEAKER_IDLE_FINALIZE_MS) continue;
+                        if (state.latestNonFinalIsProvisionalCarry && !state.finalizedText.trim()) continue;
+                        const merged = composeTurnText(state.finalizedText, state.latestNonFinalText);
+                        if (!merged) continue;
+                        emitFinalTurn(state.speaker, merged, state.detectedLang);
+                    }
+
                     sonioxCurrentMergedTextLen = Array.from(sonioxSpeakerStates.values())
                         .reduce((sum, state) => sum + state.currentMergedTextLen, 0);
-                    sonioxHasPendingTranscript = anyPendingTranscript;
+                    sonioxHasPendingTranscript = Array.from(sonioxSpeakerStates.values()).some((state) => {
+                        const mergedSnapshot = composeTurnText(state.finalizedText, state.latestNonFinalText);
+                        return mergedSnapshot.length > 0
+                            && !(state.latestNonFinalIsProvisionalCarry && !state.finalizedText.trim());
+                    });
                     if (hasProvisionalCarryInFrame) {
                         sonioxManualFinalizeSent = true;
                         clearSonioxManualFinalizeTimer();

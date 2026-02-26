@@ -1251,22 +1251,25 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             </button>
           )}
           <AnimatePresence mode="popLayout">
-            {utterances.map((u) => (
-              <div
-                key={u.id}
-                data-utterance-created-at={
-                  (typeof u.createdAtMs === 'number' && Number.isFinite(u.createdAtMs))
-                    ? String(Math.floor(u.createdAtMs))
-                    : ''
-                }
-              >
-                <ChatBubble
-                  utterance={u}
-                  isSpeaking={speakingItem?.utteranceId === u.id}
-                  speakingLanguage={speakingItem?.language ?? null}
-                />
-              </div>
-            ))}
+            {utterances.map((u) => {
+              const isBubbleSpeaking = speakingItem?.utteranceId === u.id
+              return (
+                <div
+                  key={u.id}
+                  data-utterance-created-at={
+                    (typeof u.createdAtMs === 'number' && Number.isFinite(u.createdAtMs))
+                      ? String(Math.floor(u.createdAtMs))
+                      : ''
+                  }
+                >
+                  <ChatBubble
+                    utterance={u}
+                    isSpeaking={isBubbleSpeaking}
+                    speakingLanguage={isBubbleSpeaking ? (speakingItem?.language ?? null) : null}
+                  />
+                </div>
+              )
+            })}
           </AnimatePresence>
 
           {partialTurns.map((partialTurn) => {
@@ -1278,7 +1281,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
             return (
               <motion.div
-                key={`partial-${partialTurn.speaker}-${partialTurn.updatedAtMs}`}
+                key={`partial-${partialTurn.speaker}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex flex-col gap-1"

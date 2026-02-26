@@ -10,8 +10,6 @@ const FLAG_MAP: Record<string, string> = {
   tr: '🇹🇷', pl: '🇵🇱', nl: '🇳🇱', sv: '🇸🇪', ms: '🇲🇾',
 }
 
-const RECENT_THRESHOLD_MS = 90_000
-
 function getBaseLang(): string {
   if (typeof navigator === 'undefined') return 'en'
   return (navigator.language || 'en').split('-')[0].toLowerCase()
@@ -237,12 +235,8 @@ function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: 
 }
 
 function chatBubbleAreEqual(prev: ChatBubbleProps, next: ChatBubbleProps): boolean {
-  // Always re-render recent utterances so relative timestamp stays fresh
-  const createdAtMs = next.utterance.createdAtMs
-  if (createdAtMs && (Date.now() - createdAtMs) < RECENT_THRESHOLD_MS) return false
-
   if (prev.isSpeaking !== next.isSpeaking) return false
-  if (prev.speakingLanguage !== next.speakingLanguage) return false
+  if ((prev.isSpeaking || next.isSpeaking) && prev.speakingLanguage !== next.speakingLanguage) return false
 
   if (prev.utterance !== next.utterance) {
     const pu = prev.utterance
