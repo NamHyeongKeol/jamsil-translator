@@ -131,7 +131,7 @@ describe('use-realtime-stt pure logic', () => {
     expect(speaker).toBe('speaker_2')
   })
 
-  it('keeps speaker_unknown when partial matches are ambiguous', () => {
+  it('falls back to deterministic speaker when partial matches are ambiguous', () => {
     const speaker = resolveSpeakerForTranscript(
       undefined,
       'same text',
@@ -150,7 +150,29 @@ describe('use-realtime-stt pure logic', () => {
       },
     )
 
-    expect(speaker).toBe('speaker_unknown')
+    expect(speaker).toBe('speaker_1')
+  })
+
+  it('avoids speaker_unknown fallback by picking most recent active speaker', () => {
+    const speaker = resolveSpeakerForTranscript(
+      'speaker_unknown',
+      '',
+      'en',
+      {
+        speaker_1: {
+          text: 'hello one',
+          language: 'en',
+          updatedAtMs: 100,
+        },
+        speaker_2: {
+          text: 'hello two',
+          language: 'en',
+          updatedAtMs: 200,
+        },
+      },
+    )
+
+    expect(speaker).toBe('speaker_2')
   })
 
   it('builds finalized utterance payload with source-language filtering', () => {

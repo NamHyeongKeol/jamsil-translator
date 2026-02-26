@@ -251,7 +251,34 @@ export function parseSttTranscriptMessage(
 export interface SpeakerResolutionPartialTurn {
   text: string
   language?: string
+  startedAtMs?: number
   updatedAtMs?: number
+}
+
+function resolveMostRecentSpeaker(
+  speakers: string[],
+  partialTurns: Record<string, SpeakerResolutionPartialTurn>,
+): string {
+  if (speakers.length === 0) return 'speaker_unknown'
+  let selectedSpeaker = speakers[0]
+  let selectedUpdatedAt = Number.isFinite(partialTurns[selectedSpeaker]?.updatedAtMs)
+    ? Number(partialTurns[selectedSpeaker]?.updatedAtMs)
+    : 0
+  for (let i = 1; i < speakers.length; i += 1) {
+    const speaker = speakers[i]
+    const updatedAt = Number.isFinite(partialTurns[speaker]?.updatedAtMs)
+      ? Number(partialTurns[speaker]?.updatedAtMs)
+      : 0
+    if (updatedAt > selectedUpdatedAt) {
+      selectedSpeaker = speaker
+      selectedUpdatedAt = updatedAt
+      continue
+    }
+    if (updatedAt === selectedUpdatedAt && speaker.localeCompare(selectedSpeaker) < 0) {
+      selectedSpeaker = speaker
+    }
+  }
+  return selectedSpeaker
 }
 
 export function resolveSpeakerForTranscript(
@@ -278,7 +305,10 @@ export function resolveSpeakerForTranscript(
 
   if (!normalizedText) {
     if (languageMatchedSpeakers.length === 1) return languageMatchedSpeakers[0]
-    return 'speaker_unknown'
+    if (languageMatchedSpeakers.length > 1) {
+      return resolveMostRecentSpeaker(languageMatchedSpeakers, partialTurns)
+    }
+    return resolveMostRecentSpeaker(speakers, partialTurns)
   }
 
   type SpeakerCandidate = {
@@ -329,7 +359,10 @@ export function resolveSpeakerForTranscript(
 
   if (candidates.length === 0) {
     if (languageMatchedSpeakers.length === 1) return languageMatchedSpeakers[0]
-    return normalizedSpeaker || 'speaker_unknown'
+    if (languageMatchedSpeakers.length > 1) {
+      return resolveMostRecentSpeaker(languageMatchedSpeakers, partialTurns)
+    }
+    return resolveMostRecentSpeaker(speakers, partialTurns)
   }
 
   candidates.sort((a, b) => {
@@ -345,7 +378,14 @@ export function resolveSpeakerForTranscript(
   if (best.score !== next.score) return best.speaker
   if (best.textLength !== next.textLength) return best.speaker
   if (best.updatedAtMs !== next.updatedAtMs) return best.speaker
-  return normalizedSpeaker || 'speaker_unknown'
+  const topCandidates = candidates
+    .filter((candidate) => (
+      candidate.score === best.score
+      && candidate.textLength === best.textLength
+      && candidate.updatedAtMs === best.updatedAtMs
+    ))
+    .map((candidate) => candidate.speaker)
+  return resolveMostRecentSpeaker(topCandidates, partialTurns)
 }
 
 export interface BuildFinalizedUtterancePayloadInput {
