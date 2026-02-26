@@ -17,13 +17,16 @@
 # 1) 워크트리에서 1회 초기화
 scripts/devbox init
 
-# 2) 메인 워크트리 env 시드 + 의존성 설치
+# 2) 읽기 전용 bootstrap + 의존성 설치
 scripts/devbox bootstrap
 
-# 2-b) (선택) Vault에서 env 키 동기화
+# 2-b) (선택) Vault 경로 저장
 scripts/devbox bootstrap \
   --vault-app-path secret/mingle-app/dev \
   --vault-stt-path secret/mingle-stt/dev
+
+# 2-c) (선택) .env.local -> Vault로 업로드
+scripts/devbox bootstrap --vault-push
 
 # 3) 현재 상태 확인
 scripts/devbox status
@@ -71,6 +74,53 @@ scripts/devbox test --target all
 scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --ios-runtime native --ios-native-target simulator --ios-simulator-udid <UDID> --ios-configuration Debug
 ```
 
+## 재부팅 후 실행 순서 (Codex 전달용)
+
+아래 순서대로 실행하면 됩니다. (`.devbox.env`가 이미 있는 기준)
+
+### A) 로컬 개발(ngrok 없이)
+
+```bash
+cd /Users/nam/.codex/worktrees/5387/mingle
+git checkout <브랜치>
+
+# Vault 세션이 만료된 경우만
+vault login
+
+# 의존성/환경 복구 (안전하게 항상 실행 가능)
+scripts/devbox bootstrap
+
+# OpenClaw gateway가 필요하면 (별도 터미널)
+scripts/devbox gateway --mode dev
+
+# mingle-stt + mingle-app 실행
+scripts/devbox up --profile local
+```
+
+### B) 실기기 전체(앱 재설치 + ngrok + 서버 2개)
+
+```bash
+cd /Users/nam/.codex/worktrees/5387/mingle
+git checkout <브랜치>
+
+# Vault 세션이 만료된 경우만
+vault login
+
+scripts/devbox bootstrap
+scripts/devbox up --profile device --with-ios-install --with-ios-clean-install --ios-runtime rn
+```
+
+### C) 로컬 `.env.local` 값을 Vault에 다시 반영해야 할 때
+
+```bash
+scripts/devbox bootstrap --vault-push
+```
+
+노트:
+- `.devbox.env`가 없으면 `scripts/devbox up ...`이 `init`을 자동 실행합니다.
+- Vault CLI 환경(`VAULT_ADDR`, `VAULT_NAMESPACE`)은
+  셸(`.zshrc`) 또는 `mingle-app/.env.local`/`mingle-stt/.env.local`에 두면 자동 참조됩니다.
+
 ## 주요 명령
 
 - `scripts/devbox init`
@@ -81,18 +131,21 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
   - RN 워크스페이스 의존성(`mingle-app/rn`) 자동 설치/점검
   - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
     불일치/누락 시 `pod install` 자동 동기화
+  - `--vault-app-path`, `--vault-stt-path`로 Vault 경로를 초기값으로 저장 가능
 
 - `scripts/devbox bootstrap`
-  - main 워크트리의 `mingle-app/.env.local`, `mingle-stt/.env.local`을 현재 워크트리에 시드
+  - `.env.local`을 수정하지 않는 읽기 전용 동작
   - `mingle-app`, `mingle-stt` 의존성(`pnpm install`) 자동 설치
   - `mingle-app/rn` 의존성(`pnpm install`) 자동 설치
   - iOS Pods 상태(`Podfile.lock` vs `Pods/Manifest.lock`) 자동 점검 후
     불일치/누락 시 `pod install` 자동 동기화
   - `mingle-app/node_modules/.prisma/client` 생성물이 없으면 `db:generate` 자동 실행
-  - 옵션으로 Vault KV 경로를 주면 해당 키를 비관리 영역에 반영
+  - 옵션으로 Vault KV 경로를 저장
     - `--vault-app-path <path>`
     - `--vault-stt-path <path>`
   - `.devbox.env`가 있으면 전달한 Vault 경로를 저장하고 재적용
+  - `--vault-push`를 주면 `mingle-app/.env.local`, `mingle-stt/.env.local`의
+    비관리 키를 Vault 경로로 업로드
 
 - `scripts/devbox profile --profile local --host <LAN_IP>`
   - 같은 네트워크에서 실기기 직접 접속할 때 사용
@@ -102,6 +155,13 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
   - 현재 워크트리 ngrok inspector(`DEVBOX_NGROK_API_PORT`)에서 `devbox_web`, `devbox_stt` 터널 URL을 읽어
     `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WS_URL`에 반영
   - 현재 워크트리 포트와 `config.addr`가 일치하고 `https/wss`인 터널만 허용
+
+- `scripts/devbox gateway --mode dev|run`
+  - 기본 OpenClaw 루트(`/Users/nam/openclaw`)에서 gateway 실행
+  - `--openclaw-root <PATH>`로 루트 변경 가능
+  - `--mode dev`: `pnpm gateway:dev`
+  - `--mode run -- --bind loopback --port 18789`: `openclaw gateway run` 인자 전달
+
 - `scripts/devbox up --profile device --device-app-env dev|prod`
   - 모바일 앱 빌드 URL을
     `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 직접 읽어 주입
@@ -113,11 +173,10 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
 - `scripts/devbox up --profile local|device`
   - `.devbox.env`가 없으면 `init`을 자동 실행(1커맨드 온보딩)
   - 의존성 설치를 자동 수행(Prisma client 누락 시 `db:generate` 포함)
-  - `up`은 기본적으로 `.env.local` 자동 시드/동기화를 수행하지 않음
+  - `up`은 `.env.local` 자동 시드/동기화를 수행하지 않음
   - 저장된 Vault 경로가 있으면 비관리 키(API key 등)를
     서버 프로세스 환경변수로 런타임 주입(파일 미기록)
-  - Vault 비관리키를 파일에 반영하려면 `bootstrap`을 명시적으로 실행
-    (`--vault-app-path/--vault-stt-path` 지원)
+  - `.env.local` 갱신은 devbox가 수행하지 않음(수동 편집 원칙)
   - `mingle-stt` + `mingle-app` 동시 실행
   - `device` 프로필에서 ngrok이 없으면 iTerm/Terminal에 별도 탭/패널로 ngrok 실행 시도
     (실패 시 기존 인라인 실행으로 폴백)
@@ -184,8 +243,8 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
 ## 생성/수정 파일
 
 - `.devbox.env`
-- `mingle-app/.env.local` (필요 시 시드/Vault 비관리키 동기화)
-- `mingle-stt/.env.local` (필요 시 시드/Vault 비관리키 동기화)
+- `mingle-app/.env.local` (devbox는 읽기/참조만 함)
+- `mingle-stt/.env.local` (devbox는 읽기/참조만 함)
 - `ngrok.mobile.local.yml`
 - `.devbox-logs/` (`--log-file` 사용 시 생성, gitignore)
 
@@ -193,5 +252,6 @@ scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --
 
 - `vault` CLI와 `jq`가 로컬에 설치되어 있어야 합니다.
 - `vault login` 등으로 인증이 선행되어야 합니다.
-- Vault 동기화는 devbox 관리 키(`PORT`, `NEXT_PUBLIC_SITE_URL` 등)는 덮어쓰지 않고,
-  비관리 키만 반영합니다.
+- `VAULT_ADDR`/`VAULT_NAMESPACE`는 셸(`.zshrc`) 또는 `.env.local`에 둘 수 있습니다.
+- devbox는 Vault 값을 `.env.local`에 자동 반영하지 않습니다(런타임 주입만 수행).
+- `--vault-push`는 `.env.local`의 비관리 키를 Vault로 업로드합니다.
