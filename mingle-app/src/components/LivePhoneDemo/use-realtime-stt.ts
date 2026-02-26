@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import type { Utterance } from './ChatBubble'
 import { buildClientApiPath } from '@/lib/api-contract'
 
@@ -128,6 +128,24 @@ export function normalizeLangForCompare(rawLanguage: string): string {
   return (rawLanguage || '').trim().replace('_', '-').toLowerCase().split('-')[0] || ''
 }
 
+function normalizeSpeakerId(rawSpeaker: unknown): string | null {
+  if (typeof rawSpeaker !== 'string') return null
+  const speaker = rawSpeaker.trim().toLowerCase()
+  if (!speaker) return null
+
+  const numeric = /^(\d+)$/.exec(speaker)
+  if (numeric) return `speaker_${numeric[1]}`
+
+  const speakerWithNumber = /^speaker(?:[_\s-]+)?(\d+)$/.exec(speaker)
+  if (speakerWithNumber) return `speaker_${speakerWithNumber[1]}`
+
+  const sanitized = speaker.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  if (!sanitized) return null
+  if (sanitized.startsWith('speaker_')) return sanitized
+  if (sanitized === 'speaker') return null
+  return `speaker_${sanitized}`
+}
+
 export function stripSourceLanguageFromTranslations(
   translationsRaw: Record<string, string>,
   sourceLanguageRaw: string,
@@ -193,6 +211,7 @@ export interface ParsedSttTranscriptMessage {
   rawText: string
   text: string
   language: string
+  speaker?: string
   isFinal: boolean
 }
 
@@ -209,19 +228,23 @@ export function parseSttTranscriptMessage(
   const rawText = typeof utterance.text === 'string' ? utterance.text : ''
   const text = normalizeSttTurnText(rawText)
   const language = typeof utterance.language === 'string' ? utterance.language : 'unknown'
+  const speaker = normalizeSpeakerId(utterance.speaker ?? data.speaker)
   const isFinal = data.is_final === true
 
-  return {
+  const parsed: ParsedSttTranscriptMessage = {
     rawText,
     text,
     language,
     isFinal,
   }
+  if (speaker) parsed.speaker = speaker
+  return parsed
 }
 
 export interface BuildFinalizedUtterancePayloadInput {
   rawText: string
   rawLanguage: string
+  rawSpeaker?: string
   languages: string[]
   partialTranslations: Record<string, string>
   utteranceSerial: number
@@ -234,6 +257,7 @@ export interface BuildFinalizedUtterancePayloadResult {
   utteranceId: string
   text: string
   language: string
+  speaker?: string
   createdAtMs: number
   utterance: Utterance
   currentTurnPreviousState: CurrentTurnPreviousStatePayload | null
@@ -244,6 +268,7 @@ export function buildFinalizedUtterancePayload(
 ): BuildFinalizedUtterancePayloadResult | null {
   const text = normalizeSttTurnText(input.rawText)
   const language = (input.rawLanguage || 'unknown').trim() || 'unknown'
+  const speaker = normalizeSpeakerId(input.rawSpeaker)
   if (!text) return null
 
   const createdAtMs = typeof input.nowMs === 'number' && Number.isFinite(input.nowMs)
@@ -273,11 +298,15 @@ export function buildFinalizedUtterancePayload(
     translationFinalized,
     createdAtMs,
   }
+  if (speaker) {
+    utterance.speaker = speaker
+  }
 
   return {
     utteranceId,
     text,
     language,
+    speaker: speaker || undefined,
     createdAtMs,
     utterance,
     currentTurnPreviousState,
@@ -308,6 +337,13 @@ interface TranslateApiResult {
   ttsAudioMime?: string
   provider?: string
   model?: string
+}
+
+interface PartialTurn {
+  speaker: string
+  text: string
+  language: string
+  translations: Record<string, string>
 }
 
 interface RecentTurnContextPayload {
@@ -456,6 +492,7 @@ export default function useRealtimeSTT({
   const [partialTranscript, setPartialTranscript] = useState('')
   const [partialTranslations, setPartialTranslations] = useState<Record<string, string>>({})
   const [partialLang, setPartialLang] = useState<string | null>(null)
+  const [partialSpeaker, setPartialSpeaker] = useState<string | null>(null)
   const [volume, setVolume] = useState(0)
   const [usageSec, setUsageSec] = useState(() => {
     if (typeof window === 'undefined') return 0
@@ -486,6 +523,7 @@ export default function useRealtimeSTT({
   const partialTranslationsRef = useRef<Record<string, string>>({})
   const partialTranscriptRef = useRef('')
   const partialLangRef = useRef<string | null>(null)
+  const partialSpeakerRef = useRef<string | null>(null)
   const isStoppingRef = useRef(false)
   const onTtsRequestedRef = useRef(onTtsRequested)
   onTtsRequestedRef.current = onTtsRequested
@@ -617,6 +655,10 @@ export default function useRealtimeSTT({
     partialLangRef.current = partialLang
   }, [partialLang])
 
+  useEffect(() => {
+    partialSpeakerRef.current = partialSpeaker
+  }, [partialSpeaker])
+
   const ensureSessionKey = useCallback(() => {
     if (sessionKeyRef.current) return sessionKeyRef.current
     const resolved = getOrCreateSessionKey()
@@ -707,6 +749,8 @@ export default function useRealtimeSTT({
     partialTranscriptRef.current = ''
     setPartialLang(null)
     partialLangRef.current = null
+    setPartialSpeaker(null)
+    partialSpeakerRef.current = null
     hasFiredInitialPartialTranslateRef.current = false
     lastPartialTranslateLenRef.current = 0
     if (partialTranslateControllerRef.current) {
@@ -956,7 +1000,8 @@ export default function useRealtimeSTT({
     if (!text) return null
 
     const now = Date.now()
-    const sig = `${lang}::${text}`
+    const speaker = normalizeSpeakerId(partialSpeakerRef.current)
+    const sig = `${lang}::${speaker || ''}::${text}`
     if (
       sig
       && stopFinalizeDedupRef.current.sig === sig
@@ -968,6 +1013,8 @@ export default function useRealtimeSTT({
       partialTranscriptRef.current = ''
       setPartialLang(null)
       partialLangRef.current = null
+      setPartialSpeaker(null)
+      partialSpeakerRef.current = null
       lastPartialTranslationStateRef.current = null
       return null
     }
@@ -977,6 +1024,7 @@ export default function useRealtimeSTT({
     const localPayload = buildFinalizedUtterancePayload({
       rawText,
       rawLanguage: rawLang,
+      rawSpeaker: speaker || undefined,
       languages,
       partialTranslations: partialTranslationsRef.current,
       utteranceSerial: utteranceIdRef.current,
@@ -999,6 +1047,8 @@ export default function useRealtimeSTT({
     partialTranscriptRef.current = ''
     setPartialLang(null)
     partialLangRef.current = null
+    setPartialSpeaker(null)
+    partialSpeakerRef.current = null
     lastPartialTranslationStateRef.current = null
     return {
       utteranceId: localPayload.utteranceId,
@@ -1331,7 +1381,7 @@ export default function useRealtimeSTT({
 
     const transcript = parseSttTranscriptMessage(message)
     if (transcript) {
-      const { rawText, text, language: lang, isFinal } = transcript
+      const { rawText, text, language: lang, speaker, isFinal } = transcript
 
       if (isStoppingRef.current && !isFinal) {
         return
@@ -1344,7 +1394,8 @@ export default function useRealtimeSTT({
           clearPartialBuffers()
           return
         }
-        const sig = `${lang}::${text}`
+        const speakerForFinal = normalizeSpeakerId(speaker ?? partialSpeakerRef.current)
+        const sig = `${lang}::${speakerForFinal || ''}::${text}`
         const now = Date.now()
         const hadTurnStart = turnStartedAtRef.current !== null
         const sttDurationMs = hadTurnStart && turnStartedAtRef.current
@@ -1365,6 +1416,7 @@ export default function useRealtimeSTT({
         const finalizedPayload = buildFinalizedUtterancePayload({
           rawText,
           rawLanguage: lang,
+          rawSpeaker: speakerForFinal || undefined,
           languages,
           partialTranslations: partialTranslationsRef.current,
           utteranceSerial: utteranceIdRef.current,
@@ -1412,6 +1464,9 @@ export default function useRealtimeSTT({
         partialTranscriptRef.current = text
         setPartialLang(lang)
         partialLangRef.current = lang
+        const speakerForPartial = normalizeSpeakerId(speaker)
+        setPartialSpeaker(speakerForPartial)
+        partialSpeakerRef.current = speakerForPartial
       }
     }
   }, [clearPartialBuffers, finalizeTurnWithTranslation, languages, logClientEvent, normalizedUsageLimitSec, startAudioProcessing, stopRecordingGracefully])
@@ -1448,6 +1503,7 @@ export default function useRealtimeSTT({
       setPartialTranslations({})
       partialTranslationsRef.current = {}
       setPartialLang(null)
+      setPartialSpeaker(null)
       nativeStopRequestedRef.current = false
 
       if (useNativeStt) {
@@ -1743,10 +1799,22 @@ export default function useRealtimeSTT({
     }
   }, [recoverFromBackgroundIfNeeded])
 
+  const partialTurns = useMemo<PartialTurn[]>(() => {
+    const text = partialTranscript.trim()
+    if (!text) return []
+    return [{
+      speaker: normalizeSpeakerId(partialSpeaker) || 'speaker_unknown',
+      text,
+      language: partialLang || 'unknown',
+      translations: partialTranslations,
+    }]
+  }, [partialLang, partialSpeaker, partialTranscript, partialTranslations])
+
   return {
     connectionStatus,
     utterances,
     partialTranscript,
+    partialTurns,
     volume,
     toggleRecording,
     isActive: connectionStatus !== 'idle' && connectionStatus !== 'error',

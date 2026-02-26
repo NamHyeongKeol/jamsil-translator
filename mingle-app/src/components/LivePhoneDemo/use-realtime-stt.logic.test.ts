@@ -75,6 +75,22 @@ describe('use-realtime-stt pure logic', () => {
     expect(parseSttTranscriptMessage({ type: 'transcript', data: { utterance: null } })).toBeNull()
   })
 
+  it('normalizes speaker id from transcript payload', () => {
+    const parsed = parseSttTranscriptMessage({
+      type: 'transcript',
+      data: {
+        is_final: false,
+        utterance: {
+          text: 'hello',
+          language: 'en',
+          speaker: 'Speaker 2',
+        },
+      },
+    })
+
+    expect(parsed?.speaker).toBe('speaker_2')
+  })
+
   it('builds finalized utterance payload with source-language filtering', () => {
     const built = buildFinalizedUtterancePayload({
       rawText: ' <end> hello everyone ',
@@ -130,5 +146,20 @@ describe('use-realtime-stt pure logic', () => {
     })
 
     expect(built).toBeNull()
+  })
+
+  it('keeps normalized speaker on finalized utterance payload', () => {
+    const built = buildFinalizedUtterancePayload({
+      rawText: 'hello',
+      rawLanguage: 'en-US',
+      rawSpeaker: 'speaker 7',
+      languages: ['en', 'ko'],
+      partialTranslations: {},
+      utteranceSerial: 9,
+      nowMs: 1700000000000,
+    })
+
+    expect(built?.speaker).toBe('speaker_7')
+    expect(built?.utterance.speaker).toBe('speaker_7')
   })
 })
