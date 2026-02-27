@@ -114,6 +114,40 @@ function createNativeAuthRequestId(): string {
   return `rq_${fallback}`;
 }
 
+function AppleMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M16.52 12.6c.02 2.1 1.85 2.8 1.87 2.81-.02.05-.29 1-.96 1.98-.58.86-1.2 1.72-2.15 1.74-.92.02-1.22-.55-2.28-.55-1.07 0-1.4.53-2.26.57-.92.03-1.62-.93-2.2-1.78-1.2-1.73-2.1-4.9-.88-7.02.6-1.05 1.66-1.72 2.81-1.74.88-.02 1.71.6 2.28.6.57 0 1.62-.74 2.73-.63.47.02 1.8.19 2.65 1.43-.07.04-1.58.92-1.57 2.59Zm-2.16-5.04c.48-.58.8-1.39.71-2.2-.69.03-1.53.46-2.03 1.04-.44.5-.82 1.32-.72 2.1.77.06 1.56-.39 2.04-.94Z"
+      />
+    </svg>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+      <path
+        fill="#EA4335"
+        d="M12.25 10.2v4.18h5.83c-.26 1.34-1.67 3.94-5.83 3.94-3.5 0-6.35-2.9-6.35-6.47 0-3.58 2.85-6.48 6.35-6.48 2 0 3.34.85 4.1 1.58l2.79-2.7C17.36 2.58 15 1.5 12.25 1.5 6.72 1.5 2.25 6 2.25 11.55c0 5.54 4.47 10.05 10 10.05 5.77 0 9.6-4.04 9.6-9.73 0-.65-.08-1.13-.16-1.67h-9.44Z"
+      />
+      <path
+        fill="#34A853"
+        d="M3.4 6.88 6.66 9.3c.88-1.74 2.7-2.95 5.6-2.95 2 0 3.34.85 4.1 1.58l2.79-2.7C17.36 2.58 15 1.5 12.25 1.5c-3.85 0-7.2 2.2-8.85 5.38Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M2.25 11.55c0 1.73.44 3.36 1.22 4.78l3.54-2.74c-.2-.58-.31-1.2-.31-1.84 0-.66.11-1.29.31-1.88L3.47 7.1a9.93 9.93 0 0 0-1.22 4.45Z"
+      />
+      <path
+        fill="#4285F4"
+        d="M12.25 21.6c2.7 0 4.97-.9 6.63-2.44l-3.23-2.65c-.9.63-2.06 1.06-3.4 1.06-2.9 0-4.72-1.96-5.51-4.58L3.4 15.33C5.05 18.98 8.4 21.6 12.25 21.6Z"
+      />
+    </svg>
+  );
+}
+
 export default function MingleHome(props: MingleHomeProps) {
   const { status } = useSession();
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -393,9 +427,13 @@ export default function MingleHome(props: MingleHomeProps) {
 
   if (status === "loading") {
     return (
-      <main className="flex h-full min-h-0 w-full items-center justify-center bg-white px-6 text-slate-900">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 size={16} className="animate-spin" />
+      <main className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-slate-950 px-6 text-slate-100">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-16 top-8 h-44 w-44 rounded-full bg-cyan-400/25 blur-3xl" />
+          <div className="absolute -right-20 bottom-10 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl" />
+        </div>
+        <div className="relative flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-5 py-2 text-sm text-slate-100 backdrop-blur-md">
+          <Loader2 size={16} className="animate-spin text-cyan-200" />
           <span>{props.dictionary.profile.loginLoading}</span>
         </div>
       </main>
@@ -405,39 +443,68 @@ export default function MingleHome(props: MingleHomeProps) {
   if (status !== "authenticated") {
     const disabled = isSigningIn;
     return (
-      <main className="flex h-full min-h-0 w-full items-center justify-center bg-white px-6 text-slate-900">
-        <section className="w-full max-w-[20rem] rounded-2xl border border-slate-200 bg-slate-50 px-5 py-6">
-          <p className="mb-1 text-lg font-semibold">{props.dictionary.profile.loginRequiredTitle}</p>
-          <p className="mb-5 text-sm leading-relaxed text-slate-600">
+      <main className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-slate-950 px-6 text-slate-900">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-16 top-8 h-44 w-44 rounded-full bg-cyan-400/25 blur-3xl" />
+          <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-400/20 blur-3xl" />
+          <div className="absolute -right-20 bottom-10 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl" />
+        </div>
+        <section
+          aria-busy={disabled}
+          className="relative w-full max-w-[23rem] rounded-[2rem] border border-white/60 bg-white/90 px-6 py-7 shadow-[0_30px_90px_-30px_rgba(15,23,42,0.7)] backdrop-blur-md sm:px-7"
+        >
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-[0.68rem] font-semibold tracking-[0.16em] text-white">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+            MINGLE
+          </div>
+          <p className="mb-2 text-xl font-semibold tracking-tight text-slate-900">
+            {props.dictionary.profile.loginRequiredTitle}
+          </p>
+          <p className="mb-6 text-sm leading-relaxed text-slate-600">
             {props.dictionary.profile.loginRequiredDescription}
           </p>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <button
               type="button"
               onClick={() => handleSocialSignIn("apple")}
               disabled={!props.appleOAuthEnabled || disabled}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-black px-4 py-2.5 text-sm font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex w-full items-center justify-between rounded-2xl border border-black/5 bg-gradient-to-b from-slate-900 to-black px-4 py-3 text-sm font-medium text-white shadow-[0_10px_30px_-16px_rgba(15,23,42,0.9)] transition duration-200 hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
             >
-              {props.dictionary.profile.loginApple}
+              <span className="inline-flex items-center gap-2">
+                <AppleMark />
+                {props.dictionary.profile.loginApple}
+              </span>
+              <span className="text-xs text-white/65">Secure</span>
             </button>
             <button
               type="button"
               onClick={() => handleSocialSignIn("google")}
               disabled={!props.googleOAuthEnabled || disabled}
-              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.45)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
             >
-              {props.dictionary.profile.loginGoogle}
+              <span className="inline-flex items-center gap-2">
+                <GoogleMark />
+                {props.dictionary.profile.loginGoogle}
+              </span>
+              <span className="text-xs text-slate-500">OAuth</span>
             </button>
           </div>
 
+          {disabled ? (
+            <div className="mt-4 inline-flex items-center gap-2 text-xs text-slate-500">
+              <Loader2 size={14} className="animate-spin" />
+              <span>{props.dictionary.profile.loginLoading}</span>
+            </div>
+          ) : null}
+
           {!props.appleOAuthEnabled ? (
-            <p className="mt-3 text-xs leading-relaxed text-slate-500">
+            <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
               {props.dictionary.profile.appleNotConfigured}
             </p>
           ) : null}
           {!props.googleOAuthEnabled ? (
-            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+            <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
               {props.dictionary.profile.googleNotConfigured}
             </p>
           ) : null}
