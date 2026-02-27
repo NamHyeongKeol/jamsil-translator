@@ -79,10 +79,14 @@ URL override (optional):
 - 예: `https://your-app/ko?apiNamespace=ios/v1.0.0`
 - 허용되지 않은 값은 무시되고 env/default를 사용합니다.
 
-### iOS Client Version Policy
+### Client Version Policy
 
-- 앱 시작 시 `POST /api/ios/v1.0.0/client/version-policy`를 호출합니다.
+- 앱 시작 시 `POST /api/client/version-policy` 또는 플랫폼 namespace 경로를 호출합니다.
+- namespace 예시:
+  - iOS: `POST /api/ios/v1.0.0/client/version-policy`
+  - Android: `POST /api/android/v1.0.0/client/version-policy`
 - 요청: `clientVersion`(`x.y.z`), `clientBuild`
+- 요청 optional: `platform` (`ios` | `android`, 미전달 시 `ios`)
 - 응답 `action`:
   - `force_update`: 강제 업데이트 화면
   - `recommend_update`: 권장 업데이트 알림
@@ -223,6 +227,7 @@ If you apply SQL manually to remote, use:
 - `prisma/migrations/20260216173000_init_app_schema/migration.sql`
 - `prisma/migrations/20260216191500_add_app_users_context_columns/migration.sql`
 - `prisma/migrations/20260227211000_add_client_version_policy_history/migration.sql`
+- `prisma/migrations/20260227232000_add_client_platform_to_version_policy_history/migration.sql`
 
 ## React Native (mingle-app/rn)
 
@@ -244,34 +249,37 @@ RN 앱 URL은 하드코딩하지 않고 환경변수로만 읽습니다.
 - `RN_CLIENT_VERSION` (optional, fallback: `CFBundleShortVersionString`)
 - `RN_CLIENT_BUILD` (optional, fallback: `CFBundleVersion`)
 
-서버 iOS 버전 정책은 환경변수가 아니라 DB 이력 테이블(`app` 스키마)로 관리합니다.
+서버 클라이언트 버전 정책은 환경변수가 아니라 DB 이력 테이블(`app` 스키마)로 관리합니다.
 
 - 클라이언트 버전 이력: `app.app_client_versions`
-  - iOS 앱이 `clientVersion`을 보내면 서버가 `insert if not exists`로 누적 기록
+  - 클라이언트가 `clientVersion`을 보내면 서버가 플랫폼별 `insert if not exists`로 누적 기록
+  - 고유키: `(platform, version)`
 - 버전 정책 이력: `app.app_client_version_policies`
-  - `effective_from` 기준 최신 레코드를 활성 정책으로 사용
+  - `platform + effective_from` 기준 최신 레코드를 활성 정책으로 사용
   - 정책 변경 시 기존 row를 update하지 않고 새 row를 append
-  - 필드: `min_supported_version`, `recommended_below_version`, `latest_version`, `update_url`, `note`
+  - 필드: `platform`, `min_supported_version`, `recommended_below_version`, `latest_version`, `update_url`, `note`
   - semver 형식(`x.y.z`) DB CHECK 제약 적용
 - 안전 동작:
   - 활성 정책이 없거나 정책 조회 실패 시 API는 fail-closed로 `force_update`를 반환
+  - 요청 플랫폼 정책이 없고 Android 요청인 경우 iOS 정책 row로 1회 fallback 조회
   - migration에 초기 활성 정책 row를 seed로 포함
 
 예시(수동 SQL):
 
 ```sql
 -- version catalog append
-INSERT INTO app.app_client_versions (id, version, major, minor, patch, created_at)
-VALUES ('cv_100', '1.0.0', 1, 0, 0, NOW())
-ON CONFLICT (version) DO NOTHING;
+INSERT INTO app.app_client_versions (id, platform, version, major, minor, patch, created_at)
+VALUES ('cv_ios_100', 'ios', '1.0.0', 1, 0, 0, NOW())
+ON CONFLICT (platform, version) DO NOTHING;
 
-INSERT INTO app.app_client_versions (id, version, major, minor, patch, created_at)
-VALUES ('cv_120', '1.2.0', 1, 2, 0, NOW())
-ON CONFLICT (version) DO NOTHING;
+INSERT INTO app.app_client_versions (id, platform, version, major, minor, patch, created_at)
+VALUES ('cv_android_120', 'android', '1.2.0', 1, 2, 0, NOW())
+ON CONFLICT (platform, version) DO NOTHING;
 
 -- policy history append (no UPDATE)
 INSERT INTO app.app_client_version_policies (
   id,
+  platform,
   effective_from,
   min_supported_version,
   recommended_below_version,
@@ -282,7 +290,8 @@ INSERT INTO app.app_client_version_policies (
   updated_at
 )
 VALUES (
-  'cp_20260227',
+  'cp_ios_20260227',
+  'ios',
   NOW(),
   '1.0.0',
   '1.2.0',

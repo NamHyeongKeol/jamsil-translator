@@ -3,6 +3,6 @@ import { handleClientVersionPolicy } from '@/server/api/handlers/client-version-
 
 export const runtime = 'nodejs'
 
-export async function postIosClientVersionPolicyForLegacy(request: NextRequest) {
-  return handleClientVersionPolicy(request, { platformOverride: 'ios' })
+export async function postClientVersionPolicyForLegacy(request: NextRequest) {
+  return handleClientVersionPolicy(request)
 }

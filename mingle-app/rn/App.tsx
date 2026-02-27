@@ -57,6 +57,8 @@ type VersionGateState =
     };
 type VersionPolicyResponse = {
   action: VersionPolicyAction;
+  platform?: string;
+  policyPlatform?: string;
   locale?: string;
   updateUrl?: string;
   title?: string;
@@ -512,8 +514,17 @@ function normalizeClientVersion(raw: string): string {
   return raw.trim().replace(/^v/i, '');
 }
 
-function buildIosVersionPolicyUrl(baseUrl: string): string {
-  return `${baseUrl}/api/ios/v1.0.0/client/version-policy`;
+function buildVersionPolicyUrl(baseUrl: string, apiNamespace: string): string {
+  const normalizedNamespace = apiNamespace.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+  if (!normalizedNamespace) {
+    return `${baseUrl}/api/client/version-policy`;
+  }
+  return `${baseUrl}/api/${normalizedNamespace}/client/version-policy`;
+}
+
+function resolveVersionPolicyClientPlatform(runtimeOs: string): 'ios' | 'android' {
+  if (runtimeOs === 'android') return 'android';
+  return 'ios';
 }
 
 function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
@@ -614,7 +625,7 @@ function App(): React.JSX.Element {
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
   const [versionGate, setVersionGate] = useState<VersionGateState>(() => (
-    Platform.OS === 'ios' && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
+    (Platform.OS === 'ios' || Platform.OS === 'android') && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
       ? { status: 'checking' }
       : { status: 'ready' }
   ));
@@ -651,7 +662,7 @@ function App(): React.JSX.Element {
   }, [webLocale]);
 
   useEffect(() => {
-    if (Platform.OS !== 'ios' || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
+    if ((Platform.OS !== 'ios' && Platform.OS !== 'android') || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
       return;
     }
 
@@ -673,10 +684,11 @@ function App(): React.JSX.Element {
     );
     const clientBuild = envClientBuild || nativeRuntimeConfig?.clientBuild || '';
 
-    void fetch(buildIosVersionPolicyUrl(WEB_APP_BASE_URL), {
+    void fetch(buildVersionPolicyUrl(WEB_APP_BASE_URL, VALIDATED_API_NAMESPACE), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        platform: resolveVersionPolicyClientPlatform(Platform.OS),
         clientVersion,
         clientBuild,
         locale: versionPolicyLocale,

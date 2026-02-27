@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 
 type VersionTuple = [number, number, number]
 type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none'
+type ClientPlatform = 'ios' | 'android'
 type SupportedLocale =
   | 'ko'
   | 'en'
@@ -36,9 +37,18 @@ type VersionPolicySource =
 type VersionPolicyReadResult = {
   snapshot: VersionPolicySnapshot
   source: VersionPolicySource
+  policyPlatform: ClientPlatform
 }
 
 const DEFAULT_MIN_SUPPORTED_VERSION: VersionTuple = [1, 0, 0]
+const DEFAULT_CLIENT_PLATFORM: ClientPlatform = 'ios'
+const CLIENT_PLATFORM_ALIASES: Record<string, ClientPlatform> = {
+  ios: 'ios',
+  iphone: 'ios',
+  ipad: 'ios',
+  android: 'android',
+  aos: 'android',
+}
 
 const FORCE_MESSAGES: Record<SupportedLocale, string> = {
   ko: '현재 버전에서는 서비스를 사용할 수 없습니다. 최신 버전으로 업데이트해 주세요.',
@@ -212,6 +222,13 @@ function resolveLocale(raw: unknown): SupportedLocale {
   return DEFAULT_LOCALE
 }
 
+function resolveClientPlatform(raw: unknown): ClientPlatform {
+  if (typeof raw !== 'string') return DEFAULT_CLIENT_PLATFORM
+  const normalized = raw.trim().toLowerCase()
+  if (!normalized) return DEFAULT_CLIENT_PLATFORM
+  return CLIENT_PLATFORM_ALIASES[normalized] || DEFAULT_CLIENT_PLATFORM
+}
+
 function normalizeVersionString(raw: string): string {
   return raw.trim().replace(/^v/i, '')
 }
@@ -258,9 +275,11 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 function buildFallbackPolicySnapshot(
   source: Exclude<VersionPolicySource, 'db'>,
+  policyPlatform: ClientPlatform,
 ): VersionPolicyReadResult {
   return {
     source,
+    policyPlatform,
     snapshot: {
       minSupportedVersion: DEFAULT_MIN_SUPPORTED_VERSION,
       recommendBelowVersion: null,
@@ -270,12 +289,16 @@ function buildFallbackPolicySnapshot(
   }
 }
 
-async function insertClientVersionIfMissing(clientVersion: VersionTuple | null): Promise<void> {
+async function insertClientVersionIfMissing(
+  clientVersion: VersionTuple | null,
+  platform: ClientPlatform,
+): Promise<void> {
   if (!clientVersion) return
 
   try {
     await prisma.appClientVersion.create({
       data: {
+        platform,
         version: formatVersion(clientVersion),
         major: clientVersion[0],
         minor: clientVersion[1],
@@ -288,38 +311,69 @@ async function insertClientVersionIfMissing(clientVersion: VersionTuple | null):
   }
 }
 
-async function readActiveVersionPolicy(now: Date): Promise<VersionPolicyReadResult> {
+type ActivePolicyRecord = {
+  minSupportedVersion: string
+  recommendedBelowVersion: string | null
+  latestVersion: string | null
+  updateUrl: string | null
+}
 
+async function readActiveVersionPolicyForPlatform(
+  now: Date,
+  platform: ClientPlatform,
+): Promise<ActivePolicyRecord | null> {
+  return prisma.appClientVersionPolicy.findFirst({
+    where: {
+      platform,
+      effectiveFrom: {
+        lte: now,
+      },
+    },
+    orderBy: [
+      { effectiveFrom: 'desc' },
+      { createdAt: 'desc' },
+    ],
+    select: {
+      minSupportedVersion: true,
+      recommendedBelowVersion: true,
+      latestVersion: true,
+      updateUrl: true,
+    },
+  })
+}
+
+async function readActiveVersionPolicy(
+  now: Date,
+  requestedPlatform: ClientPlatform,
+): Promise<VersionPolicyReadResult> {
   try {
-    const record = await prisma.appClientVersionPolicy.findFirst({
-      where: {
-        effectiveFrom: {
-          lte: now,
-        },
-      },
-      orderBy: [
-        { effectiveFrom: 'desc' },
-        { createdAt: 'desc' },
-      ],
-      select: {
-        minSupportedVersion: true,
-        recommendedBelowVersion: true,
-        latestVersion: true,
-        updateUrl: true,
-      },
-    })
+    let policyPlatform: ClientPlatform = requestedPlatform
+    let record = await readActiveVersionPolicyForPlatform(now, policyPlatform)
+
+    if (!record && requestedPlatform !== DEFAULT_CLIENT_PLATFORM) {
+      policyPlatform = DEFAULT_CLIENT_PLATFORM
+      record = await readActiveVersionPolicyForPlatform(now, policyPlatform)
+      if (record) {
+        console.warn('[client-version-policy] fallback to ios policy row', {
+          requestedPlatform,
+        })
+      }
+    }
 
     if (!record) {
-      console.error('[client-version-policy] no active policy row found')
-      return buildFallbackPolicySnapshot('fallback_no_policy')
+      console.error('[client-version-policy] no active policy row found', {
+        requestedPlatform,
+      })
+      return buildFallbackPolicySnapshot('fallback_no_policy', requestedPlatform)
     }
 
     const minSupportedVersion = parseSemver3(record.minSupportedVersion)
     if (!minSupportedVersion) {
       console.error('[client-version-policy] active policy has invalid min_supported_version', {
+        policyPlatform,
         minSupportedVersion: record.minSupportedVersion,
       })
-      return buildFallbackPolicySnapshot('fallback_invalid')
+      return buildFallbackPolicySnapshot('fallback_invalid', policyPlatform)
     }
 
     const recommendBelowVersion = record.recommendedBelowVersion
@@ -328,6 +382,7 @@ async function readActiveVersionPolicy(now: Date): Promise<VersionPolicyReadResu
 
     if (record.recommendedBelowVersion && !recommendBelowVersion) {
       console.error('[client-version-policy] active policy has invalid recommended_below_version', {
+        policyPlatform,
         recommendedBelowVersion: record.recommendedBelowVersion,
       })
     }
@@ -338,6 +393,7 @@ async function readActiveVersionPolicy(now: Date): Promise<VersionPolicyReadResu
 
     if (record.latestVersion && !latestVersionFromPolicy) {
       console.error('[client-version-policy] active policy has invalid latest_version', {
+        policyPlatform,
         latestVersion: record.latestVersion,
       })
     }
@@ -345,6 +401,7 @@ async function readActiveVersionPolicy(now: Date): Promise<VersionPolicyReadResu
     const latestVersion = latestVersionFromPolicy || recommendBelowVersion || minSupportedVersion
     return {
       source: 'db',
+      policyPlatform,
       snapshot: {
         minSupportedVersion,
         recommendBelowVersion,
@@ -353,13 +410,21 @@ async function readActiveVersionPolicy(now: Date): Promise<VersionPolicyReadResu
       },
     }
   } catch (error) {
-    console.error('[client-version-policy] active policy query failed', error)
-    return buildFallbackPolicySnapshot('fallback_error')
+    console.error('[client-version-policy] active policy query failed', {
+      requestedPlatform,
+      error,
+    })
+    return buildFallbackPolicySnapshot('fallback_error', requestedPlatform)
   }
 }
 
-export async function handleIosClientVersionPolicy(
+type HandleClientVersionPolicyOptions = {
+  platformOverride?: ClientPlatform
+}
+
+export async function handleClientVersionPolicy(
   request: NextRequest,
+  options?: HandleClientVersionPolicyOptions,
 ): Promise<NextResponse> {
   let body: Record<string, unknown> = {}
   try {
@@ -369,14 +434,15 @@ export async function handleIosClientVersionPolicy(
   }
 
   const locale = resolveLocale(body.locale)
+  const clientPlatform = options?.platformOverride || resolveClientPlatform(body.platform)
   const clientVersionRaw = typeof body.clientVersion === 'string' ? body.clientVersion : ''
   const clientBuildRaw = typeof body.clientBuild === 'string' ? body.clientBuild.trim() : ''
   const clientVersion = parseSemver3(clientVersionRaw)
 
   const now = new Date()
   const [policyRead] = await Promise.all([
-    readActiveVersionPolicy(now),
-    insertClientVersionIfMissing(clientVersion),
+    readActiveVersionPolicy(now, clientPlatform),
+    insertClientVersionIfMissing(clientVersion, clientPlatform),
   ])
 
   const action = policyRead.source === 'db'
@@ -401,6 +467,8 @@ export async function handleIosClientVersionPolicy(
 
   const responseBody = {
     action,
+    platform: clientPlatform,
+    policyPlatform: policyRead.policyPlatform,
     locale,
     clientVersion: clientVersion ? formatVersion(clientVersion) : normalizeVersionString(clientVersionRaw),
     clientBuild: clientBuildRaw,
@@ -415,4 +483,10 @@ export async function handleIosClientVersionPolicy(
   }
 
   return NextResponse.json(responseBody, { status: 200 })
+}
+
+export async function handleIosClientVersionPolicy(
+  request: NextRequest,
+): Promise<NextResponse> {
+  return handleClientVersionPolicy(request, { platformOverride: 'ios' })
 }
