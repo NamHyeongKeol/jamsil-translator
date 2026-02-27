@@ -530,12 +530,10 @@ export default function MingleHome(props: MingleHomeProps) {
             background: "linear-gradient(160deg, #FBBC32 0%, #F97316 100%)",
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/mingle-icon.png"
-            alt="Mingle"
-            className="h-28 w-28 rounded-[22%]"
-          />
+          {/* 상단탭과 동일한 Mingle 텍스트 로고, 색만 어두운 톤으로 */}
+          <span className="text-[3.2rem] font-extrabold leading-[1.08] text-[#2D2A1E]">
+            Mingle
+          </span>
         </div>
 
         {/* ③ 하단 다크 패널 — 항상 렌더, 내용만 조건부 */}
