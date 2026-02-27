@@ -121,6 +121,18 @@ function createNativeAuthRequestId(): string {
   return `rq_${fallback}`;
 }
 
+function MingleLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className={className} aria-label="Mingle" role="img">
+      {/* 손글씨 스타일 M — 앱 아이콘 레퍼런스 */}
+      <path
+        fill="#3D3D52"
+        d="M14 74 L14 32 Q14 28 18 28 Q22 28 23 32 L50 62 L77 32 Q78 28 82 28 Q86 28 86 32 L86 74 Q86 78 82 78 Q78 78 77 74 L77 48 L54 73 Q52 76 50 76 Q48 76 46 73 L23 48 L23 74 Q22 78 18 78 Q14 78 14 74 Z"
+      />
+    </svg>
+  );
+}
+
 function AppleMark() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
@@ -504,14 +516,20 @@ export default function MingleHome(props: MingleHomeProps) {
 
   if (status === "loading") {
     return (
-      <main className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-slate-950 px-6 text-slate-100">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-16 top-8 h-44 w-44 rounded-full bg-cyan-400/25 blur-3xl" />
-          <div className="absolute -right-20 bottom-10 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl" />
+      <main className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+        {/* 그라디언트 배경 영역 */}
+        <div
+          className="flex flex-1 items-center justify-center"
+          style={{ background: "linear-gradient(160deg, #FBBC32 0%, #F97316 100%)" }}
+        >
+          <MingleLogo className="h-20 w-20 opacity-90" />
         </div>
-        <div className="relative flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-5 py-2 text-sm text-slate-100 backdrop-blur-md">
-          <Loader2 size={16} className="animate-spin text-cyan-200" />
-          <span>{props.dictionary.profile.loginLoading}</span>
+        {/* 하단 다크 패널 */}
+        <div className="rounded-t-[2rem] bg-[#1C1C1E] px-6 pb-10 pt-7">
+          <div className="flex items-center justify-center gap-2 text-sm text-white/60">
+            <Loader2 size={15} className="animate-spin" aria-hidden />
+            <span>{props.dictionary.profile.loginLoading}</span>
+          </div>
         </div>
       </main>
     );
@@ -520,38 +538,33 @@ export default function MingleHome(props: MingleHomeProps) {
   if (status !== "authenticated") {
     const disabled = isSigningIn;
     return (
-      <main className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-slate-950 px-6 text-slate-900">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-16 top-8 h-44 w-44 rounded-full bg-cyan-400/25 blur-3xl" />
-          <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-400/20 blur-3xl" />
-          <div className="absolute -right-20 bottom-10 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl" />
-        </div>
-        {/* 스크린리더 로딩 상태 공지 — aria-busy 컨테이너 밖에 위치해야 공지가 보장됨 */}
+      <main className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+        <style>{
+          `@keyframes panel-up {
+            from { transform: translateY(24px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+          }`
+        }</style>
+
+        {/* 스크린리더 로딩 상태 공지 — 패널 바깥에 위치 */}
         <div aria-live="polite" aria-atomic="true" className="sr-only">
           {signingInProvider !== null ? props.dictionary.profile.loginLoading : ""}
         </div>
+
+        {/* 상단 그라디언트 + 로고 영역 */}
+        <div
+          className="flex flex-1 flex-col items-center justify-center gap-4"
+          style={{ background: "linear-gradient(160deg, #FBBC32 0%, #F97316 100%)" }}
+        >
+          <MingleLogo className="h-20 w-20" />
+        </div>
+
+        {/* 하단 다크 패널 */}
         <section
           aria-busy={disabled}
-          style={{
-            animation: "auth-card-in 0.35s cubic-bezier(0.22,1,0.36,1) both",
-          }}
-          className="relative w-full max-w-[23rem] rounded-[2rem] border border-white/60 bg-white/90 px-6 py-7 shadow-[0_30px_90px_-30px_rgba(15,23,42,0.7)] backdrop-blur-md sm:px-7"
+          style={{ animation: "panel-up 0.4s cubic-bezier(0.22,1,0.36,1) both" }}
+          className="rounded-t-[2rem] bg-[#1C1C1E] px-6 pb-10 pt-7"
         >
-          <style>{`@keyframes auth-card-in {
-              from { opacity: 0; transform: translateY(16px) scale(0.97); }
-              to   { opacity: 1; transform: translateY(0)   scale(1); }
-            }`}</style>
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-[0.68rem] font-semibold tracking-[0.16em] text-white">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-            MINGLE
-          </div>
-          <p className="mb-2 text-xl font-semibold tracking-tight text-slate-900">
-            {props.dictionary.profile.loginRequiredTitle}
-          </p>
-          <p className="mb-6 text-sm leading-relaxed text-slate-600">
-            {props.dictionary.profile.loginRequiredDescription}
-          </p>
-
           <div className="space-y-3">
             <button
               type="button"
@@ -562,15 +575,16 @@ export default function MingleHome(props: MingleHomeProps) {
               }
               onClick={() => handleSocialSignIn("apple")}
               disabled={!props.appleOAuthEnabled || disabled}
-              className="inline-flex w-full items-center justify-between rounded-2xl border border-black/5 bg-gradient-to-b from-slate-900 to-black px-4 py-3 text-sm font-medium text-white shadow-[0_10px_30px_-16px_rgba(15,23,42,0.9)] transition duration-200 hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
+              className="relative inline-flex w-full items-center justify-center rounded-2xl bg-black py-4 text-sm font-semibold text-white transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span className="inline-flex items-center gap-2">
+              <span className="absolute left-5">
                 <AppleMark />
-                {props.dictionary.profile.loginApple}
               </span>
               {signingInProvider === "apple" ? (
-                <Loader2 size={14} className="animate-spin text-white/70" aria-hidden />
-              ) : null}
+                <Loader2 size={15} className="animate-spin" aria-hidden />
+              ) : (
+                props.dictionary.profile.loginApple
+              )}
             </button>
             <button
               type="button"
@@ -581,25 +595,26 @@ export default function MingleHome(props: MingleHomeProps) {
               }
               onClick={() => handleSocialSignIn("google")}
               disabled={!props.googleOAuthEnabled || disabled}
-              className="inline-flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.45)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_14px_30px_-18px_rgba(15,23,42,0.4)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
+              className="relative inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white py-4 text-sm font-semibold text-slate-800 transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span className="inline-flex items-center gap-2">
+              <span className="absolute left-5">
                 <GoogleMark />
-                {props.dictionary.profile.loginGoogle}
               </span>
               {signingInProvider === "google" ? (
-                <Loader2 size={14} className="animate-spin text-slate-400" aria-hidden />
-              ) : null}
+                <Loader2 size={15} className="animate-spin text-slate-400" aria-hidden />
+              ) : (
+                props.dictionary.profile.loginGoogle
+              )}
             </button>
           </div>
 
           {!props.appleOAuthEnabled ? (
-            <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+            <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
               {props.dictionary.profile.appleNotConfigured}
             </p>
           ) : null}
           {!props.googleOAuthEnabled ? (
-            <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+            <p className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
               {props.dictionary.profile.googleNotConfigured}
             </p>
           ) : null}
