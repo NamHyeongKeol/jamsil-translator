@@ -176,7 +176,7 @@ export async function upsertTrackedUser(args: {
   const pathname = clientContext.pathname ?? tracking.requestPathname;
   const latestUserAgent = tracking.userAgent;
 
-  const user = await prisma.appUser.upsert({
+  const user = await prisma.user.upsert({
     where: { externalUserId: tracking.externalUserId },
     create: {
       externalUserId: tracking.externalUserId,
@@ -218,7 +218,7 @@ export async function upsertTrackedUser(args: {
   });
 
   if (usageSec !== null && usageSec > user.totalUsageSec) {
-    await prisma.appUser.update({
+    await prisma.user.update({
       where: { id: user.id },
       data: { totalUsageSec: usageSec },
     });

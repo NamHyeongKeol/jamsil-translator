@@ -1,7 +1,6 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { getToken } from "next-auth/jwt";
 import { authOptions } from "@/lib/auth-options";
 import {
   createNativeAuthBridgeToken,
@@ -58,29 +57,21 @@ function redirectToApp(params: {
 }
 
 function resolveSubject({
-  jwtSubject,
+  sessionUserId,
   email,
   provider,
 }: {
-  jwtSubject: unknown;
+  sessionUserId: unknown;
   email: string;
   provider: NativeOAuthProvider;
 }): string {
-  if (typeof jwtSubject === "string" && jwtSubject.trim()) {
-    return jwtSubject.trim().slice(0, 256);
+  if (typeof sessionUserId === "string" && sessionUserId.trim()) {
+    return sessionUserId.trim().slice(0, 256);
   }
   if (email) {
     return `native_email_${email.toLowerCase()}`.slice(0, 256);
   }
   return `native_${provider}_${randomUUID().replaceAll("-", "")}`;
-}
-
-function resolveJwtSecret(): string | undefined {
-  const authSecret = process.env.AUTH_SECRET?.trim();
-  if (authSecret) return authSecret;
-  const nextAuthSecret = process.env.NEXTAUTH_SECRET?.trim();
-  if (nextAuthSecret) return nextAuthSecret;
-  return undefined;
 }
 
 export async function GET(request: NextRequest) {
@@ -128,10 +119,9 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const jwtToken = await getToken({ req: request, secret: resolveJwtSecret() });
   const name = typeof session.user.name === "string" ? session.user.name.trim() : "";
   const email = typeof session.user.email === "string" ? session.user.email.trim().toLowerCase() : "";
-  const subject = resolveSubject({ jwtSubject: jwtToken?.sub, email, provider });
+  const subject = resolveSubject({ sessionUserId: session.user.id, email, provider });
 
   let bridgeToken = "";
   try {
