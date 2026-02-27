@@ -79,6 +79,7 @@ DEVBOX_VAULT_STT_PATH=""
 DEVBOX_NGROK_API_PORT=""
 DEVBOX_LOG_FILE=""
 DEVBOX_OPENCLAW_ROOT=""
+DEVBOX_IOS_TEAM_ID="${DEVBOX_IOS_TEAM_ID:-}"
 
 log() {
   printf '[devbox] %s\n' "$*"
@@ -134,6 +135,8 @@ Global Options:
 Environment:
   DEVBOX_NGROK_WEB_DOMAIN  Optional fixed ngrok domain for devbox_web tunnel.
                            Example: abcdef.ngrok-free.app
+  DEVBOX_IOS_TEAM_ID       Optional iOS Team ID used by ios-rn-ipa exportOptions.
+                           Example: 3RFBMN8TKZ
 EOF
 }
 
@@ -1051,6 +1054,7 @@ write_devbox_env() {
   ensure_single_line_value "DEVBOX_VAULT_STT_PATH" "$DEVBOX_VAULT_STT_PATH"
   ensure_single_line_value "DEVBOX_NGROK_API_PORT" "$DEVBOX_NGROK_API_PORT"
   ensure_single_line_value "DEVBOX_OPENCLAW_ROOT" "$DEVBOX_OPENCLAW_ROOT"
+  ensure_single_line_value "DEVBOX_IOS_TEAM_ID" "$DEVBOX_IOS_TEAM_ID"
 
   cat > "$DEVBOX_ENV_FILE" <<EOF
 DEVBOX_WORKTREE_NAME=$DEVBOX_WORKTREE_NAME
@@ -1069,6 +1073,7 @@ DEVBOX_VAULT_APP_PATH=$DEVBOX_VAULT_APP_PATH
 DEVBOX_VAULT_STT_PATH=$DEVBOX_VAULT_STT_PATH
 DEVBOX_NGROK_API_PORT=$DEVBOX_NGROK_API_PORT
 DEVBOX_OPENCLAW_ROOT=$DEVBOX_OPENCLAW_ROOT
+DEVBOX_IOS_TEAM_ID=$DEVBOX_IOS_TEAM_ID
 EOF
 }
 
@@ -1084,7 +1089,7 @@ load_devbox_env() {
     [[ "$key" =~ ^[A-Z0-9_]+$ ]] || die "invalid key in $DEVBOX_ENV_FILE: $key"
 
     case "$key" in
-      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH|DEVBOX_NGROK_API_PORT|DEVBOX_OPENCLAW_ROOT)
+      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH|DEVBOX_NGROK_API_PORT|DEVBOX_OPENCLAW_ROOT|DEVBOX_IOS_TEAM_ID)
         printf -v "$key" '%s' "$value"
         ;;
       *)
@@ -2335,6 +2340,7 @@ cmd_init() {
     DEVBOX_VAULT_STT_PATH="$(read_env_value_from_file DEVBOX_VAULT_STT_PATH "$DEVBOX_ENV_FILE")"
     ngrok_api_port="$(read_env_value_from_file DEVBOX_NGROK_API_PORT "$DEVBOX_ENV_FILE")"
     DEVBOX_OPENCLAW_ROOT="$(read_env_value_from_file DEVBOX_OPENCLAW_ROOT "$DEVBOX_ENV_FILE")"
+    DEVBOX_IOS_TEAM_ID="$(read_env_value_from_file DEVBOX_IOS_TEAM_ID "$DEVBOX_ENV_FILE")"
   fi
 
   while [[ $# -gt 0 ]]; do
@@ -2617,6 +2623,10 @@ cmd_ios_rn_ipa() {
   if [[ "$device_app_env" == "prod" ]]; then
     validate_https_url "archive site url (prod)" "$archive_site_url"
     validate_wss_url "archive ws url (prod)" "$archive_ws_url"
+  fi
+
+  if [[ -z "$team_id" ]]; then
+    team_id="$(trim_whitespace "${DEVBOX_IOS_TEAM_ID:-}")"
   fi
 
   if [[ -z "$team_id" ]]; then
@@ -3320,6 +3330,7 @@ Live Test   : MINGLE_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL | MINGLE_TEST_W
 Vault App   : ${DEVBOX_VAULT_APP_PATH:-"(unset)"}
 Vault STT   : ${DEVBOX_VAULT_STT_PATH:-"(unset)"}
 OpenClaw    : root=${DEVBOX_OPENCLAW_ROOT:-$(resolve_openclaw_root)}
+iOS Team ID : ${DEVBOX_IOS_TEAM_ID:-"(auto: rnnative.xcodeproj DEVELOPMENT_TEAM)"}
 
 Files:
 - $DEVBOX_ENV_FILE

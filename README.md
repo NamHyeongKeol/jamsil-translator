@@ -90,6 +90,7 @@ scripts/devbox status
 - `scripts/devbox ios-native-build --ios-configuration Debug|Release`로 `mingle-ios`만 빌드할 수 있습니다(설치 없음).
 - `scripts/devbox ios-rn-ipa --device-app-env prod` 또는 `scripts/devbox ios-rn-ipa-prod`로
   RN iOS `.xcarchive`/`.ipa`를 App Store 업로드용으로 생성할 수 있습니다.
+  Team ID를 고정하려면 `.devbox.env`에 `DEVBOX_IOS_TEAM_ID=3RFBMN8TKZ`를 넣어 사용하세요.
 - `scripts/devbox up --profile device --with-mobile-install`으로 서버 준비 + 모바일 설치를 한 번에 실행할 수 있습니다.
 - `scripts/devbox test --target app|ios-native|all`로 live 테스트와 네이티브 iOS 테스트 빌드를 분리/통합 실행할 수 있습니다.
 

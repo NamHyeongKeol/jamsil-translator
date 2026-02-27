@@ -224,6 +224,7 @@ scripts/devbox bootstrap --vault-push
 - `scripts/devbox ios-rn-ipa`
   - RN iOS 앱을 `.xcarchive`/`.ipa`로 생성 (App Store/TestFlight 업로드 준비)
   - 기본값: `Release`, `export-method=app-store`
+  - Team ID 우선순위: `--team-id` > `.devbox.env`의 `DEVBOX_IOS_TEAM_ID` > `rnnative.xcodeproj`의 `DEVELOPMENT_TEAM`
   - `--device-app-env prod`로 `secret/mingle-app/prod` URL/WS를 주입
   - `--site-url`, `--ws-url`로 런타임 URL 수동 오버라이드 가능
   - `--archive-path`, `--export-path`, `--export-options-plist` 커스텀 경로 지원
