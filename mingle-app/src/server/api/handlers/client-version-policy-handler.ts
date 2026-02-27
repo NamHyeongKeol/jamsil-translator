@@ -27,6 +27,17 @@ type VersionPolicySnapshot = {
   updateUrl: string
 }
 
+type VersionPolicySource =
+  | 'db'
+  | 'fallback_no_policy'
+  | 'fallback_invalid'
+  | 'fallback_error'
+
+type VersionPolicyReadResult = {
+  snapshot: VersionPolicySnapshot
+  source: VersionPolicySource
+}
+
 const DEFAULT_MIN_SUPPORTED_VERSION: VersionTuple = [1, 0, 0]
 
 const FORCE_MESSAGES: Record<SupportedLocale, string> = {
@@ -245,12 +256,17 @@ function isUniqueConstraintError(error: unknown): boolean {
   return typeof code === 'string' && code === 'P2002'
 }
 
-function buildFallbackPolicySnapshot(): VersionPolicySnapshot {
+function buildFallbackPolicySnapshot(
+  source: Exclude<VersionPolicySource, 'db'>,
+): VersionPolicyReadResult {
   return {
-    minSupportedVersion: DEFAULT_MIN_SUPPORTED_VERSION,
-    recommendBelowVersion: null,
-    latestVersion: DEFAULT_MIN_SUPPORTED_VERSION,
-    updateUrl: '',
+    source,
+    snapshot: {
+      minSupportedVersion: DEFAULT_MIN_SUPPORTED_VERSION,
+      recommendBelowVersion: null,
+      latestVersion: DEFAULT_MIN_SUPPORTED_VERSION,
+      updateUrl: '',
+    },
   }
 }
 
@@ -272,8 +288,7 @@ async function insertClientVersionIfMissing(clientVersion: VersionTuple | null):
   }
 }
 
-async function readActiveVersionPolicy(now: Date): Promise<VersionPolicySnapshot> {
-  const fallbackPolicy = buildFallbackPolicySnapshot()
+async function readActiveVersionPolicy(now: Date): Promise<VersionPolicyReadResult> {
 
   try {
     const record = await prisma.appClientVersionPolicy.findFirst({
@@ -295,7 +310,8 @@ async function readActiveVersionPolicy(now: Date): Promise<VersionPolicySnapshot
     })
 
     if (!record) {
-      return fallbackPolicy
+      console.error('[client-version-policy] no active policy row found')
+      return buildFallbackPolicySnapshot('fallback_no_policy')
     }
 
     const minSupportedVersion = parseSemver3(record.minSupportedVersion)
@@ -303,7 +319,7 @@ async function readActiveVersionPolicy(now: Date): Promise<VersionPolicySnapshot
       console.error('[client-version-policy] active policy has invalid min_supported_version', {
         minSupportedVersion: record.minSupportedVersion,
       })
-      return fallbackPolicy
+      return buildFallbackPolicySnapshot('fallback_invalid')
     }
 
     const recommendBelowVersion = record.recommendedBelowVersion
@@ -328,14 +344,17 @@ async function readActiveVersionPolicy(now: Date): Promise<VersionPolicySnapshot
 
     const latestVersion = latestVersionFromPolicy || recommendBelowVersion || minSupportedVersion
     return {
-      minSupportedVersion,
-      recommendBelowVersion,
-      latestVersion,
-      updateUrl: record.updateUrl?.trim() || '',
+      source: 'db',
+      snapshot: {
+        minSupportedVersion,
+        recommendBelowVersion,
+        latestVersion,
+        updateUrl: record.updateUrl?.trim() || '',
+      },
     }
   } catch (error) {
     console.error('[client-version-policy] active policy query failed', error)
-    return fallbackPolicy
+    return buildFallbackPolicySnapshot('fallback_error')
   }
 }
 
@@ -355,16 +374,18 @@ export async function handleIosClientVersionPolicy(
   const clientVersion = parseSemver3(clientVersionRaw)
 
   const now = new Date()
-  const [policy] = await Promise.all([
+  const [policyRead] = await Promise.all([
     readActiveVersionPolicy(now),
     insertClientVersionIfMissing(clientVersion),
   ])
 
-  const action = resolvePolicy({
-    clientVersion,
-    minSupportedVersion: policy.minSupportedVersion,
-    recommendBelowVersion: policy.recommendBelowVersion,
-  })
+  const action = policyRead.source === 'db'
+    ? resolvePolicy({
+      clientVersion,
+      minSupportedVersion: policyRead.snapshot.minSupportedVersion,
+      recommendBelowVersion: policyRead.snapshot.recommendBelowVersion,
+    })
+    : 'force_update'
 
   const message = action === 'force_update'
     ? FORCE_MESSAGES[locale]
@@ -383,10 +404,10 @@ export async function handleIosClientVersionPolicy(
     locale,
     clientVersion: clientVersion ? formatVersion(clientVersion) : normalizeVersionString(clientVersionRaw),
     clientBuild: clientBuildRaw,
-    minSupportedVersion: formatVersion(policy.minSupportedVersion),
-    recommendedBelowVersion: policy.recommendBelowVersion ? formatVersion(policy.recommendBelowVersion) : '',
-    latestVersion: formatVersion(policy.latestVersion),
-    updateUrl: policy.updateUrl,
+    minSupportedVersion: formatVersion(policyRead.snapshot.minSupportedVersion),
+    recommendedBelowVersion: policyRead.snapshot.recommendBelowVersion ? formatVersion(policyRead.snapshot.recommendBelowVersion) : '',
+    latestVersion: formatVersion(policyRead.snapshot.latestVersion),
+    updateUrl: policyRead.snapshot.updateUrl,
     title,
     message,
     updateButtonLabel: UPDATE_BUTTON_LABEL[locale],

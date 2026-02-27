@@ -27,7 +27,10 @@ CREATE TABLE "app"."app_client_version_policies" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "app_client_version_policies_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "app_client_version_policies_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "app_client_version_policies_min_supported_version_semver_check" CHECK ("min_supported_version" ~ '^[0-9]+\.[0-9]+\.[0-9]+$'),
+    CONSTRAINT "app_client_version_policies_recommended_below_version_semver_check" CHECK ("recommended_below_version" IS NULL OR "recommended_below_version" ~ '^[0-9]+\.[0-9]+\.[0-9]+$'),
+    CONSTRAINT "app_client_version_policies_latest_version_semver_check" CHECK ("latest_version" IS NULL OR "latest_version" ~ '^[0-9]+\.[0-9]+\.[0-9]+$')
 );
 
 -- CreateIndex
@@ -55,3 +58,28 @@ CREATE TRIGGER "set_app_client_version_policies_updated_at"
 BEFORE UPDATE ON "app"."app_client_version_policies"
 FOR EACH ROW
 EXECUTE FUNCTION "app"."set_updated_at"();
+
+-- Seed an initial active policy so the API has a deterministic DB baseline after migration.
+INSERT INTO "app"."app_client_version_policies" (
+    "id",
+    "effective_from",
+    "min_supported_version",
+    "recommended_below_version",
+    "latest_version",
+    "update_url",
+    "note",
+    "created_at",
+    "updated_at"
+)
+VALUES (
+    'seed_20260227211000_initial_policy',
+    CURRENT_TIMESTAMP,
+    '1.0.0',
+    NULL,
+    '1.0.0',
+    NULL,
+    'initial seeded policy',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT ("id") DO NOTHING;

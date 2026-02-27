@@ -252,6 +252,10 @@ RN 앱 URL은 하드코딩하지 않고 환경변수로만 읽습니다.
   - `effective_from` 기준 최신 레코드를 활성 정책으로 사용
   - 정책 변경 시 기존 row를 update하지 않고 새 row를 append
   - 필드: `min_supported_version`, `recommended_below_version`, `latest_version`, `update_url`, `note`
+  - semver 형식(`x.y.z`) DB CHECK 제약 적용
+- 안전 동작:
+  - 활성 정책이 없거나 정책 조회 실패 시 API는 fail-closed로 `force_update`를 반환
+  - migration에 초기 활성 정책 row를 seed로 포함
 
 예시(수동 SQL):
 

@@ -176,7 +176,7 @@ describe('/api/client/version-policy route', () => {
     expect(json.action).toBe('none')
   })
 
-  it('falls back to default policy when no active policy history exists', async () => {
+  it('fails closed when no active policy history exists', async () => {
     appClientVersionPolicyFindFirstMock.mockResolvedValueOnce(null)
     const POST = await loadLegacyRoutePost()
 
@@ -184,10 +184,24 @@ describe('/api/client/version-policy route', () => {
     const json = await response.json()
 
     expect(response.status).toBe(200)
-    expect(json.action).toBe('none')
+    expect(json.action).toBe('force_update')
     expect(json.minSupportedVersion).toBe('1.0.0')
     expect(json.recommendedBelowVersion).toBe('')
     expect(json.latestVersion).toBe('1.0.0')
     expect(json.updateUrl).toBe('')
+    expect(json.title).toBe('Update Required')
+  })
+
+  it('fails closed when policy query errors', async () => {
+    appClientVersionPolicyFindFirstMock.mockRejectedValueOnce(new Error('db unavailable'))
+    const POST = await loadLegacyRoutePost()
+
+    const response = await POST(makeRequest('9.9.9', 'en') as never)
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json.action).toBe('force_update')
+    expect(json.minSupportedVersion).toBe('1.0.0')
+    expect(json.latestVersion).toBe('1.0.0')
   })
 })

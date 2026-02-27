@@ -54,3 +54,6 @@ iOS v1.0.0 컨트롤러는 legacy 컨트롤러와 동일 코드를 사용합니�
   - `app_client_version_policies`
     - `effective_from` 기준 활성 정책 1건 선택
     - 정책 변경은 기존 row update 없이 append-only로 기록
+    - 버전 컬럼은 semver(`x.y.z`) CHECK 제약으로 보호
+- 안전 폴백:
+  - 활성 정책 부재/조회 오류 시 `force_update`로 fail-closed
