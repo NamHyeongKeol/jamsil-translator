@@ -238,33 +238,6 @@ function buildProviders(): NextAuthOptions["providers"] {
         };
       },
     }),
-    CredentialsProvider({
-      name: "Demo",
-      credentials: {
-        name: { label: "Name", type: "text" },
-        email: { label: "Email", type: "email" },
-      },
-      async authorize(credentials) {
-        const name = credentials?.name;
-        const email = credentials?.email;
-
-        if (!name || !email) {
-          return null;
-        }
-
-        const user = await upsertUserForCredentialsSignIn({
-          email,
-          name,
-        });
-
-        return {
-          id: user.id,
-          name: user.name || "Mingle User",
-          email: user.email || "",
-          externalUserId: user.externalUserId || null,
-        };
-      },
-    }),
   ];
 
   const appleOAuthCredentials = resolveAppleOAuthCredentialsWithRefresh();

@@ -69,7 +69,7 @@ export async function GET(request: NextRequest, context: AppRouteContext) {
   console.info(
     `[nextauth] method=GET action=${action || "-"} provider=${provider} callback=${callbackUrl} error=${error}`,
   );
-  return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(authOptions, params?.nextauth));
+  return NextAuth(request, { params }, resolveRouteAuthOptions(authOptions, params?.nextauth));
 }
 
 export async function POST(request: NextRequest, context: AppRouteContext) {
@@ -82,5 +82,5 @@ export async function POST(request: NextRequest, context: AppRouteContext) {
   console.info(
     `[nextauth] method=POST action=${action || "-"} provider=${provider} callback=${callbackUrl} error=${error}`,
   );
-  return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(authOptions, params?.nextauth));
+  return NextAuth(request, { params }, resolveRouteAuthOptions(authOptions, params?.nextauth));
 }

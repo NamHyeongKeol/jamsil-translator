@@ -208,7 +208,7 @@ Generate `AUTH_APPLE_SECRET` from `.p8` key env values:
 pnpm auth:apple:secret
 ```
 
-If both Apple and Google OAuth env vars are missing, the app automatically falls back to demo credential login.
+If both Apple and Google OAuth env vars are missing, no social sign-in provider is available.
 
 ## Database (Supabase, app schema)
 
