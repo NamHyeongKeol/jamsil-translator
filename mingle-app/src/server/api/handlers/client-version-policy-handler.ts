@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 type VersionTuple = [number, number, number]
 type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none'
@@ -19,7 +20,14 @@ type SupportedLocale =
   | 'th'
   | 'vi'
 
-const DEFAULT_MIN_SUPPORTED_VERSION = '1.0.0'
+type VersionPolicySnapshot = {
+  minSupportedVersion: VersionTuple
+  recommendBelowVersion: VersionTuple | null
+  latestVersion: VersionTuple
+  updateUrl: string
+}
+
+const DEFAULT_MIN_SUPPORTED_VERSION: VersionTuple = [1, 0, 0]
 
 const FORCE_MESSAGES: Record<SupportedLocale, string> = {
   ko: '현재 버전에서는 서비스를 사용할 수 없습니다. 최신 버전으로 업데이트해 주세요.',
@@ -218,22 +226,6 @@ function compareVersion(a: VersionTuple, b: VersionTuple): number {
   return 0
 }
 
-function readRequiredVersionFromEnv(key: string, fallback: string): VersionTuple {
-  const parsed = parseSemver3(process.env[key] || '')
-  if (parsed) return parsed
-  const fallbackParsed = parseSemver3(fallback)
-  if (!fallbackParsed) {
-    throw new Error(`invalid fallback semver: ${fallback}`)
-  }
-  return fallbackParsed
-}
-
-function readOptionalVersionFromEnv(key: string): VersionTuple | null {
-  const raw = process.env[key] || ''
-  if (!raw.trim()) return null
-  return parseSemver3(raw)
-}
-
 function resolvePolicy(args: {
   clientVersion: VersionTuple | null
   minSupportedVersion: VersionTuple
@@ -245,6 +237,106 @@ function resolvePolicy(args: {
     return 'recommend_update'
   }
   return 'none'
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const code = (error as { code?: unknown }).code
+  return typeof code === 'string' && code === 'P2002'
+}
+
+function buildFallbackPolicySnapshot(): VersionPolicySnapshot {
+  return {
+    minSupportedVersion: DEFAULT_MIN_SUPPORTED_VERSION,
+    recommendBelowVersion: null,
+    latestVersion: DEFAULT_MIN_SUPPORTED_VERSION,
+    updateUrl: '',
+  }
+}
+
+async function insertClientVersionIfMissing(clientVersion: VersionTuple | null): Promise<void> {
+  if (!clientVersion) return
+
+  try {
+    await prisma.appClientVersion.create({
+      data: {
+        version: formatVersion(clientVersion),
+        major: clientVersion[0],
+        minor: clientVersion[1],
+        patch: clientVersion[2],
+      },
+    })
+  } catch (error) {
+    if (isUniqueConstraintError(error)) return
+    console.error('[client-version-policy] app client version insert failed', error)
+  }
+}
+
+async function readActiveVersionPolicy(now: Date): Promise<VersionPolicySnapshot> {
+  const fallbackPolicy = buildFallbackPolicySnapshot()
+
+  try {
+    const record = await prisma.appClientVersionPolicy.findFirst({
+      where: {
+        effectiveFrom: {
+          lte: now,
+        },
+      },
+      orderBy: [
+        { effectiveFrom: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      select: {
+        minSupportedVersion: true,
+        recommendedBelowVersion: true,
+        latestVersion: true,
+        updateUrl: true,
+      },
+    })
+
+    if (!record) {
+      return fallbackPolicy
+    }
+
+    const minSupportedVersion = parseSemver3(record.minSupportedVersion)
+    if (!minSupportedVersion) {
+      console.error('[client-version-policy] active policy has invalid min_supported_version', {
+        minSupportedVersion: record.minSupportedVersion,
+      })
+      return fallbackPolicy
+    }
+
+    const recommendBelowVersion = record.recommendedBelowVersion
+      ? parseSemver3(record.recommendedBelowVersion)
+      : null
+
+    if (record.recommendedBelowVersion && !recommendBelowVersion) {
+      console.error('[client-version-policy] active policy has invalid recommended_below_version', {
+        recommendedBelowVersion: record.recommendedBelowVersion,
+      })
+    }
+
+    const latestVersionFromPolicy = record.latestVersion
+      ? parseSemver3(record.latestVersion)
+      : null
+
+    if (record.latestVersion && !latestVersionFromPolicy) {
+      console.error('[client-version-policy] active policy has invalid latest_version', {
+        latestVersion: record.latestVersion,
+      })
+    }
+
+    const latestVersion = latestVersionFromPolicy || recommendBelowVersion || minSupportedVersion
+    return {
+      minSupportedVersion,
+      recommendBelowVersion,
+      latestVersion,
+      updateUrl: record.updateUrl?.trim() || '',
+    }
+  } catch (error) {
+    console.error('[client-version-policy] active policy query failed', error)
+    return fallbackPolicy
+  }
 }
 
 export async function handleIosClientVersionPolicy(
@@ -261,28 +353,23 @@ export async function handleIosClientVersionPolicy(
   const clientVersionRaw = typeof body.clientVersion === 'string' ? body.clientVersion : ''
   const clientBuildRaw = typeof body.clientBuild === 'string' ? body.clientBuild.trim() : ''
   const clientVersion = parseSemver3(clientVersionRaw)
-  const minSupportedVersion = readRequiredVersionFromEnv(
-    'IOS_CLIENT_MIN_SUPPORTED_VERSION',
-    DEFAULT_MIN_SUPPORTED_VERSION,
-  )
-  const recommendedVersion = readOptionalVersionFromEnv('IOS_CLIENT_RECOMMENDED_BELOW_VERSION')
-  const latestVersion = readOptionalVersionFromEnv('IOS_CLIENT_LATEST_VERSION')
-    || recommendedVersion
-    || minSupportedVersion
+
+  const now = new Date()
+  const [policy] = await Promise.all([
+    readActiveVersionPolicy(now),
+    insertClientVersionIfMissing(clientVersion),
+  ])
 
   const action = resolvePolicy({
     clientVersion,
-    minSupportedVersion,
-    recommendBelowVersion: recommendedVersion,
+    minSupportedVersion: policy.minSupportedVersion,
+    recommendBelowVersion: policy.recommendBelowVersion,
   })
 
-  const envForceMessage = process.env.IOS_CLIENT_FORCE_UPDATE_MESSAGE?.trim()
-  const envRecommendMessage = process.env.IOS_CLIENT_RECOMMEND_UPDATE_MESSAGE?.trim()
-
   const message = action === 'force_update'
-    ? (envForceMessage || FORCE_MESSAGES[locale])
+    ? FORCE_MESSAGES[locale]
     : action === 'recommend_update'
-      ? (envRecommendMessage || RECOMMEND_MESSAGES[locale])
+      ? RECOMMEND_MESSAGES[locale]
       : ''
 
   const title = action === 'force_update'
@@ -296,10 +383,10 @@ export async function handleIosClientVersionPolicy(
     locale,
     clientVersion: clientVersion ? formatVersion(clientVersion) : normalizeVersionString(clientVersionRaw),
     clientBuild: clientBuildRaw,
-    minSupportedVersion: formatVersion(minSupportedVersion),
-    recommendedBelowVersion: recommendedVersion ? formatVersion(recommendedVersion) : '',
-    latestVersion: formatVersion(latestVersion),
-    updateUrl: process.env.IOS_APPSTORE_URL || '',
+    minSupportedVersion: formatVersion(policy.minSupportedVersion),
+    recommendedBelowVersion: policy.recommendBelowVersion ? formatVersion(policy.recommendBelowVersion) : '',
+    latestVersion: formatVersion(policy.latestVersion),
+    updateUrl: policy.updateUrl,
     title,
     message,
     updateButtonLabel: UPDATE_BUTTON_LABEL[locale],

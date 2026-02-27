@@ -78,6 +78,38 @@ export function isGoogleOAuthConfigured(): boolean {
   return Boolean(googleClientId && googleClientSecret);
 }
 
+async function upsertAuthenticatedAppUser(user: {
+  id?: string | null;
+  email?: string | null;
+}) {
+  const externalUserId = typeof user.id === "string" ? user.id.trim() : "";
+  if (!externalUserId) return;
+
+  const normalizedEmail = typeof user.email === "string"
+    ? user.email.trim().toLowerCase()
+    : "";
+
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const now = new Date();
+    await prisma.appUser.upsert({
+      where: { externalUserId },
+      create: {
+        externalUserId,
+        email: normalizedEmail || undefined,
+        firstSeenAt: now,
+        lastSeenAt: now,
+      },
+      update: {
+        email: normalizedEmail || undefined,
+        lastSeenAt: now,
+      },
+    });
+  } catch (error) {
+    console.error("[auth] app user upsert failed", error);
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   providers,
   session: {
@@ -96,6 +128,11 @@ export const authOptions: NextAuthOptions = {
         session.user.email = session.user.email ?? token.email ?? "";
       }
       return session;
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      await upsertAuthenticatedAppUser(user);
     },
   },
 };

@@ -32,6 +32,7 @@ model AppUser {
 
   messages  AppMessage[]
   eventLogs AppEventLog[]
+  versionPoliciesCreated AppClientVersionPolicy[]
 
   @@index([email], map: "app_users_email_idx")
   @@index([lastSeenAt], map: "app_users_last_seen_at_idx")
@@ -115,4 +116,37 @@ model AppEventLog {
   @@index([sessionKey], map: "app_event_logs_session_key_idx")
   @@index([messageId], map: "app_event_logs_message_id_idx")
   @@map("app_event_logs")
+}
+
+model AppClientVersion {
+  id        String   @id @default(cuid())
+  version   String   @unique
+  major     Int
+  minor     Int
+  patch     Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([major, minor, patch], map: "app_client_versions_semver_idx")
+  @@index([createdAt], map: "app_client_versions_created_at_idx")
+  @@map("app_client_versions")
+}
+
+model AppClientVersionPolicy {
+  id                      String   @id @default(cuid())
+  effectiveFrom           DateTime @default(now()) @map("effective_from")
+  minSupportedVersion     String   @map("min_supported_version")
+  recommendedBelowVersion String?  @map("recommended_below_version")
+  latestVersion           String?  @map("latest_version")
+  updateUrl               String?  @map("update_url")
+  note                    String?
+  createdByUserId         String?  @map("created_by_user_id")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  createdByUser AppUser? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([effectiveFrom, createdAt], map: "app_client_version_policies_effective_from_created_at_idx")
+  @@index([createdByUserId], map: "app_client_version_policies_created_by_user_id_idx")
+  @@index([createdAt], map: "app_client_version_policies_created_at_idx")
+  @@map("app_client_version_policies")
 }
