@@ -40,7 +40,18 @@ function resolveRouteAuthOptions(nextauth: string[] | undefined) {
   }
 
   // Keep built-in NextAuth sign-in page for OAuth providers only.
-  const oauthOnlyProviders = (authOptions.providers || []).filter((provider) => provider.type !== "credentials");
+  // Force social provider order to Apple -> Google for consistent UX with native app.
+  const oauthOnlyProviders = (authOptions.providers || [])
+    .filter((provider) => provider.type !== "credentials")
+    .slice()
+    .sort((a, b) => {
+      const rank = (id: string): number => {
+        if (id === "apple") return 0;
+        if (id === "google") return 1;
+        return 10;
+      };
+      return rank(a.id) - rank(b.id);
+    });
   return {
     ...authOptions,
     providers: oauthOnlyProviders,
