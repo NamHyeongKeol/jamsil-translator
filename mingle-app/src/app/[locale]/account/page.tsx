@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
+import { getAuthOptions } from "@/lib/auth-options";
 import { isSupportedLocale } from "@/i18n";
 
 type AccountPageProps = {
@@ -17,7 +17,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
     redirect("/");
   }
 
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(getAuthOptions());
   if (!session?.user) {
     redirect(`/${locale}`);
   }

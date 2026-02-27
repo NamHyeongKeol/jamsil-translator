@@ -1535,7 +1535,7 @@ detect_ios_coredevice_id() {
   command -v xcrun >/dev/null 2>&1 || return 1
   xcrun devicectl list devices 2>/dev/null | awk '
       /connected|available \(paired\)/ {
-        if (match($0, /[0-9A-F-]{36}/)) {
+        if (match($0, /[0-9A-F-]{20,40}/)) {
           id = substr($0, RSTART, RLENGTH)
           if ($0 ~ / connected/) {
             print id
@@ -1590,7 +1590,7 @@ detect_ios_xcode_destination_udid() {
     {
       line = $0
       if (line ~ /MacBook|^Mac /) next
-      if (match(line, /\([0-9A-F-]{36}\)/)) {
+      if (match(line, /\([0-9A-F-]{20,40}\)[[:space:]]*$/)) {
         id = substr(line, RSTART + 1, RLENGTH - 2)
         print id
         exit
@@ -1606,7 +1606,7 @@ detect_ios_device_udid() {
   coredevice_id="$(
     xcrun devicectl list devices 2>/dev/null | awk '
       /connected|available \(paired\)/ {
-        if (match($0, /[0-9A-F-]{36}/)) {
+        if (match($0, /[0-9A-F-]{20,40}/)) {
           id = substr($0, RSTART, RLENGTH)
           if ($0 ~ / connected/) {
             print id
