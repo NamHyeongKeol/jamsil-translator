@@ -267,6 +267,10 @@ export const authOptions: NextAuthOptions = {
   },
   cookies: {
     // Apple returns OAuth callback via cross-site POST(form_post), so Lax cookies can be dropped.
+    callbackUrl: {
+      name: `${oauthCookiePrefix}next-auth.callback-url`,
+      options: oauthTransientCookieOptions,
+    },
     pkceCodeVerifier: {
       name: `${oauthCookiePrefix}next-auth.pkce.code_verifier`,
       options: oauthTransientCookieOptions,
