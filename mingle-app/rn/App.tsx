@@ -28,7 +28,6 @@ import {
   stopNativeTts,
 } from './src/nativeTts';
 import {
-  parseNativeAuthCallbackUrl,
   startNativeBrowserAuthSession,
   type NativeAuthProvider,
 } from './src/nativeAuth';
@@ -603,7 +602,6 @@ function App(): React.JSX.Element {
   const pendingAuthEventRef = useRef<NativeAuthEvent | null>(null);
   const authDispatchRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authDispatchRetryCountRef = useRef(0);
-  const lastRecoveredNativeAuthUrlRef = useRef('');
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
     if (Platform.OS !== 'ios') return 36;
     const manager = (NativeModules as {
@@ -854,59 +852,6 @@ function App(): React.JSX.Element {
       clearAuthDispatchRetryTimer();
     };
   }, [clearAuthDispatchRetryTimer]);
-
-  useEffect(() => {
-    const handleIncomingAuthUrl = (incomingUrl: string | null | undefined) => {
-      const normalized = typeof incomingUrl === 'string' ? incomingUrl.trim() : '';
-      if (!normalized) return;
-      if (nativeAuthInFlightRef.current) return;
-      if (lastRecoveredNativeAuthUrlRef.current === normalized) return;
-
-      const parsed = parseNativeAuthCallbackUrl(normalized);
-      if (!parsed) return;
-      lastRecoveredNativeAuthUrlRef.current = normalized;
-
-      if (parsed.status === 'success') {
-        emitAuthToWeb({
-          type: 'success',
-          provider: parsed.provider,
-          callbackUrl: parsed.callbackUrl,
-          bridgeToken: parsed.bridgeToken,
-        });
-        return;
-      }
-
-      emitAuthToWeb({
-        type: 'error',
-        provider: parsed.provider,
-        message: parsed.message || 'native_auth_failed',
-      });
-    };
-
-    void Linking.getInitialURL()
-      .then(handleIncomingAuthUrl)
-      .catch(() => {
-        // no-op: listener below can still receive callbacks while app is alive
-      });
-
-    const urlSubscription = Linking.addEventListener('url', (event) => {
-      handleIncomingAuthUrl(event.url);
-    });
-
-    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'active') return;
-      void Linking.getInitialURL()
-        .then(handleIncomingAuthUrl)
-        .catch(() => {
-          // no-op
-        });
-    });
-
-    return () => {
-      urlSubscription.remove();
-      appStateSubscription.remove();
-    };
-  }, [emitAuthToWeb]);
 
   const handleIosTopTapOverlayPress = useCallback(() => {
     emitUiToWeb({ type: 'scroll_to_top', source: 'ios_status_bar_overlay' });
