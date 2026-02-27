@@ -59,18 +59,22 @@ scripts/devbox mobile --platform ios --ios-runtime native
 # 10) (선택) mingle-ios만 빌드(설치 없음)
 scripts/devbox ios-native-build --ios-configuration Debug
 
-# 11) (선택) mingle-ios 앱만 제거
+# 11) (선택) RN iOS App Store/TestFlight용 ipa 생성
+scripts/devbox ios-rn-ipa --device-app-env prod
+scripts/devbox ios-rn-ipa-prod
+
+# 12) (선택) mingle-ios 앱만 제거
 scripts/devbox ios-native-uninstall --ios-native-target simulator --ios-simulator-udid <UDID>
 
-# 12) (선택) 전체 로그를 파일로 저장
+# 13) (선택) 전체 로그를 파일로 저장
 scripts/devbox --log-file auto up --profile device --with-ios-install
 
-# 13) (선택) 테스트 실행
+# 14) (선택) 테스트 실행
 scripts/devbox test --target app
 scripts/devbox test --target ios-native
 scripts/devbox test --target all
 
-# 14) (권장) 로컬 서버 + 네이티브 iOS 시뮬레이터 클린 재설치 한 번에
+# 15) (권장) 로컬 서버 + 네이티브 iOS 시뮬레이터 클린 재설치 한 번에
 scripts/devbox up --profile local --with-ios-install --with-ios-clean-install --ios-runtime native --ios-native-target simulator --ios-simulator-udid <UDID> --ios-configuration Debug
 ```
 
@@ -216,6 +220,18 @@ scripts/devbox bootstrap --vault-push
   - `.devbox.env`가 없으면 `mingle-ios/Config/*.xcconfig` 기본 URL을 사용
   - `--ios-configuration Debug|Release` (기본 Debug)
   - `--ios-coredevice-id <ID>`를 주면 해당 실기기 타깃으로 빌드
+
+- `scripts/devbox ios-rn-ipa`
+  - RN iOS 앱을 `.xcarchive`/`.ipa`로 생성 (App Store/TestFlight 업로드 준비)
+  - `.devbox.env` 없이도 실행 가능 (권장: `--device-app-env prod` 또는 `--site-url/--ws-url` 명시)
+  - URL 조회 우선순위: `--device-app-env/--site-url` > `.devbox.env` > Vault/`.env.local`/쉘 환경변수
+  - 기본값: `Release`, `export-method=app-store`
+  - Team ID 우선순위: `--team-id` > `DEVBOX_IOS_TEAM_ID`(셸/.devbox.env) > `rnnative.xcodeproj`의 `DEVELOPMENT_TEAM`
+  - `--device-app-env prod`로 `secret/mingle-app/prod` URL/WS를 주입
+  - `--site-url`, `--ws-url`로 런타임 URL 수동 오버라이드 가능
+  - `--archive-path`, `--export-path`, `--export-options-plist` 커스텀 경로 지원
+  - `--skip-export`는 archive까지만 생성, `--dry-run`은 명령만 출력
+  - `scripts/devbox ios-rn-ipa-prod`는 `--device-app-env prod`를 기본 적용한 별칭
 
 - `scripts/devbox test --target app|ios-native|all`
   - `app`: 현재 devbox 설정값으로 `mingle-app` live integration test 실행

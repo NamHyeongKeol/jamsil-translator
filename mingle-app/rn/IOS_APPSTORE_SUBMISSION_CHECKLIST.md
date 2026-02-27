@@ -20,6 +20,11 @@ Date: 2026-02-21
 - [ ] Fill Export Compliance (encryption) questionnaire
 - [ ] Upload metadata:
   - app description, keywords, support/privacy URLs
+  - suggested legal URLs (prod):
+    - `https://app.minglelabs.xyz/legal/privacy-policy.html`
+    - `https://app.minglelabs.xyz/legal/terms-of-use.html`
+  - locale-specific legal docs (15 locales):
+    - `https://app.minglelabs.xyz/legal/` (language index)
   - age rating, categories
   - screenshots (required device sets)
 - [ ] Submit TestFlight build and run smoke QA on real devices
