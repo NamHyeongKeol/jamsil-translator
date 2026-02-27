@@ -8,6 +8,11 @@ SET "email" = LOWER(BTRIM("email"))
 WHERE "email" IS NOT NULL
   AND "email" <> LOWER(BTRIM("email"));
 
+UPDATE "app"."app_users"
+SET "email" = NULL
+WHERE "email" IS NOT NULL
+  AND BTRIM("email") = '';
+
 WITH ranked AS (
   SELECT
     "id",
@@ -94,3 +99,19 @@ CREATE TABLE IF NOT EXISTS "app"."auth_verification_tokens" (
   CONSTRAINT "auth_verification_tokens_identifier_token_key" UNIQUE ("identifier", "token"),
   CONSTRAINT "auth_verification_tokens_token_key" UNIQUE ("token")
 );
+
+CREATE TABLE IF NOT EXISTS "app"."native_auth_pending_results" (
+  "request_id" TEXT NOT NULL,
+  "status" TEXT NOT NULL,
+  "provider" TEXT,
+  "callback_url" TEXT NOT NULL,
+  "bridge_token" TEXT,
+  "message" TEXT,
+  "expires_at" TIMESTAMPTZ NOT NULL,
+  "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT "native_auth_pending_results_pkey" PRIMARY KEY ("request_id")
+);
+
+CREATE INDEX IF NOT EXISTS "native_auth_pending_results_expires_at_idx"
+ON "app"."native_auth_pending_results"("expires_at");

@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
   if (!provider) {
     console.warn("[native-auth/complete] invalid provider");
     if (requestId) {
-      savePendingNativeAuthResult(requestId, {
+      await savePendingNativeAuthResult(requestId, {
         status: "error",
         callbackUrl,
         message: "invalid_provider",
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
   if (!session?.user) {
     console.warn(`[native-auth/complete] missing session provider=${provider}`);
     if (requestId) {
-      savePendingNativeAuthResult(requestId, {
+      await savePendingNativeAuthResult(requestId, {
         status: "error",
         provider,
         callbackUrl,
@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[native-auth/complete] bridge token creation failed provider=${provider} reason=${message}`);
     if (requestId) {
-      savePendingNativeAuthResult(requestId, {
+      await savePendingNativeAuthResult(requestId, {
         status: "error",
         provider,
         callbackUrl,
@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
     `[native-auth/complete] success provider=${provider} callbackUrl=${callbackUrl} hasEmail=${email ? "1" : "0"}`,
   );
   if (requestId) {
-    savePendingNativeAuthResult(requestId, {
+    await savePendingNativeAuthResult(requestId, {
       status: "success",
       provider,
       callbackUrl,

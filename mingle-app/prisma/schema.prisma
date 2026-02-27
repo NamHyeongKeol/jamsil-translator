@@ -162,3 +162,18 @@ model VerificationToken {
   @@unique([identifier, token], map: "auth_verification_tokens_identifier_token_key")
   @@map("auth_verification_tokens")
 }
+
+model NativeAuthPendingResult {
+  requestId  String   @id @map("request_id")
+  status     String
+  provider   String?
+  callbackUrl String  @map("callback_url")
+  bridgeToken String? @map("bridge_token")
+  message    String?
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([expiresAt], map: "native_auth_pending_results_expires_at_idx")
+  @@map("native_auth_pending_results")
+}
