@@ -29,7 +29,11 @@ function base64UrlEncode(input: Buffer | string): string {
 }
 
 function decodeEscapedMultilineText(value: string): string {
-  return value.replace(/\\n/g, "\n");
+  return value
+    .replace(/\\\\r\\\\n/g, "\n")
+    .replace(/\\\\n/g, "\n")
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n");
 }
 
 function normalizePrivateKey(rawValue: string): string {

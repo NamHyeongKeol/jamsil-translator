@@ -26,7 +26,12 @@ function base64UrlEncode(input) {
 }
 
 function normalizePrivateKey(rawValue) {
-  return rawValue.replace(/\\n/g, "\n").trim();
+  return rawValue
+    .replace(/\\\\r\\\\n/g, "\n")
+    .replace(/\\\\n/g, "\n")
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .trim();
 }
 
 function parseTtlSeconds(rawValue) {
