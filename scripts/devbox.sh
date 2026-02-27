@@ -104,6 +104,8 @@ Usage:
   scripts/devbox gateway [--openclaw-root PATH] [--mode dev|run] [--]
   scripts/devbox ios-native-build [--ios-configuration Debug|Release] [--ios-coredevice-id ID]
   scripts/devbox ios-native-uninstall [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-coredevice-id ID] [--bundle-id ID]
+  scripts/devbox ios-rn-ipa [--ios-configuration Debug|Release] [--device-app-env dev|prod] [--site-url URL] [--ws-url URL] [--archive-path PATH] [--export-path PATH] [--export-options-plist PATH] [--export-method app-store|ad-hoc|development|enterprise] [--team-id TEAM_ID] [--skip-export] [--dry-run]
+  scripts/devbox ios-rn-ipa-prod [ios-rn-ipa options...]
   scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod]
   scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--device-app-env dev|prod] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
@@ -117,6 +119,8 @@ Commands:
   gateway      Run OpenClaw gateway from configured openclaw root.
   ios-native-build Build mingle-ios only (no install).
   ios-native-uninstall Uninstall mingle-ios app from simulator/device.
+  ios-rn-ipa   Archive/export RN iOS app to .xcarchive/.ipa for App Store/TestFlight.
+  ios-rn-ipa-prod Same as ios-rn-ipa, defaulting to --device-app-env prod.
   mobile       Build/install RN/native iOS and Android apps (device/simulator).
   up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
   test         Run mingle-app live tests and/or mingle-ios native test build.
@@ -1524,6 +1528,15 @@ resolve_ios_bundle_id() {
   printf '%s' "com.rnnative"
 }
 
+resolve_rn_ios_development_team() {
+  local project_file="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcodeproj/project.pbxproj"
+  if [[ -f "$project_file" ]]; then
+    awk -F'= ' '/DEVELOPMENT_TEAM = /{gsub(/;$/, "", $2); print $2; exit}' "$project_file"
+    return 0
+  fi
+  printf '%s' ""
+}
+
 resolve_android_application_id() {
   local gradle_file="$ROOT_DIR/mingle-app/rn/android/app/build.gradle"
   if [[ -f "$gradle_file" ]]; then
@@ -2520,6 +2533,203 @@ cmd_gateway() {
   fi
 }
 
+cmd_ios_rn_ipa() {
+  if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
+    log "missing .devbox.env, running init automatically"
+    cmd_init
+  fi
+  require_devbox_env
+  require_cmd xcodebuild
+
+  local ios_configuration="Release"
+  local device_app_env=""
+  local site_override=""
+  local ws_override=""
+  local archive_path=""
+  local export_path=""
+  local export_options_plist=""
+  local export_method="app-store"
+  local team_id=""
+  local skip_export=0
+  local dry_run=0
+  local timestamp=""
+  local archive_site_url=""
+  local archive_ws_url=""
+  local previous_site_url=""
+  local previous_ws_url=""
+  local device_app_env_payload=""
+  local device_app_env_path=""
+  local temp_export_options_plist=""
+
+  timestamp="$(date '+%Y%m%d-%H%M%S')"
+  archive_path="/tmp/rnnative-${timestamp}.xcarchive"
+  export_path="/tmp/rnnative-ipa-${timestamp}"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
+      --device-app-env) device_app_env="${2:-}"; shift 2 ;;
+      --site-url) site_override="${2:-}"; shift 2 ;;
+      --ws-url) ws_override="${2:-}"; shift 2 ;;
+      --archive-path) archive_path="${2:-}"; shift 2 ;;
+      --export-path) export_path="${2:-}"; shift 2 ;;
+      --export-options-plist) export_options_plist="${2:-}"; shift 2 ;;
+      --export-method) export_method="${2:-}"; shift 2 ;;
+      --team-id) team_id="${2:-}"; shift 2 ;;
+      --skip-export) skip_export=1; shift ;;
+      --dry-run) dry_run=1; shift ;;
+      *) die "unknown option for ios-rn-ipa: $1" ;;
+    esac
+  done
+
+  ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
+
+  case "$export_method" in
+    app-store|ad-hoc|development|enterprise) ;;
+    *) die "invalid --export-method: $export_method (expected app-store|ad-hoc|development|enterprise)" ;;
+  esac
+
+  if [[ -n "$device_app_env" ]]; then
+    device_app_env_payload="$(resolve_device_app_env_override "$device_app_env")"
+    device_app_env_path="$(printf '%s\n' "$device_app_env_payload" | sed -n '1p')"
+    archive_site_url="$(printf '%s\n' "$device_app_env_payload" | sed -n '2p')"
+    archive_ws_url="$(printf '%s\n' "$device_app_env_payload" | sed -n '3p')"
+    log "ipa build app env override: $device_app_env (${device_app_env_path:-})"
+  fi
+
+  if [[ -n "$site_override" || -n "$ws_override" ]]; then
+    [[ -n "$site_override" ]] || die "--ws-url requires --site-url"
+    [[ -n "$ws_override" ]] || die "--site-url requires --ws-url"
+    archive_site_url="$site_override"
+    archive_ws_url="$ws_override"
+  fi
+
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$DEVBOX_SITE_URL"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$DEVBOX_RN_WS_URL"
+  fi
+
+  validate_http_url "archive site url" "$archive_site_url"
+  validate_ws_url "archive ws url" "$archive_ws_url"
+
+  if [[ "$device_app_env" == "prod" ]]; then
+    validate_https_url "archive site url (prod)" "$archive_site_url"
+    validate_wss_url "archive ws url (prod)" "$archive_ws_url"
+  fi
+
+  if [[ -z "$team_id" ]]; then
+    team_id="$(trim_whitespace "$(resolve_rn_ios_development_team || true)")"
+  fi
+
+  [[ -n "$archive_path" ]] || die "--archive-path must not be empty"
+  [[ -n "$export_path" ]] || die "--export-path must not be empty"
+  ensure_single_line_value "archive path" "$archive_path"
+  ensure_single_line_value "export path" "$export_path"
+
+  if [[ "$skip_export" -eq 0 ]]; then
+    if [[ -n "$export_options_plist" ]]; then
+      [[ -f "$export_options_plist" ]] || die "export options plist not found: $export_options_plist"
+    elif [[ "$dry_run" -eq 1 ]]; then
+      export_options_plist="/tmp/rnnative-export-options-${timestamp}.plist"
+    else
+      temp_export_options_plist="$(mktemp -t rnnative-export-options)"
+      cat > "$temp_export_options_plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>$export_method</string>
+  <key>signingStyle</key>
+  <string>automatic</string>
+  <key>destination</key>
+  <string>export</string>
+EOF
+      if [[ -n "$team_id" ]]; then
+        cat >> "$temp_export_options_plist" <<EOF
+  <key>teamID</key>
+  <string>$team_id</string>
+EOF
+      fi
+      cat >> "$temp_export_options_plist" <<'EOF'
+</dict>
+</plist>
+EOF
+      export_options_plist="$temp_export_options_plist"
+    fi
+  fi
+
+  previous_site_url="$DEVBOX_SITE_URL"
+  previous_ws_url="$DEVBOX_RN_WS_URL"
+  DEVBOX_SITE_URL="$archive_site_url"
+  DEVBOX_RN_WS_URL="$archive_ws_url"
+  write_rn_ios_runtime_xcconfig
+
+  log "building RN iOS archive (config=$ios_configuration, archive=$archive_path)"
+  log "runtime URL: site=$archive_site_url ws=$archive_ws_url"
+
+  if [[ "$dry_run" -eq 1 ]]; then
+    cat <<EOF
+xcodebuild -workspace $ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace -scheme rnnative -configuration $ios_configuration -destination generic/platform=iOS -archivePath $archive_path -xcconfig $RN_IOS_RUNTIME_XCCONFIG archive
+EOF
+    if [[ "$skip_export" -eq 0 ]]; then
+      cat <<EOF
+xcodebuild -exportArchive -archivePath $archive_path -exportOptionsPlist $export_options_plist -exportPath $export_path
+EOF
+    fi
+    DEVBOX_SITE_URL="$previous_site_url"
+    DEVBOX_RN_WS_URL="$previous_ws_url"
+    write_rn_ios_runtime_xcconfig
+    return 0
+  fi
+
+  ensure_rn_workspace_dependencies
+  ensure_ios_pods_if_needed
+
+  (
+    cd "$ROOT_DIR/mingle-app/rn/ios"
+    NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
+      xcodebuild \
+        -workspace rnnative.xcworkspace \
+        -scheme rnnative \
+        -configuration "$ios_configuration" \
+        -destination "generic/platform=iOS" \
+        -archivePath "$archive_path" \
+        -xcconfig "$RN_IOS_RUNTIME_XCCONFIG" \
+        archive
+  )
+
+  [[ -d "$archive_path" ]] || die "archive not found after build: $archive_path"
+
+  if [[ "$skip_export" -eq 1 ]]; then
+    DEVBOX_SITE_URL="$previous_site_url"
+    DEVBOX_RN_WS_URL="$previous_ws_url"
+    write_rn_ios_runtime_xcconfig
+    log "archive complete (export skipped): $archive_path"
+    return 0
+  fi
+
+  xcodebuild \
+    -exportArchive \
+    -archivePath "$archive_path" \
+    -exportOptionsPlist "$export_options_plist" \
+    -exportPath "$export_path"
+
+  local ipa_file=""
+  ipa_file="$(find "$export_path" -maxdepth 1 -type f -name '*.ipa' | head -n 1)"
+  [[ -n "$ipa_file" ]] || die "ipa export failed: no .ipa in $export_path"
+
+  DEVBOX_SITE_URL="$previous_site_url"
+  DEVBOX_RN_WS_URL="$previous_ws_url"
+  write_rn_ios_runtime_xcconfig
+
+  log "archive complete: $archive_path"
+  log "ipa exported: $ipa_file"
+  log "next: Xcode Organizer -> Distribute App -> App Store Connect -> Upload"
+}
+
 cmd_mobile() {
   if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
     log "missing .devbox.env, running init automatically"
@@ -3131,6 +3341,8 @@ Run:
 - scripts/devbox up --profile local --with-ios-install --ios-runtime native --ios-native-target simulator
 - scripts/devbox up --profile local --with-metro
 - scripts/devbox ios-native-build --ios-configuration Debug
+- scripts/devbox ios-rn-ipa --device-app-env prod
+- scripts/devbox ios-rn-ipa-prod
 - scripts/devbox ios-native-uninstall --ios-native-target simulator --ios-simulator-udid <UDID>
 - scripts/devbox mobile --platform ios --ios-runtime rn
 - scripts/devbox mobile --platform ios --ios-runtime native
@@ -3229,6 +3441,8 @@ main() {
     gateway|openclaw-gateway) cmd_gateway "$@" ;;
     ios-native-build|ios-build-native) cmd_ios_native_build "$@" ;;
     ios-native-uninstall|ios-uninstall-native|ios-native-remove) cmd_ios_native_uninstall "$@" ;;
+    ios-rn-ipa|ios-build-rn-ipa) cmd_ios_rn_ipa "$@" ;;
+    ios-rn-ipa-prod|ios-build-rn-ipa-prod) cmd_ios_rn_ipa --device-app-env prod "$@" ;;
     mobile) cmd_mobile "$@" ;;
     up) cmd_up "$@" ;;
     test|test-live) cmd_test "$@" ;;

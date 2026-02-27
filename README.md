@@ -43,6 +43,9 @@ scripts/devbox up --profile device --device-app-env prod --with-ios-install --wi
 # scripts/devbox up --profile device --with-ios-install --ios-runtime native
 # mingle-ios만 빌드하려면(설치 없음)
 # scripts/devbox ios-native-build --ios-configuration Debug
+# RN iOS App Store/TestFlight용 ipa 아카이브/익스포트
+# scripts/devbox ios-rn-ipa --device-app-env prod
+# scripts/devbox ios-rn-ipa-prod
 # 또는 RN + 네이티브를 같이 설치
 # scripts/devbox mobile --platform ios --ios-runtime both
 # 전체 로그를 파일로 남기려면
@@ -85,6 +88,8 @@ scripts/devbox status
 - `scripts/devbox mobile --platform ios|android|all`로 기기 연결 시 RN/네이티브 앱 빌드/설치 자동화를 수행합니다.
   iOS는 `--ios-runtime rn|native|both`를 지원하며, 네이티브 설치 대상은 `--ios-coredevice-id`로 지정할 수 있습니다.
 - `scripts/devbox ios-native-build --ios-configuration Debug|Release`로 `mingle-ios`만 빌드할 수 있습니다(설치 없음).
+- `scripts/devbox ios-rn-ipa --device-app-env prod` 또는 `scripts/devbox ios-rn-ipa-prod`로
+  RN iOS `.xcarchive`/`.ipa`를 App Store 업로드용으로 생성할 수 있습니다.
 - `scripts/devbox up --profile device --with-mobile-install`으로 서버 준비 + 모바일 설치를 한 번에 실행할 수 있습니다.
 - `scripts/devbox test --target app|ios-native|all`로 live 테스트와 네이티브 iOS 테스트 빌드를 분리/통합 실행할 수 있습니다.
 
