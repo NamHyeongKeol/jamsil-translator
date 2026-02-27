@@ -16,6 +16,7 @@
     "rn:ios:env-check": "node scripts/run-with-env-local.mjs node scripts/require-rn-ios-namespace.mjs",
     "rn:ios": "pnpm rn:ios:env-check && node scripts/run-with-env-local.mjs pnpm --dir rn ios",
     "rn:android": "node scripts/run-with-env-local.mjs pnpm --dir rn android",
+    "auth:apple:secret": "node scripts/run-with-env-local.mjs node scripts/generate-apple-client-secret.mjs",
     "start": "next start",
     "test": "vitest run",
     "test:unit": "vitest run --exclude \"src/integration/live/**/*.test.ts\"",

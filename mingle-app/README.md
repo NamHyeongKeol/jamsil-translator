@@ -171,14 +171,44 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ## Authentication Setup
 
 1. Copy `.env.example` to `.env.local`.
-2. Fill in `AUTH_SECRET`, `AUTH_GOOGLE_ID`, and `AUTH_GOOGLE_SECRET`.
-3. In Google Cloud Console, add this callback URL:
+2. Fill in `AUTH_SECRET`.
+3. Configure at least one OAuth provider:
+
+Google OAuth:
+
+- env: `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`
+- callback URL:
 
 ```text
 http://localhost:3000/api/auth/callback/google
 ```
 
-If Google OAuth env vars are missing, the app automatically falls back to demo credential login.
+Apple OAuth:
+
+- env required:
+  - `AUTH_APPLE_ID`
+  - either `AUTH_APPLE_SECRET` directly
+  - or (`AUTH_APPLE_TEAM_ID`, `AUTH_APPLE_KEY_ID`, `AUTH_APPLE_PRIVATE_KEY`)
+- callback URL:
+
+```text
+http://localhost:3000/api/auth/callback/apple
+```
+
+Apple OAuth token issuance references:
+
+- Service ID / client id: <https://developer.apple.com/account/resources/identifiers/list/serviceId>
+- Sign in with Apple key (`.p8`) / key id: <https://developer.apple.com/account/resources/authkeys/list>
+- Team ID: <https://developer.apple.com/account>
+- Token API spec (client secret JWT): <https://developer.apple.com/documentation/signinwithapplerestapi/generate_and_validate_tokens>
+
+Generate `AUTH_APPLE_SECRET` from `.p8` key env values:
+
+```bash
+pnpm auth:apple:secret
+```
+
+If both Apple and Google OAuth env vars are missing, the app automatically falls back to demo credential login.
 
 ## Database (Supabase, app schema)
 

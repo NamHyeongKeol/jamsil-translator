@@ -2,10 +2,18 @@ import type { NextAuthOptions } from "next-auth";
 import AppleProvider from "next-auth/providers/apple";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import { resolveAppleOAuthCredentials } from "@/lib/apple-oauth";
 import { verifyNativeAuthBridgeToken } from "@/lib/native-auth-bridge";
 
-const appleClientId = process.env.AUTH_APPLE_ID;
-const appleClientSecret = process.env.AUTH_APPLE_SECRET;
+const appleOAuthCredentials = (() => {
+  try {
+    return resolveAppleOAuthCredentials();
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[auth-options] failed to configure Apple OAuth: ${message}`);
+    return null;
+  }
+})();
 const googleClientId = process.env.AUTH_GOOGLE_ID;
 const googleClientSecret = process.env.AUTH_GOOGLE_SECRET;
 
@@ -52,11 +60,11 @@ const providers: NextAuthOptions["providers"] = [
   }),
 ];
 
-if (appleClientId && appleClientSecret) {
+if (appleOAuthCredentials) {
   providers.unshift(
     AppleProvider({
-      clientId: appleClientId,
-      clientSecret: appleClientSecret,
+      clientId: appleOAuthCredentials.clientId,
+      clientSecret: appleOAuthCredentials.clientSecret,
     }),
   );
 }
@@ -71,7 +79,7 @@ if (googleClientId && googleClientSecret) {
 }
 
 export function isAppleOAuthConfigured(): boolean {
-  return Boolean(appleClientId && appleClientSecret);
+  return Boolean(appleOAuthCredentials);
 }
 
 export function isGoogleOAuthConfigured(): boolean {
