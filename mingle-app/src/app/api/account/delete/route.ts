@@ -17,6 +17,8 @@ export async function DELETE() {
     ? session.user.email.trim().toLowerCase()
     : "";
 
+  let deletedUsers = 0;
+
   if (normalizedUserId) {
     try {
       await prisma.user.delete({
@@ -24,17 +26,15 @@ export async function DELETE() {
           id: normalizedUserId,
         },
       });
-      return NextResponse.json({ ok: true, deletedUsers: 1 });
+      deletedUsers = 1;
     } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
-        return NextResponse.json({ ok: true, deletedUsers: 0 });
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")) {
+        throw error;
       }
-      throw error;
     }
   }
 
-  let deletedUsers = 0;
-  if (normalizedEmail) {
+  if (deletedUsers === 0 && normalizedEmail) {
     const result = await prisma.user.deleteMany({
       where: { email: normalizedEmail },
     });
