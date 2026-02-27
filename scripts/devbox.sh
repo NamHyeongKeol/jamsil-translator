@@ -105,7 +105,7 @@ Usage:
   scripts/devbox gateway [--openclaw-root PATH] [--mode dev|run] [--]
   scripts/devbox ios-native-build [--ios-configuration Debug|Release] [--ios-coredevice-id ID]
   scripts/devbox ios-native-uninstall [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-coredevice-id ID] [--bundle-id ID]
-  scripts/devbox ios-rn-ipa [--ios-configuration Debug|Release] [--device-app-env dev|prod] [--site-url URL] [--ws-url URL] [--archive-path PATH] [--export-path PATH] [--export-options-plist PATH] [--export-method app-store|ad-hoc|development|enterprise] [--team-id TEAM_ID] [--skip-export] [--dry-run]
+  scripts/devbox ios-rn-ipa [--ios-configuration Debug|Release] [--device-app-env dev|prod] [--site-url URL] [--ws-url URL] [--archive-path PATH] [--export-path PATH] [--export-options-plist PATH] [--export-method app-store-connect|release-testing|debugging|enterprise|app-store|ad-hoc|development] [--team-id TEAM_ID] [--allow-provisioning-updates|--no-allow-provisioning-updates] [--skip-export] [--dry-run]
   scripts/devbox ios-rn-ipa-prod [ios-rn-ipa options...]
   scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod]
   scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--device-app-env dev|prod] [--vault-app-path PATH] [--vault-stt-path PATH]
@@ -2540,11 +2540,6 @@ cmd_gateway() {
 }
 
 cmd_ios_rn_ipa() {
-  if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
-    log "missing .devbox.env, running init automatically"
-    cmd_init
-  fi
-  require_devbox_env
   require_cmd xcodebuild
 
   local ios_configuration="Release"
@@ -2554,8 +2549,10 @@ cmd_ios_rn_ipa() {
   local archive_path=""
   local export_path=""
   local export_options_plist=""
-  local export_method="app-store"
+  local export_method="app-store-connect"
+  local allow_provisioning_updates=1
   local team_id=""
+  local shell_team_id="${DEVBOX_IOS_TEAM_ID:-}"
   local skip_export=0
   local dry_run=0
   local timestamp=""
@@ -2563,9 +2560,16 @@ cmd_ios_rn_ipa() {
   local archive_ws_url=""
   local previous_site_url=""
   local previous_ws_url=""
+  local restore_runtime_xcconfig=0
   local device_app_env_payload=""
   local device_app_env_path=""
   local temp_export_options_plist=""
+
+  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    require_devbox_env
+  else
+    log "no .devbox.env found; ios-rn-ipa will use vault/.env.local/shell values only"
+  fi
 
   timestamp="$(date '+%Y%m%d-%H%M%S')"
   archive_path="/tmp/rnnative-${timestamp}.xcarchive"
@@ -2582,6 +2586,8 @@ cmd_ios_rn_ipa() {
       --export-options-plist) export_options_plist="${2:-}"; shift 2 ;;
       --export-method) export_method="${2:-}"; shift 2 ;;
       --team-id) team_id="${2:-}"; shift 2 ;;
+      --allow-provisioning-updates) allow_provisioning_updates=1; shift ;;
+      --no-allow-provisioning-updates) allow_provisioning_updates=0; shift ;;
       --skip-export) skip_export=1; shift ;;
       --dry-run) dry_run=1; shift ;;
       *) die "unknown option for ios-rn-ipa: $1" ;;
@@ -2591,8 +2597,11 @@ cmd_ios_rn_ipa() {
   ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
 
   case "$export_method" in
-    app-store|ad-hoc|development|enterprise) ;;
-    *) die "invalid --export-method: $export_method (expected app-store|ad-hoc|development|enterprise)" ;;
+    app-store) export_method="app-store-connect" ;;
+    ad-hoc) export_method="release-testing" ;;
+    development) export_method="debugging" ;;
+    app-store-connect|release-testing|debugging|enterprise|validation) ;;
+    *) die "invalid --export-method: $export_method (expected app-store-connect|release-testing|debugging|enterprise|validation)" ;;
   esac
 
   if [[ -n "$device_app_env" ]]; then
@@ -2611,11 +2620,39 @@ cmd_ios_rn_ipa() {
   fi
 
   if [[ -z "$archive_site_url" ]]; then
-    archive_site_url="$DEVBOX_SITE_URL"
+    archive_site_url="${DEVBOX_SITE_URL:-}"
   fi
   if [[ -z "$archive_ws_url" ]]; then
-    archive_ws_url="$DEVBOX_RN_WS_URL"
+    archive_ws_url="${DEVBOX_RN_WS_URL:-}"
   fi
+
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value NEXT_PUBLIC_SITE_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value NEXT_PUBLIC_WS_URL || true)")"
+  fi
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value MINGLE_API_BASE_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value MINGLE_WS_URL || true)")"
+  fi
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value RN_WEB_APP_BASE_URL || true)")"
+  fi
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value MINGLE_WEB_APP_BASE_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value RN_DEFAULT_WS_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value MINGLE_DEFAULT_WS_URL || true)")"
+  fi
+
+  [[ -n "$archive_site_url" ]] || die "missing archive site url (use --device-app-env, --site-url/--ws-url, or set NEXT_PUBLIC_SITE_URL)"
+  [[ -n "$archive_ws_url" ]] || die "missing archive ws url (use --device-app-env, --site-url/--ws-url, or set NEXT_PUBLIC_WS_URL)"
 
   validate_http_url "archive site url" "$archive_site_url"
   validate_ws_url "archive ws url" "$archive_ws_url"
@@ -2627,6 +2664,10 @@ cmd_ios_rn_ipa() {
 
   if [[ -z "$team_id" ]]; then
     team_id="$(trim_whitespace "${DEVBOX_IOS_TEAM_ID:-}")"
+  fi
+
+  if [[ -z "$team_id" ]]; then
+    team_id="$(trim_whitespace "$shell_team_id")"
   fi
 
   if [[ -z "$team_id" ]]; then
@@ -2671,27 +2712,37 @@ EOF
     fi
   fi
 
-  previous_site_url="$DEVBOX_SITE_URL"
-  previous_ws_url="$DEVBOX_RN_WS_URL"
+  previous_site_url="${DEVBOX_SITE_URL:-}"
+  previous_ws_url="${DEVBOX_RN_WS_URL:-}"
+  if [[ -n "$previous_site_url" && -n "$previous_ws_url" ]]; then
+    restore_runtime_xcconfig=1
+  fi
   DEVBOX_SITE_URL="$archive_site_url"
   DEVBOX_RN_WS_URL="$archive_ws_url"
   write_rn_ios_runtime_xcconfig
+
+  local -a xcode_provisioning_args=()
+  if [[ "$allow_provisioning_updates" -eq 1 ]]; then
+    xcode_provisioning_args+=(-allowProvisioningUpdates)
+  fi
 
   log "building RN iOS archive (config=$ios_configuration, archive=$archive_path)"
   log "runtime URL: site=$archive_site_url ws=$archive_ws_url"
 
   if [[ "$dry_run" -eq 1 ]]; then
     cat <<EOF
-xcodebuild -workspace $ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace -scheme rnnative -configuration $ios_configuration -destination generic/platform=iOS -archivePath $archive_path -xcconfig $RN_IOS_RUNTIME_XCCONFIG archive
+xcodebuild -workspace $ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace -scheme rnnative -configuration $ios_configuration -destination generic/platform=iOS -archivePath $archive_path -xcconfig $RN_IOS_RUNTIME_XCCONFIG ${xcode_provisioning_args[*]} archive
 EOF
     if [[ "$skip_export" -eq 0 ]]; then
       cat <<EOF
-xcodebuild -exportArchive -archivePath $archive_path -exportOptionsPlist $export_options_plist -exportPath $export_path
+xcodebuild -exportArchive ${xcode_provisioning_args[*]} -archivePath $archive_path -exportOptionsPlist $export_options_plist -exportPath $export_path
 EOF
     fi
-    DEVBOX_SITE_URL="$previous_site_url"
-    DEVBOX_RN_WS_URL="$previous_ws_url"
-    write_rn_ios_runtime_xcconfig
+    if [[ "$restore_runtime_xcconfig" -eq 1 ]]; then
+      DEVBOX_SITE_URL="$previous_site_url"
+      DEVBOX_RN_WS_URL="$previous_ws_url"
+      write_rn_ios_runtime_xcconfig
+    fi
     return 0
   fi
 
@@ -2702,7 +2753,8 @@ EOF
     cd "$ROOT_DIR/mingle-app/rn/ios"
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
       xcodebuild \
-        -workspace rnnative.xcworkspace \
+        "${xcode_provisioning_args[@]}" \
+        -workspace "$ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace" \
         -scheme rnnative \
         -configuration "$ios_configuration" \
         -destination "generic/platform=iOS" \
@@ -2714,14 +2766,17 @@ EOF
   [[ -d "$archive_path" ]] || die "archive not found after build: $archive_path"
 
   if [[ "$skip_export" -eq 1 ]]; then
-    DEVBOX_SITE_URL="$previous_site_url"
-    DEVBOX_RN_WS_URL="$previous_ws_url"
-    write_rn_ios_runtime_xcconfig
+    if [[ "$restore_runtime_xcconfig" -eq 1 ]]; then
+      DEVBOX_SITE_URL="$previous_site_url"
+      DEVBOX_RN_WS_URL="$previous_ws_url"
+      write_rn_ios_runtime_xcconfig
+    fi
     log "archive complete (export skipped): $archive_path"
     return 0
   fi
 
   xcodebuild \
+    "${xcode_provisioning_args[@]}" \
     -exportArchive \
     -archivePath "$archive_path" \
     -exportOptionsPlist "$export_options_plist" \
@@ -2731,9 +2786,11 @@ EOF
   ipa_file="$(find "$export_path" -maxdepth 1 -type f -name '*.ipa' | head -n 1)"
   [[ -n "$ipa_file" ]] || die "ipa export failed: no .ipa in $export_path"
 
-  DEVBOX_SITE_URL="$previous_site_url"
-  DEVBOX_RN_WS_URL="$previous_ws_url"
-  write_rn_ios_runtime_xcconfig
+  if [[ "$restore_runtime_xcconfig" -eq 1 ]]; then
+    DEVBOX_SITE_URL="$previous_site_url"
+    DEVBOX_RN_WS_URL="$previous_ws_url"
+    write_rn_ios_runtime_xcconfig
+  fi
 
   log "archive complete: $archive_path"
   log "ipa exported: $ipa_file"
