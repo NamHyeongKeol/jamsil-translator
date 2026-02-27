@@ -129,6 +129,28 @@ function resolveConfiguredUrl(
   return normalizeConfiguredUrl(readRuntimeEnvValue(keys), allowedProtocols, options);
 }
 
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1';
+}
+
+function isLoopbackUrl(raw: string): boolean {
+  if (!raw) return false;
+  try {
+    return isLoopbackHost(new URL(raw).hostname);
+  } catch {
+    return /(127\.0\.0\.1|localhost|::1)/i.test(raw);
+  }
+}
+
+function formatWebViewLoadError(description: string, currentWebUrl: string): string {
+  const normalizedDescription = description.trim() || 'webview_load_failed';
+  if (!currentWebUrl || !isLoopbackUrl(currentWebUrl)) {
+    return normalizedDescription;
+  }
+  return `${normalizedDescription} (현재 앱 URL이 ${currentWebUrl} 입니다. 실기기에서는 127.0.0.1/localhost에 접속할 수 없습니다. scripts/devbox profile --profile device 후 --device-app-env prod 또는 dev로 설치해 주세요.)`;
+}
+
 const RN_RUNTIME_OS = Platform.OS;
 const NATIVE_RUNTIME_CONFIG = readNativeRuntimeConfig();
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
@@ -1247,8 +1269,8 @@ function App(): React.JSX.Element {
 
   const handleLoadError = useCallback((event: { nativeEvent: { description?: string } }) => {
     const description = event.nativeEvent.description || 'webview_load_failed';
-    setLoadError(description);
-  }, []);
+    setLoadError(formatWebViewLoadError(description, webUrl));
+  }, [webUrl]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
