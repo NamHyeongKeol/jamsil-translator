@@ -644,6 +644,19 @@ function resolveSafeAreaPaletteForUrl(rawUrl: string): SafeAreaPalette {
   return DEFAULT_SAFE_AREA_PALETTE;
 }
 
+function resolveTrustedOrigin(rawUrl: string): string {
+  const candidate = rawUrl.trim();
+  if (!candidate) return '';
+  try {
+    const parsed = new URL(candidate);
+    if (!parsed.host) return '';
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+}
+
 function AppInner(): React.JSX.Element {
   const webViewRef = useRef<WebView>(null);
   const isPageReadyRef = useRef(false);
@@ -686,6 +699,7 @@ function AppInner(): React.JSX.Element {
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${webLocale}?nativeStt=1&nativeUi=1&nativeAuth=1${apiNamespaceQuery}${debugParams}`;
   }, [webLocale]);
+  const trustedNativeAuthOrigin = useMemo(() => resolveTrustedOrigin(WEB_APP_BASE_URL), []);
   const [safeAreaPalette, setSafeAreaPalette] = useState<SafeAreaPalette>(() => resolveSafeAreaPaletteForUrl(webUrl));
 
   const updateSafeAreaPalette = useCallback((candidateUrl?: string) => {
@@ -1095,6 +1109,49 @@ function AppInner(): React.JSX.Element {
       });
       return;
     }
+    if (!trustedNativeAuthOrigin) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_untrusted_origin_unavailable',
+      });
+      return;
+    }
+    let parsedStartUrl: URL;
+    try {
+      parsedStartUrl = new URL(startUrl);
+    } catch {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url',
+      });
+      return;
+    }
+    if (parsedStartUrl.protocol !== 'http:' && parsedStartUrl.protocol !== 'https:') {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url_protocol',
+      });
+      return;
+    }
+    if (parsedStartUrl.origin !== trustedNativeAuthOrigin) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url_origin',
+      });
+      return;
+    }
+    if (!parsedStartUrl.pathname.startsWith('/api/native-auth/start')) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url_path',
+      });
+      return;
+    }
 
     pendingAuthEventRef.current = null;
     authDispatchRetryCountRef.current = 0;
@@ -1109,6 +1166,8 @@ function AppInner(): React.JSX.Element {
       const result = await startNativeBrowserAuthSession({
         provider,
         startUrl,
+        expectedOrigin: trustedNativeAuthOrigin,
+        expectedPathPrefix: '/api/native-auth/start',
       });
       emitAuthToWeb({
         type: 'success',
@@ -1126,7 +1185,7 @@ function AppInner(): React.JSX.Element {
     } finally {
       nativeAuthInFlightRef.current = null;
     }
-  }, [clearAuthDispatchRetryTimer, emitAuthToWeb]);
+  }, [clearAuthDispatchRetryTimer, emitAuthToWeb, trustedNativeAuthOrigin]);
 
   const handleWebMessage = useCallback((event: WebViewMessageEvent) => {
     let parsed: WebViewCommand | null = null;

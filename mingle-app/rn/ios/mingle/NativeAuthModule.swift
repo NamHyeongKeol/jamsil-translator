@@ -46,6 +46,10 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
             reject("native_auth_invalid_start_url", "native_auth_invalid_start_url", nil)
             return
         }
+        guard startURL.path.hasPrefix("/api/native-auth/start") else {
+            reject("native_auth_invalid_start_url_path", "native_auth_invalid_start_url_path", nil)
+            return
+        }
 
         let timeoutMs = resolveTimeoutMs(options["timeoutMs"])
 

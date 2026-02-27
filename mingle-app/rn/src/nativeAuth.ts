@@ -228,6 +228,8 @@ export async function startNativeBrowserAuthSession(args: {
   provider: NativeAuthProvider;
   startUrl: string;
   timeoutMs?: number;
+  expectedOrigin?: string;
+  expectedPathPrefix?: string;
 }): Promise<NativeAuthSessionResult> {
   const startUrl = args.startUrl.trim();
   if (!startUrl) {
@@ -242,6 +244,24 @@ export async function startNativeBrowserAuthSession(args: {
   }
   if (parsedStartUrl.protocol !== 'http:' && parsedStartUrl.protocol !== 'https:') {
     throw new Error('native_auth_invalid_start_url_protocol');
+  }
+  const expectedOriginRaw = typeof args.expectedOrigin === 'string' ? args.expectedOrigin.trim() : '';
+  if (expectedOriginRaw) {
+    let parsedExpectedOrigin: URL;
+    try {
+      parsedExpectedOrigin = new URL(expectedOriginRaw);
+    } catch {
+      throw new Error('native_auth_invalid_expected_origin');
+    }
+    if (parsedExpectedOrigin.origin !== parsedStartUrl.origin) {
+      throw new Error('native_auth_invalid_start_url_origin');
+    }
+  }
+  const expectedPathPrefix = typeof args.expectedPathPrefix === 'string'
+    ? args.expectedPathPrefix.trim()
+    : '';
+  if (expectedPathPrefix && !parsedStartUrl.pathname.startsWith(expectedPathPrefix)) {
+    throw new Error('native_auth_invalid_start_url_path');
   }
 
   const expectedRequestId = resolveRequestId(parsedStartUrl.searchParams.get('requestId') || '');

@@ -69,6 +69,7 @@ function resolveAllowedAppleAudiences(): Set<string> {
     process.env.AUTH_APPLE_NATIVE_AUDIENCES,
     process.env.AUTH_APPLE_NATIVE_ID,
     process.env.AUTH_APPLE_BUNDLE_ID,
+    process.env.AUTH_APPLE_ID,
   ]
     .filter((value): value is string => typeof value === "string")
     .flatMap((value) => value.split(","))
@@ -231,7 +232,10 @@ async function verifyAppleIdentityToken(idToken: string): Promise<AppleIdentityT
   }
 
   const allowedAudiences = resolveAllowedAppleAudiences();
-  if (allowedAudiences.size > 0 && !audiences.some((value) => allowedAudiences.has(value))) {
+  if (allowedAudiences.size === 0) {
+    throw new Error("native_auth_apple_audience_not_configured");
+  }
+  if (!audiences.some((value) => allowedAudiences.has(value))) {
     return null;
   }
 
@@ -355,14 +359,22 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const reason = error instanceof Error ? error.message : String(error);
     console.error(`[native-auth/apple/exchange] verification failure reason=${reason}`);
+    if (reason === "native_auth_apple_audience_not_configured") {
+      return fail("native_auth_apple_audience_not_configured", 500);
+    }
     return fail("native_auth_invalid_apple_identity_token", 401);
   }
   if (!tokenPayload) {
     return fail("native_auth_invalid_apple_identity_token", 401);
   }
 
-  const email = normalizeEmail(body?.email) || normalizeEmail(tokenPayload.email);
-  const name = normalizeText(body?.name, 128) || deriveNameFromEmail(email);
+  const emailFromToken = normalizeEmail(tokenPayload.email);
+  const emailFromBody = normalizeEmail(body?.email);
+  if (emailFromBody && emailFromToken && emailFromBody !== emailFromToken) {
+    return fail("native_auth_email_mismatch", 400);
+  }
+  const email = emailFromToken;
+  const name = normalizeText(body?.name, 128) || deriveNameFromEmail(emailFromToken || emailFromBody);
 
   let user: {
     id: string;
