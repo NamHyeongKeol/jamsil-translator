@@ -548,9 +548,19 @@ export default function MingleHome(props: MingleHomeProps) {
             {props.dictionary.profile.loginRequiredDescription}
           </p>
 
+          {/* 스크린리더 로딩 상태 공지 (시각적으로 숨김) */}
+          <div aria-live="polite" aria-atomic="true" className="sr-only">
+            {signingInProvider !== null ? props.dictionary.profile.loginLoading : ""}
+          </div>
+
           <div className="space-y-3">
             <button
               type="button"
+              aria-label={
+                signingInProvider === "apple"
+                  ? props.dictionary.profile.loginLoading
+                  : props.dictionary.profile.loginApple
+              }
               onClick={() => handleSocialSignIn("apple")}
               disabled={!props.appleOAuthEnabled || disabled}
               className="inline-flex w-full items-center justify-between rounded-2xl border border-black/5 bg-gradient-to-b from-slate-900 to-black px-4 py-3 text-sm font-medium text-white shadow-[0_10px_30px_-16px_rgba(15,23,42,0.9)] transition duration-200 hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
@@ -560,11 +570,16 @@ export default function MingleHome(props: MingleHomeProps) {
                 {props.dictionary.profile.loginApple}
               </span>
               {signingInProvider === "apple" ? (
-                <Loader2 size={14} className="animate-spin text-white/70" />
+                <Loader2 size={14} className="animate-spin text-white/70" aria-hidden />
               ) : null}
             </button>
             <button
               type="button"
+              aria-label={
+                signingInProvider === "google"
+                  ? props.dictionary.profile.loginLoading
+                  : props.dictionary.profile.loginGoogle
+              }
               onClick={() => handleSocialSignIn("google")}
               disabled={!props.googleOAuthEnabled || disabled}
               className="inline-flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-[0_10px_30px_-20px_rgba(15,23,42,0.45)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_14px_30px_-18px_rgba(15,23,42,0.4)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
@@ -574,7 +589,7 @@ export default function MingleHome(props: MingleHomeProps) {
                 {props.dictionary.profile.loginGoogle}
               </span>
               {signingInProvider === "google" ? (
-                <Loader2 size={14} className="animate-spin text-slate-400" />
+                <Loader2 size={14} className="animate-spin text-slate-400" aria-hidden />
               ) : null}
             </button>
           </div>
