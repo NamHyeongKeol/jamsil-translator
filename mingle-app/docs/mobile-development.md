@@ -7,9 +7,9 @@
 ## Implemented
 - `rn/`
   - Dedicated React Native app workspace.
-- `rn/ios/rnnative/NativeSTTModule.swift`
+- `rn/ios/mingle/NativeSTTModule.swift`
   - AVAudioEngine + WebSocket based iOS native STT transport.
-- `rn/ios/rnnative/NativeSTTModuleBridge.m`
+- `rn/ios/mingle/NativeSTTModuleBridge.m`
   - React Native bridge export for `start/stop` + events.
 - `rn/App.tsx`
   - Basic STT start/stop verification screen.
