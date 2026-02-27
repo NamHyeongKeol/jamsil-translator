@@ -121,21 +121,9 @@ function createNativeAuthRequestId(): string {
   return `rq_${fallback}`;
 }
 
-function MingleLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 100" className={className} aria-label="Mingle" role="img">
-      {/* 손글씨 스타일 M — 앱 아이콘 레퍼런스 */}
-      <path
-        fill="#3D3D52"
-        d="M14 74 L14 32 Q14 28 18 28 Q22 28 23 32 L50 62 L77 32 Q78 28 82 28 Q86 28 86 32 L86 74 Q86 78 82 78 Q78 78 77 74 L77 48 L54 73 Q52 76 50 76 Q48 76 46 73 L23 48 L23 74 Q22 78 18 78 Q14 78 14 74 Z"
-      />
-    </svg>
-  );
-}
-
 function AppleMark() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
       <path
         fill="currentColor"
         d="M16.52 12.6c.02 2.1 1.85 2.8 1.87 2.81-.02.05-.29 1-.96 1.98-.58.86-1.2 1.72-2.15 1.74-.92.02-1.22-.55-2.28-.55-1.07 0-1.4.53-2.26.57-.92.03-1.62-.93-2.2-1.78-1.2-1.73-2.1-4.9-.88-7.02.6-1.05 1.66-1.72 2.81-1.74.88-.02 1.71.6 2.28.6.57 0 1.62-.74 2.73-.63.47.02 1.8.19 2.65 1.43-.07.04-1.58.92-1.57 2.59Zm-2.16-5.04c.48-.58.8-1.39.71-2.2-.69.03-1.53.46-2.03 1.04-.44.5-.82 1.32-.72 2.1.77.06 1.56-.39 2.04-.94Z"
@@ -146,7 +134,7 @@ function AppleMark() {
 
 function GoogleMark() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
       <path
         fill="#EA4335"
         d="M12.25 10.2v4.18h5.83c-.26 1.34-1.67 3.94-5.83 3.94-3.5 0-6.35-2.9-6.35-6.47 0-3.58 2.85-6.48 6.35-6.48 2 0 3.34.85 4.1 1.58l2.79-2.7C17.36 2.58 15 1.5 12.25 1.5 6.72 1.5 2.25 6 2.25 11.55c0 5.54 4.47 10.05 10 10.05 5.77 0 9.6-4.04 9.6-9.73 0-.65-.08-1.13-.16-1.67h-9.44Z"
@@ -514,110 +502,119 @@ export default function MingleHome(props: MingleHomeProps) {
     props.locale,
   ]);
 
-  if (status === "loading") {
+  // loading 상태와 unauthenticated 상태를 하나의 레이아웃으로 통합
+  // — 패널은 항상 렌더, 내부 콘텐츠만 전환 (툭 튀어나오는 pop-in 방지)
+  if (status === "loading" || status !== "authenticated") {
+    const isLoading = status === "loading";
+    const disabled = isSigningIn;
+
     return (
-      <main className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-        {/* 그라디언트 배경 영역 */}
+      // ① main bg = 다크 (#1C1C1E) → 가장자리 흰색 제거
+      <main className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#1C1C1E]">
+        <style>{`@keyframes fade-in {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+          }`}</style>
+
+        {/* 스크린리더 로딩 상태 공지 */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {isLoading || signingInProvider !== null
+            ? props.dictionary.profile.loginLoading
+            : ""}
+        </div>
+
+        {/* ② 상단 그라디언트 + 실제 앱 아이콘 */}
         <div
           className="flex flex-1 items-center justify-center"
-          style={{ background: "linear-gradient(160deg, #FBBC32 0%, #F97316 100%)" }}
+          style={{
+            background: "linear-gradient(160deg, #FBBC32 0%, #F97316 100%)",
+          }}
         >
-          <MingleLogo className="h-20 w-20 opacity-90" />
-        </div>
-        {/* 하단 다크 패널 */}
-        <div className="rounded-t-[2rem] bg-[#1C1C1E] px-6 pb-10 pt-7">
-          <div className="flex items-center justify-center gap-2 text-sm text-white/60">
-            <Loader2 size={15} className="animate-spin" aria-hidden />
-            <span>{props.dictionary.profile.loginLoading}</span>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (status !== "authenticated") {
-    const disabled = isSigningIn;
-    return (
-      <main className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-        <style>{
-          `@keyframes panel-up {
-            from { transform: translateY(24px); opacity: 0; }
-            to   { transform: translateY(0);    opacity: 1; }
-          }`
-        }</style>
-
-        {/* 스크린리더 로딩 상태 공지 — 패널 바깥에 위치 */}
-        <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {signingInProvider !== null ? props.dictionary.profile.loginLoading : ""}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/mingle-icon.png"
+            alt="Mingle"
+            className="h-28 w-28 rounded-[22%]"
+          />
         </div>
 
-        {/* 상단 그라디언트 + 로고 영역 */}
-        <div
-          className="flex flex-1 flex-col items-center justify-center gap-4"
-          style={{ background: "linear-gradient(160deg, #FBBC32 0%, #F97316 100%)" }}
-        >
-          <MingleLogo className="h-20 w-20" />
-        </div>
-
-        {/* 하단 다크 패널 */}
+        {/* ③ 하단 다크 패널 — 항상 렌더, 내용만 조건부 */}
         <section
-          aria-busy={disabled}
-          style={{ animation: "panel-up 0.4s cubic-bezier(0.22,1,0.36,1) both" }}
-          className="rounded-t-[2rem] bg-[#1C1C1E] px-6 pb-10 pt-7"
+          aria-busy={isLoading || disabled}
+          className="rounded-t-[2rem] bg-[#1C1C1E] px-6 pb-12 pt-8"
         >
-          <div className="space-y-3">
-            <button
-              type="button"
-              aria-label={
-                signingInProvider === "apple"
-                  ? props.dictionary.profile.loginLoading
-                  : props.dictionary.profile.loginApple
-              }
-              onClick={() => handleSocialSignIn("apple")}
-              disabled={!props.appleOAuthEnabled || disabled}
-              className="relative inline-flex w-full items-center justify-center rounded-2xl bg-black py-4 text-sm font-semibold text-white transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          {isLoading ? (
+            /* 로딩 중 — 스피너만 */
+            <div className="flex items-center justify-center gap-3 py-4 text-base text-white/60">
+              <Loader2 size={18} className="animate-spin" aria-hidden />
+              <span>{props.dictionary.profile.loginLoading}</span>
+            </div>
+          ) : (
+            /* 버튼 영역 */
+            <div
+              className="space-y-3"
+              style={{ animation: "fade-in 0.25s ease both" }}
             >
-              <span className="absolute left-5">
-                <AppleMark />
-              </span>
-              {signingInProvider === "apple" ? (
-                <Loader2 size={15} className="animate-spin" aria-hidden />
-              ) : (
-                props.dictionary.profile.loginApple
-              )}
-            </button>
-            <button
-              type="button"
-              aria-label={
-                signingInProvider === "google"
-                  ? props.dictionary.profile.loginLoading
-                  : props.dictionary.profile.loginGoogle
-              }
-              onClick={() => handleSocialSignIn("google")}
-              disabled={!props.googleOAuthEnabled || disabled}
-              className="relative inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white py-4 text-sm font-semibold text-slate-800 transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <span className="absolute left-5">
-                <GoogleMark />
-              </span>
-              {signingInProvider === "google" ? (
-                <Loader2 size={15} className="animate-spin text-slate-400" aria-hidden />
-              ) : (
-                props.dictionary.profile.loginGoogle
-              )}
-            </button>
-          </div>
+              {/* ④ Apple 버튼 — 아이콘/텍스트 크게 */}
+              <button
+                type="button"
+                aria-label={
+                  signingInProvider === "apple"
+                    ? props.dictionary.profile.loginLoading
+                    : props.dictionary.profile.loginApple
+                }
+                onClick={() => handleSocialSignIn("apple")}
+                disabled={!props.appleOAuthEnabled || disabled}
+                className="relative inline-flex w-full items-center justify-center rounded-2xl bg-black py-[1.05rem] text-base font-semibold text-white transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="absolute left-5">
+                  <AppleMark />
+                </span>
+                {signingInProvider === "apple" ? (
+                  <Loader2 size={18} className="animate-spin" aria-hidden />
+                ) : (
+                  props.dictionary.profile.loginApple
+                )}
+              </button>
 
-          {!props.appleOAuthEnabled ? (
-            <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
-              {props.dictionary.profile.appleNotConfigured}
-            </p>
-          ) : null}
-          {!props.googleOAuthEnabled ? (
-            <p className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
-              {props.dictionary.profile.googleNotConfigured}
-            </p>
-          ) : null}
+              {/* ④ Google 버튼 — 아이콘/텍스트 크게 */}
+              <button
+                type="button"
+                aria-label={
+                  signingInProvider === "google"
+                    ? props.dictionary.profile.loginLoading
+                    : props.dictionary.profile.loginGoogle
+                }
+                onClick={() => handleSocialSignIn("google")}
+                disabled={!props.googleOAuthEnabled || disabled}
+                className="relative inline-flex w-full items-center justify-center rounded-2xl bg-white py-[1.05rem] text-base font-semibold text-slate-800 transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="absolute left-5">
+                  <GoogleMark />
+                </span>
+                {signingInProvider === "google" ? (
+                  <Loader2
+                    size={18}
+                    className="animate-spin text-slate-400"
+                    aria-hidden
+                  />
+                ) : (
+                  props.dictionary.profile.loginGoogle
+                )}
+              </button>
+
+              {!props.appleOAuthEnabled ? (
+                <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
+                  {props.dictionary.profile.appleNotConfigured}
+                </p>
+              ) : null}
+              {!props.googleOAuthEnabled ? (
+                <p className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
+                  {props.dictionary.profile.googleNotConfigured}
+                </p>
+              ) : null}
+            </div>
+          )}
         </section>
       </main>
     );
