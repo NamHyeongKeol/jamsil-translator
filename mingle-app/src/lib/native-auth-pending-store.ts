@@ -21,19 +21,30 @@ type PendingEntry = {
   result: PendingNativeAuthResult;
 };
 
-const pendingResults = new Map<string, PendingEntry>();
+type PendingStoreGlobal = typeof globalThis & {
+  __MINGLE_NATIVE_AUTH_PENDING_RESULTS__?: Map<string, PendingEntry>;
+};
 
-function cleanupExpired(now: number) {
-  for (const [requestId, entry] of pendingResults.entries()) {
+function getPendingResultsStore(): Map<string, PendingEntry> {
+  const globalScope = globalThis as PendingStoreGlobal;
+  if (!globalScope.__MINGLE_NATIVE_AUTH_PENDING_RESULTS__) {
+    globalScope.__MINGLE_NATIVE_AUTH_PENDING_RESULTS__ = new Map<string, PendingEntry>();
+  }
+  return globalScope.__MINGLE_NATIVE_AUTH_PENDING_RESULTS__;
+}
+
+function cleanupExpired(store: Map<string, PendingEntry>, now: number) {
+  for (const [requestId, entry] of store.entries()) {
     if (entry.expiresAt <= now) {
-      pendingResults.delete(requestId);
+      store.delete(requestId);
     }
   }
 }
 
 export function savePendingNativeAuthResult(requestId: string, result: PendingNativeAuthResult) {
+  const pendingResults = getPendingResultsStore();
   const now = Date.now();
-  cleanupExpired(now);
+  cleanupExpired(pendingResults, now);
   pendingResults.set(requestId, {
     expiresAt: now + PENDING_TTL_MS,
     result,
@@ -41,8 +52,9 @@ export function savePendingNativeAuthResult(requestId: string, result: PendingNa
 }
 
 export function consumePendingNativeAuthResult(requestId: string): PendingNativeAuthResult | null {
+  const pendingResults = getPendingResultsStore();
   const now = Date.now();
-  cleanupExpired(now);
+  cleanupExpired(pendingResults, now);
   const entry = pendingResults.get(requestId);
   if (!entry) return null;
   pendingResults.delete(requestId);
