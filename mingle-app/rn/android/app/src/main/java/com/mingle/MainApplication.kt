@@ -1,4 +1,4 @@
-package com.rnnative
+package com.mingle
 
 import android.app.Application
 import com.facebook.react.PackageList

@@ -1443,14 +1443,14 @@ detect_ios_coredevice_id() {
 
 detect_ios_xcode_destination_udid() {
   command -v xcodebuild >/dev/null 2>&1 || return 1
-  local workspace="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace"
+  local workspace="$ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace"
   local destination_udid=""
   [[ -d "$workspace" ]] || return 1
 
   destination_udid="$(
     xcodebuild \
       -workspace "$workspace" \
-      -scheme rnnative \
+      -scheme mingle \
       -showdestinations 2>&1 | awk '
       /platform:iOS/ && /id:/ && /name:/ {
         line = $0
@@ -1525,16 +1525,16 @@ detect_android_device_serial() {
 }
 
 resolve_ios_bundle_id() {
-  local project_file="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcodeproj/project.pbxproj"
+  local project_file="$ROOT_DIR/mingle-app/rn/ios/mingle.xcodeproj/project.pbxproj"
   if [[ -f "$project_file" ]]; then
     awk -F'= ' '/PRODUCT_BUNDLE_IDENTIFIER = /{gsub(/;$/, "", $2); print $2; exit}' "$project_file"
     return 0
   fi
-  printf '%s' "com.rnnative"
+  printf '%s' "com.mingle"
 }
 
 resolve_rn_ios_development_team() {
-  local project_file="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcodeproj/project.pbxproj"
+  local project_file="$ROOT_DIR/mingle-app/rn/ios/mingle.xcodeproj/project.pbxproj"
   if [[ -f "$project_file" ]]; then
     awk -F'= ' '/DEVELOPMENT_TEAM = /{gsub(/;$/, "", $2); print $2; exit}' "$project_file"
     return 0
@@ -1548,7 +1548,7 @@ resolve_android_application_id() {
     awk -F'"' '/applicationId[[:space:]]+"/{print $2; exit}' "$gradle_file"
     return 0
   fi
-  printf '%s' "com.rnnative"
+  printf '%s' "com.mingle"
 }
 
 resolve_ios_simulator_udid_for_uninstall() {
@@ -1641,7 +1641,7 @@ run_ios_mobile_install() {
   ensure_ios_pods_if_needed
 
   local derived_data_path="$ROOT_DIR/.devbox-cache/ios/$DEVBOX_WORKTREE_NAME"
-  local app_path="$derived_data_path/Build/Products/${configuration}-iphoneos/rnnative.app"
+  local app_path="$derived_data_path/Build/Products/${configuration}-iphoneos/mingle.app"
   local bundle_id
   bundle_id="$(resolve_ios_bundle_id)"
 
@@ -1665,8 +1665,8 @@ run_ios_mobile_install() {
     cd "$ROOT_DIR/mingle-app/rn/ios"
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
     xcodebuild \
-      -workspace rnnative.xcworkspace \
-      -scheme rnnative \
+      -workspace mingle.xcworkspace \
+      -scheme mingle \
       -configuration "$configuration" \
       -destination "id=$destination_udid" \
       -derivedDataPath "$derived_data_path" \
@@ -2572,8 +2572,8 @@ cmd_ios_rn_ipa() {
   fi
 
   timestamp="$(date '+%Y%m%d-%H%M%S')"
-  archive_path="/tmp/rnnative-${timestamp}.xcarchive"
-  export_path="/tmp/rnnative-ipa-${timestamp}"
+  archive_path="/tmp/mingle-${timestamp}.xcarchive"
+  export_path="/tmp/mingle-ipa-${timestamp}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -2683,9 +2683,9 @@ cmd_ios_rn_ipa() {
     if [[ -n "$export_options_plist" ]]; then
       [[ -f "$export_options_plist" ]] || die "export options plist not found: $export_options_plist"
     elif [[ "$dry_run" -eq 1 ]]; then
-      export_options_plist="/tmp/rnnative-export-options-${timestamp}.plist"
+      export_options_plist="/tmp/mingle-export-options-${timestamp}.plist"
     else
-      temp_export_options_plist="$(mktemp -t rnnative-export-options)"
+      temp_export_options_plist="$(mktemp -t mingle-export-options)"
       cat > "$temp_export_options_plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -2731,7 +2731,7 @@ EOF
 
   if [[ "$dry_run" -eq 1 ]]; then
     cat <<EOF
-xcodebuild -workspace $ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace -scheme rnnative -configuration $ios_configuration -destination generic/platform=iOS -archivePath $archive_path -xcconfig $RN_IOS_RUNTIME_XCCONFIG ${xcode_provisioning_args[*]} archive
+xcodebuild -workspace $ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace -scheme mingle -configuration $ios_configuration -destination generic/platform=iOS -archivePath $archive_path -xcconfig $RN_IOS_RUNTIME_XCCONFIG ${xcode_provisioning_args[*]} archive
 EOF
     if [[ "$skip_export" -eq 0 ]]; then
       cat <<EOF
@@ -2754,8 +2754,8 @@ EOF
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
       xcodebuild \
         "${xcode_provisioning_args[@]}" \
-        -workspace "$ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace" \
-        -scheme rnnative \
+        -workspace "$ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace" \
+        -scheme mingle \
         -configuration "$ios_configuration" \
         -destination "generic/platform=iOS" \
         -archivePath "$archive_path" \
@@ -3387,7 +3387,7 @@ Live Test   : MINGLE_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL | MINGLE_TEST_W
 Vault App   : ${DEVBOX_VAULT_APP_PATH:-"(unset)"}
 Vault STT   : ${DEVBOX_VAULT_STT_PATH:-"(unset)"}
 OpenClaw    : root=${DEVBOX_OPENCLAW_ROOT:-$(resolve_openclaw_root)}
-iOS Team ID : ${DEVBOX_IOS_TEAM_ID:-"(auto: rnnative.xcodeproj DEVELOPMENT_TEAM)"}
+iOS Team ID : ${DEVBOX_IOS_TEAM_ID:-"(auto: mingle.xcodeproj DEVELOPMENT_TEAM)"}
 
 Files:
 - $DEVBOX_ENV_FILE
