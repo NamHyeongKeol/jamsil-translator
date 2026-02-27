@@ -27,6 +27,31 @@ function normalizeUserId(rawValue: unknown): string | null {
   return normalized.slice(0, 128);
 }
 
+function isFeatureEnabled(rawValue: string | undefined, defaultValue: boolean): boolean {
+  if (typeof rawValue !== "string") return defaultValue;
+  const normalized = rawValue.trim().toLowerCase();
+  if (!normalized) return defaultValue;
+  if (["0", "false", "off", "no", "n"].includes(normalized)) return false;
+  if (["1", "true", "on", "yes", "y"].includes(normalized)) return true;
+  return defaultValue;
+}
+
+function summarizeAuthLogMeta(rawValue: unknown): string {
+  if (!rawValue || typeof rawValue !== "object") return "-";
+  const entry = rawValue as Record<string, unknown>;
+  const keys = Object.keys(entry).slice(0, 8).join(",");
+  const errorValue = entry.error;
+  if (errorValue instanceof Error) {
+    const message = (errorValue.message || "").trim().replace(/\s+/g, " ").slice(0, 180);
+    return `keys=${keys || "-"} error="${message || "-"}"`;
+  }
+  if (typeof errorValue === "string") {
+    const message = errorValue.trim().replace(/\s+/g, " ").slice(0, 180);
+    return `keys=${keys || "-"} error="${message || "-"}"`;
+  }
+  return `keys=${keys || "-"}`;
+}
+
 async function upsertUserForCredentialsSignIn(args: {
   idHint?: string | null;
   email?: string | null;
@@ -115,6 +140,8 @@ const appleOAuthCredentials = (() => {
 })();
 const googleClientId = process.env.AUTH_GOOGLE_ID;
 const googleClientSecret = process.env.AUTH_GOOGLE_SECRET;
+const allowEmailAccountLinking = isFeatureEnabled(process.env.AUTH_ALLOW_EMAIL_ACCOUNT_LINKING, true);
+const authDebugEnabled = isFeatureEnabled(process.env.AUTH_DEBUG, process.env.NODE_ENV !== "production");
 
 const providers: NextAuthOptions["providers"] = [
   CredentialsProvider({
@@ -178,6 +205,7 @@ if (appleOAuthCredentials) {
     AppleProvider({
       clientId: appleOAuthCredentials.clientId,
       clientSecret: appleOAuthCredentials.clientSecret,
+      allowDangerousEmailAccountLinking: allowEmailAccountLinking,
     }),
   );
 }
@@ -187,6 +215,7 @@ if (googleClientId && googleClientSecret) {
     GoogleProvider({
       clientId: googleClientId,
       clientSecret: googleClientSecret,
+      allowDangerousEmailAccountLinking: allowEmailAccountLinking,
     }),
   );
 }
@@ -199,7 +228,12 @@ export function isGoogleOAuthConfigured(): boolean {
   return Boolean(googleClientId && googleClientSecret);
 }
 
-const authBaseUrl = (process.env.NEXTAUTH_URL || process.env.AUTH_URL || "").trim();
+const authBaseUrl = (
+  process.env.NEXTAUTH_URL
+  || process.env.AUTH_URL
+  || process.env.NEXT_PUBLIC_SITE_URL
+  || ""
+).trim();
 const useSecureOauthCookies = authBaseUrl.startsWith("https://");
 const oauthCookieSameSite = (useSecureOauthCookies ? "none" : "lax") as "none" | "lax";
 const oauthCookiePrefix = useSecureOauthCookies ? "__Secure-" : "";
@@ -214,6 +248,19 @@ const oauthTransientCookieOptions = {
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter,
   providers,
+  debug: authDebugEnabled,
+  logger: {
+    error(code, metadata) {
+      console.error(`[nextauth:error] code=${String(code)} ${summarizeAuthLogMeta(metadata)}`);
+    },
+    warn(code) {
+      console.warn(`[nextauth:warn] code=${String(code)}`);
+    },
+    debug(code, metadata) {
+      if (!authDebugEnabled) return;
+      console.info(`[nextauth:debug] code=${String(code)} ${summarizeAuthLogMeta(metadata)}`);
+    },
+  },
   session: {
     // Keep JWT session strategy because native credential bridge sign-in relies on it.
     strategy: "jwt",

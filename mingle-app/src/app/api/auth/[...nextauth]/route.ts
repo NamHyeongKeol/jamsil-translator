@@ -52,8 +52,9 @@ export async function GET(request: NextRequest, context: AppRouteContext) {
   const action = resolveAction(params?.nextauth);
   const provider = summarizeText(params?.nextauth?.[1] || "-", 48) || "-";
   const callbackUrl = summarizeCallbackUrl(request.nextUrl.searchParams.get("callbackUrl") || "");
+  const error = summarizeText(request.nextUrl.searchParams.get("error") || "-", 64) || "-";
   console.info(
-    `[nextauth] method=GET action=${action || "-"} provider=${provider} callback=${callbackUrl}`,
+    `[nextauth] method=GET action=${action || "-"} provider=${provider} callback=${callbackUrl} error=${error}`,
   );
   return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(params?.nextauth));
 }
@@ -63,8 +64,9 @@ export async function POST(request: NextRequest, context: AppRouteContext) {
   const action = resolveAction(params?.nextauth);
   const provider = summarizeText(params?.nextauth?.[1] || "-", 48) || "-";
   const callbackUrl = summarizeCallbackUrl(request.nextUrl.searchParams.get("callbackUrl") || "");
+  const error = summarizeText(request.nextUrl.searchParams.get("error") || "-", 64) || "-";
   console.info(
-    `[nextauth] method=POST action=${action || "-"} provider=${provider} callback=${callbackUrl}`,
+    `[nextauth] method=POST action=${action || "-"} provider=${provider} callback=${callbackUrl} error=${error}`,
   );
   return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(params?.nextauth));
 }
