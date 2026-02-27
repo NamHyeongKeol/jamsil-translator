@@ -526,6 +526,10 @@ export default function MingleHome(props: MingleHomeProps) {
           <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-400/20 blur-3xl" />
           <div className="absolute -right-20 bottom-10 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl" />
         </div>
+        {/* 스크린리더 로딩 상태 공지 — aria-busy 컨테이너 밖에 위치해야 공지가 보장됨 */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {signingInProvider !== null ? props.dictionary.profile.loginLoading : ""}
+        </div>
         <section
           aria-busy={disabled}
           style={{
@@ -547,11 +551,6 @@ export default function MingleHome(props: MingleHomeProps) {
           <p className="mb-6 text-sm leading-relaxed text-slate-600">
             {props.dictionary.profile.loginRequiredDescription}
           </p>
-
-          {/* 스크린리더 로딩 상태 공지 (시각적으로 숨김) */}
-          <div aria-live="polite" aria-atomic="true" className="sr-only">
-            {signingInProvider !== null ? props.dictionary.profile.loginLoading : ""}
-          </div>
 
           <div className="space-y-3">
             <button
