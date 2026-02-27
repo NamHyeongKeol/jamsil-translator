@@ -130,6 +130,7 @@ async function upsertUserForCredentialsSignIn(args: {
 }
 
 const APPLE_OAUTH_SECRET_REFRESH_SKEW_MS = 5 * 60 * 1000;
+const APPLE_PROVIDER_WHITE_LOGO = "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%274%2032%20376.4%20449.4%27%3E%3Cpath%20fill%3D%27%23ffffff%27%20d%3D%27M318.7%20268.7c-.2-36.7%2016.4-64.4%2050-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3%2020.7-88.5%2020.7-15%200-49.4-19.7-76.4-19.7C63.3%20141.2%204%20184.8%204%20273.5q0%2039.3%2014.4%2081.2c12.8%2036.7%2059%20126.7%20107.2%20125.2%2025.2-.6%2043-17.9%2075.8-17.9%2031.8%200%2048.3%2017.9%2076.4%2017.9%2048.6-.7%2090.4-82.5%20102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4%2024.8-61.9%2024-72.5a106%20106%200%200%200-67.9%2034.9%2095.7%2095.7%200%200%200-25.6%2071.9c26.1%202%2049.9-11.4%2069.5-34.3z%27%2F%3E%3C%2Fsvg%3E";
 
 type AppleOAuthCredentialsCache = {
   credentials: AppleOAuthCredentials | null;
@@ -273,6 +274,14 @@ function buildProviders(): NextAuthOptions["providers"] {
         clientId: appleOAuthCredentials.clientId,
         clientSecret: appleOAuthCredentials.clientSecret,
         allowDangerousEmailAccountLinking: allowEmailAccountLinking,
+        style: {
+          logo: APPLE_PROVIDER_WHITE_LOGO,
+          logoDark: APPLE_PROVIDER_WHITE_LOGO,
+          bg: "#000000",
+          text: "#ffffff",
+          bgDark: "#000000",
+          textDark: "#ffffff",
+        },
       }),
     );
   }
