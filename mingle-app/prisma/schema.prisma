@@ -148,7 +148,7 @@ model AppClientVersionPolicy {
 
   createdByUser AppUser? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  @@index([platform, effectiveFrom, createdAt], map: "app_client_version_policies_platform_effective_from_created_at_idx")
+  @@index([platform, effectiveFrom, createdAt], map: "app_client_version_policies_platform_effective_idx")
   @@index([createdByUserId], map: "app_client_version_policies_created_by_user_id_idx")
   @@index([createdAt], map: "app_client_version_policies_created_at_idx")
   @@map("app_client_version_policies")

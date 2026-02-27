@@ -27,5 +27,5 @@ CHECK ("platform" ~ '^[a-z][a-z0-9_-]{1,31}$');
 
 DROP INDEX IF EXISTS "app"."app_client_version_policies_effective_from_created_at_idx";
 
-CREATE INDEX "app_client_version_policies_platform_effective_from_created_at_idx"
+CREATE INDEX "app_client_version_policies_platform_effective_idx"
 ON "app"."app_client_version_policies"("platform", "effective_from", "created_at");
