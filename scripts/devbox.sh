@@ -2540,11 +2540,6 @@ cmd_gateway() {
 }
 
 cmd_ios_rn_ipa() {
-  if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
-    log "missing .devbox.env, running init automatically"
-    cmd_init
-  fi
-  require_devbox_env
   require_cmd xcodebuild
 
   local ios_configuration="Release"
@@ -2556,6 +2551,7 @@ cmd_ios_rn_ipa() {
   local export_options_plist=""
   local export_method="app-store"
   local team_id=""
+  local shell_team_id="${DEVBOX_IOS_TEAM_ID:-}"
   local skip_export=0
   local dry_run=0
   local timestamp=""
@@ -2563,9 +2559,16 @@ cmd_ios_rn_ipa() {
   local archive_ws_url=""
   local previous_site_url=""
   local previous_ws_url=""
+  local restore_runtime_xcconfig=0
   local device_app_env_payload=""
   local device_app_env_path=""
   local temp_export_options_plist=""
+
+  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    require_devbox_env
+  else
+    log "no .devbox.env found; ios-rn-ipa will use vault/.env.local/shell values only"
+  fi
 
   timestamp="$(date '+%Y%m%d-%H%M%S')"
   archive_path="/tmp/rnnative-${timestamp}.xcarchive"
@@ -2611,11 +2614,39 @@ cmd_ios_rn_ipa() {
   fi
 
   if [[ -z "$archive_site_url" ]]; then
-    archive_site_url="$DEVBOX_SITE_URL"
+    archive_site_url="${DEVBOX_SITE_URL:-}"
   fi
   if [[ -z "$archive_ws_url" ]]; then
-    archive_ws_url="$DEVBOX_RN_WS_URL"
+    archive_ws_url="${DEVBOX_RN_WS_URL:-}"
   fi
+
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value NEXT_PUBLIC_SITE_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value NEXT_PUBLIC_WS_URL || true)")"
+  fi
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value MINGLE_API_BASE_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value MINGLE_WS_URL || true)")"
+  fi
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value RN_WEB_APP_BASE_URL || true)")"
+  fi
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value MINGLE_WEB_APP_BASE_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value RN_DEFAULT_WS_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value MINGLE_DEFAULT_WS_URL || true)")"
+  fi
+
+  [[ -n "$archive_site_url" ]] || die "missing archive site url (use --device-app-env, --site-url/--ws-url, or set NEXT_PUBLIC_SITE_URL)"
+  [[ -n "$archive_ws_url" ]] || die "missing archive ws url (use --device-app-env, --site-url/--ws-url, or set NEXT_PUBLIC_WS_URL)"
 
   validate_http_url "archive site url" "$archive_site_url"
   validate_ws_url "archive ws url" "$archive_ws_url"
@@ -2627,6 +2658,10 @@ cmd_ios_rn_ipa() {
 
   if [[ -z "$team_id" ]]; then
     team_id="$(trim_whitespace "${DEVBOX_IOS_TEAM_ID:-}")"
+  fi
+
+  if [[ -z "$team_id" ]]; then
+    team_id="$(trim_whitespace "$shell_team_id")"
   fi
 
   if [[ -z "$team_id" ]]; then
@@ -2671,8 +2706,11 @@ EOF
     fi
   fi
 
-  previous_site_url="$DEVBOX_SITE_URL"
-  previous_ws_url="$DEVBOX_RN_WS_URL"
+  previous_site_url="${DEVBOX_SITE_URL:-}"
+  previous_ws_url="${DEVBOX_RN_WS_URL:-}"
+  if [[ -n "$previous_site_url" && -n "$previous_ws_url" ]]; then
+    restore_runtime_xcconfig=1
+  fi
   DEVBOX_SITE_URL="$archive_site_url"
   DEVBOX_RN_WS_URL="$archive_ws_url"
   write_rn_ios_runtime_xcconfig
@@ -2689,9 +2727,11 @@ EOF
 xcodebuild -exportArchive -archivePath $archive_path -exportOptionsPlist $export_options_plist -exportPath $export_path
 EOF
     fi
-    DEVBOX_SITE_URL="$previous_site_url"
-    DEVBOX_RN_WS_URL="$previous_ws_url"
-    write_rn_ios_runtime_xcconfig
+    if [[ "$restore_runtime_xcconfig" -eq 1 ]]; then
+      DEVBOX_SITE_URL="$previous_site_url"
+      DEVBOX_RN_WS_URL="$previous_ws_url"
+      write_rn_ios_runtime_xcconfig
+    fi
     return 0
   fi
 
@@ -2714,9 +2754,11 @@ EOF
   [[ -d "$archive_path" ]] || die "archive not found after build: $archive_path"
 
   if [[ "$skip_export" -eq 1 ]]; then
-    DEVBOX_SITE_URL="$previous_site_url"
-    DEVBOX_RN_WS_URL="$previous_ws_url"
-    write_rn_ios_runtime_xcconfig
+    if [[ "$restore_runtime_xcconfig" -eq 1 ]]; then
+      DEVBOX_SITE_URL="$previous_site_url"
+      DEVBOX_RN_WS_URL="$previous_ws_url"
+      write_rn_ios_runtime_xcconfig
+    fi
     log "archive complete (export skipped): $archive_path"
     return 0
   fi
@@ -2731,9 +2773,11 @@ EOF
   ipa_file="$(find "$export_path" -maxdepth 1 -type f -name '*.ipa' | head -n 1)"
   [[ -n "$ipa_file" ]] || die "ipa export failed: no .ipa in $export_path"
 
-  DEVBOX_SITE_URL="$previous_site_url"
-  DEVBOX_RN_WS_URL="$previous_ws_url"
-  write_rn_ios_runtime_xcconfig
+  if [[ "$restore_runtime_xcconfig" -eq 1 ]]; then
+    DEVBOX_SITE_URL="$previous_site_url"
+    DEVBOX_RN_WS_URL="$previous_ws_url"
+    write_rn_ios_runtime_xcconfig
+  fi
 
   log "archive complete: $archive_path"
   log "ipa exported: $ipa_file"
