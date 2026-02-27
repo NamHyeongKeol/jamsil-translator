@@ -73,6 +73,8 @@ type NativeAuthPendingResponse =
       message: string;
     };
 
+type AuthPanelStep = "provider" | "terms";
+
 type MingleWindowWithNativeAuthCache = Window & {
   __MINGLE_LAST_NATIVE_AUTH_EVENT?: NativeAuthBridgeEvent;
 };
@@ -160,6 +162,11 @@ export default function MingleHome(props: MingleHomeProps) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [signingInProvider, setSigningInProvider] =
     useState<NativeAuthProvider | null>(null);
+  const [authPanelStep, setAuthPanelStep] = useState<AuthPanelStep>("provider");
+  const [selectedProvider, setSelectedProvider] =
+    useState<NativeAuthProvider | null>(null);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const pendingNativeProviderRef = useRef<NativeAuthProvider | null>(null);
   const lastHandledBridgeTokenRef = useRef("");
@@ -175,6 +182,7 @@ export default function MingleHome(props: MingleHomeProps) {
     () => `/${props.locale}/translator`,
     [props.locale],
   );
+  const hasAgreedAllRequiredTerms = agreedPrivacy && agreedTerms;
 
   const clearNativeAuthTimeout = useCallback(() => {
     if (nativeAuthTimeoutRef.current) {
@@ -292,6 +300,10 @@ export default function MingleHome(props: MingleHomeProps) {
       clearNativeAuthPoller();
       setIsSigningIn(false);
       setSigningInProvider(null);
+      setAuthPanelStep("provider");
+      setSelectedProvider(null);
+      setAgreedPrivacy(false);
+      setAgreedTerms(false);
       pendingNativeRequestIdRef.current = null;
       pendingNativeProviderRef.current = null;
     }
@@ -461,6 +473,37 @@ export default function MingleHome(props: MingleHomeProps) {
     ],
   );
 
+  const handleProviderSelect = useCallback(
+    (provider: NativeAuthProvider) => {
+      if (isSigningIn) return;
+      setSelectedProvider(provider);
+      setAgreedPrivacy(false);
+      setAgreedTerms(false);
+      setAuthPanelStep("terms");
+    },
+    [isSigningIn],
+  );
+
+  const handleBackToProviderSelect = useCallback(() => {
+    if (isSigningIn) return;
+    setAuthPanelStep("provider");
+    setSelectedProvider(null);
+    setAgreedPrivacy(false);
+    setAgreedTerms(false);
+  }, [isSigningIn]);
+
+  const handleAgreeAllRequiredTerms = useCallback(() => {
+    const next = !hasAgreedAllRequiredTerms;
+    setAgreedPrivacy(next);
+    setAgreedTerms(next);
+  }, [hasAgreedAllRequiredTerms]);
+
+  const handleAgreeAndStart = useCallback(() => {
+    if (!selectedProvider) return;
+    if (!hasAgreedAllRequiredTerms) return;
+    handleSocialSignIn(selectedProvider);
+  }, [handleSocialSignIn, hasAgreedAllRequiredTerms, selectedProvider]);
+
   useEffect(() => {
     return () => {
       clearNativeAuthPoller();
@@ -506,7 +549,7 @@ export default function MingleHome(props: MingleHomeProps) {
   // — 패널은 항상 렌더, 내부 콘텐츠만 전환 (툭 튀어나오는 pop-in 방지)
   if (status === "loading" || status !== "authenticated") {
     const isLoading = status === "loading";
-    const disabled = isSigningIn;
+    const disabled = isSigningIn || isLoading;
 
     return (
       // ① main bg = 다크 (#1C1C1E) → 가장자리 흰색 제거
@@ -536,7 +579,7 @@ export default function MingleHome(props: MingleHomeProps) {
         {/* ③ 하단 다크 패널 — 항상 렌더, 내용만 조건부 */}
         <section
           aria-busy={isLoading || disabled}
-          className="rounded-t-[2rem] bg-[#1C1C1E] px-6 pb-12 pt-8"
+          className="rounded-t-[2rem] bg-[#1C1C1E] px-6 pb-[calc(3rem+env(safe-area-inset-bottom))] pt-8"
         >
           {isLoading ? (
             /* 로딩 중 — 스피너만 */
@@ -545,69 +588,148 @@ export default function MingleHome(props: MingleHomeProps) {
               <span>{props.dictionary.profile.loginLoading}</span>
             </div>
           ) : (
-            /* 버튼 영역 */
+            /* 버튼/약관 패널 슬라이드 영역 */
             <div
-              className="space-y-3"
+              className="overflow-hidden"
               style={{ animation: "fade-in 0.25s ease both" }}
             >
-              {/* ④ Apple 버튼 — 아이콘/텍스트 크게 */}
-              <button
-                type="button"
-                aria-label={
-                  signingInProvider === "apple"
-                    ? props.dictionary.profile.loginLoading
-                    : props.dictionary.profile.loginApple
-                }
-                onClick={() => handleSocialSignIn("apple")}
-                disabled={!props.appleOAuthEnabled || disabled}
-                className="relative inline-flex w-full items-center justify-center rounded-2xl bg-black py-[1.05rem] text-base font-semibold text-white transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              <div
+                className={`flex w-[200%] transition-transform duration-300 ease-out ${
+                  authPanelStep === "terms" ? "-translate-x-1/2" : "translate-x-0"
+                }`}
               >
-                <span className="absolute left-5">
-                  <AppleMark />
-                </span>
-                {signingInProvider === "apple" ? (
-                  <Loader2 size={18} className="animate-spin" aria-hidden />
-                ) : (
-                  props.dictionary.profile.loginApple
-                )}
-              </button>
+                <div className="w-1/2 shrink-0">
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      aria-label={
+                        signingInProvider === "apple"
+                          ? props.dictionary.profile.loginLoading
+                          : props.dictionary.profile.loginApple
+                      }
+                      onClick={() => handleProviderSelect("apple")}
+                      disabled={!props.appleOAuthEnabled || disabled}
+                      className="relative inline-flex w-full items-center justify-center rounded-2xl bg-black py-[1.05rem] text-base font-semibold text-white transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="absolute left-5">
+                        <AppleMark />
+                      </span>
+                      {props.dictionary.profile.loginApple}
+                    </button>
 
-              {/* ④ Google 버튼 — 아이콘/텍스트 크게 */}
-              <button
-                type="button"
-                aria-label={
-                  signingInProvider === "google"
-                    ? props.dictionary.profile.loginLoading
-                    : props.dictionary.profile.loginGoogle
-                }
-                onClick={() => handleSocialSignIn("google")}
-                disabled={!props.googleOAuthEnabled || disabled}
-                className="relative inline-flex w-full items-center justify-center rounded-2xl bg-white py-[1.05rem] text-base font-semibold text-slate-800 transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span className="absolute left-5">
-                  <GoogleMark />
-                </span>
-                {signingInProvider === "google" ? (
-                  <Loader2
-                    size={18}
-                    className="animate-spin text-slate-400"
-                    aria-hidden
-                  />
-                ) : (
-                  props.dictionary.profile.loginGoogle
-                )}
-              </button>
+                    <button
+                      type="button"
+                      aria-label={
+                        signingInProvider === "google"
+                          ? props.dictionary.profile.loginLoading
+                          : props.dictionary.profile.loginGoogle
+                      }
+                      onClick={() => handleProviderSelect("google")}
+                      disabled={!props.googleOAuthEnabled || disabled}
+                      className="relative inline-flex w-full items-center justify-center rounded-2xl bg-white py-[1.05rem] text-base font-semibold text-slate-800 transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="absolute left-5">
+                        <GoogleMark />
+                      </span>
+                      {props.dictionary.profile.loginGoogle}
+                    </button>
 
-              {!props.appleOAuthEnabled ? (
-                <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
-                  {props.dictionary.profile.appleNotConfigured}
-                </p>
-              ) : null}
-              {!props.googleOAuthEnabled ? (
-                <p className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
-                  {props.dictionary.profile.googleNotConfigured}
-                </p>
-              ) : null}
+                    {!props.appleOAuthEnabled ? (
+                      <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
+                        {props.dictionary.profile.appleNotConfigured}
+                      </p>
+                    ) : null}
+                    {!props.googleOAuthEnabled ? (
+                      <p className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
+                        {props.dictionary.profile.googleNotConfigured}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="w-1/2 shrink-0 pl-4">
+                  <div className="space-y-4 text-white">
+                    <h2 className="text-[2rem] font-semibold leading-tight">
+                      Service Terms
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={handleAgreeAllRequiredTerms}
+                      disabled={disabled}
+                      className="flex w-full items-center gap-3 rounded-2xl bg-white/8 px-4 py-3 text-left text-base font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-sm ${
+                          hasAgreedAllRequiredTerms
+                            ? "border-rose-400 bg-rose-500 text-white"
+                            : "border-white/25 text-transparent"
+                        }`}
+                      >
+                        ✓
+                      </span>
+                      Agree to all
+                    </button>
+
+                    <div className="space-y-1">
+                      <label className="flex cursor-pointer items-center gap-3 px-1 py-2 text-lg text-white/90">
+                        <input
+                          type="checkbox"
+                          checked={agreedPrivacy}
+                          onChange={(event) => setAgreedPrivacy(event.target.checked)}
+                          disabled={disabled}
+                          className="h-5 w-5 accent-rose-500"
+                        />
+                        <a
+                          href="/legal/en/privacy-policy.html"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 underline underline-offset-4"
+                        >
+                          Privacy Policy (Required)
+                        </a>
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-3 px-1 py-2 text-lg text-white/90">
+                        <input
+                          type="checkbox"
+                          checked={agreedTerms}
+                          onChange={(event) => setAgreedTerms(event.target.checked)}
+                          disabled={disabled}
+                          className="h-5 w-5 accent-rose-500"
+                        />
+                        <a
+                          href="/legal/en/terms-of-use.html"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 underline underline-offset-4"
+                        >
+                          Terms of Use (Required)
+                        </a>
+                      </label>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAgreeAndStart}
+                      disabled={!selectedProvider || !hasAgreedAllRequiredTerms || disabled}
+                      className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-white/20 py-4 text-[1.9rem] font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+                    >
+                      {isSigningIn ? (
+                        <Loader2 size={22} className="animate-spin" aria-hidden />
+                      ) : (
+                        "Agree and continue"
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBackToProviderSelect}
+                      disabled={disabled}
+                      className="inline-flex w-full items-center justify-center py-2 text-center text-lg text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Sign in with another method
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </section>
