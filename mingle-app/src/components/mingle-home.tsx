@@ -123,7 +123,7 @@ function createNativeAuthRequestId(): string {
 
 function AppleMark() {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-8 w-8" aria-hidden>
       <path
         fill="currentColor"
         d="M16.52 12.6c.02 2.1 1.85 2.8 1.87 2.81-.02.05-.29 1-.96 1.98-.58.86-1.2 1.72-2.15 1.74-.92.02-1.22-.55-2.28-.55-1.07 0-1.4.53-2.26.57-.92.03-1.62-.93-2.2-1.78-1.2-1.73-2.1-4.9-.88-7.02.6-1.05 1.66-1.72 2.81-1.74.88-.02 1.71.6 2.28.6.57 0 1.62-.74 2.73-.63.47.02 1.8.19 2.65 1.43-.07.04-1.58.92-1.57 2.59Zm-2.16-5.04c.48-.58.8-1.39.71-2.2-.69.03-1.53.46-2.03 1.04-.44.5-.82 1.32-.72 2.1.77.06 1.56-.39 2.04-.94Z"
@@ -510,7 +510,10 @@ export default function MingleHome(props: MingleHomeProps) {
 
     return (
       // ① main bg = 다크 (#1C1C1E) → 가장자리 흰색 제거
-      <main className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#1C1C1E]">
+      <main
+        className="flex h-full min-h-0 w-full flex-col overflow-hidden"
+        style={{ background: "linear-gradient(160deg, #FBBC32 0%, #F97316 100%)" }}
+      >
         <style>{`@keyframes fade-in {
             from { opacity: 0; }
             to   { opacity: 1; }
@@ -523,14 +526,8 @@ export default function MingleHome(props: MingleHomeProps) {
             : ""}
         </div>
 
-        {/* ② 상단 그라디언트 + 실제 앱 아이콘 */}
-        <div
-          className="flex flex-1 items-center justify-center"
-          style={{
-            background: "linear-gradient(160deg, #FBBC32 0%, #F97316 100%)",
-          }}
-        >
-          {/* 상단탭과 동일한 Mingle 텍스트 로고, 색만 어두운 톤으로 */}
+        {/* 상단 Mingle 텍스트 로고 영역 */}
+        <div className="flex flex-1 items-center justify-center">
           <span className="text-[3.2rem] font-extrabold leading-[1.08] text-[#2D2A1E]">
             Mingle
           </span>
