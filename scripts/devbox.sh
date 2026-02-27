@@ -109,6 +109,7 @@ Usage:
   scripts/devbox ios-rn-ipa-prod [ios-rn-ipa options...]
   scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod]
   scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--device-app-env dev|prod] [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox down
   scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
   scripts/devbox status
 
@@ -124,6 +125,7 @@ Commands:
   ios-rn-ipa-prod Same as ios-rn-ipa, defaulting to --device-app-env prod.
   mobile       Build/install RN/native iOS and Android apps (device/simulator).
   up           Start STT + Next app together (device profile includes ngrok).
+  down         Stop devbox runtime processes (web/stt/metro/ngrok) for this repo.
   test         Run mingle-app live tests and/or mingle-ios native test build.
   status       Print current endpoints for PC/iOS/Android web and app targets.
 
@@ -1533,7 +1535,7 @@ detect_ios_coredevice_id() {
   command -v xcrun >/dev/null 2>&1 || return 1
   xcrun devicectl list devices 2>/dev/null | awk '
       /connected|available \(paired\)/ {
-        if (match($0, /[0-9A-F-]{36}/)) {
+        if (match($0, /[0-9A-F-]{20,40}/)) {
           id = substr($0, RSTART, RLENGTH)
           if ($0 ~ / connected/) {
             print id
@@ -1588,7 +1590,7 @@ detect_ios_xcode_destination_udid() {
     {
       line = $0
       if (line ~ /MacBook|^Mac /) next
-      if (match(line, /\([0-9A-F-]{36}\)/)) {
+      if (match(line, /\([0-9A-F-]{20,40}\)[[:space:]]*$/)) {
         id = substr(line, RSTART + 1, RLENGTH - 2)
         print id
         exit
@@ -1604,7 +1606,7 @@ detect_ios_device_udid() {
   coredevice_id="$(
     xcrun devicectl list devices 2>/dev/null | awk '
       /connected|available \(paired\)/ {
-        if (match($0, /[0-9A-F-]{36}/)) {
+        if (match($0, /[0-9A-F-]{20,40}/)) {
           id = substr($0, RSTART, RLENGTH)
           if ($0 ~ / connected/) {
             print id
@@ -2481,6 +2483,103 @@ cleanup_processes() {
   for pid in "$@"; do
     terminate_process_tree "$pid"
   done
+}
+
+collect_listening_pids_by_port() {
+  local port="$1"
+  local raw=""
+  if ! command -v lsof >/dev/null 2>&1; then
+    return 0
+  fi
+  raw="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)"
+  printf '%s\n' "$raw" | awk 'NF {print $1}' | awk '!seen[$0]++'
+}
+
+collect_pids_by_pattern() {
+  local pattern="$1"
+  local raw=""
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return 0
+  fi
+  raw="$(pgrep -f "$pattern" 2>/dev/null || true)"
+  printf '%s\n' "$raw" | awk 'NF {print $1}' | awk '!seen[$0]++'
+}
+
+force_kill_pids() {
+  local pid
+  for pid in "$@"; do
+    [[ -n "$pid" ]] || continue
+    kill -9 "$pid" >/dev/null 2>&1 || true
+  done
+}
+
+stop_pids_with_grace() {
+  local label="$1"
+  shift
+
+  local -a pids=("$@")
+  local -a alive=("${pids[@]}")
+  local retries=0
+
+  [[ "${#pids[@]}" -gt 0 ]] || return 0
+  log "stopping $label (pids: ${pids[*]})"
+  cleanup_processes "${pids[@]}"
+
+  while [[ "$retries" -lt 10 ]]; do
+    alive=()
+    local pid
+    for pid in "${pids[@]}"; do
+      if kill -0 "$pid" >/dev/null 2>&1; then
+        alive+=("$pid")
+      fi
+    done
+    [[ "${#alive[@]}" -eq 0 ]] && return 0
+    sleep 0.2
+    retries=$((retries + 1))
+  done
+
+  log "force-killing $label (pids: ${alive[*]})"
+  force_kill_pids "${alive[@]}"
+}
+
+stop_listeners_by_port() {
+  local label="$1"
+  local port="$2"
+  local pids_text=""
+  local -a pids=()
+
+  pids_text="$(collect_listening_pids_by_port "$port")"
+  if [[ -z "$pids_text" ]]; then
+    return 0
+  fi
+  while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    pids+=("$pid")
+  done <<< "$pids_text"
+  if [[ "${#pids[@]}" -eq 0 ]]; then
+    return 0
+  fi
+  stop_pids_with_grace "$label(port=$port)" "${pids[@]}"
+}
+
+stop_processes_by_pattern() {
+  local label="$1"
+  local pattern="$2"
+  local pids_text=""
+  local -a pids=()
+
+  pids_text="$(collect_pids_by_pattern "$pattern")"
+  if [[ -z "$pids_text" ]]; then
+    return 0
+  fi
+  while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    pids+=("$pid")
+  done <<< "$pids_text"
+  if [[ "${#pids[@]}" -eq 0 ]]; then
+    return 0
+  fi
+  stop_pids_with_grace "$label" "${pids[@]}"
 }
 
 wait_for_any_child_exit() {
@@ -3388,6 +3487,32 @@ $(ngrok_plan_capacity_hint)"
   return "$exit_code"
 }
 
+cmd_down() {
+  if [[ $# -gt 0 ]]; then
+    die "unknown option for down: $1"
+  fi
+
+  require_devbox_env
+  log "stopping devbox runtime processes for repo: $ROOT_DIR"
+
+  stop_processes_by_pattern "mingle-app next dev" "$ROOT_DIR/mingle-app.*next dev --port"
+  stop_processes_by_pattern "mingle-stt dev server" "$ROOT_DIR/mingle-stt.*stt-server.ts"
+  stop_processes_by_pattern "metro" "$ROOT_DIR/mingle-app.*pnpm --dir rn start --port"
+
+  stop_listeners_by_port "mingle-app next dev" "$DEVBOX_WEB_PORT"
+  stop_listeners_by_port "mingle-stt dev server" "$DEVBOX_STT_PORT"
+  stop_listeners_by_port "metro" "$DEVBOX_METRO_PORT"
+  stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+
+  local next_lock_file="$ROOT_DIR/mingle-app/.next/dev/lock"
+  if [[ -f "$next_lock_file" ]]; then
+    rm -f "$next_lock_file"
+    log "removed stale lock file: $next_lock_file"
+  fi
+
+  log "devbox down complete"
+}
+
 cmd_ios_native_build() {
   local ios_configuration="Debug"
   local ios_coredevice_id=""
@@ -3670,6 +3795,7 @@ main() {
     ios-rn-ipa-prod|ios-build-rn-ipa-prod) cmd_ios_rn_ipa --device-app-env prod "$@" ;;
     mobile) cmd_mobile "$@" ;;
     up) cmd_up "$@" ;;
+    down) cmd_down "$@" ;;
     test|test-live) cmd_test "$@" ;;
     status) cmd_status "$@" ;;
     help|-h|--help) usage ;;

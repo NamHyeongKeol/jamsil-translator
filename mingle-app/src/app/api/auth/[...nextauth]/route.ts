@@ -1,6 +1,7 @@
 import NextAuth from "next-auth/next";
 import type { NextRequest } from "next/server";
-import { authOptions } from "@/lib/auth-options";
+import type { NextAuthOptions } from "next-auth";
+import { getAuthOptions } from "@/lib/auth-options";
 
 type AppRouteContext = {
   params: Promise<{
@@ -33,38 +34,53 @@ function resolveAction(nextauth: string[] | undefined): string {
   return action.trim().toLowerCase();
 }
 
-function resolveRouteAuthOptions(nextauth: string[] | undefined) {
+function resolveRouteAuthOptions(baseAuthOptions: NextAuthOptions, nextauth: string[] | undefined) {
   const action = resolveAction(nextauth);
   if (action !== "signin") {
-    return authOptions;
+    return baseAuthOptions;
   }
 
   // Keep built-in NextAuth sign-in page for OAuth providers only.
-  const oauthOnlyProviders = (authOptions.providers || []).filter((provider) => provider.type !== "credentials");
+  // Force social provider order to Apple -> Google for consistent UX with native app.
+  const oauthOnlyProviders = (baseAuthOptions.providers || [])
+    .filter((provider) => provider.type !== "credentials")
+    .slice()
+    .sort((a, b) => {
+      const rank = (id: string): number => {
+        if (id === "apple") return 0;
+        if (id === "google") return 1;
+        return 10;
+      };
+      return rank(a.id) - rank(b.id);
+    });
   return {
-    ...authOptions,
+    ...baseAuthOptions,
     providers: oauthOnlyProviders,
   };
 }
 
 export async function GET(request: NextRequest, context: AppRouteContext) {
   const params = await context.params;
+  const authOptions = getAuthOptions();
   const action = resolveAction(params?.nextauth);
   const provider = summarizeText(params?.nextauth?.[1] || "-", 48) || "-";
   const callbackUrl = summarizeCallbackUrl(request.nextUrl.searchParams.get("callbackUrl") || "");
+  const error = summarizeText(request.nextUrl.searchParams.get("error") || "-", 64) || "-";
   console.info(
-    `[nextauth] method=GET action=${action || "-"} provider=${provider} callback=${callbackUrl}`,
+    `[nextauth] method=GET action=${action || "-"} provider=${provider} callback=${callbackUrl} error=${error}`,
   );
-  return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(params?.nextauth));
+  return NextAuth(request, { params }, resolveRouteAuthOptions(authOptions, params?.nextauth));
 }
 
 export async function POST(request: NextRequest, context: AppRouteContext) {
   const params = await context.params;
+  const authOptions = getAuthOptions();
   const action = resolveAction(params?.nextauth);
   const provider = summarizeText(params?.nextauth?.[1] || "-", 48) || "-";
   const callbackUrl = summarizeCallbackUrl(request.nextUrl.searchParams.get("callbackUrl") || "");
+  const error = summarizeText(request.nextUrl.searchParams.get("error") || "-", 64) || "-";
   console.info(
-    `[nextauth] method=POST action=${action || "-"} provider=${provider} callback=${callbackUrl}`,
+    `[nextauth] method=POST action=${action || "-"} provider=${provider} callback=${callbackUrl} error=${error}`,
   );
-  return NextAuth(request as any, { params } as any, resolveRouteAuthOptions(params?.nextauth));
+  return NextAuth(request, { params }, resolveRouteAuthOptions(authOptions, params?.nextauth));
 }

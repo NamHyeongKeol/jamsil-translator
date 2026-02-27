@@ -8,10 +8,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model AppUser {
+model User {
   id              String   @id @default(cuid())
   externalUserId  String?  @unique @map("external_user_id")
-  email           String?
+  email           String?  @unique(map: "app_users_email_key")
+  emailVerified   DateTime? @map("email_verified")
+  name            String?
+  image           String?
   latestIpAddress String?  @map("latest_ip_address")
   latestUserAgent String?  @map("latest_user_agent")
   language        String?
@@ -33,8 +36,9 @@ model AppUser {
   messages  AppMessage[]
   eventLogs AppEventLog[]
   versionPoliciesCreated AppClientVersionPolicy[]
+  accounts  Account[]
+  sessions  Session[]
 
-  @@index([email], map: "app_users_email_idx")
   @@index([lastSeenAt], map: "app_users_last_seen_at_idx")
   @@map("app_users")
 }
@@ -57,7 +61,7 @@ model AppMessage {
   createdAt                   DateTime @default(now()) @map("created_at")
   updatedAt                   DateTime @updatedAt @map("updated_at")
 
-  user      AppUser?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user      User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   contents  AppMessageContent[]
   eventLogs AppEventLog[]
 
@@ -107,7 +111,7 @@ model AppEventLog {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  user    AppUser?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user    User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   message AppMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
 
   @@index([eventType], map: "app_event_logs_event_type_idx")
@@ -116,6 +120,63 @@ model AppEventLog {
   @@index([sessionKey], map: "app_event_logs_session_key_idx")
   @@index([messageId], map: "app_event_logs_message_id_idx")
   @@map("app_event_logs")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId], map: "auth_accounts_provider_provider_account_id_key")
+  @@index([userId], map: "auth_accounts_user_id_idx")
+  @@map("auth_accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique(map: "auth_sessions_session_token_key") @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "auth_sessions_user_id_idx")
+  @@map("auth_sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique(map: "auth_verification_tokens_token_key")
+  expires    DateTime
+
+  @@unique([identifier, token], map: "auth_verification_tokens_identifier_token_key")
+  @@map("auth_verification_tokens")
+}
+
+model NativeAuthPendingResult {
+  requestId  String   @id @map("request_id")
+  status     String
+  provider   String?
+  callbackUrl String  @map("callback_url")
+  bridgeToken String? @map("bridge_token")
+  message    String?
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([expiresAt], map: "native_auth_pending_results_expires_at_idx")
+  @@map("native_auth_pending_results")
 }
 
 model AppClientVersion {
@@ -146,7 +207,7 @@ model AppClientVersionPolicy {
   createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
 
-  createdByUser AppUser? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUser User? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([platform, effectiveFrom, createdAt], map: "app_client_version_policies_platform_effective_idx")
   @@index([createdByUserId], map: "app_client_version_policies_created_by_user_id_idx")
