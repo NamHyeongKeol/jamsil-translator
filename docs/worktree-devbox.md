@@ -226,7 +226,7 @@ scripts/devbox bootstrap --vault-push
   - `.devbox.env` 없이도 실행 가능 (권장: `--device-app-env prod` 또는 `--site-url/--ws-url` 명시)
   - URL 조회 우선순위: `--device-app-env/--site-url` > `.devbox.env` > Vault/`.env.local`/쉘 환경변수
   - 기본값: `Release`, `export-method=app-store`
-  - Team ID 우선순위: `--team-id` > `DEVBOX_IOS_TEAM_ID`(셸/.devbox.env) > `rnnative.xcodeproj`의 `DEVELOPMENT_TEAM`
+  - Team ID 우선순위: `--team-id` > `DEVBOX_IOS_TEAM_ID`(셸/.devbox.env) > `mingle.xcodeproj`의 `DEVELOPMENT_TEAM`
   - `--device-app-env prod`로 `secret/mingle-app/prod` URL/WS를 주입
   - `--site-url`, `--ws-url`로 런타임 URL 수동 오버라이드 가능
   - `--archive-path`, `--export-path`, `--export-options-plist` 커스텀 경로 지원

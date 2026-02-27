@@ -307,8 +307,8 @@ VALUES (
 `pnpm rn:ios`는 실행 전에 `NEXT_PUBLIC_API_NAMESPACE=ios/v1.0.0` 검증을 강제합니다.
 
 - iOS native STT bridge lives in:
-  - `rn/ios/rnnative/NativeSTTModule.swift`
-  - `rn/ios/rnnative/NativeSTTModuleBridge.m`
+  - `rn/ios/mingle/NativeSTTModule.swift`
+  - `rn/ios/mingle/NativeSTTModuleBridge.m`
 - RN screen for basic STT verification:
   - `rn/App.tsx`
 

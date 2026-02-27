@@ -61,7 +61,7 @@ NGROK_STT_URL=""
 NGROK_LAST_ERROR=""
 NGROK_LAST_ERROR_KIND=""
 
-# Values loaded/generated via .devbox.env.
+# Values loaded from shell/vault/.env.local (and optionally .devbox.env when present).
 DEVBOX_WORKTREE_NAME=""
 DEVBOX_ROOT_DIR=""
 DEVBOX_WEB_PORT=""
@@ -113,7 +113,7 @@ Usage:
   scripts/devbox status
 
 Commands:
-  init         Generate worktree-specific ports/config/env files.
+  init         Generate worktree-specific ports/config runtime files.
   bootstrap    Read-only for .env.local; install deps and optionally push local env keys to Vault.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
@@ -123,7 +123,7 @@ Commands:
   ios-rn-ipa   Archive/export RN iOS app to .xcarchive/.ipa for App Store/TestFlight.
   ios-rn-ipa-prod Same as ios-rn-ipa, defaulting to --device-app-env prod.
   mobile       Build/install RN/native iOS and Android apps (device/simulator).
-  up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
+  up           Start STT + Next app together (device profile includes ngrok).
   test         Run mingle-app live tests and/or mingle-ios native test build.
   status       Print current endpoints for PC/iOS/Android web and app targets.
 
@@ -137,6 +137,8 @@ Environment:
                            Example: abcdef.ngrok-free.app
   DEVBOX_IOS_TEAM_ID       Optional iOS Team ID used by ios-rn-ipa exportOptions.
                            Example: 3RFBMN8TKZ
+  DEVBOX_PERSIST_ENV_FILE  Optional: set to true/1 to write .devbox.env during init/profile.
+                           Default is stateless (no .devbox.env writes).
 EOF
 }
 
@@ -1100,8 +1102,94 @@ load_devbox_env() {
 }
 
 require_devbox_env() {
-  [[ -f "$DEVBOX_ENV_FILE" ]] || die "missing $DEVBOX_ENV_FILE (run: scripts/devbox init)"
-  load_devbox_env
+  local value=""
+
+  if is_truthy "${DEVBOX_PERSIST_ENV_FILE:-0}" && [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    load_devbox_env
+  fi
+
+  if [[ -z "$DEVBOX_WORKTREE_NAME" ]]; then
+    DEVBOX_WORKTREE_NAME="$(derive_worktree_name)"
+  fi
+
+  if [[ -z "${DEVBOX_VAULT_APP_PATH:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_VAULT_APP_PATH || true)")"
+    [[ -n "$value" ]] && DEVBOX_VAULT_APP_PATH="$value"
+  fi
+  if [[ -z "${DEVBOX_VAULT_STT_PATH:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_VAULT_STT_PATH || true)")"
+    [[ -n "$value" ]] && DEVBOX_VAULT_STT_PATH="$value"
+  fi
+  resolve_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
+
+  if [[ -z "${DEVBOX_OPENCLAW_ROOT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_OPENCLAW_ROOT || true)")"
+    [[ -n "$value" ]] && DEVBOX_OPENCLAW_ROOT="$value"
+  fi
+  if [[ -z "${DEVBOX_OPENCLAW_ROOT:-}" ]]; then
+    DEVBOX_OPENCLAW_ROOT="$(resolve_openclaw_root)"
+  fi
+
+  calc_default_ports
+
+  if [[ -z "${DEVBOX_WEB_PORT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_WEB_PORT || true)")"
+    [[ -n "$value" ]] && DEVBOX_WEB_PORT="$value"
+  fi
+  if [[ -z "${DEVBOX_STT_PORT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_STT_PORT || true)")"
+    [[ -n "$value" ]] && DEVBOX_STT_PORT="$value"
+  fi
+  if [[ -z "${DEVBOX_METRO_PORT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_METRO_PORT || true)")"
+    [[ -n "$value" ]] && DEVBOX_METRO_PORT="$value"
+  fi
+  if [[ -z "${DEVBOX_NGROK_API_PORT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_NGROK_API_PORT || true)")"
+    [[ -n "$value" ]] && DEVBOX_NGROK_API_PORT="$value"
+  fi
+
+  [[ -n "${DEVBOX_WEB_PORT:-}" ]] || DEVBOX_WEB_PORT="$DEFAULT_WEB_PORT"
+  [[ -n "${DEVBOX_STT_PORT:-}" ]] || DEVBOX_STT_PORT="$DEFAULT_STT_PORT"
+  [[ -n "${DEVBOX_METRO_PORT:-}" ]] || DEVBOX_METRO_PORT="$DEFAULT_METRO_PORT"
+
+  if [[ -z "${DEVBOX_PROFILE:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_PROFILE || true)")"
+    [[ -n "$value" ]] && DEVBOX_PROFILE="$value"
+  fi
+  [[ -n "${DEVBOX_PROFILE:-}" ]] || DEVBOX_PROFILE="local"
+
+  if [[ -z "${DEVBOX_LOCAL_HOST:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_LOCAL_HOST || true)")"
+    [[ -n "$value" ]] && DEVBOX_LOCAL_HOST="$value"
+  fi
+  [[ -n "${DEVBOX_LOCAL_HOST:-}" ]] || DEVBOX_LOCAL_HOST="127.0.0.1"
+
+  if [[ -z "${DEVBOX_SITE_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_SITE_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_SITE_URL="$value"
+  fi
+  if [[ -z "${DEVBOX_RN_WS_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_RN_WS_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_RN_WS_URL="$value"
+  fi
+  if [[ -z "${DEVBOX_PUBLIC_WS_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_PUBLIC_WS_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_PUBLIC_WS_URL="$value"
+  fi
+  if [[ -z "${DEVBOX_TEST_API_BASE_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_TEST_API_BASE_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_TEST_API_BASE_URL="$value"
+  fi
+  if [[ -z "${DEVBOX_TEST_WS_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_TEST_WS_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_TEST_WS_URL="$value"
+  fi
+
+  if [[ -z "${DEVBOX_IOS_TEAM_ID:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_IOS_TEAM_ID || true)")"
+    [[ -n "$value" ]] && DEVBOX_IOS_TEAM_ID="$value"
+  fi
 
   : "${DEVBOX_WORKTREE_NAME:?missing DEVBOX_WORKTREE_NAME}"
   : "${DEVBOX_WEB_PORT:?missing DEVBOX_WEB_PORT}"
@@ -1111,6 +1199,25 @@ require_devbox_env() {
     DEVBOX_NGROK_API_PORT="$((DEVBOX_WEB_PORT + 7000))"
   fi
   : "${DEVBOX_PROFILE:?missing DEVBOX_PROFILE}"
+  case "$DEVBOX_PROFILE" in
+    local|device) ;;
+    *) die "invalid DEVBOX_PROFILE: $DEVBOX_PROFILE (expected local|device)" ;;
+  esac
+  if [[ -z "${DEVBOX_SITE_URL:-}" ]]; then
+    DEVBOX_SITE_URL="http://$DEVBOX_LOCAL_HOST:$DEVBOX_WEB_PORT"
+  fi
+  if [[ -z "${DEVBOX_RN_WS_URL:-}" ]]; then
+    DEVBOX_RN_WS_URL="ws://$DEVBOX_LOCAL_HOST:$DEVBOX_STT_PORT"
+  fi
+  if [[ -z "${DEVBOX_PUBLIC_WS_URL:-}" && "$DEVBOX_PROFILE" == "device" ]]; then
+    DEVBOX_PUBLIC_WS_URL="$DEVBOX_RN_WS_URL"
+  fi
+  if [[ -z "${DEVBOX_TEST_API_BASE_URL:-}" ]]; then
+    DEVBOX_TEST_API_BASE_URL="http://127.0.0.1:$DEVBOX_WEB_PORT"
+  fi
+  if [[ -z "${DEVBOX_TEST_WS_URL:-}" ]]; then
+    DEVBOX_TEST_WS_URL="ws://127.0.0.1:$DEVBOX_STT_PORT"
+  fi
   : "${DEVBOX_SITE_URL:?missing DEVBOX_SITE_URL}"
   : "${DEVBOX_RN_WS_URL:?missing DEVBOX_RN_WS_URL}"
   : "${DEVBOX_TEST_API_BASE_URL:?missing DEVBOX_TEST_API_BASE_URL}"
@@ -1443,14 +1550,14 @@ detect_ios_coredevice_id() {
 
 detect_ios_xcode_destination_udid() {
   command -v xcodebuild >/dev/null 2>&1 || return 1
-  local workspace="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace"
+  local workspace="$ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace"
   local destination_udid=""
   [[ -d "$workspace" ]] || return 1
 
   destination_udid="$(
     xcodebuild \
       -workspace "$workspace" \
-      -scheme rnnative \
+      -scheme mingle \
       -showdestinations 2>&1 | awk '
       /platform:iOS/ && /id:/ && /name:/ {
         line = $0
@@ -1525,16 +1632,16 @@ detect_android_device_serial() {
 }
 
 resolve_ios_bundle_id() {
-  local project_file="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcodeproj/project.pbxproj"
+  local project_file="$ROOT_DIR/mingle-app/rn/ios/mingle.xcodeproj/project.pbxproj"
   if [[ -f "$project_file" ]]; then
     awk -F'= ' '/PRODUCT_BUNDLE_IDENTIFIER = /{gsub(/;$/, "", $2); print $2; exit}' "$project_file"
     return 0
   fi
-  printf '%s' "com.rnnative"
+  printf '%s' "com.mingle"
 }
 
 resolve_rn_ios_development_team() {
-  local project_file="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcodeproj/project.pbxproj"
+  local project_file="$ROOT_DIR/mingle-app/rn/ios/mingle.xcodeproj/project.pbxproj"
   if [[ -f "$project_file" ]]; then
     awk -F'= ' '/DEVELOPMENT_TEAM = /{gsub(/;$/, "", $2); print $2; exit}' "$project_file"
     return 0
@@ -1548,7 +1655,7 @@ resolve_android_application_id() {
     awk -F'"' '/applicationId[[:space:]]+"/{print $2; exit}' "$gradle_file"
     return 0
   fi
-  printf '%s' "com.rnnative"
+  printf '%s' "com.mingle"
 }
 
 resolve_ios_simulator_udid_for_uninstall() {
@@ -1641,7 +1748,7 @@ run_ios_mobile_install() {
   ensure_ios_pods_if_needed
 
   local derived_data_path="$ROOT_DIR/.devbox-cache/ios/$DEVBOX_WORKTREE_NAME"
-  local app_path="$derived_data_path/Build/Products/${configuration}-iphoneos/rnnative.app"
+  local app_path="$derived_data_path/Build/Products/${configuration}-iphoneos/mingle.app"
   local bundle_id
   bundle_id="$(resolve_ios_bundle_id)"
 
@@ -1665,8 +1772,8 @@ run_ios_mobile_install() {
     cd "$ROOT_DIR/mingle-app/rn/ios"
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
     xcodebuild \
-      -workspace rnnative.xcworkspace \
-      -scheme rnnative \
+      -workspace mingle.xcworkspace \
+      -scheme mingle \
       -configuration "$configuration" \
       -destination "id=$destination_udid" \
       -derivedDataPath "$derived_data_path" \
@@ -2307,7 +2414,9 @@ resolve_device_app_env_override() {
 }
 
 save_and_refresh() {
-  write_devbox_env
+  if is_truthy "${DEVBOX_PERSIST_ENV_FILE:-0}"; then
+    write_devbox_env
+  fi
   refresh_runtime_files
 }
 
@@ -2387,14 +2496,6 @@ cmd_init() {
   local vault_app_override="" vault_stt_override=""
   local openclaw_root_override=""
 
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    DEVBOX_VAULT_APP_PATH="$(read_env_value_from_file DEVBOX_VAULT_APP_PATH "$DEVBOX_ENV_FILE")"
-    DEVBOX_VAULT_STT_PATH="$(read_env_value_from_file DEVBOX_VAULT_STT_PATH "$DEVBOX_ENV_FILE")"
-    ngrok_api_port="$(read_env_value_from_file DEVBOX_NGROK_API_PORT "$DEVBOX_ENV_FILE")"
-    DEVBOX_OPENCLAW_ROOT="$(read_env_value_from_file DEVBOX_OPENCLAW_ROOT "$DEVBOX_ENV_FILE")"
-    DEVBOX_IOS_TEAM_ID="$(read_env_value_from_file DEVBOX_IOS_TEAM_ID "$DEVBOX_ENV_FILE")"
-  fi
-
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --web-port) web_port="${2:-}"; shift 2 ;;
@@ -2473,9 +2574,7 @@ cmd_bootstrap() {
     esac
   done
 
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    require_devbox_env
-  fi
+  require_devbox_env
 
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
   if [[ -n "$openclaw_root_override" ]]; then
@@ -2494,9 +2593,7 @@ cmd_bootstrap() {
   ensure_workspace_dependencies
   ensure_rn_workspace_dependencies
   ensure_ios_pods_if_needed
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    save_and_refresh
-  fi
+  save_and_refresh
   log "bootstrap complete"
 }
 
@@ -2534,9 +2631,7 @@ cmd_gateway() {
   local -a passthrough=()
   local -a cmd=()
 
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    require_devbox_env
-  fi
+  require_devbox_env
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -2624,8 +2719,8 @@ cmd_ios_rn_ipa() {
   fi
 
   timestamp="$(date '+%Y%m%d-%H%M%S')"
-  archive_path="/tmp/rnnative-${timestamp}.xcarchive"
-  export_path="/tmp/rnnative-ipa-${timestamp}"
+  archive_path="/tmp/mingle-${timestamp}.xcarchive"
+  export_path="/tmp/mingle-ipa-${timestamp}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -2735,9 +2830,9 @@ cmd_ios_rn_ipa() {
     if [[ -n "$export_options_plist" ]]; then
       [[ -f "$export_options_plist" ]] || die "export options plist not found: $export_options_plist"
     elif [[ "$dry_run" -eq 1 ]]; then
-      export_options_plist="/tmp/rnnative-export-options-${timestamp}.plist"
+      export_options_plist="/tmp/mingle-export-options-${timestamp}.plist"
     else
-      temp_export_options_plist="$(mktemp -t rnnative-export-options)"
+      temp_export_options_plist="$(mktemp -t mingle-export-options)"
       cat > "$temp_export_options_plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -2783,7 +2878,7 @@ EOF
 
   if [[ "$dry_run" -eq 1 ]]; then
     cat <<EOF
-xcodebuild -workspace $ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace -scheme rnnative -configuration $ios_configuration -destination generic/platform=iOS -archivePath $archive_path -xcconfig $RN_IOS_RUNTIME_XCCONFIG ${xcode_provisioning_args[*]} archive
+xcodebuild -workspace $ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace -scheme mingle -configuration $ios_configuration -destination generic/platform=iOS -archivePath $archive_path -xcconfig $RN_IOS_RUNTIME_XCCONFIG ${xcode_provisioning_args[*]} archive
 EOF
     if [[ "$skip_export" -eq 0 ]]; then
       cat <<EOF
@@ -2806,8 +2901,8 @@ EOF
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
       xcodebuild \
         "${xcode_provisioning_args[@]}" \
-        -workspace "$ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace" \
-        -scheme rnnative \
+        -workspace "$ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace" \
+        -scheme mingle \
         -configuration "$ios_configuration" \
         -destination "generic/platform=iOS" \
         -archivePath "$archive_path" \
@@ -2850,10 +2945,6 @@ EOF
 }
 
 cmd_mobile() {
-  if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
-    log "missing .devbox.env, running init automatically"
-    cmd_init
-  fi
   require_devbox_env
   require_cmd pnpm
 
@@ -2999,10 +3090,6 @@ cmd_mobile() {
 }
 
 cmd_up() {
-  if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
-    log "missing .devbox.env, running init automatically"
-    cmd_init
-  fi
   require_devbox_env
   require_cmd pnpm
   local vault_app_override=""
@@ -3311,13 +3398,9 @@ cmd_ios_native_build() {
 
   local api_base_url=""
   local ws_url=""
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    require_devbox_env
-    api_base_url="$DEVBOX_SITE_URL"
-    ws_url="$DEVBOX_RN_WS_URL"
-  else
-    log "no $DEVBOX_ENV_FILE found; using mingle-ios xcconfig default URLs"
-  fi
+  require_devbox_env
+  api_base_url="$DEVBOX_SITE_URL"
+  ws_url="$DEVBOX_RN_WS_URL"
 
   run_native_ios_build "$ios_coredevice_id" "$ios_configuration" "$api_base_url" "$ws_url" "$ios_bundle_id"
 }
@@ -3431,6 +3514,7 @@ cmd_status() {
   require_devbox_env
   local ngrok_web_domain="(auto)"
   local detected_ngrok_web_domain=""
+  local devbox_env_note="$DEVBOX_ENV_FILE (optional; write only when DEVBOX_PERSIST_ENV_FILE=true)"
   detected_ngrok_web_domain="$(resolve_ngrok_web_domain || true)"
   if [[ -n "$detected_ngrok_web_domain" ]]; then
     ngrok_web_domain="$detected_ngrok_web_domain"
@@ -3453,10 +3537,10 @@ Live Test   : MINGLE_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL | MINGLE_TEST_W
 Vault App   : ${DEVBOX_VAULT_APP_PATH:-"(unset)"}
 Vault STT   : ${DEVBOX_VAULT_STT_PATH:-"(unset)"}
 OpenClaw    : root=${DEVBOX_OPENCLAW_ROOT:-$(resolve_openclaw_root)}
-iOS Team ID : ${DEVBOX_IOS_TEAM_ID:-"(auto: rnnative.xcodeproj DEVELOPMENT_TEAM)"}
+iOS Team ID : ${DEVBOX_IOS_TEAM_ID:-"(auto: mingle.xcodeproj DEVELOPMENT_TEAM)"}
 
 Files:
-- $DEVBOX_ENV_FILE
+- $devbox_env_note
 - $APP_ENV_FILE
 - $STT_ENV_FILE
 - $NGROK_LOCAL_CONFIG
