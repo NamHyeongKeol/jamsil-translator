@@ -1984,9 +1984,16 @@ is_loopback_http_or_ws_url() {
 
   local without_scheme="${value#*://}"
   local host_port="${without_scheme%%/*}"
-  local host="${host_port%%:*}"
-  host="${host#[}"
-  host="${host%]}"
+  local host=""
+
+  # IPv6 bracketed address: [::1]:port — extract the part inside [ ]
+  if [[ "$host_port" == \[* ]]; then
+    host="${host_port#[}"
+    host="${host%%]*}"
+  else
+    host="${host_port%%:*}"
+  fi
+
   local host_lower=""
   host_lower="$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')"
 
