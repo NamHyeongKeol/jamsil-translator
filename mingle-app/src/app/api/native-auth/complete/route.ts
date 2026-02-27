@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
+import { getAuthOptions } from "@/lib/auth-options";
 import {
   createNativeAuthBridgeToken,
   resolveNativeAuthRequestId,
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(getAuthOptions());
   if (!session?.user) {
     console.warn(`[native-auth/complete] missing session provider=${provider}`);
     if (requestId) {

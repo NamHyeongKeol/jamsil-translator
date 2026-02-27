@@ -28,7 +28,7 @@ vi.mock("next-auth", () => ({
 }));
 
 vi.mock("@/lib/auth-options", () => ({
-  authOptions: {},
+  getAuthOptions: () => ({}),
 }));
 
 vi.mock("@/lib/prisma", () => ({

@@ -4,7 +4,7 @@ import AppleProvider from "next-auth/providers/apple";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { resolveAppleOAuthCredentials } from "@/lib/apple-oauth";
+import { resolveAppleOAuthCredentials, type AppleOAuthCredentials } from "@/lib/apple-oauth";
 import { verifyNativeAuthBridgeToken } from "@/lib/native-auth-bridge";
 import { prisma } from "@/lib/prisma";
 
@@ -129,99 +129,169 @@ async function upsertUserForCredentialsSignIn(args: {
   });
 }
 
-const appleOAuthCredentials = (() => {
+const APPLE_OAUTH_SECRET_REFRESH_SKEW_MS = 5 * 60 * 1000;
+
+type AppleOAuthCredentialsCache = {
+  credentials: AppleOAuthCredentials | null;
+  expiresAtEpochMs: number | null;
+  resolvedAtEpochMs: number;
+};
+
+const appleOAuthCredentialsCache: AppleOAuthCredentialsCache = {
+  credentials: null,
+  expiresAtEpochMs: null,
+  resolvedAtEpochMs: 0,
+};
+
+function parseAppleSecretExpirationEpochMs(secret: string): number | null {
+  const segments = secret.split(".");
+  if (segments.length < 2) return null;
+
+  const payloadSegment = segments[1];
+  const base64 = payloadSegment
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .padEnd(Math.ceil(payloadSegment.length / 4) * 4, "=");
   try {
-    return resolveAppleOAuthCredentials();
+    const decoded = JSON.parse(Buffer.from(base64, "base64").toString("utf8")) as Record<string, unknown>;
+    const exp = decoded.exp;
+    if (typeof exp !== "number" || !Number.isFinite(exp) || exp <= 0) return null;
+    return Math.floor(exp) * 1000;
+  } catch {
+    return null;
+  }
+}
+
+function shouldRefreshAppleCredentials(nowEpochMs: number): boolean {
+  if (!appleOAuthCredentialsCache.resolvedAtEpochMs) return true;
+  if (!appleOAuthCredentialsCache.credentials) return true;
+  if (appleOAuthCredentialsCache.credentials.source === "static_secret") return false;
+
+  const expiresAtEpochMs = appleOAuthCredentialsCache.expiresAtEpochMs;
+  if (!expiresAtEpochMs) return true;
+
+  return nowEpochMs >= (expiresAtEpochMs - APPLE_OAUTH_SECRET_REFRESH_SKEW_MS);
+}
+
+function resolveAppleOAuthCredentialsWithRefresh(): AppleOAuthCredentials | null {
+  const nowEpochMs = Date.now();
+  if (!shouldRefreshAppleCredentials(nowEpochMs)) {
+    return appleOAuthCredentialsCache.credentials;
+  }
+
+  try {
+    const credentials = resolveAppleOAuthCredentials();
+    const expiresAtEpochMs = credentials?.source === "generated_secret"
+      ? parseAppleSecretExpirationEpochMs(credentials.clientSecret)
+      : null;
+
+    appleOAuthCredentialsCache.credentials = credentials;
+    appleOAuthCredentialsCache.expiresAtEpochMs = expiresAtEpochMs;
+    appleOAuthCredentialsCache.resolvedAtEpochMs = nowEpochMs;
+
+    if (credentials?.source === "generated_secret" && !expiresAtEpochMs) {
+      console.warn("[auth-options] unable to parse Apple client secret expiration; refreshing per request.");
+    }
+
+    return credentials;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`[auth-options] failed to configure Apple OAuth: ${message}`);
+    appleOAuthCredentialsCache.credentials = null;
+    appleOAuthCredentialsCache.expiresAtEpochMs = null;
+    appleOAuthCredentialsCache.resolvedAtEpochMs = nowEpochMs;
     return null;
   }
-})();
+}
 const googleClientId = process.env.AUTH_GOOGLE_ID;
 const googleClientSecret = process.env.AUTH_GOOGLE_SECRET;
 const allowEmailAccountLinking = isFeatureEnabled(process.env.AUTH_ALLOW_EMAIL_ACCOUNT_LINKING, true);
 const authDebugEnabled = isFeatureEnabled(process.env.AUTH_DEBUG, process.env.NODE_ENV !== "production");
 
-const providers: NextAuthOptions["providers"] = [
-  CredentialsProvider({
-    id: "native-bridge",
-    name: "Native Bridge",
-    credentials: {
-      token: { label: "Token", type: "text" },
-    },
-    async authorize(credentials) {
-      const token = credentials?.token?.trim();
-      if (!token) return null;
-      const payload = verifyNativeAuthBridgeToken(token);
-      if (!payload) return null;
+function buildProviders(): NextAuthOptions["providers"] {
+  const providers: NextAuthOptions["providers"] = [
+    CredentialsProvider({
+      id: "native-bridge",
+      name: "Native Bridge",
+      credentials: {
+        token: { label: "Token", type: "text" },
+      },
+      async authorize(credentials) {
+        const token = credentials?.token?.trim();
+        if (!token) return null;
+        const payload = verifyNativeAuthBridgeToken(token);
+        if (!payload) return null;
 
-      const user = await upsertUserForCredentialsSignIn({
-        idHint: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        externalUserIdHint: payload.sub,
-      });
+        const user = await upsertUserForCredentialsSignIn({
+          idHint: payload.sub,
+          email: payload.email,
+          name: payload.name,
+          externalUserIdHint: payload.sub,
+        });
 
-      return {
-        id: user.id,
-        name: user.name || "Mingle User",
-        email: user.email || "",
-        externalUserId: user.externalUserId || null,
-      };
-    },
-  }),
-  CredentialsProvider({
-    name: "Demo",
-    credentials: {
-      name: { label: "Name", type: "text" },
-      email: { label: "Email", type: "email" },
-    },
-    async authorize(credentials) {
-      const name = credentials?.name;
-      const email = credentials?.email;
-
-      if (!name || !email) {
-        return null;
-      }
-
-      const user = await upsertUserForCredentialsSignIn({
-        email,
-        name,
-      });
-
-      return {
-        id: user.id,
-        name: user.name || "Mingle User",
-        email: user.email || "",
-        externalUserId: user.externalUserId || null,
-      };
-    },
-  }),
-];
-
-if (appleOAuthCredentials) {
-  providers.unshift(
-    AppleProvider({
-      clientId: appleOAuthCredentials.clientId,
-      clientSecret: appleOAuthCredentials.clientSecret,
-      allowDangerousEmailAccountLinking: allowEmailAccountLinking,
+        return {
+          id: user.id,
+          name: user.name || "Mingle User",
+          email: user.email || "",
+          externalUserId: user.externalUserId || null,
+        };
+      },
     }),
-  );
-}
+    CredentialsProvider({
+      name: "Demo",
+      credentials: {
+        name: { label: "Name", type: "text" },
+        email: { label: "Email", type: "email" },
+      },
+      async authorize(credentials) {
+        const name = credentials?.name;
+        const email = credentials?.email;
 
-if (googleClientId && googleClientSecret) {
-  providers.unshift(
-    GoogleProvider({
-      clientId: googleClientId,
-      clientSecret: googleClientSecret,
-      allowDangerousEmailAccountLinking: allowEmailAccountLinking,
+        if (!name || !email) {
+          return null;
+        }
+
+        const user = await upsertUserForCredentialsSignIn({
+          email,
+          name,
+        });
+
+        return {
+          id: user.id,
+          name: user.name || "Mingle User",
+          email: user.email || "",
+          externalUserId: user.externalUserId || null,
+        };
+      },
     }),
-  );
+  ];
+
+  const appleOAuthCredentials = resolveAppleOAuthCredentialsWithRefresh();
+  if (appleOAuthCredentials) {
+    providers.unshift(
+      AppleProvider({
+        clientId: appleOAuthCredentials.clientId,
+        clientSecret: appleOAuthCredentials.clientSecret,
+        allowDangerousEmailAccountLinking: allowEmailAccountLinking,
+      }),
+    );
+  }
+
+  if (googleClientId && googleClientSecret) {
+    providers.unshift(
+      GoogleProvider({
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
+        allowDangerousEmailAccountLinking: allowEmailAccountLinking,
+      }),
+    );
+  }
+
+  return providers;
 }
 
 export function isAppleOAuthConfigured(): boolean {
-  return Boolean(appleOAuthCredentials);
+  return Boolean(resolveAppleOAuthCredentialsWithRefresh());
 }
 
 export function isGoogleOAuthConfigured(): boolean {
@@ -245,9 +315,8 @@ const oauthTransientCookieOptions = {
   maxAge: 60 * 15,
 };
 
-export const authOptions: NextAuthOptions = {
+const authOptionsBase: Omit<NextAuthOptions, "providers"> = {
   adapter: PrismaAdapter(prisma) as Adapter,
-  providers,
   debug: authDebugEnabled,
   logger: {
     error(code, metadata) {
@@ -343,3 +412,10 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
+
+export function getAuthOptions(): NextAuthOptions {
+  return {
+    ...authOptionsBase,
+    providers: buildProviders(),
+  };
+}
