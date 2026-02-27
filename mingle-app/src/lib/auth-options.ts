@@ -199,12 +199,39 @@ export function isGoogleOAuthConfigured(): boolean {
   return Boolean(googleClientId && googleClientSecret);
 }
 
+const authBaseUrl = (process.env.NEXTAUTH_URL || process.env.AUTH_URL || "").trim();
+const useSecureOauthCookies = authBaseUrl.startsWith("https://");
+const oauthCookieSameSite = (useSecureOauthCookies ? "none" : "lax") as "none" | "lax";
+const oauthCookiePrefix = useSecureOauthCookies ? "__Secure-" : "";
+const oauthTransientCookieOptions = {
+  httpOnly: true,
+  sameSite: oauthCookieSameSite,
+  path: "/",
+  secure: useSecureOauthCookies,
+  maxAge: 60 * 15,
+};
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as Adapter,
   providers,
   session: {
     // Keep JWT session strategy because native credential bridge sign-in relies on it.
     strategy: "jwt",
+  },
+  cookies: {
+    // Apple returns OAuth callback via cross-site POST(form_post), so Lax cookies can be dropped.
+    pkceCodeVerifier: {
+      name: `${oauthCookiePrefix}next-auth.pkce.code_verifier`,
+      options: oauthTransientCookieOptions,
+    },
+    state: {
+      name: `${oauthCookiePrefix}next-auth.state`,
+      options: oauthTransientCookieOptions,
+    },
+    nonce: {
+      name: `${oauthCookiePrefix}next-auth.nonce`,
+      options: oauthTransientCookieOptions,
+    },
   },
   events: {
     async signIn({ user }) {
