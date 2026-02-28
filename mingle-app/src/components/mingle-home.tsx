@@ -853,7 +853,7 @@ export default function MingleHome(props: MingleHomeProps) {
                       type="button"
                       onClick={handleBackToProviderSelect}
                       disabled={disabled}
-                      className="inline-flex w-full items-center justify-center py-1 text-center text-[0.9rem] text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="mt-3 inline-flex w-full items-center justify-center py-1 text-center text-[0.9rem] text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Sign in with another method
                     </button>
