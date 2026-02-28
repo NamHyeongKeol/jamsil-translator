@@ -54,6 +54,7 @@ export const enDictionary: AppDictionary = {
     bio: "A person who loves coffee and meaningful conversations",
     editProfile: "Edit profile",
     shareProfile: "Share profile",
+    shareMingleLive: "Share Mingle Live!",
     authTitle: "Authentication",
     loginRequiredTitle: "Sign-in required",
     loginRequiredDescription: "Please sign in with Apple or Google to use the translator.",

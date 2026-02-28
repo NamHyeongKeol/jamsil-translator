@@ -937,6 +937,7 @@ export default function MingleHome(props: MingleHomeProps) {
         muteTtsLabel={props.dictionary.demo.muteTts}
         unmuteTtsLabel={props.dictionary.demo.unmuteTts}
         menuLabel={props.dictionary.profile.menuLabel}
+        shareMingleLiveLabel={props.dictionary.profile.shareMingleLive}
         logoutLabel={props.dictionary.profile.logout}
         deleteAccountLabel={props.dictionary.profile.deleteAccount}
         onLogout={handleSignOut}

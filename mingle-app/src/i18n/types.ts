@@ -52,6 +52,7 @@ export type AppDictionary = {
     bio: string;
     editProfile: string;
     shareProfile: string;
+    shareMingleLive: string;
     authTitle: string;
     loginRequiredTitle: string;
     loginRequiredDescription: string;

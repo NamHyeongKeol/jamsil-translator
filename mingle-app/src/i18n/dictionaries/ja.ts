@@ -54,6 +54,7 @@ export const jaDictionary: AppDictionary = {
     bio: "コーヒーと深い会話が好きな人",
     editProfile: "プロフィール編集",
     shareProfile: "プロフィール共有",
+    shareMingleLive: "Mingle Liveを共有",
     authTitle: "認証",
     loginRequiredTitle: "ログインが必要です",
     loginRequiredDescription: "翻訳機を使うには Apple または Google でログインしてください。",

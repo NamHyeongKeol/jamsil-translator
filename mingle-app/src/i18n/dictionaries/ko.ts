@@ -54,6 +54,7 @@ export const koDictionary: AppDictionary = {
     bio: "커피와 대화를 좋아하는 사람",
     editProfile: "프로필 변경",
     shareProfile: "프로필 공유",
+    shareMingleLive: "Mingle Live 공유하기",
     authTitle: "인증",
     loginRequiredTitle: "로그인이 필요합니다",
     loginRequiredDescription: "Apple 또는 Google로 로그인하면 번역기를 사용할 수 있습니다.",

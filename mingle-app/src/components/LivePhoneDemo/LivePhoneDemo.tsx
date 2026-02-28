@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight, ChevronDown, Menu, LogOut, Trash2 } from 'lucide-react'
+import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight, ChevronDown, Menu, LogOut, Trash2, Share2 } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
@@ -35,6 +35,8 @@ const SCROLL_UI_HIDE_DELAY_MS = 1000
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 28
 const USER_SCROLL_INTENT_WINDOW_MS = 1400
 const NATIVE_TTS_EVENT_TIMEOUT_MS = 15000
+// Fill in after Mingle Live is published.
+const MINGLE_LIVE_APPSTORE_URL = ''
 
 function isNativeApp(): boolean {
   return typeof window !== 'undefined'
@@ -44,6 +46,30 @@ function isNativeApp(): boolean {
 function isLikelyIOSPlatform(): boolean {
   if (typeof window === 'undefined') return false
   return isLikelyIOSNavigator(window.navigator)
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return
+    } catch {
+      // Fallback to legacy copy command when clipboard permissions are unavailable.
+    }
+  }
+
+  if (typeof document === 'undefined') return
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  textarea.style.pointerEvents = 'none'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -135,6 +161,7 @@ interface LivePhoneDemoProps {
   muteTtsLabel: string
   unmuteTtsLabel: string
   menuLabel: string
+  shareMingleLiveLabel: string
   logoutLabel: string
   deleteAccountLabel: string
   onLogout: () => void
@@ -211,6 +238,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   muteTtsLabel,
   unmuteTtsLabel,
   menuLabel,
+  shareMingleLiveLabel,
   logoutLabel,
   deleteAccountLabel,
   onLogout,
@@ -256,6 +284,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     isNativeApp: isNativeApp(),
     isNativeUiBridgeEnabled,
   }))
+  const handleShareMingleLive = useCallback(() => {
+    void copyTextToClipboard(MINGLE_LIVE_APPSTORE_URL)
+  }, [])
 
 
   // Persist selected languages
@@ -1209,6 +1240,17 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   ref={menuPanelRef}
                   className={`absolute right-0 top-full z-50 mt-1 w-44 border border-gray-200 p-0 ${navSurfaceClassName}`}
                 >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      handleShareMingleLive()
+                    }}
+                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
+                  >
+                    <Share2 size={15} strokeWidth={2} />
+                    <span>{shareMingleLiveLabel}</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
