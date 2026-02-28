@@ -9,6 +9,8 @@
   - `final/ipad-13`
   - `preview`
 - `upload/<locale>/`: files prepared for `scripts/ios-appstore-upload.sh`
+- `copy/`: localized screenshot text source
+  - `screenshot-copy.i18n.md` (15 locales, 8 shots)
 
 ## Default behavior
 
