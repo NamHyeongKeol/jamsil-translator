@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import type { AppDictionary } from "@/i18n/types";
@@ -78,6 +78,7 @@ type NativeAuthPendingResponse =
 
 type AuthPanelStep = "provider" | "terms";
 type LegalSheetKind = "privacy" | "terms";
+const LEGAL_SHEET_EXIT_MS = 240;
 
 type MingleWindowWithNativeAuthCache = Window & {
   __MINGLE_LAST_NATIVE_AUTH_EVENT?: NativeAuthBridgeEvent;
@@ -174,11 +175,15 @@ export default function MingleHome(props: MingleHomeProps) {
   const [legalSheetKind, setLegalSheetKind] = useState<LegalSheetKind | null>(
     null,
   );
+  const [isLegalSheetClosing, setIsLegalSheetClosing] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const pendingNativeProviderRef = useRef<NativeAuthProvider | null>(null);
   const lastHandledBridgeTokenRef = useRef("");
   const pendingNativeRequestIdRef = useRef<string | null>(null);
   const nativeAuthPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+  const legalSheetCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
   const nativeAuthPollInFlightRef = useRef(false);
@@ -212,6 +217,12 @@ export default function MingleHome(props: MingleHomeProps) {
     : legalSheetKind === "terms"
       ? "Terms of Use"
       : "";
+  const clearLegalSheetCloseTimer = useCallback(() => {
+    if (legalSheetCloseTimerRef.current) {
+      clearTimeout(legalSheetCloseTimerRef.current);
+      legalSheetCloseTimerRef.current = null;
+    }
+  }, []);
 
   const clearNativeAuthTimeout = useCallback(() => {
     if (nativeAuthTimeoutRef.current) {
@@ -540,12 +551,21 @@ export default function MingleHome(props: MingleHomeProps) {
   }, [hasAgreedAllRequiredTerms]);
 
   const handleOpenLegalSheet = useCallback((kind: LegalSheetKind) => {
+    clearLegalSheetCloseTimer();
+    setIsLegalSheetClosing(false);
     setLegalSheetKind(kind);
-  }, []);
+  }, [clearLegalSheetCloseTimer]);
 
   const handleCloseLegalSheet = useCallback(() => {
-    setLegalSheetKind(null);
-  }, []);
+    if (!legalSheetKind || isLegalSheetClosing) return;
+    setIsLegalSheetClosing(true);
+    clearLegalSheetCloseTimer();
+    legalSheetCloseTimerRef.current = setTimeout(() => {
+      setLegalSheetKind(null);
+      setIsLegalSheetClosing(false);
+      legalSheetCloseTimerRef.current = null;
+    }, LEGAL_SHEET_EXIT_MS);
+  }, [clearLegalSheetCloseTimer, isLegalSheetClosing, legalSheetKind]);
 
   const handleAgreeAndStart = useCallback(() => {
     if (!selectedProvider) return;
@@ -557,9 +577,10 @@ export default function MingleHome(props: MingleHomeProps) {
     return () => {
       clearNativeAuthPoller();
       clearNativeAuthTimeout();
+      clearLegalSheetCloseTimer();
       pendingNativeRequestIdRef.current = null;
     };
-  }, [clearNativeAuthPoller, clearNativeAuthTimeout]);
+  }, [clearLegalSheetCloseTimer, clearNativeAuthPoller, clearNativeAuthTimeout]);
 
   const handleSignOut = useCallback(() => {
     if (isDeletingAccount) return;
@@ -614,9 +635,17 @@ export default function MingleHome(props: MingleHomeProps) {
             from { opacity: 0; }
             to   { opacity: 1; }
           }
+          @keyframes legal-overlay-out {
+            from { opacity: 1; }
+            to   { opacity: 0; }
+          }
           @keyframes legal-sheet-in {
             from { transform: translateY(100%); }
             to   { transform: translateY(0); }
+          }
+          @keyframes legal-sheet-out {
+            from { transform: translateY(0); }
+            to   { transform: translateY(100%); }
           }`}</style>
 
         {/* 스크린리더 로딩 상태 공지 */}
@@ -791,7 +820,11 @@ export default function MingleHome(props: MingleHomeProps) {
         {legalSheetKind ? (
           <div
             className="absolute inset-0 z-40 flex items-end bg-black/55"
-            style={{ animation: "legal-overlay-in 0.2s ease both" }}
+            style={{
+              animation: isLegalSheetClosing
+                ? "legal-overlay-out 0.22s ease both"
+                : "legal-overlay-in 0.2s ease both",
+            }}
             onClick={handleCloseLegalSheet}
           >
             <section
@@ -800,27 +833,24 @@ export default function MingleHome(props: MingleHomeProps) {
               aria-label={legalSheetTitle}
               onClick={(event) => event.stopPropagation()}
               className="w-full overflow-hidden rounded-t-[1.1rem] bg-[#111214] pb-[env(safe-area-inset-bottom)]"
-              style={{ animation: "legal-sheet-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both" }}
+              style={{
+                animation: isLegalSheetClosing
+                  ? "legal-sheet-out 0.24s cubic-bezier(0.4, 0, 0.2, 1) both"
+                  : "legal-sheet-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both",
+              }}
             >
-              <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+              <div className="relative flex items-center justify-center border-b border-white/10 px-4 py-4">
                 <button
                   type="button"
                   onClick={handleCloseLegalSheet}
-                  className="text-[0.9rem] font-medium text-white/75"
+                  aria-label="Close legal sheet"
+                  className="absolute left-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white/90 transition hover:bg-white/20"
                 >
-                  Back
+                  <X size={24} strokeWidth={2.35} />
                 </button>
                 <p className="text-[0.9rem] font-semibold text-white/90">
                   {legalSheetTitle}
                 </p>
-                <a
-                  href={legalSheetUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[0.82rem] text-white/65 underline underline-offset-4"
-                >
-                  Open
-                </a>
               </div>
               <iframe
                 title={legalSheetTitle}
