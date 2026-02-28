@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AppState,
   Alert,
   Linking,
   NativeModules,
@@ -450,12 +449,17 @@ type NativeAuthAckCommand = {
   };
 };
 
+type NativeAuthResetCommand = {
+  type: 'native_auth_reset';
+};
+
 type WebViewCommand =
   | NativeSttCommand
   | NativeTtsCommand
   | NativeSttAecCommand
   | NativeAuthStartCommand
-  | NativeAuthAckCommand;
+  | NativeAuthAckCommand
+  | NativeAuthResetCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -1028,6 +1032,21 @@ function App(): React.JSX.Element {
       clearAuthDispatchRetryTimer();
       if (__DEV__) {
         console.log(`[Web→NativeAuth] ack provider=${provider} outcome=${outcome ?? 'unknown'}`);
+      }
+      return;
+    }
+
+    if (parsed.type === 'native_auth_reset') {
+      // 웹이 로그아웃/세션 만료 시 전송하는 리셋 명령.
+      // 이전 세션의 auth 결과(pendingAuthEventRef)와 retry 타이머를 클리어해서
+      // 이전 로그인의 에러/성공 이벤트가 재전송되지 않도록 함.
+      if (nativeAuthInFlightRef.current === null) {
+        pendingAuthEventRef.current = null;
+        authDispatchRetryCountRef.current = 0;
+        clearAuthDispatchRetryTimer();
+        if (__DEV__) {
+          console.log('[Web→NativeAuth] reset: cleared pending auth state');
+        }
       }
       return;
     }
