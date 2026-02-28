@@ -56,6 +56,9 @@ type NativeAuthAckCommand = {
     bridgeToken?: string;
   };
 };
+type NativeAuthResetCommand = {
+  type: "native_auth_reset";
+};
 type NativeAuthPendingResponse =
   | {
       status: "pending";
@@ -101,6 +104,29 @@ function postNativeAuthAck(detail: NativeAuthBridgeEvent): void {
       outcome: detail.type,
       bridgeToken: detail.type === "success" ? detail.bridgeToken : undefined,
     },
+  };
+
+  try {
+    window.ReactNativeWebView?.postMessage(JSON.stringify(command));
+  } catch {
+    // no-op
+  }
+}
+
+// polling 경로에서 provider/outcome만으로 RN에 ACK를 전송하는 헬퍼.
+// polling 성공 시 postNativeAuthAck를 호출하지 않으면 RN의 pendingAuthEventRef가
+// 유지되어 scheduleAuthDispatchRetry가 재로그인 타이밍에 stale 이벤트를 쏘는 버그 발생.
+function postNativeAuthAckForPolling(
+  provider: NativeAuthProvider,
+  outcome: "success" | "error",
+  bridgeToken?: string,
+): void {
+  if (typeof window === "undefined") return;
+  if (!isNativeAuthBridgeEnabled()) return;
+
+  const command: NativeAuthAckCommand = {
+    type: "native_auth_ack",
+    payload: { provider, outcome, bridgeToken },
   };
 
   try {
@@ -213,6 +239,8 @@ export default function MingleHome(props: MingleHomeProps) {
       pendingNativeProviderRef.current = null;
 
       if (payload.status === "error") {
+        // polling 경로 에러: RN에 ACK 전송하여 pendingAuthEventRef 클리어.
+        postNativeAuthAckForPolling(provider, "error");
         setIsSigningIn(false);
         setSigningInProvider(null);
         const normalizedMessage = (payload.message || "").trim().toLowerCase();
@@ -234,9 +262,14 @@ export default function MingleHome(props: MingleHomeProps) {
         return;
       }
       if (bridgeToken === lastHandledBridgeTokenRef.current) {
+        // 이미 bridge 경로에서 처리된 토큰 — 중복 signIn 방지.
+        // ACK는 반드시 전송해야 RN의 pendingAuthEventRef가 클리어됨.
+        postNativeAuthAckForPolling(provider, "success", bridgeToken);
         return;
       }
       lastHandledBridgeTokenRef.current = bridgeToken;
+      // polling 경로 성공: RN에 ACK 전송.
+      postNativeAuthAckForPolling(provider, "success", bridgeToken);
 
       const nextCallbackUrl = (payload.callbackUrl || "").trim() || callbackUrl;
       void signIn("native-bridge", {
@@ -294,6 +327,17 @@ export default function MingleHome(props: MingleHomeProps) {
       setSigningInProvider(null);
       pendingNativeRequestIdRef.current = null;
       pendingNativeProviderRef.current = null;
+      // RN 레이어에 auth 상태 리셋 명령 전송.
+      // 로그아웃/세션 만료 시 RN의 pendingAuthEventRef와 retry 타이머를
+      // 클리어해서 이전 세션의 auth 이벤트가 재전송되지 않도록 함.
+      if (isNativeAuthBridgeEnabled()) {
+        try {
+          const resetCommand: NativeAuthResetCommand = { type: "native_auth_reset" };
+          window.ReactNativeWebView?.postMessage(JSON.stringify(resetCommand));
+        } catch {
+          // no-op
+        }
+      }
     }
   }, [clearNativeAuthPoller, clearNativeAuthTimeout, status]);
 
@@ -353,6 +397,8 @@ export default function MingleHome(props: MingleHomeProps) {
         return;
       }
       if (bridgeToken === lastHandledBridgeTokenRef.current) {
+        // 이미 polling 경로에서 처리된 토큰 — ACK만 전송하고 중복 signIn 방지.
+        postNativeAuthAck(detail);
         return;
       }
       lastHandledBridgeTokenRef.current = bridgeToken;

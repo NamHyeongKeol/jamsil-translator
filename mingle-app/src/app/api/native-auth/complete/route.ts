@@ -25,6 +25,7 @@ function buildAppRedirect(params: {
   callbackUrl?: string;
   token?: string;
   message?: string;
+  requestId?: string;
 }): URL {
   const redirectUrl = new URL(APP_AUTH_CALLBACK_URL);
   redirectUrl.searchParams.set("status", params.status);
@@ -40,6 +41,9 @@ function buildAppRedirect(params: {
   if (params.message) {
     redirectUrl.searchParams.set("message", params.message);
   }
+  if (params.requestId) {
+    redirectUrl.searchParams.set("requestId", params.requestId);
+  }
   return redirectUrl;
 }
 
@@ -49,6 +53,7 @@ function redirectToApp(params: {
   callbackUrl?: string;
   token?: string;
   message?: string;
+  requestId?: string;
 }): NextResponse {
   const redirectUrl = buildAppRedirect(params).toString();
   // Some iOS browsers can keep a blank tab after custom-scheme redirects.
@@ -139,6 +144,7 @@ export async function GET(request: NextRequest) {
       status: "error",
       callbackUrl,
       message: "invalid_provider",
+      requestId: requestId ?? undefined,
     });
   }
 
@@ -158,6 +164,7 @@ export async function GET(request: NextRequest) {
       provider,
       callbackUrl,
       message: "native_auth_session_missing",
+      requestId: requestId ?? undefined,
     });
   }
 
@@ -190,6 +197,7 @@ export async function GET(request: NextRequest) {
       provider,
       callbackUrl,
       message: "native_auth_bridge_token_failed",
+      requestId: requestId ?? undefined,
     });
   }
 
@@ -210,5 +218,6 @@ export async function GET(request: NextRequest) {
     provider,
     callbackUrl,
     token: bridgeToken,
+    requestId: requestId ?? undefined,
   });
 }

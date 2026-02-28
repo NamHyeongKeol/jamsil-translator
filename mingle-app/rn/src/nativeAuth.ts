@@ -10,6 +10,7 @@ export type NativeAuthSessionResult = {
 
 type NativeAuthCallbackSuccess = NativeAuthSessionResult & {
   status: 'success';
+  requestId: string | null;
 };
 
 type NativeAuthCallbackError = {
@@ -17,6 +18,7 @@ type NativeAuthCallbackError = {
   provider: NativeAuthProvider;
   callbackUrl: string;
   message: string;
+  requestId: string | null;
 };
 
 export type NativeAuthCallbackPayload = NativeAuthCallbackSuccess | NativeAuthCallbackError;
@@ -25,6 +27,7 @@ const AUTH_CALLBACK_SCHEME = 'mingleauth:';
 const AUTH_CALLBACK_HOST = 'auth';
 const DEFAULT_CALLBACK_URL = '/';
 const DEFAULT_TIMEOUT_MS = 180_000;
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{12,128}$/;
 
 function resolveSafeCallbackUrl(rawValue: string): string {
   const trimmed = rawValue.trim();
@@ -42,6 +45,12 @@ function resolveProvider(rawValue: string): NativeAuthProvider | null {
   return null;
 }
 
+function resolveRequestId(rawValue: string): string | null {
+  const trimmed = rawValue.trim();
+  if (!REQUEST_ID_PATTERN.test(trimmed)) return null;
+  return trimmed;
+}
+
 export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPayload | null {
   try {
     const parsed = new URL(url);
@@ -52,6 +61,7 @@ export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPaylo
     if (!provider) return null;
 
     const callbackUrl = resolveSafeCallbackUrl(parsed.searchParams.get('callbackUrl') || DEFAULT_CALLBACK_URL);
+    const requestId = resolveRequestId(parsed.searchParams.get('requestId') || '');
     const status = (parsed.searchParams.get('status') || '').trim().toLowerCase();
 
     if (status === 'success') {
@@ -62,6 +72,7 @@ export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPaylo
           provider,
           callbackUrl,
           message: 'native_auth_missing_bridge_token',
+          requestId,
         };
       }
       return {
@@ -69,6 +80,7 @@ export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPaylo
         provider,
         callbackUrl,
         bridgeToken,
+        requestId,
       };
     }
 
@@ -77,6 +89,7 @@ export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPaylo
       provider,
       callbackUrl,
       message: (parsed.searchParams.get('message') || '').trim() || 'native_auth_failed',
+      requestId,
     };
   } catch {
     return null;
@@ -102,6 +115,7 @@ export async function startNativeBrowserAuthSession(args: {
   if (parsedStartUrl.protocol !== 'http:' && parsedStartUrl.protocol !== 'https:') {
     throw new Error('native_auth_invalid_start_url_protocol');
   }
+  const expectedRequestId = resolveRequestId(parsedStartUrl.searchParams.get('requestId') || '');
 
   const timeoutMs = typeof args.timeoutMs === 'number' && Number.isFinite(args.timeoutMs) && args.timeoutMs > 0
     ? Math.floor(args.timeoutMs)
@@ -130,6 +144,7 @@ export async function startNativeBrowserAuthSession(args: {
       const parsed = parseNativeAuthCallbackUrl(incomingUrl);
       if (!parsed) return;
       if (parsed.provider !== args.provider) return;
+      if (expectedRequestId && parsed.requestId !== expectedRequestId) return;
       lastHandledUrl = incomingUrl;
 
       if (parsed.status === 'success') {
@@ -147,6 +162,8 @@ export async function startNativeBrowserAuthSession(args: {
     const urlSubscription = Linking.addEventListener('url', event => {
       handleIncomingUrl(event.url);
     });
+    // AppState 변경 시 getInitialURL로 폴백 처리.
+    // requestId 체크(expectedRequestId)가 있어 이전 세션의 stale deeplink는 필터링됨.
     const appStateSubscription = AppState.addEventListener('change', (nextState) => {
       if (nextState !== 'active') return;
       void Linking.getInitialURL()
@@ -155,7 +172,7 @@ export async function startNativeBrowserAuthSession(args: {
           handleIncomingUrl(initialUrl);
         })
         .catch(() => {
-          // no-op: keep waiting for regular url events or timeout
+          // no-op: url event listener handles live deeplinks
         });
     });
     const timeoutHandle = setTimeout(() => {
