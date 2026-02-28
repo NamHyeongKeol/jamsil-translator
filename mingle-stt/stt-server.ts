@@ -644,13 +644,54 @@ wss.on('connection', (clientWs) => {
             let latestNonFinalText = '';
             let latestNonFinalIsProvisionalCarry = false;
             let lastFinalizedEndMs = -1;
-            let detectedLang = config.languages[0] || 'en';
+            let detectedLang = (config.languages[0] || 'unknown').trim() || 'unknown';
+            let currentTurnDetectedLang: string | null = null;
             sonioxStopRequested = false;
             const stripEndpointMarkers = (text: string): string => text.replace(/<\/?(?:end|fin)>/ig, '');
             const extractFirstEndpointMarker = (text: string): string => {
                 const match = /<\/?(?:end|fin)>/i.exec(text);
                 return match ? match[0] : '<fin>';
             };
+            const normalizeDetectedLang = (raw: unknown): string | null => {
+                if (typeof raw !== 'string') return null;
+                const cleaned = raw.trim();
+                if (!cleaned) return null;
+                return cleaned;
+            };
+            const updateDetectedLang = (
+                raw: unknown,
+                lane: 'final' | 'non_final',
+            ): string | null => {
+                const normalized = normalizeDetectedLang(raw);
+                if (!normalized) return null;
+                detectedLang = normalized;
+                currentTurnDetectedLang = normalized;
+                if (lane === 'final') {
+                    latestFrameFinalDetectedLang = normalized;
+                } else {
+                    latestFrameNonFinalDetectedLang = normalized;
+                }
+                return normalized;
+            };
+            const resolveDetectedLang = (
+                preferred: string | null = null,
+                options?: { allowSessionFallback?: boolean },
+            ): string => {
+                const preferredNormalized = normalizeDetectedLang(preferred);
+                if (preferredNormalized) return preferredNormalized;
+                const turnNormalized = normalizeDetectedLang(currentTurnDetectedLang);
+                if (turnNormalized) return turnNormalized;
+                if (options?.allowSessionFallback === true) {
+                    const sessionNormalized = normalizeDetectedLang(detectedLang);
+                    if (sessionNormalized) return sessionNormalized;
+                }
+                return 'unknown';
+            };
+            const resetCurrentTurnDetectedLang = () => {
+                currentTurnDetectedLang = null;
+            };
+            let latestFrameFinalDetectedLang: string | null = null;
+            let latestFrameNonFinalDetectedLang: string | null = null;
             const composeTurnText = (finalText: string, nonFinalText: string): string => {
                 return `${finalText || ''}${nonFinalText || ''}`.trim();
             };
@@ -725,6 +766,7 @@ wss.on('connection', (clientWs) => {
                 latestNonFinalText = '';
                 latestNonFinalIsProvisionalCarry = false;
                 resetSonioxSegmentState();
+                resetCurrentTurnDetectedLang();
 
                 if (clientWs.readyState === WebSocket.OPEN) {
                     clientWs.send(JSON.stringify({
@@ -750,7 +792,7 @@ wss.on('connection', (clientWs) => {
                     return null;
                 }
                 const merged = composeTurnText(finalizedText, latestNonFinalText);
-                return emitFinalTurn(merged, detectedLang) ?? null;
+                return emitFinalTurn(merged, resolveDetectedLang(null, { allowSessionFallback: true })) ?? null;
             };
 
             sttWs.onopen = () => {
@@ -818,6 +860,8 @@ wss.on('connection', (clientWs) => {
 
                     const previousFinalizedText = finalizedText;
                     const previousNonFinalText = latestNonFinalText;
+                    latestFrameFinalDetectedLang = null;
+                    latestFrameNonFinalDetectedLang = null;
                     const hadPendingTextBeforeFrame = composeTurnText(previousFinalizedText, previousNonFinalText).length > 0;
                     let newFinalText = '';
                     let rebuiltNonFinalText = '';
@@ -858,8 +902,10 @@ wss.on('connection', (clientWs) => {
                     };
 
                     for (const token of tokens) {
-                        if (typeof token.language === 'string' && token.language.trim()) {
-                            detectedLang = token.language;
+                        if (token.is_final === true) {
+                            updateDetectedLang(token.language, 'final');
+                        } else {
+                            updateDetectedLang(token.language, 'non_final');
                         }
                         const tokenText = typeof token.text === 'string' ? token.text : '';
                         if (!tokenText) continue;
@@ -988,13 +1034,16 @@ wss.on('connection', (clientWs) => {
                         latestNonFinalText = rebuiltNonFinalText;
                         // 부분 결과: 확정된 텍스트 + 미확정 텍스트
                         const fullText = composeTurnText(finalizedText, rebuiltNonFinalText);
+                        const partialDetectedLang = resolveDetectedLang(
+                            latestFrameNonFinalDetectedLang || latestFrameFinalDetectedLang,
+                        );
                         const partialMsg = {
                             type: 'transcript',
                             data: {
                                 is_final: false,
                                 utterance: {
                                     text: fullText.trim(),
-                                    language: detectedLang,
+                                    language: partialDetectedLang,
                                 },
                             },
                         };
@@ -1083,7 +1132,10 @@ wss.on('connection', (clientWs) => {
                         }
 
                         if (stripEndpointMarkers(finalTextToEmit).trim()) {
-                            emitFinalTurn(finalTextToEmit, detectedLang);
+                            const endpointDetectedLang = resolveDetectedLang(
+                                latestFrameFinalDetectedLang || latestFrameNonFinalDetectedLang,
+                            );
+                            emitFinalTurn(finalTextToEmit, endpointDetectedLang);
                             endpointFinalized = true;
                             endpointFinalText = finalTextToEmit;
                         } else {
@@ -1093,6 +1145,7 @@ wss.on('connection', (clientWs) => {
                             latestNonFinalText = '';
                             latestNonFinalIsProvisionalCarry = false;
                             resetSonioxSegmentState();
+                            resetCurrentTurnDetectedLang();
                         }
 
                         // Keep trailing text after endpoint marker as next-turn partial
@@ -1101,6 +1154,11 @@ wss.on('connection', (clientWs) => {
                             endpointCarryText = carryTextToEmit;
                             latestNonFinalText = carryTextToEmit;
                             latestNonFinalIsProvisionalCarry = true;
+                            const carryDetectedLang = resolveDetectedLang(
+                                latestFrameNonFinalDetectedLang || latestFrameFinalDetectedLang,
+                                { allowSessionFallback: true },
+                            );
+                            currentTurnDetectedLang = carryDetectedLang;
                             // Keep the normal finalize state untouched — carry is
                             // provisional and does NOT count as pending transcript
                             // for the normal finalize flow.
@@ -1124,7 +1182,10 @@ wss.on('connection', (clientWs) => {
                                 ) {
                                     const carryText = composeTurnText('', latestNonFinalText);
                                     if (carryText) {
-                                        emitFinalTurn(carryText, detectedLang);
+                                        emitFinalTurn(
+                                            carryText,
+                                            resolveDetectedLang(null, { allowSessionFallback: true }),
+                                        );
                                     }
                                 }
                             }, carryExpiryMs);
@@ -1136,7 +1197,7 @@ wss.on('connection', (clientWs) => {
                                         is_final: false,
                                         utterance: {
                                             text: carryTextToEmit,
-                                            language: detectedLang,
+                                            language: carryDetectedLang,
                                         },
                                     },
                                 }));
