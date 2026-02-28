@@ -38,7 +38,7 @@ function runBestEffort(command, args, options = {}) {
 function resolveDatabaseUrls() {
   const sourceDatabaseUrl = process.env.DATABASE_URL
   if (!sourceDatabaseUrl) {
-    throw new Error('DATABASE_URL is required. Use .env.local or export DATABASE_URL first.')
+    throw new Error('DATABASE_URL is required (Vault environment injection expected).')
   }
 
   const parsed = new URL(sourceDatabaseUrl)
@@ -56,9 +56,13 @@ function resolveDatabaseUrls() {
   test.pathname = `/${dbName}`
   test.searchParams.set('schema', schema)
 
+  const testForPsql = new URL(test.toString())
+  testForPsql.searchParams.delete('schema')
+
   return {
     adminDbUrl: admin.toString(),
-    testDbUrl: test.toString(),
+    testDbUrlForPrisma: test.toString(),
+    testDbUrlForPsql: testForPsql.toString(),
     testDbName: dbName,
   }
 }
@@ -71,7 +75,7 @@ function listMigrationSqlFiles() {
     .sort((a, b) => a.localeCompare(b))
 }
 
-const { adminDbUrl, testDbUrl, testDbName } = resolveDatabaseUrls()
+const { adminDbUrl, testDbUrlForPrisma, testDbUrlForPsql, testDbName } = resolveDatabaseUrls()
 const migrationSqlFiles = listMigrationSqlFiles()
 const seedSqlPath = path.join(rootDir, 'test-fixtures', 'db', 'version-policy.seed.sql')
 
@@ -81,11 +85,11 @@ run('psql', [adminDbUrl, '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE "${test
 try {
   for (const sqlFile of migrationSqlFiles) {
     log(`applying migration: ${path.relative(rootDir, sqlFile)}`)
-    run('psql', [testDbUrl, '-v', 'ON_ERROR_STOP=1', '-f', sqlFile])
+    run('psql', [testDbUrlForPsql, '-v', 'ON_ERROR_STOP=1', '-f', sqlFile])
   }
 
   log(`applying seed fixture: ${path.relative(rootDir, seedSqlPath)}`)
-  run('psql', [testDbUrl, '-v', 'ON_ERROR_STOP=1', '-f', seedSqlPath])
+  run('psql', [testDbUrlForPsql, '-v', 'ON_ERROR_STOP=1', '-f', seedSqlPath])
 
   log('running DB integration tests')
   run(
@@ -94,7 +98,7 @@ try {
     {
       env: {
         ...process.env,
-        DATABASE_URL: testDbUrl,
+        DATABASE_URL: testDbUrlForPrisma,
         MINGLE_DB_INTEGRATION: '1',
       },
     },

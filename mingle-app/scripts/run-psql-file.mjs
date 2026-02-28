@@ -16,10 +16,19 @@ if (!databaseUrl) {
   process.exit(1)
 }
 
+let psqlDatabaseUrl = databaseUrl
+try {
+  const parsed = new URL(databaseUrl)
+  parsed.searchParams.delete('schema')
+  psqlDatabaseUrl = parsed.toString()
+} catch {
+  // Fallback for non-URL DSN formats: pass through as-is.
+}
+
 const sqlFilePath = path.resolve(process.cwd(), sqlFileArg)
 const result = spawnSync(
   'psql',
-  [databaseUrl, '-v', 'ON_ERROR_STOP=1', '-f', sqlFilePath],
+  [psqlDatabaseUrl, '-v', 'ON_ERROR_STOP=1', '-f', sqlFilePath],
   {
     stdio: 'inherit',
     env: process.env,
