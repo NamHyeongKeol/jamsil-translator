@@ -56,6 +56,9 @@ type NativeAuthAckCommand = {
     bridgeToken?: string;
   };
 };
+type NativeAuthResetCommand = {
+  type: "native_auth_reset";
+};
 type NativeAuthPendingResponse =
   | {
       status: "pending";
@@ -306,6 +309,17 @@ export default function MingleHome(props: MingleHomeProps) {
       setAgreedTerms(false);
       pendingNativeRequestIdRef.current = null;
       pendingNativeProviderRef.current = null;
+      // RN 레이어에 auth 상태 리셋 명령 전송.
+      // 로그아웃/세션 만료 시 RN의 pendingAuthEventRef와 retry 타이머를
+      // 클리어해서 이전 세션의 auth 이벤트가 재전송되지 않도록 함.
+      if (isNativeAuthBridgeEnabled()) {
+        try {
+          const resetCommand: NativeAuthResetCommand = { type: "native_auth_reset" };
+          window.ReactNativeWebView?.postMessage(JSON.stringify(resetCommand));
+        } catch {
+          // no-op
+        }
+      }
     }
   }, [clearNativeAuthPoller, clearNativeAuthTimeout, status]);
 

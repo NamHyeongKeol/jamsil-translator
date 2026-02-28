@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AppState,
   Alert,
   Linking,
   NativeModules,
@@ -28,7 +27,6 @@ import {
   stopNativeTts,
 } from './src/nativeTts';
 import {
-  parseNativeAuthCallbackUrl,
   startNativeBrowserAuthSession,
   type NativeAuthProvider,
 } from './src/nativeAuth';
@@ -473,12 +471,17 @@ type NativeAuthAckCommand = {
   };
 };
 
+type NativeAuthResetCommand = {
+  type: 'native_auth_reset';
+};
+
 type WebViewCommand =
   | NativeSttCommand
   | NativeTtsCommand
   | NativeSttAecCommand
   | NativeAuthStartCommand
-  | NativeAuthAckCommand;
+  | NativeAuthAckCommand
+  | NativeAuthResetCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -675,7 +678,6 @@ function AppInner(): React.JSX.Element {
   const pendingAuthEventRef = useRef<NativeAuthEvent | null>(null);
   const authDispatchRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authDispatchRetryCountRef = useRef(0);
-  const lastRecoveredNativeAuthUrlRef = useRef('');
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
     if (Platform.OS !== 'ios') return 36;
     const manager = (NativeModules as {
@@ -948,59 +950,6 @@ function AppInner(): React.JSX.Element {
     };
   }, [clearAuthDispatchRetryTimer]);
 
-  useEffect(() => {
-    const handleIncomingAuthUrl = (incomingUrl: string | null | undefined) => {
-      const normalized = typeof incomingUrl === 'string' ? incomingUrl.trim() : '';
-      if (!normalized) return;
-      if (nativeAuthInFlightRef.current) return;
-      if (lastRecoveredNativeAuthUrlRef.current === normalized) return;
-
-      const parsed = parseNativeAuthCallbackUrl(normalized);
-      if (!parsed) return;
-      lastRecoveredNativeAuthUrlRef.current = normalized;
-
-      if (parsed.status === 'success') {
-        emitAuthToWeb({
-          type: 'success',
-          provider: parsed.provider,
-          callbackUrl: parsed.callbackUrl,
-          bridgeToken: parsed.bridgeToken,
-        });
-        return;
-      }
-
-      emitAuthToWeb({
-        type: 'error',
-        provider: parsed.provider,
-        message: parsed.message || 'native_auth_failed',
-      });
-    };
-
-    void Linking.getInitialURL()
-      .then(handleIncomingAuthUrl)
-      .catch(() => {
-        // no-op: listener below can still receive callbacks while app is alive
-      });
-
-    const urlSubscription = Linking.addEventListener('url', (event) => {
-      handleIncomingAuthUrl(event.url);
-    });
-
-    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'active') return;
-      void Linking.getInitialURL()
-        .then(handleIncomingAuthUrl)
-        .catch(() => {
-          // no-op
-        });
-    });
-
-    return () => {
-      urlSubscription.remove();
-      appStateSubscription.remove();
-    };
-  }, [emitAuthToWeb]);
-
   const handleIosTopTapOverlayPress = useCallback(() => {
     emitUiToWeb({ type: 'scroll_to_top', source: 'ios_status_bar_overlay' });
   }, [emitUiToWeb]);
@@ -1221,6 +1170,21 @@ function AppInner(): React.JSX.Element {
       clearAuthDispatchRetryTimer();
       if (__DEV__) {
         console.log(`[Web→NativeAuth] ack provider=${provider} outcome=${outcome ?? 'unknown'}`);
+      }
+      return;
+    }
+
+    if (parsed.type === 'native_auth_reset') {
+      // 웹이 로그아웃/세션 만료 시 전송하는 리셋 명령.
+      // 이전 세션의 auth 결과(pendingAuthEventRef)와 retry 타이머를 클리어해서
+      // 이전 로그인의 에러/성공 이벤트가 재전송되지 않도록 함.
+      if (nativeAuthInFlightRef.current === null) {
+        pendingAuthEventRef.current = null;
+        authDispatchRetryCountRef.current = 0;
+        clearAuthDispatchRetryTimer();
+        if (__DEV__) {
+          console.log('[Web→NativeAuth] reset: cleared pending auth state');
+        }
       }
       return;
     }
