@@ -77,6 +77,7 @@ type NativeAuthPendingResponse =
     };
 
 type AuthPanelStep = "provider" | "terms";
+type LegalSheetKind = "privacy" | "terms";
 
 type MingleWindowWithNativeAuthCache = Window & {
   __MINGLE_LAST_NATIVE_AUTH_EVENT?: NativeAuthBridgeEvent;
@@ -170,6 +171,9 @@ export default function MingleHome(props: MingleHomeProps) {
     useState<NativeAuthProvider | null>(null);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
+  const [legalSheetKind, setLegalSheetKind] = useState<LegalSheetKind | null>(
+    null,
+  );
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const pendingNativeProviderRef = useRef<NativeAuthProvider | null>(null);
   const lastHandledBridgeTokenRef = useRef("");
@@ -198,6 +202,16 @@ export default function MingleHome(props: MingleHomeProps) {
     [localeSegment],
   );
   const hasAgreedAllRequiredTerms = agreedPrivacy && agreedTerms;
+  const legalSheetUrl = legalSheetKind === "privacy"
+    ? privacyPolicyUrl
+    : legalSheetKind === "terms"
+      ? termsOfUseUrl
+      : "";
+  const legalSheetTitle = legalSheetKind === "privacy"
+    ? "Privacy Policy"
+    : legalSheetKind === "terms"
+      ? "Terms of Use"
+      : "";
 
   const clearNativeAuthTimeout = useCallback(() => {
     if (nativeAuthTimeoutRef.current) {
@@ -319,6 +333,7 @@ export default function MingleHome(props: MingleHomeProps) {
       setSelectedProvider(null);
       setAgreedPrivacy(false);
       setAgreedTerms(false);
+      setLegalSheetKind(null);
       pendingNativeRequestIdRef.current = null;
       pendingNativeProviderRef.current = null;
       // RN 레이어에 auth 상태 리셋 명령 전송.
@@ -524,6 +539,14 @@ export default function MingleHome(props: MingleHomeProps) {
     setAgreedTerms(next);
   }, [hasAgreedAllRequiredTerms]);
 
+  const handleOpenLegalSheet = useCallback((kind: LegalSheetKind) => {
+    setLegalSheetKind(kind);
+  }, []);
+
+  const handleCloseLegalSheet = useCallback(() => {
+    setLegalSheetKind(null);
+  }, []);
+
   const handleAgreeAndStart = useCallback(() => {
     if (!selectedProvider) return;
     if (!hasAgreedAllRequiredTerms) return;
@@ -580,7 +603,7 @@ export default function MingleHome(props: MingleHomeProps) {
     return (
       // ① main bg = 다크 (#1C1C1E) → 가장자리 흰색 제거
       <main
-        className="flex h-full min-h-0 w-full flex-col overflow-hidden"
+        className="relative flex h-full min-h-0 w-full flex-col overflow-hidden"
         style={{ background: "linear-gradient(160deg, #FBBC32 0%, #F97316 100%)" }}
       >
         <style>{`@keyframes fade-in {
@@ -605,7 +628,7 @@ export default function MingleHome(props: MingleHomeProps) {
         {/* ③ 하단 다크 패널 — 항상 렌더, 내용만 조건부 */}
         <section
           aria-busy={isLoading || disabled}
-          className="rounded-t-[2rem] bg-[#1C1C1E] px-5 pb-[calc(1.4rem+env(safe-area-inset-bottom))] pt-6"
+          className="rounded-t-[2rem] bg-[#1C1C1E] px-5 pb-[calc(1.05rem+env(safe-area-inset-bottom))] pt-4"
         >
           {isLoading ? (
             /* 로딩 중 — 스피너만 */
@@ -675,17 +698,17 @@ export default function MingleHome(props: MingleHomeProps) {
 
                 <div className="w-1/2 shrink-0 pl-4">
                   <div className="space-y-3 text-white">
-                    <h2 className="text-[1.65rem] font-semibold leading-tight">
+                    <h2 className="text-[1.35rem] font-semibold leading-tight">
                       Service Terms
                     </h2>
                     <button
                       type="button"
                       onClick={handleAgreeAllRequiredTerms}
                       disabled={disabled}
-                      className="flex w-full items-center gap-2.5 rounded-xl bg-white/8 px-3.5 py-2.5 text-left text-[0.97rem] font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex h-10 w-full items-center gap-2.5 rounded-xl bg-white/8 px-3.5 text-left text-[0.9rem] font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <span
-                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs ${
+                        className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-[0.62rem] ${
                           hasAgreedAllRequiredTerms
                             ? "border-rose-400 bg-rose-500 text-white"
                             : "border-white/25 text-transparent"
@@ -696,60 +719,58 @@ export default function MingleHome(props: MingleHomeProps) {
                       Agree to all
                     </button>
 
-                    <div className="space-y-1">
-                      <label className="flex cursor-pointer items-center gap-3 px-1 py-1.5 text-base text-white/90">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2.5 px-1 py-1.5 text-[0.94rem] text-white/90">
                         <input
                           type="checkbox"
                           checked={agreedPrivacy}
                           onChange={(event) => setAgreedPrivacy(event.target.checked)}
                           disabled={disabled}
-                          className="h-[1.05rem] w-[1.05rem] accent-rose-500"
+                          className="h-4 w-4 accent-rose-500"
                         />
-                        <a
-                          href={privacyPolicyUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex-1 underline underline-offset-4"
+                        <button
+                          type="button"
+                          onClick={() => handleOpenLegalSheet("privacy")}
+                          className="flex-1 text-left underline underline-offset-4"
                         >
                           Privacy Policy (Required)
-                        </a>
-                      </label>
-                      <label className="flex cursor-pointer items-center gap-3 px-1 py-1.5 text-base text-white/90">
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2.5 px-1 py-1.5 text-[0.94rem] text-white/90">
                         <input
                           type="checkbox"
                           checked={agreedTerms}
                           onChange={(event) => setAgreedTerms(event.target.checked)}
                           disabled={disabled}
-                          className="h-[1.05rem] w-[1.05rem] accent-rose-500"
+                          className="h-4 w-4 accent-rose-500"
                         />
-                        <a
-                          href={termsOfUseUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex-1 underline underline-offset-4"
+                        <button
+                          type="button"
+                          onClick={() => handleOpenLegalSheet("terms")}
+                          className="flex-1 text-left underline underline-offset-4"
                         >
                           Terms of Use (Required)
-                        </a>
-                      </label>
+                        </button>
+                      </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={handleAgreeAndStart}
                       disabled={!selectedProvider || !hasAgreedAllRequiredTerms || disabled}
-                      className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-white/20 py-3 text-[1.35rem] font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+                      className="mt-3 inline-flex h-12 w-full items-center justify-center rounded-xl bg-white/20 px-3 text-[1.08rem] font-semibold leading-none text-white transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
                     >
                       {isSigningIn ? (
-                        <Loader2 size={22} className="animate-spin" aria-hidden />
+                        <Loader2 size={18} className="animate-spin" aria-hidden />
                       ) : (
-                        "Agree and continue"
+                        <span className="leading-none">Agree and continue</span>
                       )}
                     </button>
                     <button
                       type="button"
                       onClick={handleBackToProviderSelect}
                       disabled={disabled}
-                      className="inline-flex w-full items-center justify-center py-1.5 text-center text-base text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex w-full items-center justify-center py-1 text-center text-[0.9rem] text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Sign in with another method
                     </button>
@@ -759,6 +780,46 @@ export default function MingleHome(props: MingleHomeProps) {
             </div>
           )}
         </section>
+        {legalSheetKind ? (
+          <div
+            className="absolute inset-0 z-40 flex items-end bg-black/55"
+            onClick={handleCloseLegalSheet}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-label={legalSheetTitle}
+              onClick={(event) => event.stopPropagation()}
+              className="w-full overflow-hidden rounded-t-[1.1rem] bg-[#111214] pb-[env(safe-area-inset-bottom)]"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+                <button
+                  type="button"
+                  onClick={handleCloseLegalSheet}
+                  className="text-[0.9rem] font-medium text-white/75"
+                >
+                  Back
+                </button>
+                <p className="text-[0.9rem] font-semibold text-white/90">
+                  {legalSheetTitle}
+                </p>
+                <a
+                  href={legalSheetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[0.82rem] text-white/65 underline underline-offset-4"
+                >
+                  Open
+                </a>
+              </div>
+              <iframe
+                title={legalSheetTitle}
+                src={legalSheetUrl}
+                className="h-[68vh] w-full bg-white"
+              />
+            </section>
+          </div>
+        ) : null}
       </main>
     );
   }
