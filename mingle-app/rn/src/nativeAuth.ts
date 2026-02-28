@@ -1,4 +1,4 @@
-import { Linking } from 'react-native';
+import { AppState, Linking } from 'react-native';
 
 export type NativeAuthProvider = 'apple' | 'google';
 
@@ -162,18 +162,35 @@ export async function startNativeBrowserAuthSession(args: {
     const urlSubscription = Linking.addEventListener('url', event => {
       handleIncomingUrl(event.url);
     });
+    // AppState 변경 시 getInitialURL로 폴백 처리.
+    // requestId 체크(expectedRequestId)가 있어 이전 세션의 stale deeplink는 필터링됨.
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') return;
+      void Linking.getInitialURL()
+        .then((initialUrl) => {
+          if (!initialUrl) return;
+          handleIncomingUrl(initialUrl);
+        })
+        .catch(() => {
+          // no-op: url event listener handles live deeplinks
+        });
+    });
     const timeoutHandle = setTimeout(() => {
       settleError('native_auth_timeout');
     }, timeoutMs);
 
-    // NOTE: Linking.getInitialURL() intentionally not called here.
-    // On iOS, getInitialURL() returns the most recently received deep link URL,
-    // which may be a stale mingleauth:// callback from a previous login session.
-    // Consuming it here would cause "Native sign-in failed" on re-login attempts.
-    // The 'url' event listener above handles all live deep link callbacks reliably.
+    void Linking.getInitialURL()
+      .then((initialUrl) => {
+        if (!initialUrl) return;
+        handleIncomingUrl(initialUrl);
+      })
+      .catch(() => {
+        // no-op: regular url events still handled
+      });
 
     cleanup = () => {
       urlSubscription.remove();
+      appStateSubscription.remove();
       clearTimeout(timeoutHandle);
     };
 
