@@ -61,6 +61,15 @@ export type AppDictionary = {
     loginApple: string;
     loginGoogle: string;
     loginDemo: string;
+    serviceTermsTitle: string;
+    agreeToAll: string;
+    privacyPolicyTitle: string;
+    privacyPolicyRequired: string;
+    termsOfUseTitle: string;
+    termsOfUseRequired: string;
+    agreeAndContinue: string;
+    signInWithAnotherMethod: string;
+    closeLegalSheet: string;
     logout: string;
     deleteAccount: string;
     menuLabel: string;
