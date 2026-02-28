@@ -336,6 +336,59 @@ read_env_value_from_file() {
   awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file"
 }
 
+read_env_or_export_value_from_file() {
+  local key="$1"
+  local file="$2"
+  local raw=""
+
+  [[ -f "$file" ]] || return 1
+
+  raw="$(
+    awk -v key="$key" '
+      {
+        line = $0
+        sub(/\r$/, "", line)
+        if (line ~ /^[[:space:]]*#/) {
+          next
+        }
+        if (match(line, "^[[:space:]]*(export[[:space:]]+)?" key "[[:space:]]*=")) {
+          sub("^[[:space:]]*(export[[:space:]]+)?" key "[[:space:]]*=[[:space:]]*", "", line)
+          print line
+          exit
+        }
+      }
+    ' "$file" 2>/dev/null || true
+  )"
+  raw="$(trim_whitespace "$raw")"
+  [[ -n "$raw" ]] || return 1
+  decode_dotenv_value "$raw"
+}
+
+read_devbox_shell_setting_value() {
+  local key="$1"
+  local value=""
+  local shell_file=""
+  local zdotdir="${ZDOTDIR:-$HOME}"
+  local -a shell_files=(
+    "$zdotdir/.zshrc"
+    "$zdotdir/.zprofile"
+    "$HOME/.bashrc"
+    "$HOME/.bash_profile"
+  )
+
+  for shell_file in "${shell_files[@]}"; do
+    [[ -f "$shell_file" ]] || continue
+    value="$(read_env_or_export_value_from_file "$key" "$shell_file" || true)"
+    value="$(trim_whitespace "$value")"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 read_vault_cli_env_value_from_local_env_files() {
   local key="$1"
   local value=""
@@ -463,6 +516,15 @@ read_app_setting_value() {
 
   if [[ -f "$APP_ENV_FILE" ]]; then
     value="$(read_env_value_from_file "$key" "$APP_ENV_FILE" || true)"
+    value="$(trim_whitespace "$value")"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  fi
+
+  if [[ "$key" == DEVBOX_* ]]; then
+    value="$(read_devbox_shell_setting_value "$key" || true)"
     value="$(trim_whitespace "$value")"
     if [[ -n "$value" ]]; then
       printf '%s' "$value"
