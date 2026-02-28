@@ -98,6 +98,13 @@ die() {
   exit 1
 }
 
+best_effort_raise_nofile_limit() {
+  local target="${DEVBOX_ULIMIT_NOFILE:-65536}"
+  if [[ "$target" =~ ^[0-9]+$ ]]; then
+    ulimit -n "$target" 2>/dev/null || true
+  fi
+}
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -3700,6 +3707,7 @@ $(ngrok_plan_capacity_hint)"
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
   (
     cd "$ROOT_DIR/mingle-stt"
+    best_effort_raise_nofile_limit
     if [[ -s "$runtime_stt_env_file" ]]; then
       set -a
       # shellcheck disable=SC1090
@@ -3712,12 +3720,15 @@ $(ngrok_plan_capacity_hint)"
 
   (
     cd "$ROOT_DIR/mingle-app"
+    best_effort_raise_nofile_limit
     if [[ -s "$runtime_app_env_file" ]]; then
       set -a
       # shellcheck disable=SC1090
       . "$runtime_app_env_file"
       set +a
     fi
+    # Turbopack can fail with EMFILE on large worktrees and degrade into all-route 404.
+    # Use webpack + polling watcher mode for stable local device testing.
     DEVBOX_WORKTREE_NAME="$DEVBOX_WORKTREE_NAME" \
     DEVBOX_PROFILE="$DEVBOX_PROFILE" \
     DEVBOX_WEB_PORT="$DEVBOX_WEB_PORT" \
@@ -3732,7 +3743,9 @@ $(ngrok_plan_capacity_hint)"
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
     MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
     MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
-    pnpm exec next dev --port "$DEVBOX_WEB_PORT"
+    WATCHPACK_POLLING="${WATCHPACK_POLLING:-true}" \
+    CHOKIDAR_USEPOLLING="${CHOKIDAR_USEPOLLING:-1}" \
+    pnpm exec next dev --webpack --port "$DEVBOX_WEB_PORT"
   ) &
   pids+=("$!")
 
