@@ -124,8 +124,9 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
             }
 
             // P2: requestId 대조 — startURL의 requestId와 콜백의 requestId가 일치해야 함
-            let expectedRequestId = resolveRequestId(resolveQueryItem(named: "requestId", in: context.startURL))
-            if !expectedRequestId.isEmpty && parsed.requestId != expectedRequestId {
+            if let expectedRequestId = resolveRequestId(resolveQueryItem(named: "requestId", in: context.startURL)),
+               !expectedRequestId.isEmpty,
+               parsed.requestId != expectedRequestId {
                 self.finishWithError(message: "native_auth_invalid_callback", code: "native_auth_invalid_callback")
                 return
             }
@@ -369,7 +370,7 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
         let callbackURL = resolveSafeCallbackPath(resolveQueryItem(named: "callbackUrl", in: url))
         let bridgeToken = resolveQueryItem(named: "token", in: url).trimmingCharacters(in: .whitespacesAndNewlines)
         let message = resolveQueryItem(named: "message", in: url).trimmingCharacters(in: .whitespacesAndNewlines)
-        let requestId = resolveRequestId(resolveQueryItem(named: "requestId", in: url))
+        let requestId = resolveRequestId(resolveQueryItem(named: "requestId", in: url)) ?? ""
 
         if status == "success" {
             return (provider: provider, callbackURL: callbackURL, bridgeToken: bridgeToken, status: "success", message: "", requestId: requestId)
