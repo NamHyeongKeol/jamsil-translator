@@ -1449,6 +1449,7 @@ export default function useRealtimeSTT({
       partialTranslationsRef.current = {}
       setPartialLang(null)
       nativeStopRequestedRef.current = false
+      const strictLanguageHints = languages.length <= 1
 
       if (useNativeStt) {
         logSttDebug('native.start.begin')
@@ -1458,7 +1459,7 @@ export default function useRealtimeSTT({
             wsUrl: getWsUrl(),
             languages,
             sttModel: 'soniox',
-            langHintsStrict: true,
+            langHintsStrict: strictLanguageHints,
             aecEnabled: enableAec,
           },
         })
@@ -1504,7 +1505,7 @@ export default function useRealtimeSTT({
           sample_rate: context.sampleRate,
           languages,
           stt_model: 'soniox',
-          lang_hints_strict: true,
+          lang_hints_strict: strictLanguageHints,
         }
         socket.send(JSON.stringify(config))
       }
