@@ -111,7 +111,7 @@ Usage:
   scripts/devbox ios-native-uninstall [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-coredevice-id ID] [--bundle-id ID]
   scripts/devbox ios-rn-ipa [--ios-configuration Debug|Release] [--device-app-env dev|prod] [--site-url URL] [--ws-url URL] [--archive-path PATH] [--export-path PATH] [--export-options-plist PATH] [--export-method app-store-connect|release-testing|debugging|enterprise|app-store|ad-hoc|development] [--team-id TEAM_ID] [--allow-provisioning-updates|--no-allow-provisioning-updates] [--skip-export] [--dry-run]
   scripts/devbox ios-rn-ipa-prod [ios-rn-ipa options...]
-  scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod]
+  scripts/devbox mobile [--profile local|device] [--host HOST] [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod] [--tunnel-provider ngrok|cloudflare] [--site-url URL] [--ws-url URL]
   scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--tunnel-provider ngrok|cloudflare] [--device-app-env dev|prod] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox down
   scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
@@ -1614,6 +1614,33 @@ resolve_cloudflare_named_tunnel_settings() {
   ensure_single_line_value "DEVBOX_CLOUDFLARE_TUNNEL_TOKEN" "$token"
 
   printf '%s\n%s\n%s\n' "$token" "$web_host" "$stt_host"
+}
+
+resolve_cloudflare_named_hostnames() {
+  local web_host stt_host
+  web_host="$(trim_whitespace "${DEVBOX_CLOUDFLARE_WEB_HOSTNAME:-}")"
+  stt_host="$(trim_whitespace "${DEVBOX_CLOUDFLARE_STT_HOSTNAME:-}")"
+
+  if [[ -z "$web_host" ]]; then
+    web_host="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_WEB_HOSTNAME || true)")"
+  fi
+  if [[ -z "$stt_host" ]]; then
+    stt_host="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_STT_HOSTNAME || true)")"
+  fi
+
+  if [[ -z "$web_host" && -z "$stt_host" ]]; then
+    return 1
+  fi
+
+  [[ -n "$web_host" ]] || die "missing DEVBOX_CLOUDFLARE_WEB_HOSTNAME for cloudflare named host profile"
+  [[ -n "$stt_host" ]] || die "missing DEVBOX_CLOUDFLARE_STT_HOSTNAME for cloudflare named host profile"
+
+  web_host="$(normalize_domain_input "$web_host")"
+  stt_host="$(normalize_domain_input "$stt_host")"
+  validate_host "$web_host"
+  validate_host "$stt_host"
+
+  printf '%s\n%s\n' "$web_host" "$stt_host"
 }
 
 wait_for_cloudflared_named_tunnel() {
@@ -3188,6 +3215,8 @@ cmd_mobile() {
 
   local active_profile="${DEVBOX_PROFILE:-local}"
   local active_host="${DEVBOX_LOCAL_HOST:-127.0.0.1}"
+  local profile_override=""
+  local host_override=""
   local with_ios_clean_install=0
   local device_app_env=""
   local platform="all"
@@ -3203,9 +3232,13 @@ cmd_mobile() {
   local tunnel_provider_override=""
   local mobile_site_override=""
   local mobile_ws_override=""
+  local site_override=""
+  local ws_override=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      --profile) profile_override="${2:-}"; shift 2 ;;
+      --host) host_override="${2:-}"; shift 2 ;;
       --platform) platform="${2:-}"; shift 2 ;;
       --ios-runtime) ios_runtime="${2:-}"; shift 2 ;;
       --ios-native-target) ios_native_target="${2:-}"; shift 2 ;;
@@ -3218,30 +3251,85 @@ cmd_mobile() {
       --android-variant) android_variant="${2:-}"; shift 2 ;;
       --with-ios-clean-install) with_ios_clean_install=1; shift ;;
       --device-app-env) device_app_env="${2:-}"; shift 2 ;;
+      --tunnel-provider) tunnel_provider_override="${2:-}"; shift 2 ;;
+      --site-url) site_override="${2:-}"; shift 2 ;;
+      --ws-url) ws_override="${2:-}"; shift 2 ;;
       *) die "unknown option for mobile: $1" ;;
     esac
   done
 
+  if [[ -n "$profile_override" ]]; then
+    case "$profile_override" in
+      local|device) active_profile="$profile_override" ;;
+      *) die "invalid --profile for mobile: $profile_override (expected local|device)" ;;
+    esac
+  fi
+
+  if [[ -n "$host_override" ]]; then
+    active_host="$host_override"
+  fi
+
+  if [[ -n "$site_override" || -n "$ws_override" ]]; then
+    [[ -n "$site_override" ]] || die "--ws-url requires --site-url"
+    [[ -n "$ws_override" ]] || die "--site-url requires --ws-url"
+    validate_http_url "mobile site url override" "$site_override"
+    validate_ws_url "mobile ws url override" "$ws_override"
+    mobile_site_override="$site_override"
+    mobile_ws_override="$ws_override"
+  fi
+
   ios_runtime="$(normalize_ios_runtime "$ios_runtime")"
   ios_native_target="$(normalize_ios_native_target "$ios_native_target")"
+  local tunnel_provider=""
+  tunnel_provider="$(resolve_tunnel_provider "$tunnel_provider_override")"
+  DEVBOX_TUNNEL_PROVIDER="$tunnel_provider"
+  local profile_already_saved=0
   case "$active_profile" in
     device)
       if [[ "$device_app_env" == "prod" ]]; then
         log "device app env is prod; skipping device tunnel profile refresh"
+      elif [[ -n "$mobile_site_override" || -n "$mobile_ws_override" ]]; then
+        log "manual mobile runtime URL override is set; skipping device tunnel profile refresh"
       else
-        # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
-        # Keep existing ngrok alive so mobile clean-install can run while `devbox up --profile device` is active.
-        apply_profile "device"
+        case "$tunnel_provider" in
+          ngrok)
+            # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
+            # Keep existing ngrok alive so mobile clean-install can run while `devbox up --profile device` is active.
+            apply_profile "device"
+            profile_already_saved=1
+            ;;
+          cloudflare)
+            local cloudflare_named_hosts=""
+            cloudflare_named_hosts="$(resolve_cloudflare_named_hostnames || true)"
+            if [[ -z "$cloudflare_named_hosts" ]]; then
+              die "cloudflare mobile profile refresh requires named tunnel hostnames (DEVBOX_CLOUDFLARE_WEB_HOSTNAME/STT_HOSTNAME)."
+            fi
+            local cloudflare_named_web_host=""
+            local cloudflare_named_stt_host=""
+            cloudflare_named_web_host="$(printf '%s\n' "$cloudflare_named_hosts" | sed -n '1p')"
+            cloudflare_named_stt_host="$(printf '%s\n' "$cloudflare_named_hosts" | sed -n '2p')"
+            set_device_profile_values_from_urls \
+              "https://$cloudflare_named_web_host" \
+              "https://$cloudflare_named_stt_host" \
+              "cloudflare"
+            ;;
+          *)
+            die "unsupported tunnel provider for mobile: $tunnel_provider"
+            ;;
+        esac
       fi
       ;;
     local)
       apply_profile "local" "$active_host"
+      profile_already_saved=1
       ;;
     *)
       die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device)"
       ;;
   esac
-  save_and_refresh
+  if [[ "$profile_already_saved" -eq 0 ]]; then
+    save_and_refresh
+  fi
 
   if [[ -n "$device_app_env" ]]; then
     [[ "$active_profile" == "device" ]] || die "--device-app-env is only supported when DEVBOX_PROFILE=device"
