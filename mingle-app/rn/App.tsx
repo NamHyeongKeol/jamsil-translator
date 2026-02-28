@@ -262,7 +262,7 @@ const AUTH_LOGIN_SAFE_AREA_PALETTE: SafeAreaPalette = {
   topColor: '#fbbc32',
   bottomColor: '#1c1c1e',
   webViewColor: '#1c1c1e',
-  statusBarStyle: 'dark-content',
+  statusBarStyle: 'light-content',
   edgeMode: 'transparent',
 };
 const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
