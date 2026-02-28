@@ -6,11 +6,8 @@
 
 - Preview/Production (legacy web app):
   - `NEXT_PUBLIC_API_NAMESPACE=`
-- iOS client version policy (optional):
-  - `IOS_CLIENT_MIN_SUPPORTED_VERSION=1.0.0`
-  - `IOS_CLIENT_RECOMMENDED_BELOW_VERSION=1.1.0`
-  - `IOS_CLIENT_LATEST_VERSION=1.2.0`
-  - `IOS_APPSTORE_URL=https://apps.apple.com/app/idXXXXXXXXXX`
+- iOS client version policy:
+  - 환경변수 대신 `app` 스키마 DB 테이블(`app_client_versions`, `app_client_version_policies`)에서 관리
 
 ## mingle-landing
 

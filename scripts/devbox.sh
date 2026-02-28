@@ -2140,6 +2140,65 @@ run_mobile_install_targets() {
   )
 }
 
+is_loopback_http_or_ws_url() {
+  local value="${1:-}"
+  [[ -n "$value" ]] || return 1
+
+  local without_scheme="${value#*://}"
+  local host_port="${without_scheme%%/*}"
+  local host=""
+
+  # IPv6 bracketed address: [::1]:port — extract the part inside [ ]
+  if [[ "$host_port" == \[* ]]; then
+    host="${host_port#[}"
+    host="${host%%]*}"
+  else
+    host="${host_port%%:*}"
+  fi
+
+  local host_lower=""
+  host_lower="$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')"
+
+  case "$host_lower" in
+    127.0.0.1|localhost|::1) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+guard_rn_ios_local_profile_on_device() {
+  local profile="$1"
+  local do_rn_ios="$2"
+  local ios_udid="${3:-}"
+  local effective_site_url="${4:-}"
+
+  [[ "$do_rn_ios" -eq 1 ]] || return 0
+  [[ "$profile" == "local" ]] || return 0
+  is_loopback_http_or_ws_url "$effective_site_url" || return 0
+
+  if is_truthy "${DEVBOX_ALLOW_LOCAL_PROFILE_IOS_DEVICE:-}"; then
+    warn "DEVBOX_ALLOW_LOCAL_PROFILE_IOS_DEVICE=1; allowing local-profile RN iOS install on real device"
+    return 0
+  fi
+
+  local connected_coredevice_id=""
+  connected_coredevice_id="$(detect_ios_coredevice_id || true)"
+  [[ -n "$connected_coredevice_id" ]] || return 0
+
+  local suggested_udid="$ios_udid"
+  if [[ -z "$suggested_udid" ]]; then
+    suggested_udid="$(detect_ios_xcode_destination_udid || true)"
+  fi
+
+  die "DEVBOX_PROFILE=local with RN iOS device install is blocked because DEVBOX_SITE_URL points to loopback ($effective_site_url). This causes WebView load failures on real iPhone and can trigger local-network permission prompts.
+Use:
+- scripts/devbox up --profile device --device-app-env prod --with-ios-install --ios-runtime rn --ios-udid ${suggested_udid:-<XCODE_UDID>}
+or:
+- scripts/devbox profile --profile device
+- scripts/devbox mobile --platform ios --ios-runtime rn --device-app-env prod --ios-udid ${suggested_udid:-<XCODE_UDID>}
+(For ngrok-backed dev URL, use --device-app-env dev)
+Override only if intentional: DEVBOX_ALLOW_LOCAL_PROFILE_IOS_DEVICE=1"
+}
+
 stop_existing_ngrok_by_inspector_port() {
   local inspector_port="$1"
   local name_patterns=(
@@ -3397,6 +3456,13 @@ cmd_mobile() {
     do_android=1
   fi
 
+  local effective_ios_site_url="${mobile_site_override:-$DEVBOX_SITE_URL}"
+  guard_rn_ios_local_profile_on_device \
+    "$active_profile" \
+    "$do_rn_ios" \
+    "$ios_udid" \
+    "$effective_ios_site_url"
+
   run_mobile_install_targets \
     "$do_rn_ios" \
     "$do_native_ios" \
@@ -3680,6 +3746,13 @@ $(ngrok_plan_capacity_hint)"
     if [[ -n "$android_serial" ]]; then
       do_android=1
     fi
+
+    local effective_ios_site_url="${mobile_site_override:-$DEVBOX_SITE_URL}"
+    guard_rn_ios_local_profile_on_device \
+      "$profile" \
+      "$do_rn_ios" \
+      "$ios_udid" \
+      "$effective_ios_site_url"
 
     run_mobile_install_targets \
       "$do_rn_ios" \

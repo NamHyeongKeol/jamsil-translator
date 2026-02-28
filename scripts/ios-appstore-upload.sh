@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+APPSTORE_MEDIA_ROOT="${APPSTORE_MEDIA_ROOT:-$REPO_ROOT/mingle-app/rn/appstore-media}"
+
 API_KEY_JSON="${API_KEY_JSON:-/tmp/asc_api_key.json}"
 APP_IDENTIFIER="${APP_IDENTIFIER:-com.minglelabs.mingle.rn}"
-MEDIA_DIR="${MEDIA_DIR:-/tmp/mingle-appstore-upload}"
+MEDIA_DIR="${MEDIA_DIR:-$APPSTORE_MEDIA_ROOT/upload}"
 LOCALE="${LOCALE:-en-US}"
 
 usage() {
-  cat <<'EOF'
+  cat <<EOF
 Usage: scripts/ios-appstore-upload.sh [options]
 
 Options:
-  --api-key-json <path>   App Store Connect API key JSON path (default: /tmp/asc_api_key.json)
-  --app-id <bundle-id>    App bundle identifier (default: com.minglelabs.mingle.rn)
-  --media-dir <dir>       Media root dir (default: /tmp/mingle-appstore-upload)
-  --locale <locale>       Locale dir under media dir (default: en-US)
+  --api-key-json <path>   App Store Connect API key JSON path (default: $API_KEY_JSON)
+  --app-id <bundle-id>    App bundle identifier (default: $APP_IDENTIFIER)
+  --media-dir <dir>       Media root dir (default: $MEDIA_DIR)
+  --locale <locale>       Locale dir under media dir (default: $LOCALE)
   -h, --help              Show help
 
 Environment overrides:
-  API_KEY_JSON, APP_IDENTIFIER, MEDIA_DIR, LOCALE
+  APPSTORE_MEDIA_ROOT, API_KEY_JSON, APP_IDENTIFIER, MEDIA_DIR, LOCALE
 EOF
 }
 

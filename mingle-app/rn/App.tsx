@@ -55,6 +55,8 @@ type VersionGateState =
     };
 type VersionPolicyResponse = {
   action: VersionPolicyAction;
+  platform?: string;
+  policyPlatform?: string;
   locale?: string;
   updateUrl?: string;
   title?: string;
@@ -125,6 +127,28 @@ function resolveConfiguredUrl(
   options?: { trimTrailingSlash?: boolean },
 ): string {
   return normalizeConfiguredUrl(readRuntimeEnvValue(keys), allowedProtocols, options);
+}
+
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1';
+}
+
+function isLoopbackUrl(raw: string): boolean {
+  if (!raw) return false;
+  try {
+    return isLoopbackHost(new URL(raw).hostname);
+  } catch {
+    return /(127\.0\.0\.1|localhost|::1)/i.test(raw);
+  }
+}
+
+function formatWebViewLoadError(description: string, currentWebUrl: string): string {
+  const normalizedDescription = description.trim() || 'webview_load_failed';
+  if (!currentWebUrl || !isLoopbackUrl(currentWebUrl)) {
+    return normalizedDescription;
+  }
+  return `${normalizedDescription} (현재 앱 URL이 ${currentWebUrl} 입니다. 실기기에서는 127.0.0.1/localhost에 접속할 수 없습니다. scripts/devbox profile --profile device 후 --device-app-env prod 또는 dev로 설치해 주세요.)`;
 }
 
 const RN_RUNTIME_OS = Platform.OS;
@@ -519,8 +543,17 @@ function normalizeClientVersion(raw: string): string {
   return raw.trim().replace(/^v/i, '');
 }
 
-function buildIosVersionPolicyUrl(baseUrl: string): string {
-  return `${baseUrl}/api/ios/v1.0.0/client/version-policy`;
+function buildVersionPolicyUrl(baseUrl: string, apiNamespace: string): string {
+  const normalizedNamespace = apiNamespace.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+  if (!normalizedNamespace) {
+    return `${baseUrl}/api/client/version-policy`;
+  }
+  return `${baseUrl}/api/${normalizedNamespace}/client/version-policy`;
+}
+
+function resolveVersionPolicyClientPlatform(runtimeOs: string): 'ios' | 'android' {
+  if (runtimeOs === 'android') return 'android';
+  return 'ios';
 }
 
 function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
@@ -687,7 +720,7 @@ function AppInner(): React.JSX.Element {
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
   const [versionGate, setVersionGate] = useState<VersionGateState>(() => (
-    Platform.OS === 'ios' && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
+    (Platform.OS === 'ios' || Platform.OS === 'android') && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
       ? { status: 'checking' }
       : { status: 'ready' }
   ));
@@ -747,7 +780,7 @@ function AppInner(): React.JSX.Element {
   }, [updateSafeAreaPalette, webUrl]);
 
   useEffect(() => {
-    if (Platform.OS !== 'ios' || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
+    if ((Platform.OS !== 'ios' && Platform.OS !== 'android') || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
       return;
     }
 
@@ -785,11 +818,12 @@ function AppInner(): React.JSX.Element {
       fallbackToReady('timeout');
     }, IOS_VERSION_POLICY_TIMEOUT_MS);
 
-    void fetch(buildIosVersionPolicyUrl(WEB_APP_BASE_URL), {
+    void fetch(buildVersionPolicyUrl(WEB_APP_BASE_URL, VALIDATED_API_NAMESPACE), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: abortController?.signal,
       body: JSON.stringify({
+        platform: resolveVersionPolicyClientPlatform(Platform.OS),
         clientVersion,
         clientBuild,
         locale: versionPolicyLocale,
@@ -1397,8 +1431,8 @@ function AppInner(): React.JSX.Element {
 
   const handleLoadError = useCallback((event: { nativeEvent: { description?: string } }) => {
     const description = event.nativeEvent.description || 'webview_load_failed';
-    setLoadError(description);
-  }, []);
+    setLoadError(formatWebViewLoadError(description, webUrl));
+  }, [webUrl]);
 
   const handleNavigationStateChange = useCallback((navigationState: { url: string }) => {
     updateSafeAreaPalette(navigationState.url);

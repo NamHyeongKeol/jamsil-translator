@@ -28,11 +28,12 @@ Date: 2026-02-21
   - age rating, categories
   - screenshots (required device sets)
     - auto-generate command:
-      - `scripts/ios-appstore-media.sh --no-build --out-dir /tmp/mingle-appstore-screenshots`
+      - `scripts/ios-appstore-media.sh --no-build`
     - output directories:
-      - `/tmp/mingle-appstore-screenshots/final/iphone-69`
-      - `/tmp/mingle-appstore-screenshots/final/ipad-13`
-      - `/tmp/mingle-appstore-screenshots/preview`
+      - `mingle-app/rn/appstore-media/generated/final/iphone-69`
+      - `mingle-app/rn/appstore-media/generated/final/ipad-13`
+      - `mingle-app/rn/appstore-media/generated/preview`
+      - upload root: `mingle-app/rn/appstore-media/upload/en-US`
 - [ ] Submit TestFlight build and run smoke QA on real devices
 
 ## 3. Recommended pre-submit smoke checks
