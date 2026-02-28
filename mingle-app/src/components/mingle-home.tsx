@@ -366,6 +366,13 @@ export default function MingleHome(props: MingleHomeProps) {
 
   useEffect(() => {
     if (status !== "loading") {
+      // 인증 완료 시(authenticated) 또는 로그아웃 시(unauthenticated) 공통 리셋.
+      // 단, native auth flow가 진행 중(pendingNativeProviderRef != null)일 때는
+      // pendingNativeProviderRef/RequestId 를 리셋하지 않는다.
+      // 리셋하면 ASWebAuthSession 결과가 도착할 때 L414 가드가 이벤트를 무시하게 돼
+      // signIn이 호출되지 않고 로그인 화면에서 멈추는 문제가 발생함.
+      const hasActiveFlow = pendingNativeProviderRef.current !== null;
+
       clearNativeAuthTimeout();
       clearNativeAuthPoller();
       setIsSigningIn(false);
@@ -375,12 +382,18 @@ export default function MingleHome(props: MingleHomeProps) {
       setAgreedPrivacy(false);
       setAgreedTerms(false);
       setLegalSheetKind(null);
-      pendingNativeRequestIdRef.current = null;
-      pendingNativeProviderRef.current = null;
+
+      if (!hasActiveFlow) {
+        // 진행 중인 flow 없을 때만 ref 리셋 (flow 중에는 event handler가 완료 후 리셋)
+        pendingNativeRequestIdRef.current = null;
+        pendingNativeProviderRef.current = null;
+      }
+
       // RN 레이어에 auth 상태 리셋 명령 전송.
       // 로그아웃/세션 만료 시 RN의 pendingAuthEventRef와 retry 타이머를
       // 클리어해서 이전 세션의 auth 이벤트가 재전송되지 않도록 함.
-      if (isNativeAuthBridgeEnabled()) {
+      // 단, 현재 진행 중인 flow가 있을 때는 reset 명령을 보내지 않는다.
+      if (!hasActiveFlow && isNativeAuthBridgeEnabled()) {
         try {
           const resetCommand: NativeAuthResetCommand = { type: "native_auth_reset" };
           window.ReactNativeWebView?.postMessage(JSON.stringify(resetCommand));
