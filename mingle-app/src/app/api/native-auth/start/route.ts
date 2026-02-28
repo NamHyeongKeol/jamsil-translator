@@ -17,9 +17,36 @@ function normalizeOriginCandidate(rawValue: string | null | undefined): string |
   }
 }
 
+function resolveAllowedHosts(): Set<string> | null {
+  const raw = process.env.NATIVE_AUTH_ALLOWED_HOSTS ?? process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_SITE_URL;
+  if (!raw) return null;
+  const hosts = raw
+    .split(",")
+    .map((v) => {
+      try {
+        return new URL(v.trim().startsWith("http") ? v.trim() : `https://${v.trim()}`).host;
+      } catch {
+        return null;
+      }
+    })
+    .filter((h): h is string => !!h);
+  return hosts.length > 0 ? new Set(hosts) : null;
+}
+
 function resolveExternalOrigin(request: NextRequest): string {
+  // 1순위: env 고정값 (prod/devbox 모두 항상 설정됨 — 헤더를 신뢰하지 않아도 됨)
+  const envOrigin =
+    normalizeOriginCandidate(process.env.NEXTAUTH_URL) ??
+    normalizeOriginCandidate(process.env.NEXT_PUBLIC_SITE_URL);
+  if (envOrigin) return envOrigin;
+
+  // 2순위: x-forwarded-* 폴백 (env 없는 경우만) — host allowlist로 검증
+  const allowedHosts = resolveAllowedHosts();
   const forwardedUrl = normalizeOriginCandidate(request.headers.get("x-forwarded-url"));
-  if (forwardedUrl) return forwardedUrl;
+  if (forwardedUrl) {
+    const host = new URL(forwardedUrl).host;
+    if (!allowedHosts || allowedHosts.has(host)) return forwardedUrl;
+  }
 
   const forwardedProto = (request.headers.get("x-forwarded-proto") || "")
     .split(",")[0]
@@ -29,13 +56,11 @@ function resolveExternalOrigin(request: NextRequest): string {
     .split(",")[0]
     ?.trim();
   if (forwardedProto && forwardedHost) {
-    const forwardedOrigin = normalizeOriginCandidate(`${forwardedProto}://${forwardedHost}`);
-    if (forwardedOrigin) return forwardedOrigin;
+    if (!allowedHosts || allowedHosts.has(forwardedHost)) {
+      const forwardedOrigin = normalizeOriginCandidate(`${forwardedProto}://${forwardedHost}`);
+      if (forwardedOrigin) return forwardedOrigin;
+    }
   }
-
-  const envOrigin = normalizeOriginCandidate(process.env.NEXTAUTH_URL)
-    ?? normalizeOriginCandidate(process.env.NEXT_PUBLIC_SITE_URL);
-  if (envOrigin) return envOrigin;
 
   return request.nextUrl.origin;
 }

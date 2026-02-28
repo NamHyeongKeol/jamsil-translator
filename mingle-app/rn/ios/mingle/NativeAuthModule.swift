@@ -123,6 +123,13 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
                 return
             }
 
+            // P2: requestId 대조 — startURL의 requestId와 콜백의 requestId가 일치해야 함
+            let expectedRequestId = resolveRequestId(resolveQueryItem(named: "requestId", in: context.startURL))
+            if !expectedRequestId.isEmpty && parsed.requestId != expectedRequestId {
+                self.finishWithError(message: "native_auth_invalid_callback", code: "native_auth_invalid_callback")
+                return
+            }
+
             if parsed.status == "success" {
                 guard !parsed.bridgeToken.isEmpty else {
                     self.finishWithError(message: "native_auth_missing_bridge_token", code: "native_auth_missing_bridge_token")
@@ -132,6 +139,7 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
                     "provider": parsed.provider,
                     "callbackUrl": parsed.callbackURL,
                     "bridgeToken": parsed.bridgeToken,
+                    "requestId": parsed.requestId,
                 ])
                 return
             }
@@ -348,12 +356,12 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func parseNativeAuthCallback(url: URL) -> (provider: String, callbackURL: String, bridgeToken: String, status: String, message: String) {
+    private func parseNativeAuthCallback(url: URL) -> (provider: String, callbackURL: String, bridgeToken: String, status: String, message: String, requestId: String) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               components.scheme?.lowercased() == "mingleauth",
               components.host?.lowercased() == "auth"
         else {
-            return (provider: "", callbackURL: "/", bridgeToken: "", status: "error", message: "native_auth_invalid_callback")
+            return (provider: "", callbackURL: "/", bridgeToken: "", status: "error", message: "native_auth_invalid_callback", requestId: "")
         }
 
         let provider = resolveProvider(resolveQueryItem(named: "provider", in: url)) ?? ""
@@ -361,9 +369,10 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
         let callbackURL = resolveSafeCallbackPath(resolveQueryItem(named: "callbackUrl", in: url))
         let bridgeToken = resolveQueryItem(named: "token", in: url).trimmingCharacters(in: .whitespacesAndNewlines)
         let message = resolveQueryItem(named: "message", in: url).trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestId = resolveRequestId(resolveQueryItem(named: "requestId", in: url))
 
         if status == "success" {
-            return (provider: provider, callbackURL: callbackURL, bridgeToken: bridgeToken, status: "success", message: "")
+            return (provider: provider, callbackURL: callbackURL, bridgeToken: bridgeToken, status: "success", message: "", requestId: requestId)
         }
 
         return (
@@ -371,7 +380,8 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
             callbackURL: callbackURL,
             bridgeToken: "",
             status: "error",
-            message: message.isEmpty ? "native_auth_failed" : message
+            message: message.isEmpty ? "native_auth_failed" : message,
+            requestId: requestId
         )
     }
 
