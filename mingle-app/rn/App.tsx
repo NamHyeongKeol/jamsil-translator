@@ -223,6 +223,7 @@ type SafeAreaPalette = {
   bottomColor: string;
   webViewColor: string;
   statusBarStyle: 'dark-content' | 'light-content';
+  edgeMode: 'fill' | 'transparent';
 };
 
 const DEFAULT_SAFE_AREA_PALETTE: SafeAreaPalette = {
@@ -230,6 +231,7 @@ const DEFAULT_SAFE_AREA_PALETTE: SafeAreaPalette = {
   bottomColor: '#ffffff',
   webViewColor: '#ffffff',
   statusBarStyle: 'dark-content',
+  edgeMode: 'fill',
 };
 
 const AUTH_LOGIN_SAFE_AREA_PALETTE: SafeAreaPalette = {
@@ -237,6 +239,7 @@ const AUTH_LOGIN_SAFE_AREA_PALETTE: SafeAreaPalette = {
   bottomColor: '#1c1c1e',
   webViewColor: '#1c1c1e',
   statusBarStyle: 'dark-content',
+  edgeMode: 'transparent',
 };
 const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
   'ko',
@@ -712,12 +715,15 @@ function AppInner(): React.JSX.Element {
         && current.bottomColor === nextPalette.bottomColor
         && current.webViewColor === nextPalette.webViewColor
         && current.statusBarStyle === nextPalette.statusBarStyle
+        && current.edgeMode === nextPalette.edgeMode
       ) {
         return current;
       }
       return nextPalette;
     });
   }, [webUrl]);
+
+  const shouldRenderSafeAreaFill = Platform.OS === 'ios' && safeAreaPalette.edgeMode === 'fill';
 
   useEffect(() => {
     updateSafeAreaPalette(webUrl);
@@ -1359,8 +1365,8 @@ function AppInner(): React.JSX.Element {
   }, [updateSafeAreaPalette]);
 
   return (
-    <View style={styles.root}>
-      {Platform.OS === 'ios' ? (
+    <View style={[styles.root, { backgroundColor: safeAreaPalette.webViewColor }]}>
+      {shouldRenderSafeAreaFill ? (
         <View
           pointerEvents="none"
           style={[
@@ -1401,10 +1407,10 @@ function AppInner(): React.JSX.Element {
             onLoadEnd={handleLoadEnd}
             onError={handleLoadError}
             onNavigationStateChange={handleNavigationStateChange}
-            style={styles.webView}
+            style={[styles.webView, { backgroundColor: safeAreaPalette.webViewColor }]}
           />
         ) : (
-          <View style={styles.webView} />
+          <View style={[styles.webView, { backgroundColor: safeAreaPalette.webViewColor }]} />
         )}
         {versionGate.status === 'checking' ? (
           <View style={styles.versionOverlay}>
@@ -1441,7 +1447,7 @@ function AppInner(): React.JSX.Element {
           </View>
         ) : null}
       </View>
-      {Platform.OS === 'ios' ? (
+      {shouldRenderSafeAreaFill ? (
         <View
           pointerEvents="none"
           style={[
