@@ -10,8 +10,7 @@
   - `preview`
 - `upload/<locale>/`: files prepared for `scripts/ios-appstore-upload.sh`
 - `copy/`: localized screenshot text source
-  - `screenshot-copy.i18n.md` (human-readable, 7 shots + subtitle)
-  - `screenshot-copy.i18n.json` (automation-friendly, 7 shots + subtitle)
+  - `screenshot-copy.i18n.json` (single source, 7 shots + subtitle)
 
 ## Default behavior
 
