@@ -1911,6 +1911,7 @@ run_ios_mobile_install() {
 
   local derived_data_path="$ROOT_DIR/.devbox-cache/ios/$DEVBOX_WORKTREE_NAME"
   local app_path="$derived_data_path/Build/Products/${configuration}-iphoneos/mingle.app"
+  local workspace_path="$ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace"
   local bundle_id
   bundle_id="$(resolve_ios_bundle_id)"
 
@@ -1928,13 +1929,13 @@ run_ios_mobile_install() {
   write_rn_ios_runtime_xcconfig
 
   mkdir -p "$(dirname "$derived_data_path")"
+  [[ -d "$workspace_path" ]] || die "RN iOS workspace not found: $workspace_path"
 
   log "building iOS app ($configuration) for destination: $destination_udid"
   (
-    cd "$ROOT_DIR/mingle-app/rn/ios"
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
     xcodebuild \
-      -workspace mingle.xcworkspace \
+      -workspace "$workspace_path" \
       -scheme mingle \
       -configuration "$configuration" \
       -destination "id=$destination_udid" \
