@@ -185,6 +185,18 @@ export default function MingleHome(props: MingleHomeProps) {
     () => `/${props.locale}/translator`,
     [props.locale],
   );
+  const localeSegment = useMemo(
+    () => encodeURIComponent(props.locale),
+    [props.locale],
+  );
+  const privacyPolicyUrl = useMemo(
+    () => `https://translator.minglelabs.xyz/${localeSegment}/privacy-policy`,
+    [localeSegment],
+  );
+  const termsOfUseUrl = useMemo(
+    () => `https://translator.minglelabs.xyz/${localeSegment}/terms-of-use`,
+    [localeSegment],
+  );
   const hasAgreedAllRequiredTerms = agreedPrivacy && agreedTerms;
 
   const clearNativeAuthTimeout = useCallback(() => {
@@ -694,7 +706,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           className="h-[1.05rem] w-[1.05rem] accent-rose-500"
                         />
                         <a
-                          href="/legal/en/privacy-policy.html"
+                          href={privacyPolicyUrl}
                           target="_blank"
                           rel="noreferrer"
                           className="flex-1 underline underline-offset-4"
@@ -711,7 +723,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           className="h-[1.05rem] w-[1.05rem] accent-rose-500"
                         />
                         <a
-                          href="/legal/en/terms-of-use.html"
+                          href={termsOfUseUrl}
                           target="_blank"
                           rel="noreferrer"
                           className="flex-1 underline underline-offset-4"
