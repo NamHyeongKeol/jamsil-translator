@@ -34,6 +34,11 @@ scripts/devbox bootstrap
 scripts/devbox up --profile local
 scripts/devbox up --profile device
 scripts/devbox up --profile device --tunnel-provider cloudflare
+# cloudflare named tunnel (fixed hostname) - requires token+hostnames env
+# export DEVBOX_CLOUDFLARE_TUNNEL_TOKEN="<token>"
+# export DEVBOX_CLOUDFLARE_WEB_HOSTNAME="web-dev.example.com"
+# export DEVBOX_CLOUDFLARE_STT_HOSTNAME="stt-dev.example.com"
+# scripts/devbox up --profile device --tunnel-provider cloudflare
 scripts/devbox up --profile device --device-app-env dev
 scripts/devbox up --profile device --device-app-env prod --with-ios-install --with-ios-clean-install --ios-configuration Release
 # 연결된 테스트폰이 있으면 모바일 빌드/설치까지
@@ -73,7 +78,9 @@ scripts/devbox status
 - `scripts/devbox up`은 저장된 Vault 경로가 있으면 비관리 키(API key 등)를
   서버 프로세스 환경변수로 런타임 주입합니다(파일 미기록).
 - `--profile device`는 ngrok(`devbox_web`/`devbox_stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
-- `--tunnel-provider cloudflare`를 사용하면 ngrok 없이 Cloudflare Quick Tunnel(`*.trycloudflare.com`)로 HTTPS/WSS를 구성할 수 있습니다.
+- `--tunnel-provider cloudflare`를 사용하면 ngrok 없이 Cloudflare 터널로 HTTPS/WSS를 구성할 수 있습니다.
+  - `DEVBOX_CLOUDFLARE_TUNNEL_TOKEN` + `DEVBOX_CLOUDFLARE_WEB_HOSTNAME` + `DEVBOX_CLOUDFLARE_STT_HOSTNAME`를 설정하면 **named tunnel(고정 호스트)** 모드로 동작합니다.
+  - 설정이 없으면 기존 Quick Tunnel(`*.trycloudflare.com`) 모드로 동작합니다.
 - `--profile device`에서 `--device-app-env dev|prod`를 주면 모바일 앱 빌드 URL을
   `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 읽어 주입합니다
   (RN + `mingle-ios` 네이티브 URL 키 모두 지원).

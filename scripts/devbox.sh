@@ -78,6 +78,9 @@ DEVBOX_VAULT_APP_PATH=""
 DEVBOX_VAULT_STT_PATH=""
 DEVBOX_NGROK_API_PORT=""
 DEVBOX_TUNNEL_PROVIDER="${DEVBOX_TUNNEL_PROVIDER:-}"
+DEVBOX_CLOUDFLARE_TUNNEL_TOKEN="${DEVBOX_CLOUDFLARE_TUNNEL_TOKEN:-}"
+DEVBOX_CLOUDFLARE_WEB_HOSTNAME="${DEVBOX_CLOUDFLARE_WEB_HOSTNAME:-}"
+DEVBOX_CLOUDFLARE_STT_HOSTNAME="${DEVBOX_CLOUDFLARE_STT_HOSTNAME:-}"
 DEVBOX_LOG_FILE=""
 DEVBOX_OPENCLAW_ROOT=""
 DEVBOX_IOS_TEAM_ID="${DEVBOX_IOS_TEAM_ID:-}"
@@ -140,6 +143,10 @@ Environment:
                            Example: abcdef.ngrok-free.app
   DEVBOX_TUNNEL_PROVIDER   Device profile tunnel provider (ngrok|cloudflare).
                            Default: ngrok
+  DEVBOX_CLOUDFLARE_TUNNEL_TOKEN  Optional: when set with hostnames below,
+                            cloudflare provider uses named tunnel mode.
+  DEVBOX_CLOUDFLARE_WEB_HOSTNAME  Named tunnel web hostname (e.g. web-dev.example.com)
+  DEVBOX_CLOUDFLARE_STT_HOSTNAME  Named tunnel stt hostname (e.g. stt-dev.example.com)
   DEVBOX_IOS_TEAM_ID       Optional iOS Team ID used by ios-rn-ipa exportOptions.
                            Example: 3RFBMN8TKZ
   DEVBOX_PERSIST_ENV_FILE  Optional: set to true/1 to write .devbox.env during init/profile.
@@ -1562,6 +1569,91 @@ resolve_tunnel_provider() {
   fi
 
   normalize_tunnel_provider "$raw"
+}
+
+cloudflared_named_pid_file_path() {
+  local worktree="${DEVBOX_WORKTREE_NAME:-$(derive_worktree_name)}"
+  worktree="${worktree//[^A-Za-z0-9._-]/-}"
+  printf '%s/.devbox-cache/cloudflared/%s.named.pid' "$ROOT_DIR" "$worktree"
+}
+
+cloudflared_named_log_file_path() {
+  local worktree="${DEVBOX_WORKTREE_NAME:-$(derive_worktree_name)}"
+  worktree="${worktree//[^A-Za-z0-9._-]/-}"
+  printf '%s/.devbox-cache/cloudflared/%s.named.log' "$ROOT_DIR" "$worktree"
+}
+
+resolve_cloudflare_named_tunnel_settings() {
+  local token web_host stt_host
+  token="$(trim_whitespace "${DEVBOX_CLOUDFLARE_TUNNEL_TOKEN:-}")"
+  web_host="$(trim_whitespace "${DEVBOX_CLOUDFLARE_WEB_HOSTNAME:-}")"
+  stt_host="$(trim_whitespace "${DEVBOX_CLOUDFLARE_STT_HOSTNAME:-}")"
+
+  if [[ -z "$token" ]]; then
+    token="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_TUNNEL_TOKEN || true)")"
+  fi
+  if [[ -z "$web_host" ]]; then
+    web_host="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_WEB_HOSTNAME || true)")"
+  fi
+  if [[ -z "$stt_host" ]]; then
+    stt_host="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_STT_HOSTNAME || true)")"
+  fi
+
+  if [[ -z "$token" && -z "$web_host" && -z "$stt_host" ]]; then
+    return 1
+  fi
+
+  [[ -n "$token" ]] || die "missing DEVBOX_CLOUDFLARE_TUNNEL_TOKEN for named tunnel mode"
+  [[ -n "$web_host" ]] || die "missing DEVBOX_CLOUDFLARE_WEB_HOSTNAME for named tunnel mode"
+  [[ -n "$stt_host" ]] || die "missing DEVBOX_CLOUDFLARE_STT_HOSTNAME for named tunnel mode"
+
+  web_host="$(normalize_domain_input "$web_host")"
+  stt_host="$(normalize_domain_input "$stt_host")"
+  validate_host "$web_host"
+  validate_host "$stt_host"
+  ensure_single_line_value "DEVBOX_CLOUDFLARE_TUNNEL_TOKEN" "$token"
+
+  printf '%s\n%s\n%s\n' "$token" "$web_host" "$stt_host"
+}
+
+wait_for_cloudflared_named_tunnel() {
+  local log_file="$1"
+  local pid="$2"
+  local timeout_sec="${3:-20}"
+  local elapsed=0
+  local ready_pattern='Registered tunnel connection\|Connection .* registered\|Initial protocol'
+
+  while (( elapsed < timeout_sec )); do
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      return 1
+    fi
+    if [[ -f "$log_file" ]] && grep -Eq "$ready_pattern" "$log_file"; then
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  return 1
+}
+
+stop_cloudflared_named_tunnel_from_pidfile() {
+  local pid_file
+  local pid
+
+  pid_file="$(cloudflared_named_pid_file_path)"
+  [[ -f "$pid_file" ]] || return 0
+
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  if [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1; then
+    log "stopping cloudflared named tunnel connector (pid: $pid)"
+    kill "$pid" >/dev/null 2>&1 || true
+    sleep 1
+    if kill -0 "$pid" >/dev/null 2>&1; then
+      kill -9 "$pid" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  rm -f "$pid_file"
 }
 
 detect_ios_coredevice_id() {
@@ -3309,6 +3401,11 @@ cmd_up() {
   local cloudflared_stt_log=""
   local cloudflared_web_pid=""
   local cloudflared_stt_pid=""
+  local cloudflared_named_log=""
+  local cloudflared_named_pid_file=""
+  local cloudflared_named_token=""
+  local cloudflared_named_web_host=""
+  local cloudflared_named_stt_host=""
 
   if [[ "$profile" == "device" ]]; then
     if [[ "$device_app_env" == "prod" ]]; then
@@ -3359,35 +3456,68 @@ $(ngrok_plan_capacity_hint)"
           ;;
         cloudflare)
           require_cmd cloudflared
-          if [[ "$with_ios_clean_install" -eq 1 ]]; then
-            stop_existing_cloudflared_by_local_port "$DEVBOX_WEB_PORT"
-            stop_existing_cloudflared_by_local_port "$DEVBOX_STT_PORT"
+          local cloudflare_named_payload=""
+          cloudflare_named_payload="$(resolve_cloudflare_named_tunnel_settings || true)"
+
+          if [[ -n "$cloudflare_named_payload" ]]; then
+            cloudflared_named_token="$(printf '%s\n' "$cloudflare_named_payload" | sed -n '1p')"
+            cloudflared_named_web_host="$(printf '%s\n' "$cloudflare_named_payload" | sed -n '2p')"
+            cloudflared_named_stt_host="$(printf '%s\n' "$cloudflare_named_payload" | sed -n '3p')"
+
+            cloudflared_named_pid_file="$(cloudflared_named_pid_file_path)"
+            cloudflared_named_log="$(cloudflared_named_log_file_path)"
+            mkdir -p "$(dirname "$cloudflared_named_pid_file")"
+
+            stop_cloudflared_named_tunnel_from_pidfile
+            rm -f "$cloudflared_named_log"
+
+            log "starting cloudflared named tunnel connector"
+            cloudflared tunnel --no-autoupdate run --token "$cloudflared_named_token" >"$cloudflared_named_log" 2>&1 &
+            local cloudflared_named_pid="$!"
+            printf '%s\n' "$cloudflared_named_pid" > "$cloudflared_named_pid_file"
+            pids+=("$cloudflared_named_pid")
+
+            if ! wait_for_cloudflared_named_tunnel "$cloudflared_named_log" "$cloudflared_named_pid" 25; then
+              cleanup_processes "${pids[@]}"
+              rm -f "$cloudflared_named_pid_file"
+              die "cloudflared named tunnel startup failed (log: $cloudflared_named_log)"
+            fi
+
+            cloudflared_web_url="https://$cloudflared_named_web_host"
+            cloudflared_stt_url="https://$cloudflared_named_stt_host"
+            started_tunnel_mode="cloudflare-named"
+            log "cloudflared named tunnel ready: web=$cloudflared_web_url stt=$cloudflared_stt_url"
+          else
+            if [[ "$with_ios_clean_install" -eq 1 ]]; then
+              stop_existing_cloudflared_by_local_port "$DEVBOX_WEB_PORT"
+              stop_existing_cloudflared_by_local_port "$DEVBOX_STT_PORT"
+            fi
+
+            cloudflared_web_log="$(mktemp "${TMPDIR:-/tmp}/devbox-cloudflared-web.XXXXXX")"
+            cloudflared_stt_log="$(mktemp "${TMPDIR:-/tmp}/devbox-cloudflared-stt.XXXXXX")"
+
+            log "starting cloudflared quick tunnel for web(port=$DEVBOX_WEB_PORT)"
+            cloudflared tunnel --url "http://127.0.0.1:$DEVBOX_WEB_PORT" --no-autoupdate >"$cloudflared_web_log" 2>&1 &
+            cloudflared_web_pid="$!"
+            pids+=("$cloudflared_web_pid")
+
+            log "starting cloudflared quick tunnel for stt(port=$DEVBOX_STT_PORT)"
+            cloudflared tunnel --url "http://127.0.0.1:$DEVBOX_STT_PORT" --no-autoupdate >"$cloudflared_stt_log" 2>&1 &
+            cloudflared_stt_pid="$!"
+            pids+=("$cloudflared_stt_pid")
+
+            if ! cloudflared_web_url="$(wait_for_cloudflared_tunnel_url "$cloudflared_web_log" "$cloudflared_web_pid" 25)"; then
+              cleanup_processes "${pids[@]}"
+              die "cloudflared web tunnel startup failed (log: $cloudflared_web_log)"
+            fi
+            if ! cloudflared_stt_url="$(wait_for_cloudflared_tunnel_url "$cloudflared_stt_log" "$cloudflared_stt_pid" 25)"; then
+              cleanup_processes "${pids[@]}"
+              die "cloudflared stt tunnel startup failed (log: $cloudflared_stt_log)"
+            fi
+
+            started_tunnel_mode="cloudflare-quick"
+            log "cloudflared quick tunnel ready: web=$cloudflared_web_url stt=$cloudflared_stt_url"
           fi
-
-          cloudflared_web_log="$(mktemp "${TMPDIR:-/tmp}/devbox-cloudflared-web.XXXXXX")"
-          cloudflared_stt_log="$(mktemp "${TMPDIR:-/tmp}/devbox-cloudflared-stt.XXXXXX")"
-
-          log "starting cloudflared quick tunnel for web(port=$DEVBOX_WEB_PORT)"
-          cloudflared tunnel --url "http://127.0.0.1:$DEVBOX_WEB_PORT" --no-autoupdate >"$cloudflared_web_log" 2>&1 &
-          cloudflared_web_pid="$!"
-          pids+=("$cloudflared_web_pid")
-
-          log "starting cloudflared quick tunnel for stt(port=$DEVBOX_STT_PORT)"
-          cloudflared tunnel --url "http://127.0.0.1:$DEVBOX_STT_PORT" --no-autoupdate >"$cloudflared_stt_log" 2>&1 &
-          cloudflared_stt_pid="$!"
-          pids+=("$cloudflared_stt_pid")
-
-          if ! cloudflared_web_url="$(wait_for_cloudflared_tunnel_url "$cloudflared_web_log" "$cloudflared_web_pid" 25)"; then
-            cleanup_processes "${pids[@]}"
-            die "cloudflared web tunnel startup failed (log: $cloudflared_web_log)"
-          fi
-          if ! cloudflared_stt_url="$(wait_for_cloudflared_tunnel_url "$cloudflared_stt_log" "$cloudflared_stt_pid" 25)"; then
-            cleanup_processes "${pids[@]}"
-            die "cloudflared stt tunnel startup failed (log: $cloudflared_stt_log)"
-          fi
-
-          started_tunnel_mode="cloudflare"
-          log "cloudflared tunnel ready: web=$cloudflared_web_url stt=$cloudflared_stt_url"
           ;;
         *)
           die "unsupported tunnel provider: $tunnel_provider"
@@ -3555,9 +3685,12 @@ $(ngrok_plan_capacity_hint)"
     log "ngrok is running in separate terminal pane/tab"
   elif [[ "$started_tunnel_mode" == "ngrok-reused" ]]; then
     log "reusing existing ngrok tunnels from inspector"
-  elif [[ "$started_tunnel_mode" == "cloudflare" ]]; then
+  elif [[ "$started_tunnel_mode" == "cloudflare-quick" ]]; then
     log "cloudflared quick tunnels are running with this process group (Ctrl+C to stop all)"
     log "cloudflared logs: web=$cloudflared_web_log stt=$cloudflared_stt_log"
+  elif [[ "$started_tunnel_mode" == "cloudflare-named" ]]; then
+    log "cloudflared named tunnel connector is running with this process group (Ctrl+C to stop all)"
+    log "cloudflared named tunnel log: $cloudflared_named_log"
   fi
 
   trap 'cleanup_processes "${pids[@]:-}"' INT TERM EXIT
@@ -3589,6 +3722,7 @@ cmd_down() {
   stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
   stop_existing_cloudflared_by_local_port "$DEVBOX_WEB_PORT"
   stop_existing_cloudflared_by_local_port "$DEVBOX_STT_PORT"
+  stop_cloudflared_named_tunnel_from_pidfile
 
   local next_lock_file="$ROOT_DIR/mingle-app/.next/dev/lock"
   if [[ -f "$next_lock_file" ]]; then
@@ -3733,11 +3867,17 @@ cmd_status() {
   local ngrok_web_domain="(auto)"
   local detected_ngrok_web_domain=""
   local tunnel_provider=""
+  local cloudflare_mode="quick"
   local ngrok_line=""
   local ngrok_domain_line=""
   local devbox_env_note="$DEVBOX_ENV_FILE (optional; write only when DEVBOX_PERSIST_ENV_FILE=true)"
   detected_ngrok_web_domain="$(resolve_ngrok_web_domain || true)"
   tunnel_provider="$(resolve_tunnel_provider "")"
+  if [[ "$tunnel_provider" == "cloudflare" ]]; then
+    if resolve_cloudflare_named_tunnel_settings >/dev/null 2>&1; then
+      cloudflare_mode="named"
+    fi
+  fi
   if [[ -n "$detected_ngrok_web_domain" ]]; then
     ngrok_web_domain="$detected_ngrok_web_domain"
   fi
@@ -3752,7 +3892,7 @@ cmd_status() {
 [devbox] worktree: $DEVBOX_WORKTREE_NAME
 [devbox] profile:  $DEVBOX_PROFILE
 [devbox] ports:    web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT metro=$DEVBOX_METRO_PORT
-[devbox] tunnel:   provider=$tunnel_provider
+[devbox] tunnel:   provider=$tunnel_provider$( [[ "$tunnel_provider" == "cloudflare" ]] && printf ' mode=%s' "$cloudflare_mode" )
 $ngrok_line
 $ngrok_domain_line
 
