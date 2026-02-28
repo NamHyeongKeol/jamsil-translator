@@ -22,6 +22,7 @@ export const ptDictionary = createProfileLocalizedDictionary({
   deleteAccount: "Excluir conta",
   menuLabel: "Menu",
   deleteAccountConfirm: "Excluir os dados da conta e sair agora?",
+  deleteAccountConfirmAction: "Excluir",
   deleteAccountCancel: "Cancelar",
   deleteAccountFailed: "Falha ao excluir a conta. Tente novamente.",
   appleNotConfigured: "As variáveis de ambiente do Apple OAuth estão ausentes, então o login com Apple está indisponível.",

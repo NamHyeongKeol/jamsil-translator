@@ -22,6 +22,7 @@ export const thDictionary = createProfileLocalizedDictionary({
   deleteAccount: "ลบบัญชี",
   menuLabel: "เมนู",
   deleteAccountConfirm: "ลบข้อมูลบัญชีและออกจากระบบตอนนี้หรือไม่?",
+  deleteAccountConfirmAction: "ลบ",
   deleteAccountCancel: "ยกเลิก",
   deleteAccountFailed: "ลบบัญชีไม่สำเร็จ กรุณาลองอีกครั้ง",
   appleNotConfigured: "ไม่มีตัวแปรสภาพแวดล้อม Apple OAuth จึงไม่สามารถใช้การเข้าสู่ระบบด้วย Apple ได้",

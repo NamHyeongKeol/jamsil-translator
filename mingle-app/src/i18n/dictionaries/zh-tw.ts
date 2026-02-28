@@ -22,6 +22,7 @@ export const zhTwDictionary = createProfileLocalizedDictionary({
   deleteAccount: "刪除帳號",
   menuLabel: "選單",
   deleteAccountConfirm: "確定刪除帳號資料並立即登出嗎？",
+  deleteAccountConfirmAction: "刪除",
   deleteAccountCancel: "取消",
   deleteAccountFailed: "刪除帳號失敗，請再試一次。",
   appleNotConfigured: "缺少 Apple OAuth 環境變數，無法使用 Apple 登入。",

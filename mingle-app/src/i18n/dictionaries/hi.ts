@@ -22,6 +22,7 @@ export const hiDictionary = createProfileLocalizedDictionary({
   deleteAccount: "खाता हटाएं",
   menuLabel: "मेनू",
   deleteAccountConfirm: "क्या अभी खाता डेटा हटाकर लॉगआउट करना है?",
+  deleteAccountConfirmAction: "हटाएं",
   deleteAccountCancel: "रद्द करें",
   deleteAccountFailed: "खाता हटाया नहीं जा सका। कृपया फिर से प्रयास करें।",
   appleNotConfigured: "Apple OAuth पर्यावरण चर मौजूद नहीं हैं, इसलिए Apple लॉगिन उपलब्ध नहीं है।",

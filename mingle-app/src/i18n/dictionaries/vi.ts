@@ -22,6 +22,7 @@ export const viDictionary = createProfileLocalizedDictionary({
   deleteAccount: "Xóa tài khoản",
   menuLabel: "Trình đơn",
   deleteAccountConfirm: "Xóa dữ liệu tài khoản và đăng xuất ngay bây giờ?",
+  deleteAccountConfirmAction: "Xóa",
   deleteAccountCancel: "Hủy",
   deleteAccountFailed: "Xóa tài khoản thất bại. Vui lòng thử lại.",
   appleNotConfigured: "Thiếu biến môi trường Apple OAuth nên không thể đăng nhập bằng Apple.",

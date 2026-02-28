@@ -76,6 +76,7 @@ export const koDictionary: AppDictionary = {
     deleteAccount: "회원탈퇴",
     menuLabel: "메뉴",
     deleteAccountConfirm: "회원탈퇴를 진행하시겠습니까? 앱 사용자 데이터가 삭제되고 로그아웃됩니다.",
+    deleteAccountConfirmAction: "삭제",
     deleteAccountCancel: "취소",
     deleteAccountFailed: "회원탈퇴 처리에 실패했습니다. 다시 시도해주세요.",
     appleNotConfigured: "Apple OAuth 환경변수가 없어 Apple 로그인을 사용할 수 없습니다.",

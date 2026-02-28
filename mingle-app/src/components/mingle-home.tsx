@@ -934,6 +934,7 @@ export default function MingleHome(props: MingleHomeProps) {
         logoutLabel={props.dictionary.profile.logout}
         deleteAccountLabel={props.dictionary.profile.deleteAccount}
         deleteAccountConfirmMessage={props.dictionary.profile.deleteAccountConfirm}
+        deleteAccountConfirmLabel={props.dictionary.profile.deleteAccountConfirmAction}
         deleteAccountCancelLabel={props.dictionary.profile.deleteAccountCancel}
         onLogout={handleSignOut}
         onDeleteAccount={handleDeleteAccount}

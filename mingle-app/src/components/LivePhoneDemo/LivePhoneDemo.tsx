@@ -138,6 +138,7 @@ interface LivePhoneDemoProps {
   logoutLabel: string
   deleteAccountLabel: string
   deleteAccountConfirmMessage: string
+  deleteAccountConfirmLabel: string
   deleteAccountCancelLabel: string
   onLogout: () => void
   onDeleteAccount: () => void
@@ -216,6 +217,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   logoutLabel,
   deleteAccountLabel,
   deleteAccountConfirmMessage,
+  deleteAccountConfirmLabel,
   deleteAccountCancelLabel,
   onLogout,
   onDeleteAccount,
@@ -1490,7 +1492,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               className="absolute inset-0 z-[60] flex items-center justify-center bg-black/40 px-5"
               onClick={closeDeleteAccountDialog}
             >
-              <motion.section
+              <motion.div
                 initial={{ opacity: 0, y: 12, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -1523,10 +1525,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                     disabled={isAuthActionPending}
                     className="inline-flex h-10 items-center justify-center rounded-lg bg-rose-600 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-400"
                   >
-                    {deleteAccountLabel}
+                    {deleteAccountConfirmLabel}
                   </button>
                 </div>
-              </motion.section>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

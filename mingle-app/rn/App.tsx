@@ -265,7 +265,24 @@ const AUTH_LOGIN_SAFE_AREA_PALETTE: SafeAreaPalette = {
   statusBarStyle: 'light-content',
   edgeMode: 'transparent',
 };
-const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
+type VersionPolicyLocale =
+  | 'ko'
+  | 'en'
+  | 'ja'
+  | 'zh-CN'
+  | 'zh-TW'
+  | 'fr'
+  | 'de'
+  | 'es'
+  | 'pt'
+  | 'it'
+  | 'ru'
+  | 'ar'
+  | 'hi'
+  | 'th'
+  | 'vi';
+
+const VERSION_POLICY_SUPPORTED_LOCALES = new Set<VersionPolicyLocale>([
   'ko',
   'en',
   'ja',
@@ -283,7 +300,7 @@ const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
   'vi',
 ]);
 const IOS_VERSION_POLICY_TIMEOUT_MS = 8000;
-const VERSION_POLICY_LOCALE_ALIASES: Record<string, string> = {
+const VERSION_POLICY_LOCALE_ALIASES: Record<string, VersionPolicyLocale> = {
   ko: 'ko',
   en: 'en',
   ja: 'ja',
@@ -306,7 +323,7 @@ const VERSION_POLICY_LOCALE_ALIASES: Record<string, string> = {
   'zh-hk': 'zh-TW',
   'zh-mo': 'zh-TW',
 };
-const VERSION_POLICY_FALLBACK_COPY: Record<string, {
+const VERSION_POLICY_FALLBACK_COPY: Record<VersionPolicyLocale, {
   checkingTitle: string;
   checkingMessage: string;
   forceTitle: string;
@@ -699,7 +716,7 @@ function resolveWebLocaleSegment(rawLocaleTag: string): string {
   return 'ko';
 }
 
-function resolveVersionPolicyLocale(rawLocaleTag: string): string {
+function resolveVersionPolicyLocale(rawLocaleTag: string): VersionPolicyLocale {
   const normalized = rawLocaleTag.trim().replace(/_/g, '-').toLowerCase();
   if (!normalized) return 'en';
 
@@ -724,8 +741,8 @@ function resolveVersionPolicyLocale(rawLocaleTag: string): string {
   return 'en';
 }
 
-function getVersionPolicyFallbackCopy(locale: string) {
-  return VERSION_POLICY_FALLBACK_COPY[locale] || VERSION_POLICY_FALLBACK_COPY.en;
+function getVersionPolicyFallbackCopy(locale: VersionPolicyLocale) {
+  return VERSION_POLICY_FALLBACK_COPY[locale];
 }
 
 function isAuthLikePathname(pathname: string): boolean {
