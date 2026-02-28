@@ -6,13 +6,13 @@ Date: 2026-02-21
 
 - [x] RN deps sync (`pnpm --dir mingle-app/rn install`)
 - [x] iOS pods sync (`pod install` or `bundle exec pod install`)
-- [x] Release iOS build succeeded (`xcodebuild ... -workspace rnnative.xcworkspace -scheme rnnative -configuration Release -sdk iphoneos ... build`)
+- [x] Release iOS build succeeded (`xcodebuild ... -workspace mingle.xcworkspace -scheme mingle -configuration Release -sdk iphoneos ... build`)
 - [x] `Info.plist` cleanup: removed empty `NSLocationWhenInUseUsageDescription`
 
 ## 2. Must-do before upload
 
 - [ ] Decide release version/build number:
-  - `MARKETING_VERSION` (`1.0`) and `CURRENT_PROJECT_VERSION` (`1`) in `mingle-app/rn/ios/rnnative.xcodeproj/project.pbxproj`
+  - `MARKETING_VERSION` (`1.0`) and `CURRENT_PROJECT_VERSION` (`1`) in `mingle-app/rn/ios/mingle.xcodeproj/project.pbxproj`
 - [ ] Create App Store Connect app entry for bundle ID `com.minglelabs.mingle.rn` (if first upload)
 - [ ] Prepare signing for App Store distribution (team: `3RFBMN8TKZ`)
 - [ ] Archive + validate + upload from Xcode Organizer (or `xcodebuild archive` + export flow)
@@ -20,8 +20,20 @@ Date: 2026-02-21
 - [ ] Fill Export Compliance (encryption) questionnaire
 - [ ] Upload metadata:
   - app description, keywords, support/privacy URLs
+  - suggested legal URLs (prod):
+    - `https://app.minglelabs.xyz/legal/privacy-policy.html`
+    - `https://app.minglelabs.xyz/legal/terms-of-use.html`
+  - locale-specific legal docs (15 locales):
+    - `https://app.minglelabs.xyz/legal/` (language index)
   - age rating, categories
   - screenshots (required device sets)
+    - auto-generate command:
+      - `scripts/ios-appstore-media.sh --no-build`
+    - output directories:
+      - `mingle-app/rn/appstore-media/generated/final/iphone-69`
+      - `mingle-app/rn/appstore-media/generated/final/ipad-13`
+      - `mingle-app/rn/appstore-media/generated/preview`
+      - upload root: `mingle-app/rn/appstore-media/upload/en-US`
 - [ ] Submit TestFlight build and run smoke QA on real devices
 
 ## 3. Recommended pre-submit smoke checks
@@ -36,10 +48,10 @@ Date: 2026-02-21
 
 ```bash
 xcodebuild \
-  -workspace mingle-app/rn/ios/rnnative.xcworkspace \
-  -scheme rnnative \
+  -workspace mingle-app/rn/ios/mingle.xcworkspace \
+  -scheme mingle \
   -configuration Release \
   -sdk iphoneos \
-  -archivePath /tmp/rnnative.xcarchive \
+  -archivePath /tmp/mingle.xcarchive \
   archive
 ```

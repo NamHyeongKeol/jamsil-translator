@@ -48,8 +48,12 @@ iOS v1.0.0 컨트롤러는 legacy 컨트롤러와 동일 코드를 사용합니�
   - `force_update`
   - `recommend_update`
   - `none`
-- 서버 env:
-  - `IOS_CLIENT_MIN_SUPPORTED_VERSION` (default `1.0.0`)
-  - `IOS_CLIENT_RECOMMENDED_BELOW_VERSION` (optional)
-  - `IOS_CLIENT_LATEST_VERSION` (optional)
-  - `IOS_APPSTORE_URL` (optional)
+- 서버 DB 이력 테이블(`app` 스키마):
+  - `app_client_versions`
+    - 클라이언트가 보낸 버전을 `insert if not exists`로 누적
+  - `app_client_version_policies`
+    - `effective_from` 기준 활성 정책 1건 선택
+    - 정책 변경은 기존 row update 없이 append-only로 기록
+    - 버전 컬럼은 semver(`x.y.z`) CHECK 제약으로 보호
+- 안전 폴백:
+  - 활성 정책 부재/조회 오류 시 `force_update`로 fail-closed

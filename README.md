@@ -33,6 +33,12 @@ scripts/devbox bootstrap
 # scripts/devbox bootstrap --vault-push
 scripts/devbox up --profile local
 scripts/devbox up --profile device
+scripts/devbox up --profile device --tunnel-provider cloudflare
+# cloudflare named tunnel (fixed hostname) - requires token+hostnames env
+# export DEVBOX_CLOUDFLARE_TUNNEL_TOKEN="<token>"
+# export DEVBOX_CLOUDFLARE_WEB_HOSTNAME="web-dev.example.com"
+# export DEVBOX_CLOUDFLARE_STT_HOSTNAME="stt-dev.example.com"
+# scripts/devbox up --profile device --tunnel-provider cloudflare
 scripts/devbox up --profile device --device-app-env dev
 scripts/devbox up --profile device --device-app-env prod --with-ios-install --with-ios-clean-install --ios-configuration Release
 # 연결된 테스트폰이 있으면 모바일 빌드/설치까지
@@ -43,6 +49,9 @@ scripts/devbox up --profile device --device-app-env prod --with-ios-install --wi
 # scripts/devbox up --profile device --with-ios-install --ios-runtime native
 # mingle-ios만 빌드하려면(설치 없음)
 # scripts/devbox ios-native-build --ios-configuration Debug
+# RN iOS App Store/TestFlight용 ipa 아카이브/익스포트
+# scripts/devbox ios-rn-ipa --device-app-env prod
+# scripts/devbox ios-rn-ipa-prod
 # 또는 RN + 네이티브를 같이 설치
 # scripts/devbox mobile --platform ios --ios-runtime both
 # 전체 로그를 파일로 남기려면
@@ -69,6 +78,9 @@ scripts/devbox status
 - `scripts/devbox up`은 저장된 Vault 경로가 있으면 비관리 키(API key 등)를
   서버 프로세스 환경변수로 런타임 주입합니다(파일 미기록).
 - `--profile device`는 ngrok(`devbox_web`/`devbox_stt`)까지 포함해 실기기 테스트 URL을 자동 반영합니다.
+- `--tunnel-provider cloudflare`를 사용하면 ngrok 없이 Cloudflare 터널로 HTTPS/WSS를 구성할 수 있습니다.
+  - `DEVBOX_CLOUDFLARE_TUNNEL_TOKEN` + `DEVBOX_CLOUDFLARE_WEB_HOSTNAME` + `DEVBOX_CLOUDFLARE_STT_HOSTNAME`를 설정하면 **named tunnel(고정 호스트)** 모드로 동작합니다.
+  - 설정이 없으면 기존 Quick Tunnel(`*.trycloudflare.com`) 모드로 동작합니다.
 - `--profile device`에서 `--device-app-env dev|prod`를 주면 모바일 앱 빌드 URL을
   `secret/mingle-app/dev` 또는 `secret/mingle-app/prod`에서 읽어 주입합니다
   (RN + `mingle-ios` 네이티브 URL 키 모두 지원).
@@ -85,6 +97,12 @@ scripts/devbox status
 - `scripts/devbox mobile --platform ios|android|all`로 기기 연결 시 RN/네이티브 앱 빌드/설치 자동화를 수행합니다.
   iOS는 `--ios-runtime rn|native|both`를 지원하며, 네이티브 설치 대상은 `--ios-coredevice-id`로 지정할 수 있습니다.
 - `scripts/devbox ios-native-build --ios-configuration Debug|Release`로 `mingle-ios`만 빌드할 수 있습니다(설치 없음).
+- `scripts/devbox ios-rn-ipa --device-app-env prod` 또는 `scripts/devbox ios-rn-ipa-prod`로
+  RN iOS `.xcarchive`/`.ipa`를 App Store 업로드용으로 생성할 수 있습니다.
+  이 명령은 `.devbox.env` 없이도 동작하며(`--device-app-env`/`--site-url`/`--ws-url` 권장),
+  URL은 Vault/`.env.local`/쉘 환경변수에서 읽을 수 있습니다.
+  Team ID를 고정하려면 `.zshrc`(또는 셸)에 `export DEVBOX_IOS_TEAM_ID=3RFBMN8TKZ`를 넣거나,
+  `.devbox.env`에 같은 키를 넣어 사용하세요.
 - `scripts/devbox up --profile device --with-mobile-install`으로 서버 준비 + 모바일 설치를 한 번에 실행할 수 있습니다.
 - `scripts/devbox test --target app|ios-native|all`로 live 테스트와 네이티브 iOS 테스트 빌드를 분리/통합 실행할 수 있습니다.
 

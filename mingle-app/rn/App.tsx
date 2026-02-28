@@ -1,18 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AppState,
   Alert,
   Linking,
   NativeModules,
   Platform,
   Pressable,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   addNativeSttListener,
@@ -28,7 +27,6 @@ import {
   stopNativeTts,
 } from './src/nativeTts';
 import {
-  parseNativeAuthCallbackUrl,
   startNativeBrowserAuthSession,
   type NativeAuthProvider,
 } from './src/nativeAuth';
@@ -57,6 +55,8 @@ type VersionGateState =
     };
 type VersionPolicyResponse = {
   action: VersionPolicyAction;
+  platform?: string;
+  policyPlatform?: string;
   locale?: string;
   updateUrl?: string;
   title?: string;
@@ -127,6 +127,28 @@ function resolveConfiguredUrl(
   options?: { trimTrailingSlash?: boolean },
 ): string {
   return normalizeConfiguredUrl(readRuntimeEnvValue(keys), allowedProtocols, options);
+}
+
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1';
+}
+
+function isLoopbackUrl(raw: string): boolean {
+  if (!raw) return false;
+  try {
+    return isLoopbackHost(new URL(raw).hostname);
+  } catch {
+    return /(127\.0\.0\.1|localhost|::1)/i.test(raw);
+  }
+}
+
+function formatWebViewLoadError(description: string, currentWebUrl: string): string {
+  const normalizedDescription = description.trim() || 'webview_load_failed';
+  if (!currentWebUrl || !isLoopbackUrl(currentWebUrl)) {
+    return normalizedDescription;
+  }
+  return `${normalizedDescription} (현재 앱 URL이 ${currentWebUrl} 입니다. 실기기에서는 127.0.0.1/localhost에 접속할 수 없습니다. scripts/devbox profile --profile device 후 --device-app-env prod 또는 dev로 설치해 주세요.)`;
 }
 
 const RN_RUNTIME_OS = Platform.OS;
@@ -218,6 +240,31 @@ const WEB_LOCALE_ALIASES: Record<string, string> = {
   'zh-hk': 'zh-TW',
   'zh-mo': 'zh-TW',
 };
+const WEB_SUPPORTED_LOCALE_SEGMENTS = new Set(Array.from(WEB_SUPPORTED_LOCALES).map(locale => locale.toLowerCase()));
+
+type SafeAreaPalette = {
+  topColor: string;
+  bottomColor: string;
+  webViewColor: string;
+  statusBarStyle: 'dark-content' | 'light-content';
+  edgeMode: 'fill' | 'transparent';
+};
+
+const DEFAULT_SAFE_AREA_PALETTE: SafeAreaPalette = {
+  topColor: '#ffffff',
+  bottomColor: '#ffffff',
+  webViewColor: '#ffffff',
+  statusBarStyle: 'dark-content',
+  edgeMode: 'fill',
+};
+
+const AUTH_LOGIN_SAFE_AREA_PALETTE: SafeAreaPalette = {
+  topColor: '#fbbc32',
+  bottomColor: '#1c1c1e',
+  webViewColor: '#1c1c1e',
+  statusBarStyle: 'light-content',
+  edgeMode: 'transparent',
+};
 const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
   'ko',
   'en',
@@ -235,6 +282,7 @@ const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
   'th',
   'vi',
 ]);
+const IOS_VERSION_POLICY_TIMEOUT_MS = 8000;
 const VERSION_POLICY_LOCALE_ALIASES: Record<string, string> = {
   ko: 'ko',
   en: 'en',
@@ -451,12 +499,17 @@ type NativeAuthAckCommand = {
   };
 };
 
+type NativeAuthResetCommand = {
+  type: 'native_auth_reset';
+};
+
 type WebViewCommand =
   | NativeSttCommand
   | NativeTtsCommand
   | NativeSttAecCommand
   | NativeAuthStartCommand
-  | NativeAuthAckCommand;
+  | NativeAuthAckCommand
+  | NativeAuthResetCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -490,8 +543,17 @@ function normalizeClientVersion(raw: string): string {
   return raw.trim().replace(/^v/i, '');
 }
 
-function buildIosVersionPolicyUrl(baseUrl: string): string {
-  return `${baseUrl}/api/ios/v1.0.0/client/version-policy`;
+function buildVersionPolicyUrl(baseUrl: string, apiNamespace: string): string {
+  const normalizedNamespace = apiNamespace.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+  if (!normalizedNamespace) {
+    return `${baseUrl}/api/client/version-policy`;
+  }
+  return `${baseUrl}/api/${normalizedNamespace}/client/version-policy`;
+}
+
+function resolveVersionPolicyClientPlatform(runtimeOs: string): 'ios' | 'android' {
+  if (runtimeOs === 'android') return 'android';
+  return 'ios';
 }
 
 function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
@@ -586,13 +648,79 @@ function getVersionPolicyFallbackCopy(locale: string) {
   return VERSION_POLICY_FALLBACK_COPY[locale] || VERSION_POLICY_FALLBACK_COPY.en;
 }
 
-function App(): React.JSX.Element {
+function isAuthLikePathname(pathname: string): boolean {
+  const segments = pathname
+    .split('/')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+  if (segments.length === 0) return false;
+
+  const first = segments[0].toLowerCase();
+  if (segments.length === 1 && WEB_SUPPORTED_LOCALE_SEGMENTS.has(first)) {
+    return true;
+  }
+  if (segments[0] === 'auth') {
+    return true;
+  }
+  if (segments.length >= 2 && WEB_SUPPORTED_LOCALE_SEGMENTS.has(first) && segments[1] === 'auth') {
+    return true;
+  }
+  return false;
+}
+
+function isAllowedNativeAuthStartPath(pathname: string): boolean {
+  const normalized = pathname.trim();
+  if (!normalized.startsWith('/')) return false;
+  if (normalized.startsWith('/api/native-auth/start')) return true;
+
+  const segments = normalized
+    .split('/')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+  if (segments.length !== 3) return false;
+
+  const locale = segments[0]?.toLowerCase() || '';
+  if (!WEB_SUPPORTED_LOCALE_SEGMENTS.has(locale)) return false;
+  return segments[1] === 'auth' && segments[2] === 'native';
+}
+
+function resolveSafeAreaPaletteForUrl(rawUrl: string): SafeAreaPalette {
+  const candidate = rawUrl.trim();
+  if (!candidate) return DEFAULT_SAFE_AREA_PALETTE;
+
+  try {
+    const parsed = new URL(candidate);
+    if (isAuthLikePathname(parsed.pathname)) {
+      return AUTH_LOGIN_SAFE_AREA_PALETTE;
+    }
+  } catch {
+    return DEFAULT_SAFE_AREA_PALETTE;
+  }
+
+  return DEFAULT_SAFE_AREA_PALETTE;
+}
+
+function resolveTrustedOrigin(rawUrl: string): string {
+  const candidate = rawUrl.trim();
+  if (!candidate) return '';
+  try {
+    const parsed = new URL(candidate);
+    if (!parsed.host) return '';
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+}
+
+function AppInner(): React.JSX.Element {
   const webViewRef = useRef<WebView>(null);
   const isPageReadyRef = useRef(false);
+  const safeAreaInsets = useSafeAreaInsets();
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
   const [versionGate, setVersionGate] = useState<VersionGateState>(() => (
-    Platform.OS === 'ios' && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
+    (Platform.OS === 'ios' || Platform.OS === 'android') && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
       ? { status: 'checking' }
       : { status: 'ready' }
   ));
@@ -603,7 +731,6 @@ function App(): React.JSX.Element {
   const pendingAuthEventRef = useRef<NativeAuthEvent | null>(null);
   const authDispatchRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authDispatchRetryCountRef = useRef(0);
-  const lastRecoveredNativeAuthUrlRef = useRef('');
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
     if (Platform.OS !== 'ios') return 36;
     const manager = (NativeModules as {
@@ -627,13 +754,39 @@ function App(): React.JSX.Element {
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${webLocale}?nativeStt=1&nativeUi=1&nativeAuth=1${apiNamespaceQuery}${debugParams}`;
   }, [webLocale]);
+  const trustedNativeAuthOrigin = useMemo(() => resolveTrustedOrigin(WEB_APP_BASE_URL), []);
+  const [safeAreaPalette, setSafeAreaPalette] = useState<SafeAreaPalette>(() => resolveSafeAreaPaletteForUrl(webUrl));
+
+  const updateSafeAreaPalette = useCallback((candidateUrl?: string) => {
+    const nextPalette = resolveSafeAreaPaletteForUrl(candidateUrl || webUrl);
+    setSafeAreaPalette((current) => {
+      if (
+        current.topColor === nextPalette.topColor
+        && current.bottomColor === nextPalette.bottomColor
+        && current.webViewColor === nextPalette.webViewColor
+        && current.statusBarStyle === nextPalette.statusBarStyle
+        && current.edgeMode === nextPalette.edgeMode
+      ) {
+        return current;
+      }
+      return nextPalette;
+    });
+  }, [webUrl]);
+
+  const shouldRenderSafeAreaFill = Platform.OS === 'ios' && safeAreaPalette.edgeMode === 'fill';
 
   useEffect(() => {
-    if (Platform.OS !== 'ios' || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
+    updateSafeAreaPalette(webUrl);
+  }, [updateSafeAreaPalette, webUrl]);
+
+  useEffect(() => {
+    if ((Platform.OS !== 'ios' && Platform.OS !== 'android') || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
       return;
     }
 
     let active = true;
+    let settled = false;
+    const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const nativeRuntimeConfig = (NativeModules.NativeSTTModule as
       | {
           runtimeConfig?: {
@@ -651,10 +804,26 @@ function App(): React.JSX.Element {
     );
     const clientBuild = envClientBuild || nativeRuntimeConfig?.clientBuild || '';
 
-    void fetch(buildIosVersionPolicyUrl(WEB_APP_BASE_URL), {
+    const fallbackToReady = (reason: string, details?: string) => {
+      if (!active || settled) return;
+      settled = true;
+      if (__DEV__) {
+        console.log(`[VersionPolicy] bypass (${reason})${details ? `: ${details}` : ''}`);
+      }
+      setVersionGate({ status: 'ready' });
+    };
+
+    const timeoutId = setTimeout(() => {
+      abortController?.abort();
+      fallbackToReady('timeout');
+    }, IOS_VERSION_POLICY_TIMEOUT_MS);
+
+    void fetch(buildVersionPolicyUrl(WEB_APP_BASE_URL, VALIDATED_API_NAMESPACE), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: abortController?.signal,
       body: JSON.stringify({
+        platform: resolveVersionPolicyClientPlatform(Platform.OS),
         clientVersion,
         clientBuild,
         locale: versionPolicyLocale,
@@ -667,9 +836,10 @@ function App(): React.JSX.Element {
         return response.json() as Promise<VersionPolicyResponse>;
       })
       .then((policy) => {
-        if (!active) return;
+        if (!active || settled) return;
 
         if (policy.action === 'force_update') {
+          settled = true;
           setVersionGate({
             status: 'force_update',
             updateUrl: typeof policy.updateUrl === 'string' ? policy.updateUrl : '',
@@ -688,6 +858,7 @@ function App(): React.JSX.Element {
           return;
         }
 
+        settled = true;
         setVersionGate({ status: 'ready' });
         if (policy.action === 'recommend_update' && !recommendPromptShownRef.current) {
           recommendPromptShownRef.current = true;
@@ -724,18 +895,19 @@ function App(): React.JSX.Element {
         }
       })
       .catch((error: unknown) => {
-        if (!active) return;
-        if (__DEV__) {
-          const message = error instanceof Error ? error.message : String(error);
-          console.log(`[VersionPolicy] bypass due to error: ${message}`);
-        }
-        setVersionGate({ status: 'ready' });
+        const message = error instanceof Error ? error.message : String(error);
+        fallbackToReady('error', message);
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
       });
 
     return () => {
       active = false;
+      clearTimeout(timeoutId);
+      abortController?.abort();
     };
-  }, []);
+  }, [versionPolicyFallback, versionPolicyLocale]);
 
   const handleForceUpdatePress = useCallback(() => {
     if (versionGate.status !== 'force_update') return;
@@ -855,59 +1027,6 @@ function App(): React.JSX.Element {
     };
   }, [clearAuthDispatchRetryTimer]);
 
-  useEffect(() => {
-    const handleIncomingAuthUrl = (incomingUrl: string | null | undefined) => {
-      const normalized = typeof incomingUrl === 'string' ? incomingUrl.trim() : '';
-      if (!normalized) return;
-      if (nativeAuthInFlightRef.current) return;
-      if (lastRecoveredNativeAuthUrlRef.current === normalized) return;
-
-      const parsed = parseNativeAuthCallbackUrl(normalized);
-      if (!parsed) return;
-      lastRecoveredNativeAuthUrlRef.current = normalized;
-
-      if (parsed.status === 'success') {
-        emitAuthToWeb({
-          type: 'success',
-          provider: parsed.provider,
-          callbackUrl: parsed.callbackUrl,
-          bridgeToken: parsed.bridgeToken,
-        });
-        return;
-      }
-
-      emitAuthToWeb({
-        type: 'error',
-        provider: parsed.provider,
-        message: parsed.message || 'native_auth_failed',
-      });
-    };
-
-    void Linking.getInitialURL()
-      .then(handleIncomingAuthUrl)
-      .catch(() => {
-        // no-op: listener below can still receive callbacks while app is alive
-      });
-
-    const urlSubscription = Linking.addEventListener('url', (event) => {
-      handleIncomingAuthUrl(event.url);
-    });
-
-    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'active') return;
-      void Linking.getInitialURL()
-        .then(handleIncomingAuthUrl)
-        .catch(() => {
-          // no-op
-        });
-    });
-
-    return () => {
-      urlSubscription.remove();
-      appStateSubscription.remove();
-    };
-  }, [emitAuthToWeb]);
-
   const handleIosTopTapOverlayPress = useCallback(() => {
     emitUiToWeb({ type: 'scroll_to_top', source: 'ios_status_bar_overlay' });
   }, [emitUiToWeb]);
@@ -1016,6 +1135,52 @@ function App(): React.JSX.Element {
       });
       return;
     }
+    if (!trustedNativeAuthOrigin) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_untrusted_origin_unavailable',
+      });
+      return;
+    }
+    let parsedStartUrl: URL;
+    try {
+      parsedStartUrl = new URL(startUrl);
+    } catch {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url',
+      });
+      return;
+    }
+    if (parsedStartUrl.protocol !== 'http:' && parsedStartUrl.protocol !== 'https:') {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url_protocol',
+      });
+      return;
+    }
+    if (parsedStartUrl.origin !== trustedNativeAuthOrigin) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url_origin',
+      });
+      return;
+    }
+    if (!isAllowedNativeAuthStartPath(parsedStartUrl.pathname)) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url_path',
+      });
+      return;
+    }
+    const expectedPathPrefix = parsedStartUrl.pathname.startsWith('/api/native-auth/start')
+      ? '/api/native-auth/start'
+      : parsedStartUrl.pathname;
 
     pendingAuthEventRef.current = null;
     authDispatchRetryCountRef.current = 0;
@@ -1030,6 +1195,8 @@ function App(): React.JSX.Element {
       const result = await startNativeBrowserAuthSession({
         provider,
         startUrl,
+        expectedOrigin: trustedNativeAuthOrigin,
+        expectedPathPrefix,
       });
       emitAuthToWeb({
         type: 'success',
@@ -1047,7 +1214,7 @@ function App(): React.JSX.Element {
     } finally {
       nativeAuthInFlightRef.current = null;
     }
-  }, [clearAuthDispatchRetryTimer, emitAuthToWeb]);
+  }, [clearAuthDispatchRetryTimer, emitAuthToWeb, trustedNativeAuthOrigin]);
 
   const handleWebMessage = useCallback((event: WebViewMessageEvent) => {
     let parsed: WebViewCommand | null = null;
@@ -1083,6 +1250,21 @@ function App(): React.JSX.Element {
       clearAuthDispatchRetryTimer();
       if (__DEV__) {
         console.log(`[Web→NativeAuth] ack provider=${provider} outcome=${outcome ?? 'unknown'}`);
+      }
+      return;
+    }
+
+    if (parsed.type === 'native_auth_reset') {
+      // 웹이 로그아웃/세션 만료 시 전송하는 리셋 명령.
+      // 이전 세션의 auth 결과(pendingAuthEventRef)와 retry 타이머를 클리어해서
+      // 이전 로그인의 에러/성공 이벤트가 재전송되지 않도록 함.
+      if (nativeAuthInFlightRef.current === null) {
+        pendingAuthEventRef.current = null;
+        authDispatchRetryCountRef.current = 0;
+        clearAuthDispatchRetryTimer();
+        if (__DEV__) {
+          console.log('[Web→NativeAuth] reset: cleared pending auth state');
+        }
       }
       return;
     }
@@ -1235,24 +1417,42 @@ function App(): React.JSX.Element {
     };
   }, [emitTtsToWeb, resolveCurrentTtsIdentity]);
 
-  const handleLoadStart = useCallback(() => {
+  const handleLoadStart = useCallback((event?: { nativeEvent?: { url?: string } }) => {
     isPageReadyRef.current = false;
-  }, []);
+    updateSafeAreaPalette(event?.nativeEvent?.url);
+  }, [updateSafeAreaPalette]);
 
-  const handleLoadEnd = useCallback(() => {
+  const handleLoadEnd = useCallback((event?: { nativeEvent?: { url?: string } }) => {
     isPageReadyRef.current = true;
+    updateSafeAreaPalette(event?.nativeEvent?.url);
     emitToWeb({ type: 'status', status: nativeStatusRef.current });
     flushPendingAuthToWeb();
-  }, [emitToWeb, flushPendingAuthToWeb]);
+  }, [emitToWeb, flushPendingAuthToWeb, updateSafeAreaPalette]);
 
   const handleLoadError = useCallback((event: { nativeEvent: { description?: string } }) => {
     const description = event.nativeEvent.description || 'webview_load_failed';
-    setLoadError(description);
-  }, []);
+    setLoadError(formatWebViewLoadError(description, webUrl));
+  }, [webUrl]);
+
+  const handleNavigationStateChange = useCallback((navigationState: { url: string }) => {
+    updateSafeAreaPalette(navigationState.url);
+  }, [updateSafeAreaPalette]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.root, { backgroundColor: safeAreaPalette.webViewColor }]}>
+      {shouldRenderSafeAreaFill ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.safeAreaTopFill,
+            {
+              height: safeAreaInsets.top,
+              backgroundColor: safeAreaPalette.topColor,
+            },
+          ]}
+        />
+      ) : null}
+      <StatusBar barStyle={safeAreaPalette.statusBarStyle} />
       {Platform.OS === 'ios' ? (
         <Pressable
           accessibilityRole="button"
@@ -1261,71 +1461,103 @@ function App(): React.JSX.Element {
           style={[styles.iosTopTapOverlay, { height: iosTopTapOverlayHeight }]}
         />
       ) : null}
-      {versionGate.status === 'ready' ? (
-        <WebView
-          ref={webViewRef}
-          source={webUrl
-            ? { uri: webUrl }
-            : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
-          originWhitelist={['*']}
-          userAgent={Platform.OS === 'ios' ? IOS_SAFE_BROWSER_USER_AGENT : undefined}
-          javaScriptEnabled
-          domStorageEnabled
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-          setSupportMultipleWindows={false}
-          allowsBackForwardNavigationGestures={false}
-          onMessage={handleWebMessage}
-          onLoadStart={handleLoadStart}
-          onLoadEnd={handleLoadEnd}
-          onError={handleLoadError}
-          style={styles.webView}
+      <View style={[styles.webViewContainer, { backgroundColor: safeAreaPalette.webViewColor }]}>
+        {versionGate.status === 'ready' ? (
+          <WebView
+            ref={webViewRef}
+            source={webUrl
+              ? { uri: webUrl }
+              : { html: '<html><body style=\"margin:0;background:#fff;\"></body></html>' }}
+            originWhitelist={['*']}
+            userAgent={Platform.OS === 'ios' ? IOS_SAFE_BROWSER_USER_AGENT : undefined}
+            javaScriptEnabled
+            domStorageEnabled
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+            setSupportMultipleWindows={false}
+            allowsBackForwardNavigationGestures={false}
+            onMessage={handleWebMessage}
+            onLoadStart={handleLoadStart}
+            onLoadEnd={handleLoadEnd}
+            onError={handleLoadError}
+            onNavigationStateChange={handleNavigationStateChange}
+            style={[styles.webView, { backgroundColor: safeAreaPalette.webViewColor }]}
+          />
+        ) : (
+          <View style={[styles.webView, { backgroundColor: safeAreaPalette.webViewColor }]} />
+        )}
+        {versionGate.status === 'checking' ? (
+          <View style={styles.versionOverlay}>
+            <Text style={styles.versionTitle}>버전 확인 중</Text>
+            <Text style={styles.versionDescription}>최신 업데이트 정책을 확인하고 있습니다.</Text>
+          </View>
+        ) : null}
+        {versionGate.status === 'force_update' ? (
+          <View style={styles.versionOverlay}>
+            <Text style={styles.versionTitle}>{versionGate.title}</Text>
+            <Text style={styles.versionDescription}>{versionGate.message}</Text>
+            {versionGate.clientVersion || versionGate.latestVersion ? (
+              <Text style={styles.versionMeta}>
+                {versionGate.clientVersion || 'unknown'} → {versionGate.latestVersion || 'unknown'}
+              </Text>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Update now"
+              onPress={handleForceUpdatePress}
+              style={({ pressed }) => [
+                styles.updateButton,
+                pressed ? styles.updateButtonPressed : null,
+              ]}
+            >
+              <Text style={styles.updateButtonText}>{versionGate.updateButtonLabel}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {versionGate.status === 'ready' && loadError ? (
+          <View style={styles.errorOverlay}>
+            <Text style={styles.errorTitle}>WebView Load Failed</Text>
+            <Text style={styles.errorDescription}>{loadError}</Text>
+          </View>
+        ) : null}
+      </View>
+      {shouldRenderSafeAreaFill ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.safeAreaBottomFill,
+            {
+              height: safeAreaInsets.bottom,
+              backgroundColor: safeAreaPalette.bottomColor,
+            },
+          ]}
         />
-      ) : (
-        <View style={styles.webView} />
-      )}
-      {versionGate.status === 'checking' ? (
-        <View style={styles.versionOverlay}>
-          <Text style={styles.versionTitle}>버전 확인 중</Text>
-          <Text style={styles.versionDescription}>최신 업데이트 정책을 확인하고 있습니다.</Text>
-        </View>
       ) : null}
-      {versionGate.status === 'force_update' ? (
-        <View style={styles.versionOverlay}>
-          <Text style={styles.versionTitle}>{versionGate.title}</Text>
-          <Text style={styles.versionDescription}>{versionGate.message}</Text>
-          {versionGate.clientVersion || versionGate.latestVersion ? (
-            <Text style={styles.versionMeta}>
-              {versionGate.clientVersion || 'unknown'} → {versionGate.latestVersion || 'unknown'}
-            </Text>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Update now"
-            onPress={handleForceUpdatePress}
-            style={({ pressed }) => [
-              styles.updateButton,
-              pressed ? styles.updateButtonPressed : null,
-            ]}
-          >
-            <Text style={styles.updateButtonText}>{versionGate.updateButtonLabel}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {versionGate.status === 'ready' && loadError ? (
-        <View style={styles.errorOverlay}>
-          <Text style={styles.errorTitle}>WebView Load Failed</Text>
-          <Text style={styles.errorDescription}>{loadError}</Text>
-        </View>
-      ) : null}
-    </SafeAreaView>
+    </View>
+  );
+}
+
+function App(): React.JSX.Element {
+  return (
+    <SafeAreaProvider>
+      <AppInner />
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  safeAreaTopFill: {
+    width: '100%',
+  },
+  safeAreaBottomFill: {
+    width: '100%',
+  },
+  webViewContainer: {
+    flex: 1,
   },
   iosTopTapOverlay: {
     position: 'absolute',

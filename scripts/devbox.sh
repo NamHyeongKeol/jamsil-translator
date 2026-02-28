@@ -61,7 +61,7 @@ NGROK_STT_URL=""
 NGROK_LAST_ERROR=""
 NGROK_LAST_ERROR_KIND=""
 
-# Values loaded/generated via .devbox.env.
+# Values loaded from shell/vault/.env.local (and optionally .devbox.env when present).
 DEVBOX_WORKTREE_NAME=""
 DEVBOX_ROOT_DIR=""
 DEVBOX_WEB_PORT=""
@@ -77,8 +77,13 @@ DEVBOX_TEST_WS_URL=""
 DEVBOX_VAULT_APP_PATH=""
 DEVBOX_VAULT_STT_PATH=""
 DEVBOX_NGROK_API_PORT=""
+DEVBOX_TUNNEL_PROVIDER="${DEVBOX_TUNNEL_PROVIDER:-}"
+DEVBOX_CLOUDFLARE_TUNNEL_TOKEN="${DEVBOX_CLOUDFLARE_TUNNEL_TOKEN:-}"
+DEVBOX_CLOUDFLARE_WEB_HOSTNAME="${DEVBOX_CLOUDFLARE_WEB_HOSTNAME:-}"
+DEVBOX_CLOUDFLARE_STT_HOSTNAME="${DEVBOX_CLOUDFLARE_STT_HOSTNAME:-}"
 DEVBOX_LOG_FILE=""
 DEVBOX_OPENCLAW_ROOT=""
+DEVBOX_IOS_TEAM_ID="${DEVBOX_IOS_TEAM_ID:-}"
 
 log() {
   printf '[devbox] %s\n' "$*"
@@ -93,6 +98,13 @@ die() {
   exit 1
 }
 
+best_effort_raise_nofile_limit() {
+  local target="${DEVBOX_ULIMIT_NOFILE:-65536}"
+  if [[ "$target" =~ ^[0-9]+$ ]]; then
+    ulimit -n "$target" 2>/dev/null || true
+  fi
+}
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -104,21 +116,27 @@ Usage:
   scripts/devbox gateway [--openclaw-root PATH] [--mode dev|run] [--]
   scripts/devbox ios-native-build [--ios-configuration Debug|Release] [--ios-coredevice-id ID]
   scripts/devbox ios-native-uninstall [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-coredevice-id ID] [--bundle-id ID]
-  scripts/devbox mobile [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod]
-  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--device-app-env dev|prod] [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox ios-rn-ipa [--ios-configuration Debug|Release] [--device-app-env dev|prod] [--site-url URL] [--ws-url URL] [--archive-path PATH] [--export-path PATH] [--export-options-plist PATH] [--export-method app-store-connect|release-testing|debugging|enterprise|app-store|ad-hoc|development] [--team-id TEAM_ID] [--allow-provisioning-updates|--no-allow-provisioning-updates] [--skip-export] [--dry-run]
+  scripts/devbox ios-rn-ipa-prod [ios-rn-ipa options...]
+  scripts/devbox mobile [--profile local|device] [--host HOST] [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod] [--tunnel-provider ngrok|cloudflare] [--site-url URL] [--ws-url URL]
+  scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--tunnel-provider ngrok|cloudflare] [--device-app-env dev|prod] [--vault-app-path PATH] [--vault-stt-path PATH]
+  scripts/devbox down
   scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
   scripts/devbox status
 
 Commands:
-  init         Generate worktree-specific ports/config/env files.
+  init         Generate worktree-specific ports/config runtime files.
   bootstrap    Read-only for .env.local; install deps and optionally push local env keys to Vault.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
   gateway      Run OpenClaw gateway from configured openclaw root.
   ios-native-build Build mingle-ios only (no install).
   ios-native-uninstall Uninstall mingle-ios app from simulator/device.
+  ios-rn-ipa   Archive/export RN iOS app to .xcarchive/.ipa for App Store/TestFlight.
+  ios-rn-ipa-prod Same as ios-rn-ipa, defaulting to --device-app-env prod.
   mobile       Build/install RN/native iOS and Android apps (device/simulator).
-  up           Start STT + Next app together (device profile includes ngrok, auto-init if needed).
+  up           Start STT + Next app together (device profile includes tunnel startup).
+  down         Stop devbox runtime processes (web/stt/metro/tunnels) for this repo.
   test         Run mingle-app live tests and/or mingle-ios native test build.
   status       Print current endpoints for PC/iOS/Android web and app targets.
 
@@ -130,6 +148,16 @@ Global Options:
 Environment:
   DEVBOX_NGROK_WEB_DOMAIN  Optional fixed ngrok domain for devbox_web tunnel.
                            Example: abcdef.ngrok-free.app
+  DEVBOX_TUNNEL_PROVIDER   Device profile tunnel provider (ngrok|cloudflare).
+                           Default: ngrok
+  DEVBOX_CLOUDFLARE_TUNNEL_TOKEN  Optional: when set with hostnames below,
+                            cloudflare provider uses named tunnel mode.
+  DEVBOX_CLOUDFLARE_WEB_HOSTNAME  Named tunnel web hostname (e.g. web-dev.example.com)
+  DEVBOX_CLOUDFLARE_STT_HOSTNAME  Named tunnel stt hostname (e.g. stt-dev.example.com)
+  DEVBOX_IOS_TEAM_ID       Optional iOS Team ID used by ios-rn-ipa exportOptions.
+                           Example: 3RFBMN8TKZ
+  DEVBOX_PERSIST_ENV_FILE  Optional: set to true/1 to write .devbox.env during init/profile.
+                           Default is stateless (no .devbox.env writes).
 EOF
 }
 
@@ -308,6 +336,59 @@ read_env_value_from_file() {
   awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print $0; exit }' "$file"
 }
 
+read_env_or_export_value_from_file() {
+  local key="$1"
+  local file="$2"
+  local raw=""
+
+  [[ -f "$file" ]] || return 1
+
+  raw="$(
+    awk -v key="$key" '
+      {
+        line = $0
+        sub(/\r$/, "", line)
+        if (line ~ /^[[:space:]]*#/) {
+          next
+        }
+        if (match(line, "^[[:space:]]*(export[[:space:]]+)?" key "[[:space:]]*=")) {
+          sub("^[[:space:]]*(export[[:space:]]+)?" key "[[:space:]]*=[[:space:]]*", "", line)
+          print line
+          exit
+        }
+      }
+    ' "$file" 2>/dev/null || true
+  )"
+  raw="$(trim_whitespace "$raw")"
+  [[ -n "$raw" ]] || return 1
+  decode_dotenv_value "$raw"
+}
+
+read_devbox_shell_setting_value() {
+  local key="$1"
+  local value=""
+  local shell_file=""
+  local zdotdir="${ZDOTDIR:-$HOME}"
+  local -a shell_files=(
+    "$zdotdir/.zshrc"
+    "$zdotdir/.zprofile"
+    "$HOME/.bashrc"
+    "$HOME/.bash_profile"
+  )
+
+  for shell_file in "${shell_files[@]}"; do
+    [[ -f "$shell_file" ]] || continue
+    value="$(read_env_or_export_value_from_file "$key" "$shell_file" || true)"
+    value="$(trim_whitespace "$value")"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 read_vault_cli_env_value_from_local_env_files() {
   local key="$1"
   local value=""
@@ -435,6 +516,15 @@ read_app_setting_value() {
 
   if [[ -f "$APP_ENV_FILE" ]]; then
     value="$(read_env_value_from_file "$key" "$APP_ENV_FILE" || true)"
+    value="$(trim_whitespace "$value")"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  fi
+
+  if [[ "$key" == DEVBOX_* ]]; then
+    value="$(read_devbox_shell_setting_value "$key" || true)"
     value="$(trim_whitespace "$value")"
     if [[ -n "$value" ]]; then
       printf '%s' "$value"
@@ -1047,6 +1137,7 @@ write_devbox_env() {
   ensure_single_line_value "DEVBOX_VAULT_STT_PATH" "$DEVBOX_VAULT_STT_PATH"
   ensure_single_line_value "DEVBOX_NGROK_API_PORT" "$DEVBOX_NGROK_API_PORT"
   ensure_single_line_value "DEVBOX_OPENCLAW_ROOT" "$DEVBOX_OPENCLAW_ROOT"
+  ensure_single_line_value "DEVBOX_IOS_TEAM_ID" "$DEVBOX_IOS_TEAM_ID"
 
   cat > "$DEVBOX_ENV_FILE" <<EOF
 DEVBOX_WORKTREE_NAME=$DEVBOX_WORKTREE_NAME
@@ -1065,6 +1156,7 @@ DEVBOX_VAULT_APP_PATH=$DEVBOX_VAULT_APP_PATH
 DEVBOX_VAULT_STT_PATH=$DEVBOX_VAULT_STT_PATH
 DEVBOX_NGROK_API_PORT=$DEVBOX_NGROK_API_PORT
 DEVBOX_OPENCLAW_ROOT=$DEVBOX_OPENCLAW_ROOT
+DEVBOX_IOS_TEAM_ID=$DEVBOX_IOS_TEAM_ID
 EOF
 }
 
@@ -1080,7 +1172,7 @@ load_devbox_env() {
     [[ "$key" =~ ^[A-Z0-9_]+$ ]] || die "invalid key in $DEVBOX_ENV_FILE: $key"
 
     case "$key" in
-      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH|DEVBOX_NGROK_API_PORT|DEVBOX_OPENCLAW_ROOT)
+      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH|DEVBOX_NGROK_API_PORT|DEVBOX_OPENCLAW_ROOT|DEVBOX_IOS_TEAM_ID)
         printf -v "$key" '%s' "$value"
         ;;
       *)
@@ -1091,8 +1183,94 @@ load_devbox_env() {
 }
 
 require_devbox_env() {
-  [[ -f "$DEVBOX_ENV_FILE" ]] || die "missing $DEVBOX_ENV_FILE (run: scripts/devbox init)"
-  load_devbox_env
+  local value=""
+
+  if is_truthy "${DEVBOX_PERSIST_ENV_FILE:-0}" && [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    load_devbox_env
+  fi
+
+  if [[ -z "$DEVBOX_WORKTREE_NAME" ]]; then
+    DEVBOX_WORKTREE_NAME="$(derive_worktree_name)"
+  fi
+
+  if [[ -z "${DEVBOX_VAULT_APP_PATH:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_VAULT_APP_PATH || true)")"
+    [[ -n "$value" ]] && DEVBOX_VAULT_APP_PATH="$value"
+  fi
+  if [[ -z "${DEVBOX_VAULT_STT_PATH:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_VAULT_STT_PATH || true)")"
+    [[ -n "$value" ]] && DEVBOX_VAULT_STT_PATH="$value"
+  fi
+  resolve_vault_paths "$DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_STT_PATH"
+
+  if [[ -z "${DEVBOX_OPENCLAW_ROOT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_OPENCLAW_ROOT || true)")"
+    [[ -n "$value" ]] && DEVBOX_OPENCLAW_ROOT="$value"
+  fi
+  if [[ -z "${DEVBOX_OPENCLAW_ROOT:-}" ]]; then
+    DEVBOX_OPENCLAW_ROOT="$(resolve_openclaw_root)"
+  fi
+
+  calc_default_ports
+
+  if [[ -z "${DEVBOX_WEB_PORT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_WEB_PORT || true)")"
+    [[ -n "$value" ]] && DEVBOX_WEB_PORT="$value"
+  fi
+  if [[ -z "${DEVBOX_STT_PORT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_STT_PORT || true)")"
+    [[ -n "$value" ]] && DEVBOX_STT_PORT="$value"
+  fi
+  if [[ -z "${DEVBOX_METRO_PORT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_METRO_PORT || true)")"
+    [[ -n "$value" ]] && DEVBOX_METRO_PORT="$value"
+  fi
+  if [[ -z "${DEVBOX_NGROK_API_PORT:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_NGROK_API_PORT || true)")"
+    [[ -n "$value" ]] && DEVBOX_NGROK_API_PORT="$value"
+  fi
+
+  [[ -n "${DEVBOX_WEB_PORT:-}" ]] || DEVBOX_WEB_PORT="$DEFAULT_WEB_PORT"
+  [[ -n "${DEVBOX_STT_PORT:-}" ]] || DEVBOX_STT_PORT="$DEFAULT_STT_PORT"
+  [[ -n "${DEVBOX_METRO_PORT:-}" ]] || DEVBOX_METRO_PORT="$DEFAULT_METRO_PORT"
+
+  if [[ -z "${DEVBOX_PROFILE:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_PROFILE || true)")"
+    [[ -n "$value" ]] && DEVBOX_PROFILE="$value"
+  fi
+  [[ -n "${DEVBOX_PROFILE:-}" ]] || DEVBOX_PROFILE="local"
+
+  if [[ -z "${DEVBOX_LOCAL_HOST:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_LOCAL_HOST || true)")"
+    [[ -n "$value" ]] && DEVBOX_LOCAL_HOST="$value"
+  fi
+  [[ -n "${DEVBOX_LOCAL_HOST:-}" ]] || DEVBOX_LOCAL_HOST="127.0.0.1"
+
+  if [[ -z "${DEVBOX_SITE_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_SITE_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_SITE_URL="$value"
+  fi
+  if [[ -z "${DEVBOX_RN_WS_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_RN_WS_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_RN_WS_URL="$value"
+  fi
+  if [[ -z "${DEVBOX_PUBLIC_WS_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_PUBLIC_WS_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_PUBLIC_WS_URL="$value"
+  fi
+  if [[ -z "${DEVBOX_TEST_API_BASE_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_TEST_API_BASE_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_TEST_API_BASE_URL="$value"
+  fi
+  if [[ -z "${DEVBOX_TEST_WS_URL:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_TEST_WS_URL || true)")"
+    [[ -n "$value" ]] && DEVBOX_TEST_WS_URL="$value"
+  fi
+
+  if [[ -z "${DEVBOX_IOS_TEAM_ID:-}" ]]; then
+    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_IOS_TEAM_ID || true)")"
+    [[ -n "$value" ]] && DEVBOX_IOS_TEAM_ID="$value"
+  fi
 
   : "${DEVBOX_WORKTREE_NAME:?missing DEVBOX_WORKTREE_NAME}"
   : "${DEVBOX_WEB_PORT:?missing DEVBOX_WEB_PORT}"
@@ -1102,6 +1280,25 @@ require_devbox_env() {
     DEVBOX_NGROK_API_PORT="$((DEVBOX_WEB_PORT + 7000))"
   fi
   : "${DEVBOX_PROFILE:?missing DEVBOX_PROFILE}"
+  case "$DEVBOX_PROFILE" in
+    local|device) ;;
+    *) die "invalid DEVBOX_PROFILE: $DEVBOX_PROFILE (expected local|device)" ;;
+  esac
+  if [[ -z "${DEVBOX_SITE_URL:-}" ]]; then
+    DEVBOX_SITE_URL="http://$DEVBOX_LOCAL_HOST:$DEVBOX_WEB_PORT"
+  fi
+  if [[ -z "${DEVBOX_RN_WS_URL:-}" ]]; then
+    DEVBOX_RN_WS_URL="ws://$DEVBOX_LOCAL_HOST:$DEVBOX_STT_PORT"
+  fi
+  if [[ -z "${DEVBOX_PUBLIC_WS_URL:-}" && "$DEVBOX_PROFILE" == "device" ]]; then
+    DEVBOX_PUBLIC_WS_URL="$DEVBOX_RN_WS_URL"
+  fi
+  if [[ -z "${DEVBOX_TEST_API_BASE_URL:-}" ]]; then
+    DEVBOX_TEST_API_BASE_URL="http://127.0.0.1:$DEVBOX_WEB_PORT"
+  fi
+  if [[ -z "${DEVBOX_TEST_WS_URL:-}" ]]; then
+    DEVBOX_TEST_WS_URL="ws://127.0.0.1:$DEVBOX_STT_PORT"
+  fi
   : "${DEVBOX_SITE_URL:?missing DEVBOX_SITE_URL}"
   : "${DEVBOX_RN_WS_URL:?missing DEVBOX_RN_WS_URL}"
   : "${DEVBOX_TEST_API_BASE_URL:?missing DEVBOX_TEST_API_BASE_URL}"
@@ -1413,11 +1610,153 @@ normalize_android_variant() {
   esac
 }
 
+normalize_tunnel_provider() {
+  local raw="${1:-ngrok}"
+  local lowered
+  lowered="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+  case "$lowered" in
+    ngrok) printf 'ngrok' ;;
+    cloudflare|cloudflared|cf) printf 'cloudflare' ;;
+    *)
+      die "invalid tunnel provider: $raw (expected ngrok|cloudflare)"
+      ;;
+  esac
+}
+
+resolve_tunnel_provider() {
+  local override="${1:-}"
+  local raw="$override"
+
+  if [[ -z "$raw" ]]; then
+    raw="${DEVBOX_TUNNEL_PROVIDER:-}"
+  fi
+  if [[ -z "$raw" ]]; then
+    raw="$(trim_whitespace "$(read_app_setting_value DEVBOX_TUNNEL_PROVIDER || true)")"
+  fi
+  if [[ -z "$raw" ]]; then
+    raw="ngrok"
+  fi
+
+  normalize_tunnel_provider "$raw"
+}
+
+cloudflared_named_pid_file_path() {
+  local worktree="${DEVBOX_WORKTREE_NAME:-$(derive_worktree_name)}"
+  worktree="${worktree//[^A-Za-z0-9._-]/-}"
+  printf '%s/.devbox-cache/cloudflared/%s.named.pid' "$ROOT_DIR" "$worktree"
+}
+
+cloudflared_named_log_file_path() {
+  local worktree="${DEVBOX_WORKTREE_NAME:-$(derive_worktree_name)}"
+  worktree="${worktree//[^A-Za-z0-9._-]/-}"
+  printf '%s/.devbox-cache/cloudflared/%s.named.log' "$ROOT_DIR" "$worktree"
+}
+
+resolve_cloudflare_named_tunnel_settings() {
+  local token web_host stt_host
+  token="$(trim_whitespace "${DEVBOX_CLOUDFLARE_TUNNEL_TOKEN:-}")"
+  web_host="$(trim_whitespace "${DEVBOX_CLOUDFLARE_WEB_HOSTNAME:-}")"
+  stt_host="$(trim_whitespace "${DEVBOX_CLOUDFLARE_STT_HOSTNAME:-}")"
+
+  if [[ -z "$token" ]]; then
+    token="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_TUNNEL_TOKEN || true)")"
+  fi
+  if [[ -z "$web_host" ]]; then
+    web_host="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_WEB_HOSTNAME || true)")"
+  fi
+  if [[ -z "$stt_host" ]]; then
+    stt_host="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_STT_HOSTNAME || true)")"
+  fi
+
+  if [[ -z "$token" && -z "$web_host" && -z "$stt_host" ]]; then
+    return 1
+  fi
+
+  [[ -n "$token" ]] || die "missing DEVBOX_CLOUDFLARE_TUNNEL_TOKEN for named tunnel mode"
+  [[ -n "$web_host" ]] || die "missing DEVBOX_CLOUDFLARE_WEB_HOSTNAME for named tunnel mode"
+  [[ -n "$stt_host" ]] || die "missing DEVBOX_CLOUDFLARE_STT_HOSTNAME for named tunnel mode"
+
+  web_host="$(normalize_domain_input "$web_host")"
+  stt_host="$(normalize_domain_input "$stt_host")"
+  validate_host "$web_host"
+  validate_host "$stt_host"
+  ensure_single_line_value "DEVBOX_CLOUDFLARE_TUNNEL_TOKEN" "$token"
+
+  printf '%s\n%s\n%s\n' "$token" "$web_host" "$stt_host"
+}
+
+resolve_cloudflare_named_hostnames() {
+  local web_host stt_host
+  web_host="$(trim_whitespace "${DEVBOX_CLOUDFLARE_WEB_HOSTNAME:-}")"
+  stt_host="$(trim_whitespace "${DEVBOX_CLOUDFLARE_STT_HOSTNAME:-}")"
+
+  if [[ -z "$web_host" ]]; then
+    web_host="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_WEB_HOSTNAME || true)")"
+  fi
+  if [[ -z "$stt_host" ]]; then
+    stt_host="$(trim_whitespace "$(read_app_setting_value DEVBOX_CLOUDFLARE_STT_HOSTNAME || true)")"
+  fi
+
+  if [[ -z "$web_host" && -z "$stt_host" ]]; then
+    return 1
+  fi
+
+  [[ -n "$web_host" ]] || die "missing DEVBOX_CLOUDFLARE_WEB_HOSTNAME for cloudflare named host profile"
+  [[ -n "$stt_host" ]] || die "missing DEVBOX_CLOUDFLARE_STT_HOSTNAME for cloudflare named host profile"
+
+  web_host="$(normalize_domain_input "$web_host")"
+  stt_host="$(normalize_domain_input "$stt_host")"
+  validate_host "$web_host"
+  validate_host "$stt_host"
+
+  printf '%s\n%s\n' "$web_host" "$stt_host"
+}
+
+wait_for_cloudflared_named_tunnel() {
+  local log_file="$1"
+  local pid="$2"
+  local timeout_sec="${3:-20}"
+  local elapsed=0
+  local ready_pattern='Registered tunnel connection|Connection .* registered|Initial protocol'
+
+  while (( elapsed < timeout_sec )); do
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      return 1
+    fi
+    if [[ -f "$log_file" ]] && grep -Eq "$ready_pattern" "$log_file"; then
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  return 1
+}
+
+stop_cloudflared_named_tunnel_from_pidfile() {
+  local pid_file
+  local pid
+
+  pid_file="$(cloudflared_named_pid_file_path)"
+  [[ -f "$pid_file" ]] || return 0
+
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  if [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1; then
+    log "stopping cloudflared named tunnel connector (pid: $pid)"
+    kill "$pid" >/dev/null 2>&1 || true
+    sleep 1
+    if kill -0 "$pid" >/dev/null 2>&1; then
+      kill -9 "$pid" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  rm -f "$pid_file"
+}
+
 detect_ios_coredevice_id() {
   command -v xcrun >/dev/null 2>&1 || return 1
   xcrun devicectl list devices 2>/dev/null | awk '
       /connected|available \(paired\)/ {
-        if (match($0, /[0-9A-F-]{36}/)) {
+        if (match($0, /[0-9A-F-]{20,40}/)) {
           id = substr($0, RSTART, RLENGTH)
           if ($0 ~ / connected/) {
             print id
@@ -1434,17 +1773,18 @@ detect_ios_coredevice_id() {
 
 detect_ios_xcode_destination_udid() {
   command -v xcodebuild >/dev/null 2>&1 || return 1
-  local workspace="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcworkspace"
+  local workspace="$ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace"
   local destination_udid=""
   [[ -d "$workspace" ]] || return 1
 
   destination_udid="$(
     xcodebuild \
       -workspace "$workspace" \
-      -scheme rnnative \
+      -scheme mingle \
       -showdestinations 2>&1 | awk '
       /platform:iOS/ && /id:/ && /name:/ {
         line = $0
+        if (line ~ /platform:iOS Simulator/) next
         if (line ~ /Any iOS Device/) next
         if (line ~ /error:[^,}]*not connected/) next
         id = ""
@@ -1472,7 +1812,7 @@ detect_ios_xcode_destination_udid() {
     {
       line = $0
       if (line ~ /MacBook|^Mac /) next
-      if (match(line, /\([0-9A-F-]{36}\)/)) {
+      if (match(line, /\([0-9A-F-]{20,40}\)[[:space:]]*$/)) {
         id = substr(line, RSTART + 1, RLENGTH - 2)
         print id
         exit
@@ -1488,7 +1828,7 @@ detect_ios_device_udid() {
   coredevice_id="$(
     xcrun devicectl list devices 2>/dev/null | awk '
       /connected|available \(paired\)/ {
-        if (match($0, /[0-9A-F-]{36}/)) {
+        if (match($0, /[0-9A-F-]{20,40}/)) {
           id = substr($0, RSTART, RLENGTH)
           if ($0 ~ / connected/) {
             print id
@@ -1516,12 +1856,21 @@ detect_android_device_serial() {
 }
 
 resolve_ios_bundle_id() {
-  local project_file="$ROOT_DIR/mingle-app/rn/ios/rnnative.xcodeproj/project.pbxproj"
+  local project_file="$ROOT_DIR/mingle-app/rn/ios/mingle.xcodeproj/project.pbxproj"
   if [[ -f "$project_file" ]]; then
     awk -F'= ' '/PRODUCT_BUNDLE_IDENTIFIER = /{gsub(/;$/, "", $2); print $2; exit}' "$project_file"
     return 0
   fi
-  printf '%s' "com.rnnative"
+  printf '%s' "com.mingle"
+}
+
+resolve_rn_ios_development_team() {
+  local project_file="$ROOT_DIR/mingle-app/rn/ios/mingle.xcodeproj/project.pbxproj"
+  if [[ -f "$project_file" ]]; then
+    awk -F'= ' '/DEVELOPMENT_TEAM = /{gsub(/;$/, "", $2); print $2; exit}' "$project_file"
+    return 0
+  fi
+  printf '%s' ""
 }
 
 resolve_android_application_id() {
@@ -1530,7 +1879,7 @@ resolve_android_application_id() {
     awk -F'"' '/applicationId[[:space:]]+"/{print $2; exit}' "$gradle_file"
     return 0
   fi
-  printf '%s' "com.rnnative"
+  printf '%s' "com.mingle"
 }
 
 resolve_ios_simulator_udid_for_uninstall() {
@@ -1623,7 +1972,8 @@ run_ios_mobile_install() {
   ensure_ios_pods_if_needed
 
   local derived_data_path="$ROOT_DIR/.devbox-cache/ios/$DEVBOX_WORKTREE_NAME"
-  local app_path="$derived_data_path/Build/Products/${configuration}-iphoneos/rnnative.app"
+  local app_path="$derived_data_path/Build/Products/${configuration}-iphoneos/mingle.app"
+  local workspace_path="$ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace"
   local bundle_id
   bundle_id="$(resolve_ios_bundle_id)"
 
@@ -1641,14 +1991,14 @@ run_ios_mobile_install() {
   write_rn_ios_runtime_xcconfig
 
   mkdir -p "$(dirname "$derived_data_path")"
+  [[ -d "$workspace_path" ]] || die "RN iOS workspace not found: $workspace_path"
 
   log "building iOS app ($configuration) for destination: $destination_udid"
   (
-    cd "$ROOT_DIR/mingle-app/rn/ios"
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
     xcodebuild \
-      -workspace rnnative.xcworkspace \
-      -scheme rnnative \
+      -workspace "$workspace_path" \
+      -scheme mingle \
       -configuration "$configuration" \
       -destination "id=$destination_udid" \
       -derivedDataPath "$derived_data_path" \
@@ -1853,6 +2203,65 @@ run_mobile_install_targets() {
   )
 }
 
+is_loopback_http_or_ws_url() {
+  local value="${1:-}"
+  [[ -n "$value" ]] || return 1
+
+  local without_scheme="${value#*://}"
+  local host_port="${without_scheme%%/*}"
+  local host=""
+
+  # IPv6 bracketed address: [::1]:port — extract the part inside [ ]
+  if [[ "$host_port" == \[* ]]; then
+    host="${host_port#[}"
+    host="${host%%]*}"
+  else
+    host="${host_port%%:*}"
+  fi
+
+  local host_lower=""
+  host_lower="$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')"
+
+  case "$host_lower" in
+    127.0.0.1|localhost|::1) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+guard_rn_ios_local_profile_on_device() {
+  local profile="$1"
+  local do_rn_ios="$2"
+  local ios_udid="${3:-}"
+  local effective_site_url="${4:-}"
+
+  [[ "$do_rn_ios" -eq 1 ]] || return 0
+  [[ "$profile" == "local" ]] || return 0
+  is_loopback_http_or_ws_url "$effective_site_url" || return 0
+
+  if is_truthy "${DEVBOX_ALLOW_LOCAL_PROFILE_IOS_DEVICE:-}"; then
+    warn "DEVBOX_ALLOW_LOCAL_PROFILE_IOS_DEVICE=1; allowing local-profile RN iOS install on real device"
+    return 0
+  fi
+
+  local connected_coredevice_id=""
+  connected_coredevice_id="$(detect_ios_coredevice_id || true)"
+  [[ -n "$connected_coredevice_id" ]] || return 0
+
+  local suggested_udid="$ios_udid"
+  if [[ -z "$suggested_udid" ]]; then
+    suggested_udid="$(detect_ios_xcode_destination_udid || true)"
+  fi
+
+  die "DEVBOX_PROFILE=local with RN iOS device install is blocked because DEVBOX_SITE_URL points to loopback ($effective_site_url). This causes WebView load failures on real iPhone and can trigger local-network permission prompts.
+Use:
+- scripts/devbox up --profile device --device-app-env prod --with-ios-install --ios-runtime rn --ios-udid ${suggested_udid:-<XCODE_UDID>}
+or:
+- scripts/devbox profile --profile device
+- scripts/devbox mobile --platform ios --ios-runtime rn --device-app-env prod --ios-udid ${suggested_udid:-<XCODE_UDID>}
+(For ngrok-backed dev URL, use --device-app-env dev)
+Override only if intentional: DEVBOX_ALLOW_LOCAL_PROFILE_IOS_DEVICE=1"
+}
+
 stop_existing_ngrok_by_inspector_port() {
   local inspector_port="$1"
   local name_patterns=(
@@ -1909,6 +2318,64 @@ stop_existing_ngrok_by_inspector_port() {
     [[ -n "$pid" ]] || continue
     kill -9 "$pid" >/dev/null 2>&1 || true
   done
+}
+
+stop_existing_cloudflared_by_local_port() {
+  local local_port="$1"
+  local pids=""
+  local pid=""
+  local unique_pids=""
+
+  [[ -n "$local_port" ]] || return 0
+  [[ "$local_port" =~ ^[0-9]+$ ]] || return 0
+  command -v pgrep >/dev/null 2>&1 || return 0
+
+  pids="$(pgrep -f "cloudflared.*tunnel.*--url http://127\\.0\\.0\\.1:${local_port}" 2>/dev/null || true)"
+  unique_pids="$(printf '%s' "$pids" | awk 'NF {print $1}' | awk '!seen[$0]++')"
+  [[ -n "$unique_pids" ]] || return 0
+
+  log "stopping existing cloudflared quick tunnels for local port $local_port"
+  printf '%s\n' "$unique_pids" | while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    kill "$pid" >/dev/null 2>&1 || true
+  done
+
+  sleep 1
+  pids="$(pgrep -f "cloudflared.*tunnel.*--url http://127\\.0\\.0\\.1:${local_port}" 2>/dev/null || true)"
+  if [[ -n "$pids" ]]; then
+    printf '%s\n' "$pids" | while IFS= read -r pid; do
+      [[ -n "$pid" ]] || continue
+      kill -9 "$pid" >/dev/null 2>&1 || true
+    done
+  fi
+}
+
+extract_cloudflared_quicktunnel_url_from_log() {
+  local log_file="$1"
+  [[ -f "$log_file" ]] || return 1
+  sed -nE 's/.*(https:\/\/[a-z0-9-]+\.trycloudflare\.com).*/\1/p' "$log_file" | tail -n 1
+}
+
+wait_for_cloudflared_tunnel_url() {
+  local log_file="$1"
+  local pid="$2"
+  local timeout_sec="${3:-20}"
+  local elapsed=0
+  local url=""
+
+  while (( elapsed < timeout_sec )); do
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      return 1
+    fi
+    url="$(extract_cloudflared_quicktunnel_url_from_log "$log_file" || true)"
+    if [[ -n "$url" ]]; then
+      printf '%s' "$url"
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  return 1
 }
 
 try_read_ngrok_urls() {
@@ -2179,21 +2646,28 @@ sync_google_oauth_redirect_uris_for_site_change() {
   log "google oauth redirect URI synced for ngrok host: ${desired_redirect_uris[*]}"
 }
 
-set_device_profile_values() {
+set_device_profile_values_from_urls() {
+  local site_url="$1"
+  local stt_url="$2"
+  local provider_label="${3:-tunnel}"
   local previous_site_url="${DEVBOX_SITE_URL:-}"
-  read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"
 
   DEVBOX_PROFILE="device"
   DEVBOX_LOCAL_HOST="127.0.0.1"
-  DEVBOX_SITE_URL="$NGROK_WEB_URL"
-  DEVBOX_RN_WS_URL="$(to_wss_url "$NGROK_STT_URL")"
+  DEVBOX_SITE_URL="$site_url"
+  DEVBOX_RN_WS_URL="$(to_wss_url "$stt_url")"
   DEVBOX_PUBLIC_WS_URL="$DEVBOX_RN_WS_URL"
   DEVBOX_TEST_API_BASE_URL="http://127.0.0.1:$DEVBOX_WEB_PORT"
   DEVBOX_TEST_WS_URL="ws://127.0.0.1:$DEVBOX_STT_PORT"
 
-  validate_https_url "ngrok web url" "$DEVBOX_SITE_URL"
-  validate_wss_url "ngrok stt url" "$DEVBOX_RN_WS_URL"
+  validate_https_url "$provider_label web url" "$DEVBOX_SITE_URL"
+  validate_wss_url "$provider_label stt url" "$DEVBOX_RN_WS_URL"
   sync_google_oauth_redirect_uris_for_site_change "$previous_site_url" "$DEVBOX_SITE_URL"
+}
+
+set_device_profile_values() {
+  read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"
+  set_device_profile_values_from_urls "$NGROK_WEB_URL" "$NGROK_STT_URL" "ngrok"
 }
 
 resolve_device_app_env_override() {
@@ -2207,8 +2681,8 @@ resolve_device_app_env_override() {
       path="runtime:device-profile"
       site_url="${DEVBOX_SITE_URL:-}"
       ws_url="${DEVBOX_RN_WS_URL:-}"
-      [[ -n "$site_url" ]] || die "missing runtime site url for --device-app-env dev. Run with --profile device so ngrok URLs are resolved first."
-      [[ -n "$ws_url" ]] || die "missing runtime ws url for --device-app-env dev. Run with --profile device so ngrok URLs are resolved first."
+      [[ -n "$site_url" ]] || die "missing runtime site url for --device-app-env dev. Run with --profile device so tunnel URLs are resolved first."
+      [[ -n "$ws_url" ]] || die "missing runtime ws url for --device-app-env dev. Run with --profile device so tunnel URLs are resolved first."
       ;;
     prod)
       path="secret/mingle-app/prod"
@@ -2237,7 +2711,9 @@ resolve_device_app_env_override() {
 }
 
 save_and_refresh() {
-  write_devbox_env
+  if is_truthy "${DEVBOX_PERSIST_ENV_FILE:-0}"; then
+    write_devbox_env
+  fi
   refresh_runtime_files
 }
 
@@ -2297,6 +2773,103 @@ cleanup_processes() {
   done
 }
 
+collect_listening_pids_by_port() {
+  local port="$1"
+  local raw=""
+  if ! command -v lsof >/dev/null 2>&1; then
+    return 0
+  fi
+  raw="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)"
+  printf '%s\n' "$raw" | awk 'NF {print $1}' | awk '!seen[$0]++'
+}
+
+collect_pids_by_pattern() {
+  local pattern="$1"
+  local raw=""
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return 0
+  fi
+  raw="$(pgrep -f "$pattern" 2>/dev/null || true)"
+  printf '%s\n' "$raw" | awk 'NF {print $1}' | awk '!seen[$0]++'
+}
+
+force_kill_pids() {
+  local pid
+  for pid in "$@"; do
+    [[ -n "$pid" ]] || continue
+    kill -9 "$pid" >/dev/null 2>&1 || true
+  done
+}
+
+stop_pids_with_grace() {
+  local label="$1"
+  shift
+
+  local -a pids=("$@")
+  local -a alive=("${pids[@]}")
+  local retries=0
+
+  [[ "${#pids[@]}" -gt 0 ]] || return 0
+  log "stopping $label (pids: ${pids[*]})"
+  cleanup_processes "${pids[@]}"
+
+  while [[ "$retries" -lt 10 ]]; do
+    alive=()
+    local pid
+    for pid in "${pids[@]}"; do
+      if kill -0 "$pid" >/dev/null 2>&1; then
+        alive+=("$pid")
+      fi
+    done
+    [[ "${#alive[@]}" -eq 0 ]] && return 0
+    sleep 0.2
+    retries=$((retries + 1))
+  done
+
+  log "force-killing $label (pids: ${alive[*]})"
+  force_kill_pids "${alive[@]}"
+}
+
+stop_listeners_by_port() {
+  local label="$1"
+  local port="$2"
+  local pids_text=""
+  local -a pids=()
+
+  pids_text="$(collect_listening_pids_by_port "$port")"
+  if [[ -z "$pids_text" ]]; then
+    return 0
+  fi
+  while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    pids+=("$pid")
+  done <<< "$pids_text"
+  if [[ "${#pids[@]}" -eq 0 ]]; then
+    return 0
+  fi
+  stop_pids_with_grace "$label(port=$port)" "${pids[@]}"
+}
+
+stop_processes_by_pattern() {
+  local label="$1"
+  local pattern="$2"
+  local pids_text=""
+  local -a pids=()
+
+  pids_text="$(collect_pids_by_pattern "$pattern")"
+  if [[ -z "$pids_text" ]]; then
+    return 0
+  fi
+  while IFS= read -r pid; do
+    [[ -n "$pid" ]] || continue
+    pids+=("$pid")
+  done <<< "$pids_text"
+  if [[ "${#pids[@]}" -eq 0 ]]; then
+    return 0
+  fi
+  stop_pids_with_grace "$label" "${pids[@]}"
+}
+
 wait_for_any_child_exit() {
   local pid
   local -a pids=("$@")
@@ -2316,13 +2889,6 @@ cmd_init() {
   local web_port="" stt_port="" metro_port="" ngrok_api_port="" host="127.0.0.1"
   local vault_app_override="" vault_stt_override=""
   local openclaw_root_override=""
-
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    DEVBOX_VAULT_APP_PATH="$(read_env_value_from_file DEVBOX_VAULT_APP_PATH "$DEVBOX_ENV_FILE")"
-    DEVBOX_VAULT_STT_PATH="$(read_env_value_from_file DEVBOX_VAULT_STT_PATH "$DEVBOX_ENV_FILE")"
-    ngrok_api_port="$(read_env_value_from_file DEVBOX_NGROK_API_PORT "$DEVBOX_ENV_FILE")"
-    DEVBOX_OPENCLAW_ROOT="$(read_env_value_from_file DEVBOX_OPENCLAW_ROOT "$DEVBOX_ENV_FILE")"
-  fi
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -2402,9 +2968,7 @@ cmd_bootstrap() {
     esac
   done
 
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    require_devbox_env
-  fi
+  require_devbox_env
 
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
   if [[ -n "$openclaw_root_override" ]]; then
@@ -2423,9 +2987,7 @@ cmd_bootstrap() {
   ensure_workspace_dependencies
   ensure_rn_workspace_dependencies
   ensure_ios_pods_if_needed
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    save_and_refresh
-  fi
+  save_and_refresh
   log "bootstrap complete"
 }
 
@@ -2463,9 +3025,7 @@ cmd_gateway() {
   local -a passthrough=()
   local -a cmd=()
 
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    require_devbox_env
-  fi
+  require_devbox_env
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -2520,16 +3080,272 @@ cmd_gateway() {
   fi
 }
 
-cmd_mobile() {
-  if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
-    log "missing .devbox.env, running init automatically"
-    cmd_init
+cmd_ios_rn_ipa() {
+  require_cmd xcodebuild
+
+  local ios_configuration="Release"
+  local device_app_env=""
+  local site_override=""
+  local ws_override=""
+  local archive_path=""
+  local export_path=""
+  local export_options_plist=""
+  local export_method="app-store-connect"
+  local allow_provisioning_updates=1
+  local team_id=""
+  local shell_team_id="${DEVBOX_IOS_TEAM_ID:-}"
+  local skip_export=0
+  local dry_run=0
+  local timestamp=""
+  local archive_site_url=""
+  local archive_ws_url=""
+  local previous_site_url=""
+  local previous_ws_url=""
+  local restore_runtime_xcconfig=0
+  local device_app_env_payload=""
+  local device_app_env_path=""
+  local temp_export_options_plist=""
+
+  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
+    require_devbox_env
+  else
+    log "no .devbox.env found; ios-rn-ipa will use vault/.env.local/shell values only"
   fi
+
+  timestamp="$(date '+%Y%m%d-%H%M%S')"
+  archive_path="/tmp/mingle-${timestamp}.xcarchive"
+  export_path="/tmp/mingle-ipa-${timestamp}"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
+      --device-app-env) device_app_env="${2:-}"; shift 2 ;;
+      --site-url) site_override="${2:-}"; shift 2 ;;
+      --ws-url) ws_override="${2:-}"; shift 2 ;;
+      --archive-path) archive_path="${2:-}"; shift 2 ;;
+      --export-path) export_path="${2:-}"; shift 2 ;;
+      --export-options-plist) export_options_plist="${2:-}"; shift 2 ;;
+      --export-method) export_method="${2:-}"; shift 2 ;;
+      --team-id) team_id="${2:-}"; shift 2 ;;
+      --allow-provisioning-updates) allow_provisioning_updates=1; shift ;;
+      --no-allow-provisioning-updates) allow_provisioning_updates=0; shift ;;
+      --skip-export) skip_export=1; shift ;;
+      --dry-run) dry_run=1; shift ;;
+      *) die "unknown option for ios-rn-ipa: $1" ;;
+    esac
+  done
+
+  ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
+
+  case "$export_method" in
+    app-store) export_method="app-store-connect" ;;
+    ad-hoc) export_method="release-testing" ;;
+    development) export_method="debugging" ;;
+    app-store-connect|release-testing|debugging|enterprise|validation) ;;
+    *) die "invalid --export-method: $export_method (expected app-store-connect|release-testing|debugging|enterprise|validation)" ;;
+  esac
+
+  if [[ -n "$device_app_env" ]]; then
+    device_app_env_payload="$(resolve_device_app_env_override "$device_app_env")"
+    device_app_env_path="$(printf '%s\n' "$device_app_env_payload" | sed -n '1p')"
+    archive_site_url="$(printf '%s\n' "$device_app_env_payload" | sed -n '2p')"
+    archive_ws_url="$(printf '%s\n' "$device_app_env_payload" | sed -n '3p')"
+    log "ipa build app env override: $device_app_env (${device_app_env_path:-})"
+  fi
+
+  if [[ -n "$site_override" || -n "$ws_override" ]]; then
+    [[ -n "$site_override" ]] || die "--ws-url requires --site-url"
+    [[ -n "$ws_override" ]] || die "--site-url requires --ws-url"
+    archive_site_url="$site_override"
+    archive_ws_url="$ws_override"
+  fi
+
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="${DEVBOX_SITE_URL:-}"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="${DEVBOX_RN_WS_URL:-}"
+  fi
+
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value NEXT_PUBLIC_SITE_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value NEXT_PUBLIC_WS_URL || true)")"
+  fi
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value MINGLE_API_BASE_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value MINGLE_WS_URL || true)")"
+  fi
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value RN_WEB_APP_BASE_URL || true)")"
+  fi
+  if [[ -z "$archive_site_url" ]]; then
+    archive_site_url="$(trim_whitespace "$(read_app_setting_value MINGLE_WEB_APP_BASE_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value RN_DEFAULT_WS_URL || true)")"
+  fi
+  if [[ -z "$archive_ws_url" ]]; then
+    archive_ws_url="$(trim_whitespace "$(read_app_setting_value MINGLE_DEFAULT_WS_URL || true)")"
+  fi
+
+  [[ -n "$archive_site_url" ]] || die "missing archive site url (use --device-app-env, --site-url/--ws-url, or set NEXT_PUBLIC_SITE_URL)"
+  [[ -n "$archive_ws_url" ]] || die "missing archive ws url (use --device-app-env, --site-url/--ws-url, or set NEXT_PUBLIC_WS_URL)"
+
+  validate_http_url "archive site url" "$archive_site_url"
+  validate_ws_url "archive ws url" "$archive_ws_url"
+
+  if [[ "$device_app_env" == "prod" ]]; then
+    validate_https_url "archive site url (prod)" "$archive_site_url"
+    validate_wss_url "archive ws url (prod)" "$archive_ws_url"
+  fi
+
+  if [[ -z "$team_id" ]]; then
+    team_id="$(trim_whitespace "${DEVBOX_IOS_TEAM_ID:-}")"
+  fi
+
+  if [[ -z "$team_id" ]]; then
+    team_id="$(trim_whitespace "$shell_team_id")"
+  fi
+
+  if [[ -z "$team_id" ]]; then
+    team_id="$(trim_whitespace "$(resolve_rn_ios_development_team || true)")"
+  fi
+
+  [[ -n "$archive_path" ]] || die "--archive-path must not be empty"
+  [[ -n "$export_path" ]] || die "--export-path must not be empty"
+  ensure_single_line_value "archive path" "$archive_path"
+  ensure_single_line_value "export path" "$export_path"
+
+  if [[ "$skip_export" -eq 0 ]]; then
+    if [[ -n "$export_options_plist" ]]; then
+      [[ -f "$export_options_plist" ]] || die "export options plist not found: $export_options_plist"
+    elif [[ "$dry_run" -eq 1 ]]; then
+      export_options_plist="/tmp/mingle-export-options-${timestamp}.plist"
+    else
+      temp_export_options_plist="$(mktemp -t mingle-export-options)"
+      cat > "$temp_export_options_plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>$export_method</string>
+  <key>signingStyle</key>
+  <string>automatic</string>
+  <key>destination</key>
+  <string>export</string>
+EOF
+      if [[ -n "$team_id" ]]; then
+        cat >> "$temp_export_options_plist" <<EOF
+  <key>teamID</key>
+  <string>$team_id</string>
+EOF
+      fi
+      cat >> "$temp_export_options_plist" <<'EOF'
+</dict>
+</plist>
+EOF
+      export_options_plist="$temp_export_options_plist"
+    fi
+  fi
+
+  previous_site_url="${DEVBOX_SITE_URL:-}"
+  previous_ws_url="${DEVBOX_RN_WS_URL:-}"
+  if [[ -n "$previous_site_url" && -n "$previous_ws_url" ]]; then
+    restore_runtime_xcconfig=1
+  fi
+  DEVBOX_SITE_URL="$archive_site_url"
+  DEVBOX_RN_WS_URL="$archive_ws_url"
+  write_rn_ios_runtime_xcconfig
+
+  local -a xcode_provisioning_args=()
+  if [[ "$allow_provisioning_updates" -eq 1 ]]; then
+    xcode_provisioning_args+=(-allowProvisioningUpdates)
+  fi
+
+  log "building RN iOS archive (config=$ios_configuration, archive=$archive_path)"
+  log "runtime URL: site=$archive_site_url ws=$archive_ws_url"
+
+  if [[ "$dry_run" -eq 1 ]]; then
+    cat <<EOF
+xcodebuild -workspace $ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace -scheme mingle -configuration $ios_configuration -destination generic/platform=iOS -archivePath $archive_path -xcconfig $RN_IOS_RUNTIME_XCCONFIG ${xcode_provisioning_args[*]} archive
+EOF
+    if [[ "$skip_export" -eq 0 ]]; then
+      cat <<EOF
+xcodebuild -exportArchive ${xcode_provisioning_args[*]} -archivePath $archive_path -exportOptionsPlist $export_options_plist -exportPath $export_path
+EOF
+    fi
+    if [[ "$restore_runtime_xcconfig" -eq 1 ]]; then
+      DEVBOX_SITE_URL="$previous_site_url"
+      DEVBOX_RN_WS_URL="$previous_ws_url"
+      write_rn_ios_runtime_xcconfig
+    fi
+    return 0
+  fi
+
+  ensure_rn_workspace_dependencies
+  ensure_ios_pods_if_needed
+
+  (
+    cd "$ROOT_DIR/mingle-app/rn/ios"
+    NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
+      xcodebuild \
+        "${xcode_provisioning_args[@]}" \
+        -workspace "$ROOT_DIR/mingle-app/rn/ios/mingle.xcworkspace" \
+        -scheme mingle \
+        -configuration "$ios_configuration" \
+        -destination "generic/platform=iOS" \
+        -archivePath "$archive_path" \
+        -xcconfig "$RN_IOS_RUNTIME_XCCONFIG" \
+        archive
+  )
+
+  [[ -d "$archive_path" ]] || die "archive not found after build: $archive_path"
+
+  if [[ "$skip_export" -eq 1 ]]; then
+    if [[ "$restore_runtime_xcconfig" -eq 1 ]]; then
+      DEVBOX_SITE_URL="$previous_site_url"
+      DEVBOX_RN_WS_URL="$previous_ws_url"
+      write_rn_ios_runtime_xcconfig
+    fi
+    log "archive complete (export skipped): $archive_path"
+    return 0
+  fi
+
+  xcodebuild \
+    "${xcode_provisioning_args[@]}" \
+    -exportArchive \
+    -archivePath "$archive_path" \
+    -exportOptionsPlist "$export_options_plist" \
+    -exportPath "$export_path"
+
+  local ipa_file=""
+  ipa_file="$(find "$export_path" -maxdepth 1 -type f -name '*.ipa' | head -n 1)"
+  [[ -n "$ipa_file" ]] || die "ipa export failed: no .ipa in $export_path"
+
+  if [[ "$restore_runtime_xcconfig" -eq 1 ]]; then
+    DEVBOX_SITE_URL="$previous_site_url"
+    DEVBOX_RN_WS_URL="$previous_ws_url"
+    write_rn_ios_runtime_xcconfig
+  fi
+
+  log "archive complete: $archive_path"
+  log "ipa exported: $ipa_file"
+  log "next: Xcode Organizer -> Distribute App -> App Store Connect -> Upload"
+}
+
+cmd_mobile() {
   require_devbox_env
   require_cmd pnpm
 
   local active_profile="${DEVBOX_PROFILE:-local}"
   local active_host="${DEVBOX_LOCAL_HOST:-127.0.0.1}"
+  local profile_override=""
+  local host_override=""
   local with_ios_clean_install=0
   local device_app_env=""
   local platform="all"
@@ -2542,11 +3358,16 @@ cmd_mobile() {
   local android_serial=""
   local ios_configuration="Release"
   local android_variant="release"
+  local tunnel_provider_override=""
   local mobile_site_override=""
   local mobile_ws_override=""
+  local site_override=""
+  local ws_override=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      --profile) profile_override="${2:-}"; shift 2 ;;
+      --host) host_override="${2:-}"; shift 2 ;;
       --platform) platform="${2:-}"; shift 2 ;;
       --ios-runtime) ios_runtime="${2:-}"; shift 2 ;;
       --ios-native-target) ios_native_target="${2:-}"; shift 2 ;;
@@ -2559,30 +3380,85 @@ cmd_mobile() {
       --android-variant) android_variant="${2:-}"; shift 2 ;;
       --with-ios-clean-install) with_ios_clean_install=1; shift ;;
       --device-app-env) device_app_env="${2:-}"; shift 2 ;;
+      --tunnel-provider) tunnel_provider_override="${2:-}"; shift 2 ;;
+      --site-url) site_override="${2:-}"; shift 2 ;;
+      --ws-url) ws_override="${2:-}"; shift 2 ;;
       *) die "unknown option for mobile: $1" ;;
     esac
   done
 
+  if [[ -n "$profile_override" ]]; then
+    case "$profile_override" in
+      local|device) active_profile="$profile_override" ;;
+      *) die "invalid --profile for mobile: $profile_override (expected local|device)" ;;
+    esac
+  fi
+
+  if [[ -n "$host_override" ]]; then
+    active_host="$host_override"
+  fi
+
+  if [[ -n "$site_override" || -n "$ws_override" ]]; then
+    [[ -n "$site_override" ]] || die "--ws-url requires --site-url"
+    [[ -n "$ws_override" ]] || die "--site-url requires --ws-url"
+    validate_http_url "mobile site url override" "$site_override"
+    validate_ws_url "mobile ws url override" "$ws_override"
+    mobile_site_override="$site_override"
+    mobile_ws_override="$ws_override"
+  fi
+
   ios_runtime="$(normalize_ios_runtime "$ios_runtime")"
   ios_native_target="$(normalize_ios_native_target "$ios_native_target")"
+  local tunnel_provider=""
+  tunnel_provider="$(resolve_tunnel_provider "$tunnel_provider_override")"
+  DEVBOX_TUNNEL_PROVIDER="$tunnel_provider"
+  local profile_already_saved=0
   case "$active_profile" in
     device)
       if [[ "$device_app_env" == "prod" ]]; then
-        log "device app env is prod; skipping ngrok profile refresh"
+        log "device app env is prod; skipping device tunnel profile refresh"
+      elif [[ -n "$mobile_site_override" || -n "$mobile_ws_override" ]]; then
+        log "manual mobile runtime URL override is set; skipping device tunnel profile refresh"
       else
-        # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
-        # Keep existing ngrok alive so mobile clean-install can run while `devbox up --profile device` is active.
-        apply_profile "device"
+        case "$tunnel_provider" in
+          ngrok)
+            # Refresh ngrok-derived URLs before mobile build/install to avoid stale app URL embedding.
+            # Keep existing ngrok alive so mobile clean-install can run while `devbox up --profile device` is active.
+            apply_profile "device"
+            profile_already_saved=1
+            ;;
+          cloudflare)
+            local cloudflare_named_hosts=""
+            cloudflare_named_hosts="$(resolve_cloudflare_named_hostnames || true)"
+            if [[ -z "$cloudflare_named_hosts" ]]; then
+              die "cloudflare mobile profile refresh requires named tunnel hostnames (DEVBOX_CLOUDFLARE_WEB_HOSTNAME/STT_HOSTNAME)."
+            fi
+            local cloudflare_named_web_host=""
+            local cloudflare_named_stt_host=""
+            cloudflare_named_web_host="$(printf '%s\n' "$cloudflare_named_hosts" | sed -n '1p')"
+            cloudflare_named_stt_host="$(printf '%s\n' "$cloudflare_named_hosts" | sed -n '2p')"
+            set_device_profile_values_from_urls \
+              "https://$cloudflare_named_web_host" \
+              "https://$cloudflare_named_stt_host" \
+              "cloudflare"
+            ;;
+          *)
+            die "unsupported tunnel provider for mobile: $tunnel_provider"
+            ;;
+        esac
       fi
       ;;
     local)
       apply_profile "local" "$active_host"
+      profile_already_saved=1
       ;;
     *)
       die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device)"
       ;;
   esac
-  save_and_refresh
+  if [[ "$profile_already_saved" -eq 0 ]]; then
+    save_and_refresh
+  fi
 
   if [[ -n "$device_app_env" ]]; then
     [[ "$active_profile" == "device" ]] || die "--device-app-env is only supported when DEVBOX_PROFILE=device"
@@ -2643,6 +3519,13 @@ cmd_mobile() {
     do_android=1
   fi
 
+  local effective_ios_site_url="${mobile_site_override:-$DEVBOX_SITE_URL}"
+  guard_rn_ios_local_profile_on_device \
+    "$active_profile" \
+    "$do_rn_ios" \
+    "$ios_udid" \
+    "$effective_ios_site_url"
+
   run_mobile_install_targets \
     "$do_rn_ios" \
     "$do_native_ios" \
@@ -2663,10 +3546,6 @@ cmd_mobile() {
 }
 
 cmd_up() {
-  if [[ ! -f "$DEVBOX_ENV_FILE" ]]; then
-    log "missing .devbox.env, running init automatically"
-    cmd_init
-  fi
   require_devbox_env
   require_cmd pnpm
   local vault_app_override=""
@@ -2690,6 +3569,7 @@ cmd_up() {
   local android_variant="release"
   local mobile_site_override=""
   local mobile_ws_override=""
+  local tunnel_provider_override=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -2709,6 +3589,7 @@ cmd_up() {
       --android-serial) android_serial="${2:-}"; with_android_install=1; shift 2 ;;
       --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
       --android-variant) android_variant="${2:-}"; shift 2 ;;
+      --tunnel-provider) tunnel_provider_override="${2:-}"; shift 2 ;;
       --device-app-env) device_app_env="${2:-}"; shift 2 ;;
       --vault-app-path) vault_app_override="${2:-}"; shift 2 ;;
       --vault-stt-path) vault_stt_override="${2:-}"; shift 2 ;;
@@ -2720,6 +3601,9 @@ cmd_up() {
   ios_native_target="$(normalize_ios_native_target "$ios_native_target")"
   ios_configuration="$(normalize_ios_configuration "$ios_configuration")"
   android_variant="$(normalize_android_variant "$android_variant")"
+  local tunnel_provider=""
+  tunnel_provider="$(resolve_tunnel_provider "$tunnel_provider_override")"
+  DEVBOX_TUNNEL_PROVIDER="$tunnel_provider"
 
   resolve_vault_paths "$vault_app_override" "$vault_stt_override"
   log "stateless mode: skipping automatic vault -> .env.local sync (.env.local is user-managed)"
@@ -2735,52 +3619,135 @@ cmd_up() {
 
   local -a pids=()
   local exit_code=0
-  local started_ngrok_mode="none"
+  local started_tunnel_mode="none"
+  local cloudflared_web_url=""
+  local cloudflared_stt_url=""
+  local cloudflared_web_log=""
+  local cloudflared_stt_log=""
+  local cloudflared_web_pid=""
+  local cloudflared_stt_pid=""
+  local cloudflared_named_log=""
+  local cloudflared_named_pid_file=""
+  local cloudflared_named_token=""
+  local cloudflared_named_web_host=""
+  local cloudflared_named_stt_host=""
 
   if [[ "$profile" == "device" ]]; then
     if [[ "$device_app_env" == "prod" ]]; then
-      log "device app env is prod; skipping ngrok startup/check"
+      log "device app env is prod; skipping device tunnel startup/check"
     else
-      if [[ "$with_ios_clean_install" -eq 1 ]]; then
-        stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
-      fi
-      write_ngrok_local_config
+      case "$tunnel_provider" in
+        ngrok)
+          if [[ "$with_ios_clean_install" -eq 1 ]]; then
+            stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+          fi
+          write_ngrok_local_config
 
-      if ! try_read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"; then
-        if [[ "$NGROK_LAST_ERROR_KIND" == "tunnel_mismatch" ]]; then
-          die "running ngrok tunnels do not match this worktree ports(web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT) or are not https/wss (inspector port=$DEVBOX_NGROK_API_PORT).
+          if ! try_read_ngrok_urls "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT"; then
+            if [[ "$NGROK_LAST_ERROR_KIND" == "tunnel_mismatch" ]]; then
+              die "running ngrok tunnels do not match this worktree ports(web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT) or are not https/wss (inspector port=$DEVBOX_NGROK_API_PORT).
 $NGROK_LAST_ERROR
 $(ngrok_plan_capacity_hint)"
-        fi
-        require_cmd ngrok
-        log "starting ngrok for device profile"
-        if launch_ngrok_in_separate_terminal; then
-          started_ngrok_mode="separate"
-          log "ngrok started in a separate terminal pane/tab"
-        else
-          log "separate terminal launch unavailable; falling back to inline ngrok"
-          (
-            cd "$ROOT_DIR"
-            scripts/ngrok-start-mobile.sh --log stdout --log-format logfmt
-          ) &
-          pids+=("$!")
-          started_ngrok_mode="inline"
-        fi
+            fi
+            require_cmd ngrok
+            log "starting ngrok for device profile"
+            if launch_ngrok_in_separate_terminal; then
+              started_tunnel_mode="ngrok-separate"
+              log "ngrok started in a separate terminal pane/tab"
+            else
+              log "separate terminal launch unavailable; falling back to inline ngrok"
+              (
+                cd "$ROOT_DIR"
+                scripts/ngrok-start-mobile.sh --log stdout --log-format logfmt
+              ) &
+              pids+=("$!")
+              started_tunnel_mode="ngrok-inline"
+            fi
 
-        if ! wait_for_ngrok_tunnels "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT" 20; then
-          if [[ "$started_ngrok_mode" == "inline" ]]; then
-            cleanup_processes "${pids[@]}"
-          fi
-          if [[ -n "$NGROK_LAST_ERROR" ]]; then
-            die "$NGROK_LAST_ERROR
+            if ! wait_for_ngrok_tunnels "$DEVBOX_WEB_PORT" "$DEVBOX_STT_PORT" "1" "$DEVBOX_NGROK_API_PORT" 20; then
+              if [[ "$started_tunnel_mode" == "ngrok-inline" ]]; then
+                cleanup_processes "${pids[@]}"
+              fi
+              if [[ -n "$NGROK_LAST_ERROR" ]]; then
+                die "$NGROK_LAST_ERROR
 $(ngrok_plan_capacity_hint)"
-          fi
-          die "ngrok inspector(port=$DEVBOX_NGROK_API_PORT) did not expose matching web/stt tunnels within 20s.
+              fi
+              die "ngrok inspector(port=$DEVBOX_NGROK_API_PORT) did not expose matching web/stt tunnels within 20s.
 $(ngrok_plan_capacity_hint)"
-        fi
-      else
-        started_ngrok_mode="reused"
-      fi
+            fi
+          else
+            started_tunnel_mode="ngrok-reused"
+          fi
+          ;;
+        cloudflare)
+          require_cmd cloudflared
+          local cloudflare_named_payload=""
+          cloudflare_named_payload="$(resolve_cloudflare_named_tunnel_settings || true)"
+
+          if [[ -n "$cloudflare_named_payload" ]]; then
+            cloudflared_named_token="$(printf '%s\n' "$cloudflare_named_payload" | sed -n '1p')"
+            cloudflared_named_web_host="$(printf '%s\n' "$cloudflare_named_payload" | sed -n '2p')"
+            cloudflared_named_stt_host="$(printf '%s\n' "$cloudflare_named_payload" | sed -n '3p')"
+
+            cloudflared_named_pid_file="$(cloudflared_named_pid_file_path)"
+            cloudflared_named_log="$(cloudflared_named_log_file_path)"
+            mkdir -p "$(dirname "$cloudflared_named_pid_file")"
+
+            stop_cloudflared_named_tunnel_from_pidfile
+            rm -f "$cloudflared_named_log"
+
+            log "starting cloudflared named tunnel connector"
+            cloudflared tunnel --no-autoupdate run --token "$cloudflared_named_token" >"$cloudflared_named_log" 2>&1 &
+            local cloudflared_named_pid="$!"
+            printf '%s\n' "$cloudflared_named_pid" > "$cloudflared_named_pid_file"
+            pids+=("$cloudflared_named_pid")
+
+            if ! wait_for_cloudflared_named_tunnel "$cloudflared_named_log" "$cloudflared_named_pid" 25; then
+              cleanup_processes "${pids[@]}"
+              rm -f "$cloudflared_named_pid_file"
+              die "cloudflared named tunnel startup failed (log: $cloudflared_named_log)"
+            fi
+
+            cloudflared_web_url="https://$cloudflared_named_web_host"
+            cloudflared_stt_url="https://$cloudflared_named_stt_host"
+            started_tunnel_mode="cloudflare-named"
+            log "cloudflared named tunnel ready: web=$cloudflared_web_url stt=$cloudflared_stt_url"
+          else
+            if [[ "$with_ios_clean_install" -eq 1 ]]; then
+              stop_existing_cloudflared_by_local_port "$DEVBOX_WEB_PORT"
+              stop_existing_cloudflared_by_local_port "$DEVBOX_STT_PORT"
+            fi
+
+            cloudflared_web_log="$(mktemp "${TMPDIR:-/tmp}/devbox-cloudflared-web.XXXXXX")"
+            cloudflared_stt_log="$(mktemp "${TMPDIR:-/tmp}/devbox-cloudflared-stt.XXXXXX")"
+
+            log "starting cloudflared quick tunnel for web(port=$DEVBOX_WEB_PORT)"
+            cloudflared tunnel --url "http://127.0.0.1:$DEVBOX_WEB_PORT" --no-autoupdate >"$cloudflared_web_log" 2>&1 &
+            cloudflared_web_pid="$!"
+            pids+=("$cloudflared_web_pid")
+
+            log "starting cloudflared quick tunnel for stt(port=$DEVBOX_STT_PORT)"
+            cloudflared tunnel --url "http://127.0.0.1:$DEVBOX_STT_PORT" --no-autoupdate >"$cloudflared_stt_log" 2>&1 &
+            cloudflared_stt_pid="$!"
+            pids+=("$cloudflared_stt_pid")
+
+            if ! cloudflared_web_url="$(wait_for_cloudflared_tunnel_url "$cloudflared_web_log" "$cloudflared_web_pid" 25)"; then
+              cleanup_processes "${pids[@]}"
+              die "cloudflared web tunnel startup failed (log: $cloudflared_web_log)"
+            fi
+            if ! cloudflared_stt_url="$(wait_for_cloudflared_tunnel_url "$cloudflared_stt_log" "$cloudflared_stt_pid" 25)"; then
+              cleanup_processes "${pids[@]}"
+              die "cloudflared stt tunnel startup failed (log: $cloudflared_stt_log)"
+            fi
+
+            started_tunnel_mode="cloudflare-quick"
+            log "cloudflared quick tunnel ready: web=$cloudflared_web_url stt=$cloudflared_stt_url"
+          fi
+          ;;
+        *)
+          die "unsupported tunnel provider: $tunnel_provider"
+          ;;
+      esac
     fi
   elif [[ -n "$device_app_env" ]]; then
     die "--device-app-env is only supported with --profile device"
@@ -2789,7 +3756,12 @@ $(ngrok_plan_capacity_hint)"
   if [[ "$profile" == "device" && "$device_app_env" == "prod" ]]; then
     log "device app env is prod; skipping device profile URL sync"
   else
-    apply_profile "$profile" "$host"
+    if [[ "$profile" == "device" && "$tunnel_provider" == "cloudflare" && "$device_app_env" != "prod" ]]; then
+      set_device_profile_values_from_urls "$cloudflared_web_url" "$cloudflared_stt_url" "cloudflare"
+      save_and_refresh
+    else
+      apply_profile "$profile" "$host"
+    fi
     cmd_status
   fi
 
@@ -2838,6 +3810,13 @@ $(ngrok_plan_capacity_hint)"
       do_android=1
     fi
 
+    local effective_ios_site_url="${mobile_site_override:-$DEVBOX_SITE_URL}"
+    guard_rn_ios_local_profile_on_device \
+      "$profile" \
+      "$do_rn_ios" \
+      "$ios_udid" \
+      "$effective_ios_site_url"
+
     run_mobile_install_targets \
       "$do_rn_ios" \
       "$do_native_ios" \
@@ -2856,7 +3835,7 @@ $(ngrok_plan_capacity_hint)"
   fi
 
   if [[ "$profile" == "device" && "$device_app_env" == "prod" ]]; then
-    log "device app env is prod; skipping mingle-app/mingle-stt/ngrok runtime startup"
+    log "device app env is prod; skipping mingle-app/mingle-stt/tunnel runtime startup"
     rm -f "$runtime_app_env_file" "$runtime_stt_env_file"
     return 0
   fi
@@ -2864,6 +3843,7 @@ $(ngrok_plan_capacity_hint)"
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
   (
     cd "$ROOT_DIR/mingle-stt"
+    best_effort_raise_nofile_limit
     if [[ -s "$runtime_stt_env_file" ]]; then
       set -a
       # shellcheck disable=SC1090
@@ -2876,12 +3856,15 @@ $(ngrok_plan_capacity_hint)"
 
   (
     cd "$ROOT_DIR/mingle-app"
+    best_effort_raise_nofile_limit
     if [[ -s "$runtime_app_env_file" ]]; then
       set -a
       # shellcheck disable=SC1090
       . "$runtime_app_env_file"
       set +a
     fi
+    # Turbopack can fail with EMFILE on large worktrees and degrade into all-route 404.
+    # Use webpack + polling watcher mode for stable local device testing.
     DEVBOX_WORKTREE_NAME="$DEVBOX_WORKTREE_NAME" \
     DEVBOX_PROFILE="$DEVBOX_PROFILE" \
     DEVBOX_WEB_PORT="$DEVBOX_WEB_PORT" \
@@ -2896,7 +3879,9 @@ $(ngrok_plan_capacity_hint)"
     NEXT_PUBLIC_API_NAMESPACE="$IOS_RN_REQUIRED_API_NAMESPACE" \
     MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
     MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
-    pnpm exec next dev --port "$DEVBOX_WEB_PORT"
+    WATCHPACK_POLLING="${WATCHPACK_POLLING:-true}" \
+    CHOKIDAR_USEPOLLING="${CHOKIDAR_USEPOLLING:-1}" \
+    pnpm exec next dev --webpack --port "$DEVBOX_WEB_PORT"
   ) &
   pids+=("$!")
 
@@ -2932,12 +3917,18 @@ $(ngrok_plan_capacity_hint)"
 
   rm -f "$runtime_app_env_file" "$runtime_stt_env_file"
 
-  if [[ "$started_ngrok_mode" == "inline" ]]; then
+  if [[ "$started_tunnel_mode" == "ngrok-inline" ]]; then
     log "ngrok is running with this process group (Ctrl+C to stop all)"
-  elif [[ "$started_ngrok_mode" == "separate" ]]; then
+  elif [[ "$started_tunnel_mode" == "ngrok-separate" ]]; then
     log "ngrok is running in separate terminal pane/tab"
-  elif [[ "$profile" == "device" ]]; then
+  elif [[ "$started_tunnel_mode" == "ngrok-reused" ]]; then
     log "reusing existing ngrok tunnels from inspector"
+  elif [[ "$started_tunnel_mode" == "cloudflare-quick" ]]; then
+    log "cloudflared quick tunnels are running with this process group (Ctrl+C to stop all)"
+    log "cloudflared logs: web=$cloudflared_web_log stt=$cloudflared_stt_log"
+  elif [[ "$started_tunnel_mode" == "cloudflare-named" ]]; then
+    log "cloudflared named tunnel connector is running with this process group (Ctrl+C to stop all)"
+    log "cloudflared named tunnel log: $cloudflared_named_log"
   fi
 
   trap 'cleanup_processes "${pids[@]:-}"' INT TERM EXIT
@@ -2949,6 +3940,35 @@ $(ngrok_plan_capacity_hint)"
   cleanup_processes "${pids[@]}"
   trap - INT TERM EXIT
   return "$exit_code"
+}
+
+cmd_down() {
+  if [[ $# -gt 0 ]]; then
+    die "unknown option for down: $1"
+  fi
+
+  require_devbox_env
+  log "stopping devbox runtime processes for repo: $ROOT_DIR"
+
+  stop_processes_by_pattern "mingle-app next dev" "$ROOT_DIR/mingle-app.*next dev --port"
+  stop_processes_by_pattern "mingle-stt dev server" "$ROOT_DIR/mingle-stt.*stt-server.ts"
+  stop_processes_by_pattern "metro" "$ROOT_DIR/mingle-app.*pnpm --dir rn start --port"
+
+  stop_listeners_by_port "mingle-app next dev" "$DEVBOX_WEB_PORT"
+  stop_listeners_by_port "mingle-stt dev server" "$DEVBOX_STT_PORT"
+  stop_listeners_by_port "metro" "$DEVBOX_METRO_PORT"
+  stop_existing_ngrok_by_inspector_port "$DEVBOX_NGROK_API_PORT"
+  stop_existing_cloudflared_by_local_port "$DEVBOX_WEB_PORT"
+  stop_existing_cloudflared_by_local_port "$DEVBOX_STT_PORT"
+  stop_cloudflared_named_tunnel_from_pidfile
+
+  local next_lock_file="$ROOT_DIR/mingle-app/.next/dev/lock"
+  if [[ -f "$next_lock_file" ]]; then
+    rm -f "$next_lock_file"
+    log "removed stale lock file: $next_lock_file"
+  fi
+
+  log "devbox down complete"
 }
 
 cmd_ios_native_build() {
@@ -2968,13 +3988,9 @@ cmd_ios_native_build() {
 
   local api_base_url=""
   local ws_url=""
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    require_devbox_env
-    api_base_url="$DEVBOX_SITE_URL"
-    ws_url="$DEVBOX_RN_WS_URL"
-  else
-    log "no $DEVBOX_ENV_FILE found; using mingle-ios xcconfig default URLs"
-  fi
+  require_devbox_env
+  api_base_url="$DEVBOX_SITE_URL"
+  ws_url="$DEVBOX_RN_WS_URL"
 
   run_native_ios_build "$ios_coredevice_id" "$ios_configuration" "$api_base_url" "$ws_url" "$ios_bundle_id"
 }
@@ -3088,17 +4104,35 @@ cmd_status() {
   require_devbox_env
   local ngrok_web_domain="(auto)"
   local detected_ngrok_web_domain=""
+  local tunnel_provider=""
+  local cloudflare_mode="quick"
+  local ngrok_line=""
+  local ngrok_domain_line=""
+  local devbox_env_note="$DEVBOX_ENV_FILE (optional; write only when DEVBOX_PERSIST_ENV_FILE=true)"
   detected_ngrok_web_domain="$(resolve_ngrok_web_domain || true)"
+  tunnel_provider="$(resolve_tunnel_provider "")"
+  if [[ "$tunnel_provider" == "cloudflare" ]]; then
+    if resolve_cloudflare_named_tunnel_settings >/dev/null 2>&1; then
+      cloudflare_mode="named"
+    fi
+  fi
   if [[ -n "$detected_ngrok_web_domain" ]]; then
     ngrok_web_domain="$detected_ngrok_web_domain"
+  fi
+  ngrok_line="[devbox] ngrok:    inspector=http://127.0.0.1:$DEVBOX_NGROK_API_PORT"
+  ngrok_domain_line="[devbox] ngrok-web-domain: $ngrok_web_domain"
+  if [[ "$tunnel_provider" != "ngrok" ]]; then
+    ngrok_line="[devbox] ngrok:    disabled for provider=$tunnel_provider"
+    ngrok_domain_line="[devbox] ngrok-web-domain: (n/a)"
   fi
 
   cat <<EOF
 [devbox] worktree: $DEVBOX_WORKTREE_NAME
 [devbox] profile:  $DEVBOX_PROFILE
 [devbox] ports:    web=$DEVBOX_WEB_PORT stt=$DEVBOX_STT_PORT metro=$DEVBOX_METRO_PORT
-[devbox] ngrok:    inspector=http://127.0.0.1:$DEVBOX_NGROK_API_PORT
-[devbox] ngrok-web-domain: $ngrok_web_domain
+[devbox] tunnel:   provider=$tunnel_provider$( [[ "$tunnel_provider" == "cloudflare" ]] && printf ' mode=%s' "$cloudflare_mode" )
+$ngrok_line
+$ngrok_domain_line
 
 PC Web      : $DEVBOX_SITE_URL
 iOS Web     : $DEVBOX_SITE_URL
@@ -3110,9 +4144,10 @@ Live Test   : MINGLE_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL | MINGLE_TEST_W
 Vault App   : ${DEVBOX_VAULT_APP_PATH:-"(unset)"}
 Vault STT   : ${DEVBOX_VAULT_STT_PATH:-"(unset)"}
 OpenClaw    : root=${DEVBOX_OPENCLAW_ROOT:-$(resolve_openclaw_root)}
+iOS Team ID : ${DEVBOX_IOS_TEAM_ID:-"(auto: mingle.xcodeproj DEVELOPMENT_TEAM)"}
 
 Files:
-- $DEVBOX_ENV_FILE
+- $devbox_env_note
 - $APP_ENV_FILE
 - $STT_ENV_FILE
 - $NGROK_LOCAL_CONFIG
@@ -3121,6 +4156,7 @@ Files:
 Run:
 - scripts/devbox up --profile local
 - scripts/devbox up --profile device
+- scripts/devbox up --profile device --tunnel-provider cloudflare
 - scripts/devbox bootstrap --vault-push
 - scripts/devbox gateway --mode dev
 - scripts/devbox gateway --mode run -- --bind loopback --port 18789
@@ -3131,6 +4167,8 @@ Run:
 - scripts/devbox up --profile local --with-ios-install --ios-runtime native --ios-native-target simulator
 - scripts/devbox up --profile local --with-metro
 - scripts/devbox ios-native-build --ios-configuration Debug
+- scripts/devbox ios-rn-ipa --device-app-env prod
+- scripts/devbox ios-rn-ipa-prod
 - scripts/devbox ios-native-uninstall --ios-native-target simulator --ios-simulator-udid <UDID>
 - scripts/devbox mobile --platform ios --ios-runtime rn
 - scripts/devbox mobile --platform ios --ios-runtime native
@@ -3229,8 +4267,11 @@ main() {
     gateway|openclaw-gateway) cmd_gateway "$@" ;;
     ios-native-build|ios-build-native) cmd_ios_native_build "$@" ;;
     ios-native-uninstall|ios-uninstall-native|ios-native-remove) cmd_ios_native_uninstall "$@" ;;
+    ios-rn-ipa|ios-build-rn-ipa) cmd_ios_rn_ipa "$@" ;;
+    ios-rn-ipa-prod|ios-build-rn-ipa-prod) cmd_ios_rn_ipa --device-app-env prod "$@" ;;
     mobile) cmd_mobile "$@" ;;
     up) cmd_up "$@" ;;
+    down) cmd_down "$@" ;;
     test|test-live) cmd_test "$@" ;;
     status) cmd_status "$@" ;;
     help|-h|--help) usage ;;

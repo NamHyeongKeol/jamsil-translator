@@ -19,8 +19,11 @@ RN WebView는 `apiNamespace` 쿼리로 웹에 전달합니다.
 값이 없거나 플랫폼 기준값과 다르면 WebView를 로드하지 않고 오류를 표시합니다.
 `pnpm rn:ios`는 실행 전에 `NEXT_PUBLIC_API_NAMESPACE=ios/v1.0.0`을 검증합니다.
 
-iOS 앱은 시작 시 `/api/ios/v1.0.0/client/version-policy`를 호출해
-`force_update | recommend_update | none` 정책을 반영합니다.
+RN 앱은 시작 시 버전 정책 API를 호출해 `force_update | recommend_update | none`을 반영합니다.
+
+- iOS: `/api/ios/v1.0.0/client/version-policy`
+- Android: `/api/client/version-policy` (또는 `/api/android/v1.0.0/client/version-policy`)
+- 요청 body에 `platform` (`ios` | `android`)를 포함합니다.
 
 iOS 런타임 URL은 `Info.plist`의 아래 키를 우선 사용합니다.
 
