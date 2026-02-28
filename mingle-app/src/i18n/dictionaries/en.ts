@@ -67,6 +67,7 @@ export const enDictionary: AppDictionary = {
     deleteAccount: "Delete account",
     menuLabel: "Menu",
     deleteAccountConfirm: "Delete your account data and sign out now?",
+    deleteAccountCancel: "Cancel",
     deleteAccountFailed: "Failed to delete account. Please try again.",
     appleNotConfigured: "Apple OAuth env vars are missing, so Apple sign-in is unavailable.",
     googleNotConfigured: "Google OAuth env vars are missing, so only demo sign-in is available.",

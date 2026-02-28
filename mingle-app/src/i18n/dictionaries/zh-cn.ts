@@ -13,6 +13,7 @@ export const zhCnDictionary = createProfileLocalizedDictionary({
   deleteAccount: "删除账号",
   menuLabel: "菜单",
   deleteAccountConfirm: "确定删除账号数据并立即退出登录吗？",
+  deleteAccountCancel: "取消",
   deleteAccountFailed: "删除账号失败，请重试。",
   appleNotConfigured: "缺少 Apple OAuth 环境变量，无法使用 Apple 登录。",
   googleNotConfigured: "缺少 Google OAuth 环境变量，仅可使用演示登录。",

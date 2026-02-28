@@ -65,6 +65,7 @@ export type AppDictionary = {
     deleteAccount: string;
     menuLabel: string;
     deleteAccountConfirm: string;
+    deleteAccountCancel: string;
     deleteAccountFailed: string;
     appleNotConfigured: string;
     googleNotConfigured: string;

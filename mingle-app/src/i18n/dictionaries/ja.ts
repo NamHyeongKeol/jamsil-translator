@@ -67,6 +67,7 @@ export const jaDictionary: AppDictionary = {
     deleteAccount: "アカウント削除",
     menuLabel: "メニュー",
     deleteAccountConfirm: "アカウントデータを削除してログアウトしますか？",
+    deleteAccountCancel: "キャンセル",
     deleteAccountFailed: "アカウント削除に失敗しました。もう一度お試しください。",
     appleNotConfigured: "Apple OAuth の環境変数が未設定のため、Appleログインは利用できません。",
     googleNotConfigured: "Google OAuth の環境変数が未設定のため、デモログインのみ利用できます。",

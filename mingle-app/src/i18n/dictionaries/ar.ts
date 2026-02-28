@@ -13,6 +13,7 @@ export const arDictionary = createProfileLocalizedDictionary({
   deleteAccount: "حذف الحساب",
   menuLabel: "القائمة",
   deleteAccountConfirm: "هل تريد حذف بيانات الحساب وتسجيل الخروج الآن؟",
+  deleteAccountCancel: "إلغاء",
   deleteAccountFailed: "فشل حذف الحساب. يرجى المحاولة مرة أخرى.",
   appleNotConfigured: "متغيرات بيئة Apple OAuth غير موجودة، لذلك تسجيل الدخول عبر Apple غير متاح.",
   googleNotConfigured: "متغيرات بيئة Google OAuth غير موجودة، لذلك يتوفر فقط تسجيل الدخول التجريبي.",

@@ -13,6 +13,7 @@ export const deDictionary = createProfileLocalizedDictionary({
   deleteAccount: "Konto löschen",
   menuLabel: "Menü",
   deleteAccountConfirm: "Kontodaten löschen und jetzt abmelden?",
+  deleteAccountCancel: "Abbrechen",
   deleteAccountFailed: "Konto konnte nicht gelöscht werden. Bitte erneut versuchen.",
   appleNotConfigured: "Apple OAuth-Umgebungsvariablen fehlen, daher ist Apple-Anmeldung nicht verfügbar.",
   googleNotConfigured: "Google OAuth-Umgebungsvariablen fehlen, daher ist nur Demo-Anmeldung verfügbar.",

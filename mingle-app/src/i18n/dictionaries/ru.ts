@@ -13,6 +13,7 @@ export const ruDictionary = createProfileLocalizedDictionary({
   deleteAccount: "Удалить аккаунт",
   menuLabel: "Меню",
   deleteAccountConfirm: "Удалить данные аккаунта и выйти сейчас?",
+  deleteAccountCancel: "Отмена",
   deleteAccountFailed: "Не удалось удалить аккаунт. Попробуйте снова.",
   appleNotConfigured: "Отсутствуют переменные окружения Apple OAuth, поэтому вход через Apple недоступен.",
   googleNotConfigured: "Отсутствуют переменные окружения Google OAuth, поэтому доступен только демо-вход.",

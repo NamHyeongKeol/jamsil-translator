@@ -13,6 +13,7 @@ export const itDictionary = createProfileLocalizedDictionary({
   deleteAccount: "Elimina account",
   menuLabel: "Menu",
   deleteAccountConfirm: "Eliminare i dati dell'account e disconnettersi ora?",
+  deleteAccountCancel: "Annulla",
   deleteAccountFailed: "Impossibile eliminare l'account. Riprova.",
   appleNotConfigured: "Le variabili d'ambiente Apple OAuth sono mancanti, quindi l'accesso con Apple non è disponibile.",
   googleNotConfigured: "Le variabili d'ambiente Google OAuth sono mancanti, quindi è disponibile solo l'accesso demo.",

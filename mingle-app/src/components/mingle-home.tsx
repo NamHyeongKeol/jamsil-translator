@@ -645,11 +645,6 @@ export default function MingleHome(props: MingleHomeProps) {
 
   const handleDeleteAccount = useCallback(async () => {
     if (isDeletingAccount) return;
-    const confirmed = window.confirm(
-      props.dictionary.profile.deleteAccountConfirm,
-    );
-    if (!confirmed) return;
-
     setIsDeletingAccount(true);
     try {
       const response = await fetch("/api/account/delete", {
@@ -666,7 +661,6 @@ export default function MingleHome(props: MingleHomeProps) {
     }
   }, [
     isDeletingAccount,
-    props.dictionary.profile.deleteAccountConfirm,
     props.dictionary.profile.deleteAccountFailed,
     props.locale,
   ]);
@@ -939,6 +933,8 @@ export default function MingleHome(props: MingleHomeProps) {
         menuLabel={props.dictionary.profile.menuLabel}
         logoutLabel={props.dictionary.profile.logout}
         deleteAccountLabel={props.dictionary.profile.deleteAccount}
+        deleteAccountConfirmMessage={props.dictionary.profile.deleteAccountConfirm}
+        deleteAccountCancelLabel={props.dictionary.profile.deleteAccountCancel}
         onLogout={handleSignOut}
         onDeleteAccount={handleDeleteAccount}
         isAuthActionPending={isDeletingAccount}
