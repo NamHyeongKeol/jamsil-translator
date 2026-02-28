@@ -76,28 +76,7 @@ function resolveAllowedAppleAudiences(): Set<string> {
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
 
-  // AUTH_APPLE_ID가 web Service ID인 경우, native 번들 ID variant(.rn, .native 등)도 자동으로 허용.
-  // iOS native Apple sign-in의 aud 클레임은 번들 ID이므로 Service ID와 다를 수 있음.
-  const baseIds = [
-    process.env.AUTH_APPLE_ID,
-    process.env.AUTH_APPLE_NATIVE_ID,
-    process.env.AUTH_APPLE_BUNDLE_ID,
-  ]
-    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
-    .map((value) => value.trim());
-
-  const derivedVariants: string[] = [];
-  for (const baseId of baseIds) {
-    // .rn, .native suffix variant 자동 추가 (없는 경우만)
-    for (const suffix of [".rn", ".native", ".app"]) {
-      const variant = `${baseId}${suffix}`;
-      if (!configured.includes(variant)) {
-        derivedVariants.push(variant);
-      }
-    }
-  }
-
-  return new Set([...configured, ...derivedVariants]);
+  return new Set(configured);
 }
 
 function decodeJwtSegment<T extends Record<string, unknown>>(segment: string): T | null {
