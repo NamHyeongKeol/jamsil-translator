@@ -585,7 +585,7 @@ export default function MingleHome(props: MingleHomeProps) {
 
         {/* 상단 Mingle 텍스트 로고 영역 */}
         <div className="flex flex-1 items-center justify-center">
-          <span className="text-[3.2rem] font-extrabold leading-[1.08] text-[#2D2A1E]">
+          <span className="text-[2.8rem] font-extrabold leading-[1.08] text-[#2D2A1E]">
             Mingle
           </span>
         </div>
@@ -593,11 +593,11 @@ export default function MingleHome(props: MingleHomeProps) {
         {/* ③ 하단 다크 패널 — 항상 렌더, 내용만 조건부 */}
         <section
           aria-busy={isLoading || disabled}
-          className="rounded-t-[2rem] bg-[#1C1C1E] px-6 pb-[calc(3rem+env(safe-area-inset-bottom))] pt-8"
+          className="rounded-t-[2rem] bg-[#1C1C1E] px-5 pb-[calc(1.4rem+env(safe-area-inset-bottom))] pt-6"
         >
           {isLoading ? (
             /* 로딩 중 — 스피너만 */
-            <div className="flex items-center justify-center gap-3 py-4 text-base text-white/60">
+            <div className="flex items-center justify-center gap-3 py-3 text-sm text-white/60">
               <Loader2 size={18} className="animate-spin" aria-hidden />
               <span>{props.dictionary.profile.loginLoading}</span>
             </div>
@@ -623,7 +623,7 @@ export default function MingleHome(props: MingleHomeProps) {
                       }
                       onClick={() => handleProviderSelect("apple")}
                       disabled={!props.appleOAuthEnabled || disabled}
-                      className="relative inline-flex w-full items-center justify-center rounded-2xl bg-black py-[1.05rem] text-base font-semibold text-white transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="relative inline-flex w-full items-center justify-center rounded-2xl bg-black py-[0.92rem] text-[0.95rem] font-semibold text-white transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span className="absolute left-5">
                         <AppleMark />
@@ -640,7 +640,7 @@ export default function MingleHome(props: MingleHomeProps) {
                       }
                       onClick={() => handleProviderSelect("google")}
                       disabled={!props.googleOAuthEnabled || disabled}
-                      className="relative inline-flex w-full items-center justify-center rounded-2xl bg-white py-[1.05rem] text-base font-semibold text-slate-800 transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="relative inline-flex w-full items-center justify-center rounded-2xl bg-white py-[0.92rem] text-[0.95rem] font-semibold text-slate-800 transition duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span className="absolute left-5">
                         <GoogleMark />
@@ -662,18 +662,18 @@ export default function MingleHome(props: MingleHomeProps) {
                 </div>
 
                 <div className="w-1/2 shrink-0 pl-4">
-                  <div className="space-y-4 text-white">
-                    <h2 className="text-[2rem] font-semibold leading-tight">
+                  <div className="space-y-3 text-white">
+                    <h2 className="text-[1.65rem] font-semibold leading-tight">
                       Service Terms
                     </h2>
                     <button
                       type="button"
                       onClick={handleAgreeAllRequiredTerms}
                       disabled={disabled}
-                      className="flex w-full items-center gap-3 rounded-2xl bg-white/8 px-4 py-3 text-left text-base font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex w-full items-center gap-2.5 rounded-xl bg-white/8 px-3.5 py-2.5 text-left text-[0.97rem] font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <span
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full border text-sm ${
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs ${
                           hasAgreedAllRequiredTerms
                             ? "border-rose-400 bg-rose-500 text-white"
                             : "border-white/25 text-transparent"
@@ -685,13 +685,13 @@ export default function MingleHome(props: MingleHomeProps) {
                     </button>
 
                     <div className="space-y-1">
-                      <label className="flex cursor-pointer items-center gap-3 px-1 py-2 text-lg text-white/90">
+                      <label className="flex cursor-pointer items-center gap-3 px-1 py-1.5 text-base text-white/90">
                         <input
                           type="checkbox"
                           checked={agreedPrivacy}
                           onChange={(event) => setAgreedPrivacy(event.target.checked)}
                           disabled={disabled}
-                          className="h-5 w-5 accent-rose-500"
+                          className="h-[1.05rem] w-[1.05rem] accent-rose-500"
                         />
                         <a
                           href="/legal/en/privacy-policy.html"
@@ -702,13 +702,13 @@ export default function MingleHome(props: MingleHomeProps) {
                           Privacy Policy (Required)
                         </a>
                       </label>
-                      <label className="flex cursor-pointer items-center gap-3 px-1 py-2 text-lg text-white/90">
+                      <label className="flex cursor-pointer items-center gap-3 px-1 py-1.5 text-base text-white/90">
                         <input
                           type="checkbox"
                           checked={agreedTerms}
                           onChange={(event) => setAgreedTerms(event.target.checked)}
                           disabled={disabled}
-                          className="h-5 w-5 accent-rose-500"
+                          className="h-[1.05rem] w-[1.05rem] accent-rose-500"
                         />
                         <a
                           href="/legal/en/terms-of-use.html"
@@ -725,7 +725,7 @@ export default function MingleHome(props: MingleHomeProps) {
                       type="button"
                       onClick={handleAgreeAndStart}
                       disabled={!selectedProvider || !hasAgreedAllRequiredTerms || disabled}
-                      className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-white/20 py-4 text-[1.9rem] font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+                      className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-white/20 py-3 text-[1.35rem] font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
                     >
                       {isSigningIn ? (
                         <Loader2 size={22} className="animate-spin" aria-hidden />
@@ -737,7 +737,7 @@ export default function MingleHome(props: MingleHomeProps) {
                       type="button"
                       onClick={handleBackToProviderSelect}
                       disabled={disabled}
-                      className="inline-flex w-full items-center justify-center py-2 text-center text-lg text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex w-full items-center justify-center py-1.5 text-center text-base text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Sign in with another method
                     </button>
