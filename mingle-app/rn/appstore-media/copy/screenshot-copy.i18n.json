@@ -531,6 +531,23 @@
       }
     ]
   },
+  "title": {
+    "ar": "Mingle: لقاء عالمي",
+    "de": "Mingle: Globaler Treffpunkt",
+    "en": "Mingle: Global Hangout",
+    "es": "Mingle: Encuentro global",
+    "fr": "Mingle : Rencontres mondiales",
+    "hi": "Mingle: वैश्विक मिलन",
+    "it": "Mingle: Incontri globali",
+    "ja": "Mingle: 世界中の友達づくり",
+    "ko": "Mingle: 글로벌 친구 만들기",
+    "pt": "Mingle: Encontro global",
+    "ru": "Mingle: Глобальные встречи",
+    "th": "Mingle: แฮงเอาต์กับเพื่อนทั่วโลก",
+    "vi": "Mingle: Kết bạn toàn cầu",
+    "zh-cn": "Mingle：全球交友",
+    "zh-tw": "Mingle：全球交友"
+  },
   "subtitle": {
     "ar": "مترجم صوتي فوري",
     "de": "Echtzeit-Sprachübersetzer",
