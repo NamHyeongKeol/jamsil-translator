@@ -60,28 +60,32 @@
         "line2": "Language Barriers"
       },
       {
-        "line1": "Language Detection",
-        "line2": "Auto Switching"
+        "line1": "3+ Languages",
+        "line2": "All Directions"
       },
       {
-        "line1": "Live Transcripts",
-        "line2": "High Accuracy"
+        "line1": "Uninterrupted",
+        "line2": "Live Transcripts"
       },
       {
-        "line1": "Calls & Voice Rooms",
-        "line2": "Translated Live"
+        "line1": "Audio from Any App",
+        "line2": "Live Captions"
       },
       {
-        "line1": "Voice-to-Voice",
-        "line2": "Interpretation"
+        "line1": "International Calls",
+        "line2": "Auto Translated Captions"
       },
       {
-        "line1": "5 Languages",
-        "line2": "Simultaneous Interpreting"
+        "line1": "Voice Translation",
+        "line2": "Live Interpreting"
       },
       {
-        "line1": "Runs in Background",
-        "line2": "Translate on the Go"
+        "line1": "Runs in the Background",
+        "line2": "Switch Apps Freely"
+      },
+      {
+        "line1": "Language Detect",
+        "line2": "Auto Switch"
       }
     ],
     "ja": [
@@ -256,32 +260,36 @@
     ],
     "hi": [
       {
-        "line1": "भाषा की दीवार",
-        "line2": "अब खत्म"
+        "line1": "अब नहीं",
+        "line2": "भाषा की बाधाएँ"
       },
       {
-        "line1": "भाषा का स्वतः पता",
-        "line2": "स्वतः स्विचिंग"
+        "line1": "3+ भाषाएँ",
+        "line2": "हर दिशा में"
       },
       {
-        "line1": "रीयल-टाइम ट्रांसक्रिप्ट",
-        "line2": "उच्च सटीकता"
+        "line1": "बिना रुकावट",
+        "line2": "लाइव ट्रांसक्रिप्ट"
       },
       {
-        "line1": "कॉल और वॉइस रूम भी",
-        "line2": "रीयल-टाइम अनुवाद"
+        "line1": "किसी भी ऐप का ऑडियो",
+        "line2": "लाइव कैप्शन"
       },
       {
-        "line1": "वॉइस-टू-वॉइस",
-        "line2": "समकालिक दुभाषिया"
+        "line1": "अंतरराष्ट्रीय कॉल",
+        "line2": "स्वतः अनूदित कैप्शन"
       },
       {
-        "line1": "अधिकतम 5 भाषाएँ",
-        "line2": "समकालिक दुभाषिया"
+        "line1": "वॉइस अनुवाद",
+        "line2": "लाइव इंटरप्रेटिंग"
       },
       {
-        "line1": "बैकग्राउंड में चले",
-        "line2": "चलते-फिरते अनुवाद"
+        "line1": "बैकग्राउंड में चलता है",
+        "line2": "ऐप्स आसानी से बदलें"
+      },
+      {
+        "line1": "भाषा पहचान",
+        "line2": "ऑटो स्विच"
       }
     ],
     "de": [
@@ -290,58 +298,66 @@
         "line2": "Sprachbarrieren mehr"
       },
       {
-        "line1": "Spracherkennung",
-        "line2": "Auto-Umschaltung"
+        "line1": "3+ Sprachen",
+        "line2": "In alle Richtungen"
       },
       {
-        "line1": "Live-Transkripte",
-        "line2": "Hohe Genauigkeit"
+        "line1": "Unterbrechungsfrei",
+        "line2": "Live-Transkripte"
       },
       {
-        "line1": "Anrufe & Voice Rooms",
-        "line2": "Live übersetzt"
+        "line1": "Audio aus jeder App",
+        "line2": "Live-Untertitel"
       },
       {
-        "line1": "Stimme-zu-Stimme",
-        "line2": "Simultan-Dolmetschen"
+        "line1": "Internationale Anrufe",
+        "line2": "Automatisch übersetzte Untertitel"
       },
       {
-        "line1": "5 Sprachen",
-        "line2": "Simultan-Dolmetschen"
+        "line1": "Sprachübersetzung",
+        "line2": "Live-Dolmetschen"
       },
       {
         "line1": "Läuft im Hintergrund",
-        "line2": "Übersetzen unterwegs"
+        "line2": "Apps frei wechseln"
+      },
+      {
+        "line1": "Spracherkennung",
+        "line2": "Auto-Umschaltung"
       }
     ],
     "es": [
       {
-        "line1": "Se acabaron",
-        "line2": "las barreras idiomáticas"
+        "line1": "No más",
+        "line2": "barreras de idioma"
       },
       {
-        "line1": "Detección de idioma",
-        "line2": "Cambio automático"
+        "line1": "3+ idiomas",
+        "line2": "en todas direcciones"
       },
       {
-        "line1": "Transcripción en vivo",
-        "line2": "Alta precisión"
+        "line1": "Sin interrupciones",
+        "line2": "transcripción en vivo"
       },
       {
-        "line1": "Llamadas y salas de voz",
-        "line2": "Traducción en vivo"
+        "line1": "Audio de cualquier app",
+        "line2": "subtítulos en vivo"
       },
       {
-        "line1": "Voz a voz",
-        "line2": "Interpretación simultánea"
+        "line1": "Llamadas internacionales",
+        "line2": "subtítulos traducidos automáticamente"
       },
       {
-        "line1": "5 idiomas",
-        "line2": "Interpretación simultánea"
+        "line1": "Traducción por voz",
+        "line2": "interpretación en vivo"
       },
       {
         "line1": "Funciona en segundo plano",
-        "line2": "Traduce en movimiento"
+        "line2": "cambia de app libremente"
+      },
+      {
+        "line1": "Detección de idioma",
+        "line2": "cambio automático"
       }
     ],
     "fr": [
@@ -350,28 +366,32 @@
         "line2": "les barrières linguistiques"
       },
       {
-        "line1": "Détection de langue",
-        "line2": "Bascule auto"
+        "line1": "3+ langues",
+        "line2": "dans tous les sens"
       },
       {
-        "line1": "Transcription en direct",
-        "line2": "Haute précision"
+        "line1": "Sans interruption",
+        "line2": "transcription en direct"
       },
       {
-        "line1": "Appels et salons vocaux",
-        "line2": "Traduction en direct"
+        "line1": "Audio de n’importe quelle app",
+        "line2": "sous-titres en direct"
       },
       {
-        "line1": "Voix à voix",
-        "line2": "Interprétation simultanée"
+        "line1": "Appels internationaux",
+        "line2": "sous-titres traduits automatiquement"
       },
       {
-        "line1": "5 langues",
-        "line2": "Interprétation simultanée"
+        "line1": "Traduction vocale",
+        "line2": "interprétation en direct"
       },
       {
         "line1": "Fonctionne en arrière-plan",
-        "line2": "Traduction en déplacement"
+        "line2": "changez d’app librement"
+      },
+      {
+        "line1": "Détection de langue",
+        "line2": "bascule auto"
       }
     ],
     "it": [
@@ -380,28 +400,32 @@
         "line2": "barriere linguistiche"
       },
       {
-        "line1": "Rilevamento lingua",
-        "line2": "Cambio automatico"
+        "line1": "3+ lingue",
+        "line2": "in tutte le direzioni"
       },
       {
-        "line1": "Trascrizione live",
-        "line2": "Alta precisione"
+        "line1": "Senza interruzioni",
+        "line2": "trascrizione live"
       },
       {
-        "line1": "Chiamate e stanze vocali",
-        "line2": "Traduzione live"
+        "line1": "Audio da qualsiasi app",
+        "line2": "sottotitoli live"
       },
       {
-        "line1": "Voce a voce",
-        "line2": "Interpretazione simultanea"
+        "line1": "Chiamate internazionali",
+        "line2": "sottotitoli tradotti automaticamente"
       },
       {
-        "line1": "5 lingue",
-        "line2": "Interpretazione simultanea"
+        "line1": "Traduzione vocale",
+        "line2": "interpretazione live"
       },
       {
         "line1": "Funziona in background",
-        "line2": "Traduci in movimento"
+        "line2": "passa tra app liberamente"
+      },
+      {
+        "line1": "Rilevamento lingua",
+        "line2": "cambio automatico"
       }
     ],
     "pt": [
@@ -410,58 +434,66 @@
         "line2": "barreiras de idioma"
       },
       {
-        "line1": "Detecção de idioma",
-        "line2": "Troca automática"
+        "line1": "3+ idiomas",
+        "line2": "em todas as direções"
       },
       {
-        "line1": "Transcrição ao vivo",
-        "line2": "Alta precisão"
+        "line1": "Sem interrupções",
+        "line2": "transcrição ao vivo"
       },
       {
-        "line1": "Chamadas e salas de voz",
-        "line2": "Tradução ao vivo"
+        "line1": "Áudio de qualquer app",
+        "line2": "legendas ao vivo"
       },
       {
-        "line1": "Voz para voz",
-        "line2": "Interpretação simultânea"
+        "line1": "Chamadas internacionais",
+        "line2": "legendas traduzidas automaticamente"
       },
       {
-        "line1": "5 idiomas",
-        "line2": "Interpretação simultânea"
+        "line1": "Tradução por voz",
+        "line2": "interpretação ao vivo"
       },
       {
         "line1": "Roda em segundo plano",
-        "line2": "Traduza em movimento"
+        "line2": "troque de app livremente"
+      },
+      {
+        "line1": "Detecção de idioma",
+        "line2": "troca automática"
       }
     ],
     "ru": [
       {
-        "line1": "Языковой барьер",
-        "line2": "больше не проблема"
+        "line1": "Больше никаких",
+        "line2": "языковых барьеров"
       },
       {
-        "line1": "Определение языка",
-        "line2": "Автопереключение"
+        "line1": "3+ языка",
+        "line2": "во всех направлениях"
       },
       {
-        "line1": "Живые субтитры",
-        "line2": "Высокая точность"
+        "line1": "Без прерываний",
+        "line2": "живые субтитры"
       },
       {
-        "line1": "Звонки и голосовые комнаты",
-        "line2": "Перевод в реальном времени"
+        "line1": "Аудио из любого приложения",
+        "line2": "живые субтитры"
       },
       {
-        "line1": "Голос в голос",
-        "line2": "Синхронный перевод"
+        "line1": "Международные звонки",
+        "line2": "авто-переведённые субтитры"
       },
       {
-        "line1": "5 языков",
-        "line2": "Синхронный перевод"
+        "line1": "Голосовой перевод",
+        "line2": "синхронный перевод в реальном времени"
       },
       {
         "line1": "Работает в фоне",
-        "line2": "Перевод в движении"
+        "line2": "свободно переключайте приложения"
+      },
+      {
+        "line1": "Определение языка",
+        "line2": "авто-переключение"
       }
     ],
     "ar": [
@@ -470,28 +502,32 @@
         "line2": "حواجز اللغة"
       },
       {
-        "line1": "اكتشاف اللغة",
-        "line2": "تبديل تلقائي"
+        "line1": "3+ لغات",
+        "line2": "بكل الاتجاهات"
       },
       {
-        "line1": "نص مباشر",
-        "line2": "دقة عالية"
+        "line1": "بدون انقطاع",
+        "line2": "نصوص مباشرة"
       },
       {
-        "line1": "المكالمات وغرف الصوت",
-        "line2": "ترجمة فورية"
+        "line1": "صوت من أي تطبيق",
+        "line2": "تسميات توضيحية مباشرة"
       },
       {
-        "line1": "صوت إلى صوت",
-        "line2": "ترجمة فورية متزامنة"
+        "line1": "مكالمات دولية",
+        "line2": "تسميات مترجمة تلقائياً"
       },
       {
-        "line1": "5 لغات",
-        "line2": "ترجمة متزامنة"
+        "line1": "ترجمة صوتية",
+        "line2": "ترجمة فورية مباشرة"
       },
       {
         "line1": "يعمل في الخلفية",
-        "line2": "ترجمة أثناء التنقل"
+        "line2": "بدّل التطبيقات بحرية"
+      },
+      {
+        "line1": "اكتشاف اللغة",
+        "line2": "تبديل تلقائي"
       }
     ]
   },
