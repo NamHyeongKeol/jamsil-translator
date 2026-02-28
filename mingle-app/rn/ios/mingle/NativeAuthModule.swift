@@ -124,7 +124,7 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
             }
 
             // P2: requestId 대조 — startURL의 requestId와 콜백의 requestId가 일치해야 함
-            if let expectedRequestId = resolveRequestId(resolveQueryItem(named: "requestId", in: context.startURL)),
+            if let expectedRequestId = resolveRequestId(resolveQueryItem(named: "requestId", in: startURL)),
                !expectedRequestId.isEmpty,
                parsed.requestId != expectedRequestId {
                 self.finishWithError(message: "native_auth_invalid_callback", code: "native_auth_invalid_callback")
