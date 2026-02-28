@@ -518,9 +518,40 @@ wss.on('connection', (clientWs) => {
             // 토큰 누적 상태 (Soniox는 토큰 단위로 반환)
             let finalizedText = '';
             let detectedLang = config.languages[0] || 'en';
+            let detectedSpeaker = 'speaker_unknown';
+            let activeTurnSpeaker = 'speaker_unknown';
             let hadNonFinal = false;
             let lastPartialTranslateTime = 0;
             let partialTranslateInFlight = false;
+            const normalizeSpeakerId = (rawSpeaker: unknown): string | null => {
+                if (typeof rawSpeaker !== 'string') return null;
+                const speaker = rawSpeaker.trim().toLowerCase();
+                if (!speaker) return null;
+                const numeric = /^(\d+)$/.exec(speaker);
+                if (numeric) return `speaker_${numeric[1]}`;
+                const speakerWithNumber = /^speaker(?:[_\s-]+)?(\d+)$/.exec(speaker);
+                if (speakerWithNumber) return `speaker_${speakerWithNumber[1]}`;
+                const sanitized = speaker.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+                if (!sanitized) return null;
+                if (sanitized.startsWith('speaker_')) return sanitized;
+                if (sanitized === 'speaker') return null;
+                return `speaker_${sanitized}`;
+            };
+            const pickDominantSpeaker = (scores: Map<string, number>, fallbackSpeaker: string): string => {
+                if (scores.size === 0) {
+                    return fallbackSpeaker || 'speaker_unknown';
+                }
+
+                let bestSpeaker = fallbackSpeaker || 'speaker_unknown';
+                let bestScore = -1;
+                for (const [speaker, score] of scores.entries()) {
+                    if (score > bestScore) {
+                        bestSpeaker = speaker;
+                        bestScore = score;
+                    }
+                }
+                return bestSpeaker || 'speaker_unknown';
+            };
 
             sttWs.onopen = () => {
                 const sonioxConfig = {
@@ -578,22 +609,55 @@ wss.on('connection', (clientWs) => {
 
                     let newFinalText = '';
                     let nonFinalText = '';
+                    const finalSpeakerScores = new Map<string, number>();
+                    const nonFinalSpeakerScores = new Map<string, number>();
+                    const bumpSpeakerScore = (scores: Map<string, number>, speaker: string, tokenText: string) => {
+                        const weight = Math.max(1, tokenText.trim().length);
+                        scores.set(speaker, (scores.get(speaker) || 0) + weight);
+                    };
 
                     for (const token of tokens) {
                         if (token.language) {
                             detectedLang = token.language;
                         }
+                        const tokenSpeaker = normalizeSpeakerId(
+                            token.speaker
+                            ?? token.speaker_id
+                            ?? token.speakerId
+                            ?? token.spk
+                            ?? token.diarization_speaker,
+                        );
+                        if (tokenSpeaker) {
+                            detectedSpeaker = tokenSpeaker;
+                        }
+                        const resolvedTokenSpeaker = tokenSpeaker || activeTurnSpeaker || detectedSpeaker || 'speaker_unknown';
+                        const tokenText = typeof token.text === 'string' ? token.text : '';
+                        if (!tokenText) {
+                            continue;
+                        }
                         if (token.is_final) {
-                            newFinalText += token.text;
+                            newFinalText += tokenText;
+                            bumpSpeakerScore(finalSpeakerScores, resolvedTokenSpeaker, tokenText);
                         } else {
-                            nonFinalText += token.text;
+                            nonFinalText += tokenText;
+                            bumpSpeakerScore(nonFinalSpeakerScores, resolvedTokenSpeaker, tokenText);
                         }
                     }
+
+                    const frameFinalSpeaker = pickDominantSpeaker(
+                        finalSpeakerScores,
+                        activeTurnSpeaker || detectedSpeaker || 'speaker_unknown',
+                    );
+                    const frameNonFinalSpeaker = pickDominantSpeaker(
+                        nonFinalSpeakerScores,
+                        activeTurnSpeaker || detectedSpeaker || 'speaker_unknown',
+                    );
 
                     finalizedText += newFinalText;
 
                     if (nonFinalText) {
                         hadNonFinal = true;
+                        activeTurnSpeaker = frameNonFinalSpeaker || activeTurnSpeaker || detectedSpeaker || 'speaker_unknown';
                         // 부분 결과: 확정된 텍스트 + 미확정 텍스트
                         const fullText = finalizedText + nonFinalText;
                         const partialMsg = {
@@ -603,6 +667,7 @@ wss.on('connection', (clientWs) => {
                                 utterance: {
                                     text: fullText.trim(),
                                     language: detectedLang,
+                                    speaker: activeTurnSpeaker,
                                 },
                             },
                         };
@@ -620,6 +685,7 @@ wss.on('connection', (clientWs) => {
                     } else if (newFinalText && hadNonFinal) {
                         // 모델이 엔드포인트를 감지하여 토큰을 확정함 → 발화 완료
                         const finalText = finalizedText.trim();
+                        const finalizedSpeaker = activeTurnSpeaker || frameFinalSpeaker || detectedSpeaker || 'speaker_unknown';
                         const finalMsg = {
                             type: 'transcript',
                             data: {
@@ -627,6 +693,7 @@ wss.on('connection', (clientWs) => {
                                 utterance: {
                                     text: finalText,
                                     language: detectedLang,
+                                    speaker: finalizedSpeaker,
                                 },
                             },
                         };
@@ -638,6 +705,7 @@ wss.on('connection', (clientWs) => {
 
                         finalizedText = '';
                         hadNonFinal = false;
+                        activeTurnSpeaker = 'speaker_unknown';
                         lastPartialTranslateTime = 0;
                         partialTranslateInFlight = false;
                     }
@@ -657,6 +725,7 @@ wss.on('connection', (clientWs) => {
                 // 남은 텍스트가 있으면 마지막 발화로 전송
                 if (isClientConnected && finalizedText) {
                     const remainingText = finalizedText.trim();
+                    const finalizedSpeaker = activeTurnSpeaker || detectedSpeaker || 'speaker_unknown';
                     const finalMsg = {
                         type: 'transcript',
                         data: {
@@ -664,6 +733,7 @@ wss.on('connection', (clientWs) => {
                             utterance: {
                                 text: remainingText,
                                 language: detectedLang,
+                                speaker: finalizedSpeaker,
                             },
                         },
                     };
@@ -674,6 +744,7 @@ wss.on('connection', (clientWs) => {
                     }
 
                     finalizedText = '';
+                    activeTurnSpeaker = 'speaker_unknown';
                 }
                 if (isClientConnected) {
                     clientWs.close();

@@ -3,6 +3,8 @@ import {
   buildFinalizedUtterancePayload,
   getWsUrl,
   parseSttTranscriptMessage,
+  resolveSpeakerForTranscript,
+  upsertFinalizedUtterance,
 } from './use-realtime-stt'
 
 describe('use-realtime-stt pure logic', () => {
@@ -75,6 +77,120 @@ describe('use-realtime-stt pure logic', () => {
     expect(parseSttTranscriptMessage({ type: 'transcript', data: { utterance: null } })).toBeNull()
   })
 
+  it('normalizes speaker id from transcript payload', () => {
+    const parsed = parseSttTranscriptMessage({
+      type: 'transcript',
+      data: {
+        is_final: false,
+        utterance: {
+          text: 'hello',
+          language: 'en',
+          speaker: 'Speaker 2',
+        },
+      },
+    })
+
+    expect(parsed?.speaker).toBe('speaker_2')
+  })
+
+  it('normalizes short speaker aliases from transcript payload', () => {
+    const parsed = parseSttTranscriptMessage({
+      type: 'transcript',
+      data: {
+        is_final: false,
+        utterance: {
+          text: 'hello',
+          language: 'en',
+          speaker: 'S-02',
+        },
+      },
+    })
+
+    expect(parsed?.speaker).toBe('speaker_2')
+  })
+
+  it('falls back to top-level speaker when utterance speaker is missing', () => {
+    const parsed = parseSttTranscriptMessage({
+      type: 'transcript',
+      data: {
+        is_final: false,
+        speaker: '3',
+        utterance: {
+          text: 'hello',
+          language: 'en',
+        },
+      },
+    })
+
+    expect(parsed?.speaker).toBe('speaker_3')
+  })
+
+  it('resolves unknown final speaker to matching partial speaker', () => {
+    const speaker = resolveSpeakerForTranscript(
+      undefined,
+      'hello from speaker two',
+      'en',
+      {
+        speaker_1: {
+          text: 'hello from speaker one',
+          language: 'en',
+          updatedAtMs: 100,
+        },
+        speaker_2: {
+          text: 'hello from speaker two',
+          language: 'en',
+          updatedAtMs: 110,
+        },
+      },
+    )
+
+    expect(speaker).toBe('speaker_2')
+  })
+
+  it('falls back to deterministic speaker when partial matches are ambiguous', () => {
+    const speaker = resolveSpeakerForTranscript(
+      undefined,
+      'same text',
+      'en',
+      {
+        speaker_1: {
+          text: 'same text',
+          language: 'en',
+          updatedAtMs: 100,
+        },
+        speaker_2: {
+          text: 'same text',
+          language: 'en',
+          updatedAtMs: 100,
+        },
+      },
+    )
+
+    expect(speaker).toBe('speaker_1')
+  })
+
+  it('avoids speaker_unknown fallback by picking most recent active speaker', () => {
+    const speaker = resolveSpeakerForTranscript(
+      'speaker_unknown',
+      '',
+      'en',
+      {
+        speaker_1: {
+          text: 'hello one',
+          language: 'en',
+          updatedAtMs: 100,
+        },
+        speaker_2: {
+          text: 'hello two',
+          language: 'en',
+          updatedAtMs: 200,
+        },
+      },
+    )
+
+    expect(speaker).toBe('speaker_2')
+  })
+
   it('builds finalized utterance payload with source-language filtering', () => {
     const built = buildFinalizedUtterancePayload({
       rawText: ' <end> hello everyone ',
@@ -130,5 +246,181 @@ describe('use-realtime-stt pure logic', () => {
     })
 
     expect(built).toBeNull()
+  })
+
+  it('keeps normalized speaker on finalized utterance payload', () => {
+    const built = buildFinalizedUtterancePayload({
+      rawText: 'hello',
+      rawLanguage: 'en-US',
+      rawSpeaker: 'speaker 7',
+      languages: ['en', 'ko'],
+      partialTranslations: {},
+      utteranceSerial: 9,
+      nowMs: 1700000000000,
+    })
+
+    expect(built?.speaker).toBe('speaker_7')
+    expect(built?.utterance.speaker).toBe('speaker_7')
+  })
+
+  it('normalizes numeric speaker ids in finalized payload', () => {
+    const built = buildFinalizedUtterancePayload({
+      rawText: 'hello',
+      rawLanguage: 'en',
+      rawSpeaker: '2',
+      languages: ['en', 'ko'],
+      partialTranslations: {},
+      utteranceSerial: 10,
+      nowMs: 1700000000000,
+    })
+
+    expect(built?.speaker).toBe('speaker_2')
+    expect(built?.utterance.speaker).toBe('speaker_2')
+  })
+
+  it('normalizes short speaker aliases in finalized payload', () => {
+    const built = buildFinalizedUtterancePayload({
+      rawText: 'hello',
+      rawLanguage: 'en',
+      rawSpeaker: 'spk1',
+      languages: ['en', 'ko'],
+      partialTranslations: {},
+      utteranceSerial: 11,
+      nowMs: 1700000000000,
+    })
+
+    expect(built?.speaker).toBe('speaker_1')
+    expect(built?.utterance.speaker).toBe('speaker_1')
+  })
+
+  it('inserts finalized utterance using created-at order, not finalize order', () => {
+    const result = upsertFinalizedUtterance(
+      [
+        {
+          id: 'u-1000-1',
+          originalText: 'A first',
+          originalLang: 'ko',
+          speaker: 'speaker_1',
+          translations: {},
+          createdAtMs: 1000,
+        },
+        {
+          id: 'u-3000-1',
+          originalText: 'B first',
+          originalLang: 'en',
+          speaker: 'speaker_2',
+          translations: {},
+          createdAtMs: 3000,
+        },
+      ],
+      {
+        id: 'u-2000-1',
+        originalText: 'A final later',
+        originalLang: 'ko',
+        speaker: 'speaker_1',
+        translations: {},
+        createdAtMs: 2000,
+      },
+      4000,
+    )
+
+    expect(result.mode).toBe('inserted')
+    expect(result.utteranceId).toBe('u-2000-1')
+    expect(result.utterances.map((utterance) => utterance.id)).toEqual([
+      'u-1000-1',
+      'u-2000-1',
+      'u-3000-1',
+    ])
+  })
+
+  it('skips duplicate finalized text from same speaker in recent window', () => {
+    const result = upsertFinalizedUtterance(
+      [
+        {
+          id: 'u-1000-1',
+          originalText: '죽어야 되는.',
+          originalLang: 'ko',
+          speaker: 'speaker_1',
+          translations: {},
+          createdAtMs: 1000,
+        },
+      ],
+      {
+        id: 'u-2000-1',
+        originalText: '죽어야 되는.',
+        originalLang: 'ko',
+        speaker: 'speaker_1',
+        translations: {},
+        createdAtMs: 2000,
+      },
+      3000,
+    )
+
+    expect(result.mode).toBe('skipped')
+    expect(result.utteranceId).toBe('u-1000-1')
+    expect(result.utterances).toHaveLength(1)
+  })
+
+  it('replaces previous speaker utterance when new final is a continuation', () => {
+    const result = upsertFinalizedUtterance(
+      [
+        {
+          id: 'u-1000-1',
+          originalText: '죽어야 되는.',
+          originalLang: 'ko',
+          speaker: 'speaker_1',
+          translations: {
+            en: 'have to die.',
+          },
+          createdAtMs: 1000,
+        },
+      ],
+      {
+        id: 'u-2000-1',
+        originalText: '죽어야 되는. 발화가 있으면.',
+        originalLang: 'ko',
+        speaker: 'speaker_1',
+        translations: {},
+        createdAtMs: 2000,
+      },
+      2500,
+    )
+
+    expect(result.mode).toBe('replaced')
+    expect(result.utteranceId).toBe('u-1000-1')
+    expect(result.utterances).toHaveLength(1)
+    expect(result.utterances[0].id).toBe('u-1000-1')
+    expect(result.utterances[0].originalText).toBe('죽어야 되는. 발화가 있으면.')
+    // New payload has empty translations → existing translation is preserved to avoid UI flash
+    expect(result.utterances[0].translations).toEqual({ en: 'have to die.' })
+  })
+
+  it('replaces translations when new final has non-empty translations', () => {
+    const result = upsertFinalizedUtterance(
+      [
+        {
+          id: 'u-1000-1',
+          originalText: '죽어야 되는.',
+          originalLang: 'ko',
+          speaker: 'speaker_1',
+          translations: {
+            en: 'have to die.',
+          },
+          createdAtMs: 1000,
+        },
+      ],
+      {
+        id: 'u-2000-1',
+        originalText: '죽어야 되는. 발화가 있으면.',
+        originalLang: 'ko',
+        speaker: 'speaker_1',
+        translations: { en: 'have to die. If there is more speech.' },
+        createdAtMs: 2000,
+      },
+      2500,
+    )
+
+    expect(result.mode).toBe('replaced')
+    expect(result.utterances[0].translations).toEqual({ en: 'have to die. If there is more speech.' })
   })
 })

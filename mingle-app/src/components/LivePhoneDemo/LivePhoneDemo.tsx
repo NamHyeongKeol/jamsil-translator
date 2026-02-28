@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useImperativeHandle, forwardRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Play, Loader2, Volume2, VolumeX, Mic, ArrowRight, ChevronDown, Menu, LogOut, Trash2 } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
@@ -110,6 +110,21 @@ function findTopVisibleUtteranceDateLabel(container: HTMLDivElement, locale: str
     return formatScrollDateLabel(createdAtMs, locale)
   }
   return ''
+}
+
+function inferUtteranceCreatedAtMs(utterance: Utterance): number | null {
+  if (typeof utterance.createdAtMs === 'number' && Number.isFinite(utterance.createdAtMs) && utterance.createdAtMs > 0) {
+    return Math.floor(utterance.createdAtMs)
+  }
+  const match = /^u-(\d+)-/.exec(utterance.id)
+  if (!match) return null
+  const parsed = Number(match[1])
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+  return Math.floor(parsed)
+}
+
+function normalizeSpeakerForTimeline(rawSpeaker: string | undefined): string {
+  return (rawSpeaker || '').trim().toLowerCase()
 }
 
 const FLAG_MAP: Record<string, string> = {
@@ -601,15 +616,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   const {
     utterances,
-    partialTranscript,
+    partialTurns,
     volume,
     toggleRecording,
     isActive,
     isReady,
     isConnecting,
     isError,
-    partialTranslations,
-    partialLang,
     usageSec,
     isLimitReached,
     usageLimitSec,
@@ -640,6 +653,62 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   useEffect(() => {
     utterancesRef.current = utterances
   }, [utterances])
+
+  const messageTimeline = useMemo(() => {
+    type TimelineItem =
+      | {
+        kind: 'final'
+        key: string
+        sortMs: number
+        utterance: Utterance
+      }
+      | {
+        kind: 'partial'
+        key: string
+        sortMs: number
+        partialTurn: (typeof partialTurns)[number]
+      }
+
+    const finalizedTurnKeys = new Set<string>()
+    for (const utterance of utterances) {
+      const speaker = normalizeSpeakerForTimeline(utterance.speaker)
+      const createdAtMs = inferUtteranceCreatedAtMs(utterance)
+      if (!speaker || createdAtMs === null) continue
+      finalizedTurnKeys.add(`${speaker}::${createdAtMs}`)
+    }
+
+    const items: TimelineItem[] = utterances.map((utterance) => ({
+      kind: 'final',
+      key: `final-${utterance.id}`,
+      sortMs: inferUtteranceCreatedAtMs(utterance) ?? Number.MAX_SAFE_INTEGER,
+      utterance,
+    }))
+
+    for (const partialTurn of partialTurns) {
+      const speaker = normalizeSpeakerForTimeline(partialTurn.speaker)
+      const startedAtMs = (
+        Number.isFinite(partialTurn.startedAtMs) && partialTurn.startedAtMs > 0
+      ) ? Math.floor(partialTurn.startedAtMs) : Number.MAX_SAFE_INTEGER
+
+      // If this turn already finalized in the same slot, hide transient partial duplicate.
+      if (speaker && finalizedTurnKeys.has(`${speaker}::${startedAtMs}`)) continue
+
+      items.push({
+        kind: 'partial',
+        key: `partial-${partialTurn.speaker}-${startedAtMs}`,
+        sortMs: startedAtMs,
+        partialTurn,
+      })
+    }
+
+    items.sort((a, b) => {
+      if (a.sortMs !== b.sortMs) return a.sortMs - b.sortMs
+      if (a.kind !== b.kind) return a.kind === 'final' ? -1 : 1
+      return a.key.localeCompare(b.key)
+    })
+
+    return items
+  }, [partialTurns, utterances])
 
   // Re-evaluate queue after utterance state commit.
   // This closes the race where inline TTS arrives before translationFinalized state is rendered.
@@ -1091,7 +1160,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       }
     }
     updateScrollDerivedState()
-  }, [demoTypingText, isConnecting, partialTranscript, updateScrollDerivedState, utterances])
+  }, [demoTypingText, isConnecting, partialTurns, updateScrollDerivedState, utterances])
 
   useEffect(() => {
     updateScrollDerivedState()
@@ -1105,15 +1174,6 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   const showRipple = isReady && volume > VOLUME_THRESHOLD
   const rippleScale = showRipple ? 1 + (volume - VOLUME_THRESHOLD) * 5 : 1
-
-  // Determine target languages for bouncing dots during partial transcript
-  const detectedLang = partialLang || (utterances.length > 0 ? utterances[utterances.length - 1].originalLang : null)
-  const pendingPartialLangs = partialTranscript
-    ? selectedLanguages.filter(l => l !== detectedLang && !partialTranslations[l])
-    : []
-  const availablePartialTranslations = partialTranscript
-    ? Object.entries(partialTranslations).filter(([lang]) => selectedLanguages.includes(lang) && lang !== detectedLang)
-    : []
 
   const isUsageLimited = typeof usageLimitSec === 'number'
   const remainingSec = isUsageLimited
@@ -1261,69 +1321,80 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               ···
             </button>
           )}
-          <AnimatePresence mode="popLayout">
-            {utterances.map((u) => (
-              <div
-                key={u.id}
-                data-utterance-created-at={
-                  (typeof u.createdAtMs === 'number' && Number.isFinite(u.createdAtMs))
-                    ? String(Math.floor(u.createdAtMs))
-                    : ''
-                }
-              >
-                <ChatBubble
-                  utterance={u}
-                  isSpeaking={speakingItem?.utteranceId === u.id}
-                  speakingLanguage={speakingItem?.language ?? null}
-                />
-              </div>
-            ))}
-          </AnimatePresence>
+          {messageTimeline.map((timelineItem) => {
+            if (timelineItem.kind === 'final') {
+              const utterance = timelineItem.utterance
+              const isBubbleSpeaking = speakingItem?.utteranceId === utterance.id
+              const createdAtMs = inferUtteranceCreatedAtMs(utterance)
+              return (
+                <div
+                  key={timelineItem.key}
+                  data-utterance-created-at={createdAtMs === null ? '' : String(createdAtMs)}
+                >
+                  <ChatBubble
+                    utterance={utterance}
+                    isSpeaking={isBubbleSpeaking}
+                    speakingLanguage={isBubbleSpeaking ? (speakingItem?.language ?? null) : null}
+                  />
+                </div>
+              )
+            }
 
-          {partialTranscript && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col gap-1"
-            >
+            const partialTurn = timelineItem.partialTurn
+            const detectedLang = partialTurn.language
+            const availablePartialTranslations = Object.entries(partialTurn.translations || {})
+              .filter(([lang, text]) => selectedLanguages.includes(lang) && lang !== detectedLang && text.trim().length > 0)
+            const pendingPartialLangs = selectedLanguages
+              .filter((lang) => lang !== detectedLang && !partialTurn.translations?.[lang])
+            const partialStartedAt = (
+              Number.isFinite(partialTurn.startedAtMs) && partialTurn.startedAtMs > 0
+            ) ? Math.floor(partialTurn.startedAtMs) : ''
+
+            return (
+              <motion.div
+                key={timelineItem.key}
+                data-utterance-created-at={partialStartedAt === '' ? '' : String(partialStartedAt)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col gap-1"
+              >
                 <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
-                <p className="text-sm text-gray-400 leading-snug">
-                  {partialTranscript}
-                  <span className="inline-block w-1 h-3 ml-0.5 bg-amber-400 rounded-full animate-pulse" />
-                </p>
-              </div>
-              {/* Available partial translations */}
-              {availablePartialTranslations.map(([lang, text]) => (
-                <div
-                  key={lang}
-                  className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
-                >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
-                  <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
+                  <p className="text-sm text-gray-400 leading-snug">
+                    {partialTurn.text}
+                    <span className="inline-block w-1 h-3 ml-0.5 bg-amber-400 rounded-full animate-pulse" />
+                  </p>
                 </div>
-                  <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
-                </div>
-              ))}
-              {/* Bouncing dots for pending partial translations */}
-              {pendingPartialLangs.map((lang) => (
-                <div
-                key={`partial-pending-${lang}`}
-                  className="ml-2.5 max-w-[80%] bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
-                >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
-                    <span className="text-xs font-semibold text-amber-400 uppercase">{lang}</span>
+                {availablePartialTranslations.map(([lang, text]) => (
+                  <div
+                    key={`${partialTurn.speaker}-${lang}`}
+                    className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                      <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
                   </div>
-                  <div className="flex items-center gap-0.5 h-4">
-                    <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                ))}
+                {pendingPartialLangs.map((lang) => (
+                  <div
+                    key={`partial-pending-${partialTurn.speaker}-${lang}`}
+                    className="ml-2.5 max-w-[80%] bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                      <span className="text-xs font-semibold text-amber-400 uppercase">{lang}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 h-4">
+                      <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </motion.div>
-          )}
+                ))}
+              </motion.div>
+            )
+          })}
 
           {/* Demo typing animation */}
           {demoTypingLang && (
@@ -1364,7 +1435,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
           )}
 
           {/* Empty state */}
-          {utterances.length === 0 && !partialTranscript && !demoTypingText && !demoTypingLang && !isDemoAnimating && !isActive && !isError && !isLimitReached && (
+          {utterances.length === 0 && partialTurns.length === 0 && !demoTypingText && !demoTypingLang && !isDemoAnimating && !isActive && !isError && !isLimitReached && (
             <div className="flex min-h-full flex-col items-center justify-center text-center text-gray-400 gap-2">
                 <Play size={38} className="text-gray-300" />
                 <p className="text-base">{tapPlayToStartLabel}</p>
