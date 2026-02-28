@@ -265,6 +265,11 @@ function buildProviders(): NextAuthOptions["providers"] {
         clientId: googleClientId,
         clientSecret: googleClientSecret,
         allowDangerousEmailAccountLinking: allowEmailAccountLinking,
+        authorization: {
+          params: {
+            prompt: "select_account",
+          },
+        },
       }),
     );
   }

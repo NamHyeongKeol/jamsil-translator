@@ -12,8 +12,10 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		A1B2C3D45E6F708192A3B4C5 /* NativeAuthModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6708192A3B4C5D6E7 /* NativeAuthModule.swift */; };
 		A8F1C3B52D4E6A7091BC23D4 /* NativeSTTModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D9E1F32A4B6C8091DE45F6 /* NativeSTTModule.swift */; };
 		B1E2C3D44F5A6B7091CD23E4 /* NativeSTTModuleBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = D2E3F4A55B6C7D8091EF34A5 /* NativeSTTModuleBridge.m */; };
+		B2C3D4E56F708192A3B4C5D6 /* NativeAuthModuleBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6708192A3B4C5D6E7F8 /* NativeAuthModuleBridge.m */; };
 		E3A4B5C62D5F7B8192CD34E5 /* NativeTTSModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B5C6D73B5D8E9192EF45F7 /* NativeTTSModule.swift */; };
 		F5C6D7E84F6A7C8192DE45F8 /* NativeTTSModuleBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5D6E7F65C7D9F0192FA56A8 /* NativeTTSModuleBridge.m */; };
 /* End PBXBuildFile section */
@@ -29,8 +31,10 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = mingle/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = mingle/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A5D6E7F65C7D9F0192FA56A8 /* NativeTTSModuleBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = NativeTTSModuleBridge.m; path = mingle/NativeTTSModuleBridge.m; sourceTree = "<group>"; };
+		C3D4E5F6708192A3B4C5D6E7 /* NativeAuthModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NativeAuthModule.swift; path = mingle/NativeAuthModule.swift; sourceTree = "<group>"; };
 		C7D9E1F32A4B6C8091DE45F6 /* NativeSTTModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NativeSTTModule.swift; path = mingle/NativeSTTModule.swift; sourceTree = "<group>"; };
 		D2E3F4A55B6C7D8091EF34A5 /* NativeSTTModuleBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = NativeSTTModuleBridge.m; path = mingle/NativeSTTModuleBridge.m; sourceTree = "<group>"; };
+		D4E5F6708192A3B4C5D6E7F8 /* NativeAuthModuleBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = NativeAuthModuleBridge.m; path = mingle/NativeAuthModuleBridge.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F4B5C6D73B5D8E9192EF45F7 /* NativeTTSModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NativeTTSModule.swift; path = mingle/NativeTTSModule.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -52,6 +56,8 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				C3D4E5F6708192A3B4C5D6E7 /* NativeAuthModule.swift */,
+				D4E5F6708192A3B4C5D6E7F8 /* NativeAuthModuleBridge.m */,
 				C7D9E1F32A4B6C8091DE45F6 /* NativeSTTModule.swift */,
 				D2E3F4A55B6C7D8091EF34A5 /* NativeSTTModuleBridge.m */,
 				F4B5C6D73B5D8E9192EF45F7 /* NativeTTSModule.swift */,
@@ -203,13 +209,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-mingle/Pods-mingle-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-mingle/Pods-mingle-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -246,13 +248,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-mingle/Pods-mingle-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-mingle/Pods-mingle-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -267,6 +265,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				A1B2C3D45E6F708192A3B4C5 /* NativeAuthModule.swift in Sources */,
+				B2C3D4E56F708192A3B4C5D6 /* NativeAuthModuleBridge.m in Sources */,
 				A8F1C3B52D4E6A7091BC23D4 /* NativeSTTModule.swift in Sources */,
 				B1E2C3D44F5A6B7091CD23E4 /* NativeSTTModuleBridge.m in Sources */,
 				E3A4B5C62D5F7B8192CD34E5 /* NativeTTSModule.swift in Sources */,
@@ -283,6 +283,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = mingle/mingle.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 3RFBMN8TKZ;
@@ -322,6 +323,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = mingle/mingle.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 3RFBMN8TKZ;

@@ -40,9 +40,11 @@ function resolveRouteAuthOptions(baseAuthOptions: NextAuthOptions, nextauth: str
     return baseAuthOptions;
   }
 
+  const requestedProvider = summarizeText(nextauth?.[1] || "", 32).toLowerCase();
+
   // Keep built-in NextAuth sign-in page for OAuth providers only.
   // Force social provider order to Apple -> Google for consistent UX with native app.
-  const oauthOnlyProviders = (baseAuthOptions.providers || [])
+  let oauthOnlyProviders = (baseAuthOptions.providers || [])
     .filter((provider) => provider.type !== "credentials")
     .slice()
     .sort((a, b) => {
@@ -53,6 +55,14 @@ function resolveRouteAuthOptions(baseAuthOptions: NextAuthOptions, nextauth: str
       };
       return rank(a.id) - rank(b.id);
     });
+
+  if (requestedProvider) {
+    const narrowed = oauthOnlyProviders.filter((provider) => provider.id === requestedProvider);
+    if (narrowed.length > 0) {
+      oauthOnlyProviders = narrowed;
+    }
+  }
+
   return {
     ...baseAuthOptions,
     providers: oauthOnlyProviders,
