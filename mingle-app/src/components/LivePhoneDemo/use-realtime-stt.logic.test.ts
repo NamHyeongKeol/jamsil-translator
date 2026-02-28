@@ -391,6 +391,36 @@ describe('use-realtime-stt pure logic', () => {
     expect(result.utterances).toHaveLength(1)
     expect(result.utterances[0].id).toBe('u-1000-1')
     expect(result.utterances[0].originalText).toBe('죽어야 되는. 발화가 있으면.')
-    expect(result.utterances[0].translations).toEqual({})
+    // New payload has empty translations → existing translation is preserved to avoid UI flash
+    expect(result.utterances[0].translations).toEqual({ en: 'have to die.' })
+  })
+
+  it('replaces translations when new final has non-empty translations', () => {
+    const result = upsertFinalizedUtterance(
+      [
+        {
+          id: 'u-1000-1',
+          originalText: '죽어야 되는.',
+          originalLang: 'ko',
+          speaker: 'speaker_1',
+          translations: {
+            en: 'have to die.',
+          },
+          createdAtMs: 1000,
+        },
+      ],
+      {
+        id: 'u-2000-1',
+        originalText: '죽어야 되는. 발화가 있으면.',
+        originalLang: 'ko',
+        speaker: 'speaker_1',
+        translations: { en: 'have to die. If there is more speech.' },
+        createdAtMs: 2000,
+      },
+      2500,
+    )
+
+    expect(result.mode).toBe('replaced')
+    expect(result.utterances[0].translations).toEqual({ en: 'have to die. If there is more speech.' })
   })
 })

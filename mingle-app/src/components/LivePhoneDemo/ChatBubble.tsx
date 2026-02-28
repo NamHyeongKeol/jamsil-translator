@@ -271,6 +271,7 @@ function chatBubbleAreEqual(prev: ChatBubbleProps, next: ChatBubbleProps): boole
         if (pf[k] !== nf[k]) return false
       }
     }
+    if ((pu.createdAtMs ?? 0) !== (nu.createdAtMs ?? 0)) return false
   }
 
   return true

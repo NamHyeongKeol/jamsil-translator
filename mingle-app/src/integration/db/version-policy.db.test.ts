@@ -7,14 +7,14 @@ import { POST as postIosVersionPolicy } from '@/app/api/ios/v1.0.0/client/versio
 const DB_INTEGRATION_ENABLED = process.env.MINGLE_DB_INTEGRATION === '1'
 const describeDb = DB_INTEGRATION_ENABLED ? describe : describe.skip
 
-type VersionPolicyRoute = (request: Request) => Promise<Response>
+type VersionPolicyRoute = (request: Parameters<typeof postLegacyVersionPolicy>[0]) => Promise<Response>
 
 function makeRequest(args: {
   clientVersion: string
   clientBuild?: string
   locale?: string
   platform?: 'ios' | 'android'
-}): Request {
+}): Parameters<typeof postLegacyVersionPolicy>[0] {
   return new Request('http://localhost:3000/api/client/version-policy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -24,11 +24,11 @@ function makeRequest(args: {
       locale: args.locale || 'en',
       platform: args.platform || 'ios',
     }),
-  })
+  }) as Parameters<typeof postLegacyVersionPolicy>[0]
 }
 
 async function callPolicyRoute(route: VersionPolicyRoute, args: Parameters<typeof makeRequest>[0]) {
-  const response = await route(makeRequest(args) as never)
+  const response = await route(makeRequest(args))
   const json = await response.json() as Record<string, unknown>
   return { response, json }
 }

@@ -63,6 +63,9 @@ interface SonioxSpeakerTurnState {
     carryExpiryTimer: NodeJS.Timeout | null;
     idleFinalizeTimer: NodeJS.Timeout | null;
     idleFinalizeDueAtMs: number;
+    /** Per-speaker flag: true while a Soniox manual finalize response is pending for this speaker's segment. */
+    manualFinalizeSent: boolean;
+    lastTranscriptProgressAtMs: number;
 }
 
 let connectionCounter = 0;
@@ -80,19 +83,13 @@ wss.on('connection', (clientWs) => {
     let finalizePendingTurnFromProvider: (() => Promise<FinalTurnPayload | null>) | null = null;
     let sonioxStopRequested = false;
     let sonioxHasPendingTranscript = false;
+    // --- Connection-level manual finalize state (used only as a fallback for stop_recording) ---
     let sonioxManualFinalizeSent = false;
     let sonioxLastManualFinalizeAtMs = 0;
     let sonioxLastTranscriptProgressAtMs = 0;
     let sonioxManualFinalizeTimer: NodeJS.Timeout | null = null;
     let sonioxManualFinalizeDueAtMs = 0;
-    // Snapshot of accumulated merged-text length (final + non-final) at the
-    // moment we send { type: 'finalize' } to Soniox.  When the <fin> response
-    // eventually arrives, text beyond this boundary was spoken *after* the
-    // finalize request and should become carry for the next utterance.
     let sonioxFinalizeSnapshotTextLen: number | null = null;
-    // Mirror of `(finalizedText + latestNonFinalText).length` from inside
-    // startSonioxConnection,
-    // kept in connection scope so maybeTriggerSonioxManualFinalize can read it.
     let sonioxCurrentMergedTextLen = 0;
     // --- Carry expiry timer ---
     // When carry text is parked (latestNonFinalIsProvisionalCarry), this timer
@@ -798,6 +795,8 @@ wss.on('connection', (clientWs) => {
                 state.finalizeSnapshotTextLen = null;
                 state.currentMergedTextLen = 0;
                 state.lastActivityAtMs = 0;
+                state.manualFinalizeSent = false;
+                state.lastTranscriptProgressAtMs = 0;
                 if (state.carryExpiryTimer) {
                     clearTimeout(state.carryExpiryTimer);
                     state.carryExpiryTimer = null;
@@ -827,6 +826,8 @@ wss.on('connection', (clientWs) => {
                     carryExpiryTimer: null,
                     idleFinalizeTimer: null,
                     idleFinalizeDueAtMs: 0,
+                    manualFinalizeSent: false,
+                    lastTranscriptProgressAtMs: 0,
                 };
                 sonioxSpeakerStates.set(normalizedSpeaker, created);
                 return created;
@@ -889,7 +890,10 @@ wss.on('connection', (clientWs) => {
             const scheduleSpeakerIdleFinalize = (state: SonioxSpeakerTurnState, activityAtMs: number) => {
                 if (activityAtMs <= 0) return;
                 clearSpeakerIdleFinalizeTimer(state);
-                const dueAtMs = activityAtMs + SONIOX_SPEAKER_IDLE_FINALIZE_MS;
+                // Use SONIOX_MANUAL_FINALIZE_SILENCE_MS as the primary idle
+                // timeout so each speaker finalizes independently and quickly.
+                const idleThresholdMs = SONIOX_MANUAL_FINALIZE_SILENCE_MS;
+                const dueAtMs = activityAtMs + idleThresholdMs;
                 const waitMs = Math.max(1, dueAtMs - Date.now());
                 state.idleFinalizeDueAtMs = dueAtMs;
                 state.idleFinalizeTimer = setTimeout(() => {
@@ -900,7 +904,7 @@ wss.on('connection', (clientWs) => {
                     if (sonioxStopRequested) return;
                     if (state.lastActivityAtMs !== activityAtMs) return;
                     const idleMs = Date.now() - state.lastActivityAtMs;
-                    if (idleMs < SONIOX_SPEAKER_IDLE_FINALIZE_MS) {
+                    if (idleMs < idleThresholdMs) {
                         scheduleSpeakerIdleFinalize(state, state.lastActivityAtMs);
                         return;
                     }
@@ -1032,6 +1036,16 @@ wss.on('connection', (clientWs) => {
                             lastObservedSpeakerId = onlySpeaker;
                             return onlySpeaker;
                         }
+                        // Multiple explicit speakers appeared in this frame (overlap),
+                        // but this token has no speaker tag.  Falling back to
+                        // lastObservedSpeakerId here can silently attribute tokens to
+                        // the wrong speaker during A/B overlap, so we conservatively
+                        // return 'speaker_unknown' and let the caller drop it.
+                        if (explicitSpeakersInFrame.size > 1) {
+                            return 'speaker_unknown';
+                        }
+                        // No speakers at all in this frame — safe to use single pending
+                        // speaker or lastObservedSpeakerId as the only candidate.
                         if (explicitSpeakersInFrame.size === 0) {
                             const singlePendingSpeaker = getSinglePendingSpeaker();
                             if (singlePendingSpeaker) {
@@ -1289,8 +1303,9 @@ wss.on('connection', (clientWs) => {
                                 state.latestNonFinalText = carryTextToEmit;
                                 state.latestNonFinalIsProvisionalCarry = true;
                                 hasProvisionalCarryInFrame = true;
-                                sonioxManualFinalizeSent = true;
-                                clearSonioxManualFinalizeTimer();
+                                // Only mark THIS speaker as finalize-sent; other
+                                // speakers' finalize scheduling is not affected.
+                                state.manualFinalizeSent = true;
 
                                 if (state.carryExpiryTimer) {
                                     clearTimeout(state.carryExpiryTimer);
@@ -1322,7 +1337,7 @@ wss.on('connection', (clientWs) => {
                         if (speakersWithActivityInFrame.has(state.speaker)) continue;
                         if (state.lastActivityAtMs <= 0) continue;
                         const idleMs = frameNow - state.lastActivityAtMs;
-                        if (idleMs < SONIOX_SPEAKER_IDLE_FINALIZE_MS) continue;
+                        if (idleMs < SONIOX_MANUAL_FINALIZE_SILENCE_MS) continue;
                         if (state.latestNonFinalIsProvisionalCarry && !state.finalizedText.trim()) continue;
                         const merged = composeTurnText(state.finalizedText, state.latestNonFinalText);
                         if (!merged) continue;
@@ -1336,10 +1351,12 @@ wss.on('connection', (clientWs) => {
                         return mergedSnapshot.length > 0
                             && !(state.latestNonFinalIsProvisionalCarry && !state.finalizedText.trim());
                     });
-                    if (hasProvisionalCarryInFrame) {
-                        sonioxManualFinalizeSent = true;
-                        clearSonioxManualFinalizeTimer();
-                    } else if (hadTranscriptProgress) {
+                    // Connection-level manual finalize is now only a fallback;
+                    // per-speaker idle timers are the primary finalize path.
+                    // We still schedule the connection-level timer to handle
+                    // edge cases (e.g. stop_recording) but carry no longer
+                    // blocks it for other speakers.
+                    if (hadTranscriptProgress) {
                         sonioxManualFinalizeSent = false;
                         scheduleSonioxManualFinalizeFromTranscriptProgress();
                     } else if (!sonioxHasPendingTranscript) {

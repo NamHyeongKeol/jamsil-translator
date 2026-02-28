@@ -547,14 +547,23 @@ export function upsertFinalizedUtterance(
         ageMs <= SPEAKER_FINAL_CONTINUATION_WINDOW_MS
         && finalizedText.startsWith(candidateText)
       ) {
+        // Keep the candidate's existing translations if the new payload's
+        // translations are empty — avoids a flash of untranslated text while
+        // the final translation request is in-flight.
+        const mergedTranslations = Object.keys(finalizedUtterance.translations).length > 0
+          ? finalizedUtterance.translations
+          : candidate.translations
+        const mergedTranslationFinalized = Object.keys(finalizedUtterance.translations).length > 0
+          ? finalizedUtterance.translationFinalized
+          : candidate.translationFinalized
         const replaced: Utterance = {
           ...candidate,
           originalText: finalizedUtterance.originalText,
           originalLang: finalizedUtterance.originalLang,
           speaker: finalizedUtterance.speaker,
           targetLanguages: finalizedUtterance.targetLanguages,
-          translations: finalizedUtterance.translations,
-          translationFinalized: finalizedUtterance.translationFinalized,
+          translations: mergedTranslations,
+          translationFinalized: mergedTranslationFinalized,
         }
         const next = [...utterances]
         next[i] = replaced
@@ -1871,12 +1880,20 @@ export default function useRealtimeSTT({
           })
         }
         const previousTurn = partialTurnsRef.current[speakerKey]
-        upsertPartialTurn(speakerKey, {
-          text,
-          language: lang,
-          translations: previousTurn?.translations || {},
-          startedAtMs: turnStartedAtMs || previousTurn?.startedAtMs || Date.now(),
-        })
+        if (!text) {
+          // Empty non-final text: do not upsert — retain or clear the partial
+          // slot so it doesn't pollute speaker resolution inputs.
+          if (previousTurn) {
+            clearSinglePartialTurn(speakerKey, false)
+          }
+        } else {
+          upsertPartialTurn(speakerKey, {
+            text,
+            language: lang,
+            translations: previousTurn?.translations || {},
+            startedAtMs: turnStartedAtMs || previousTurn?.startedAtMs || Date.now(),
+          })
+        }
       }
     }
   }, [
