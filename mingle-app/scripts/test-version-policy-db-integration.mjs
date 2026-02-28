@@ -79,6 +79,9 @@ const { adminDbUrl, testDbUrlForPrisma, testDbUrlForPsql, testDbName } = resolve
 const migrationSqlFiles = listMigrationSqlFiles()
 const seedSqlPath = path.join(rootDir, 'test-fixtures', 'db', 'version-policy.seed.sql')
 
+log('generating Prisma client from current schema')
+run('pnpm', ['prisma', 'generate'])
+
 log(`creating disposable test db: ${testDbName}`)
 run('psql', [adminDbUrl, '-v', 'ON_ERROR_STOP=1', '-c', `CREATE DATABASE "${testDbName}";`])
 

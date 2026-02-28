@@ -258,7 +258,7 @@ pnpm test:db:version-policy
 ```
 
 - `test:db:version-policy` creates `mingle_app_test_*` DB, applies all migrations, seeds fixture SQL,
-  runs `src/integration/db/version-policy.db.test.ts`, then drops the DB.
+  regenerates Prisma Client, runs `src/integration/db/version-policy.db.test.ts`, then drops the DB.
 - Use this when you need DB-level verification (CHECK constraints, unique keys, policy ordering).
 
 `db:*` Prisma scripts load environment variables from `.env.local`.
