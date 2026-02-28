@@ -244,6 +244,23 @@ Reset local `app` schema via `psql` (drop + recreate + apply migrations):
 pnpm db:reset:local:psql
 ```
 
+Apply/remove version-policy fixture rows on the current `DATABASE_URL`:
+
+```bash
+pnpm db:seed:version-policy:fixture
+pnpm db:cleanup:version-policy:fixture
+```
+
+Run version-policy DB integration tests on a disposable local database:
+
+```bash
+pnpm test:db:version-policy
+```
+
+- `test:db:version-policy` creates `mingle_app_test_*` DB, applies all migrations, seeds fixture SQL,
+  runs `src/integration/db/version-policy.db.test.ts`, then drops the DB.
+- Use this when you need DB-level verification (CHECK constraints, unique keys, policy ordering).
+
 `db:*` Prisma scripts load environment variables from `.env.local`.
 
 Production build runs `prisma generate` first:
@@ -256,7 +273,9 @@ If you apply SQL manually to remote, use:
 
 - `prisma/migrations/20260216173000_init_app_schema/migration.sql`
 - `prisma/migrations/20260216191500_add_app_users_context_columns/migration.sql`
+- `prisma/migrations/20260227204000_add_nextauth_tables_and_app_user_auth_columns/migration.sql`
 - `prisma/migrations/20260227211000_add_client_version_policy_history/migration.sql`
+- `prisma/migrations/20260227221000_add_native_auth_pending_results/migration.sql`
 - `prisma/migrations/20260227232000_add_client_platform_to_version_policy_history/migration.sql`
 
 ## React Native (mingle-app/rn)
