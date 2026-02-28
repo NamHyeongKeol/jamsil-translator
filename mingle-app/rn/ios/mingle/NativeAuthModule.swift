@@ -46,7 +46,7 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
             reject("native_auth_invalid_start_url", "native_auth_invalid_start_url", nil)
             return
         }
-        guard startURL.path.hasPrefix("/api/native-auth/start") else {
+        guard isAllowedNativeAuthStartPath(startURL.path) else {
             reject("native_auth_invalid_start_url_path", "native_auth_invalid_start_url_path", nil)
             return
         }
@@ -183,7 +183,7 @@ class NativeAuthModule: NSObject, ASWebAuthenticationPresentationContextProvidin
         }
 
         let authorizationCode = resolveUTF8String(from: credential.authorizationCode)
-        let callbackURL = resolveSafeCallbackPath(resolveQueryItem(named: "callbackUrl", in: context.startURL))
+        let callbackURL = resolveCallbackPathFromStartURL(context.startURL)
         let requestId = resolveRequestId(resolveQueryItem(named: "requestId", in: context.startURL))
         let displayName = resolveDisplayName(from: credential.fullName)
         let email = (credential.email ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -492,4 +492,39 @@ private func resolveUTF8String(from data: Data?) -> String {
         return utf8.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     return data.base64EncodedString()
+}
+
+private func isAllowedNativeAuthStartPath(_ path: String) -> Bool {
+    let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.hasPrefix("/api/native-auth/start") {
+        return true
+    }
+
+    let segments = trimmed
+        .split(separator: "/", omittingEmptySubsequences: true)
+        .map(String.init)
+    guard segments.count == 3 else { return false }
+    guard segments[1] == "auth", segments[2] == "native" else { return false }
+
+    let locale = segments[0]
+    let localePattern = "^[A-Za-z]{2}(?:-[A-Za-z]{2})?$"
+    return locale.range(of: localePattern, options: .regularExpression) != nil
+}
+
+private func resolveCallbackPathFromStartURL(_ startURL: URL) -> String {
+    let raw = resolveQueryItem(named: "callbackUrl", in: startURL)
+    let direct = resolveSafeCallbackPath(raw)
+    if direct != "/" {
+        return direct
+    }
+
+    guard let nestedURL = URL(string: raw) else {
+        return "/"
+    }
+    let nestedPath = nestedURL.path.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard nestedPath.hasPrefix("/api/native-auth/complete") else {
+        return "/"
+    }
+    let nestedCallback = resolveQueryItem(named: "callbackUrl", in: nestedURL)
+    return resolveSafeCallbackPath(nestedCallback)
 }
