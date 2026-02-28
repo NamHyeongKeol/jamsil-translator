@@ -609,6 +609,14 @@ export default function MingleHome(props: MingleHomeProps) {
         <style>{`@keyframes fade-in {
             from { opacity: 0; }
             to   { opacity: 1; }
+          }
+          @keyframes legal-overlay-in {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+          }
+          @keyframes legal-sheet-in {
+            from { transform: translateY(100%); }
+            to   { transform: translateY(0); }
           }`}</style>
 
         {/* 스크린리더 로딩 상태 공지 */}
@@ -698,7 +706,7 @@ export default function MingleHome(props: MingleHomeProps) {
 
                 <div className="w-1/2 shrink-0 pl-4">
                   <div className="space-y-3 text-white">
-                    <h2 className="text-[1.35rem] font-semibold leading-tight">
+                    <h2 className="text-[1.22rem] font-semibold leading-tight">
                       Service Terms
                     </h2>
                     <button
@@ -758,12 +766,12 @@ export default function MingleHome(props: MingleHomeProps) {
                       type="button"
                       onClick={handleAgreeAndStart}
                       disabled={!selectedProvider || !hasAgreedAllRequiredTerms || disabled}
-                      className="mt-3 inline-flex h-12 w-full items-center justify-center rounded-xl bg-white/20 px-3 text-[1.08rem] font-semibold leading-none text-white transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+                      className="mt-2 grid h-11 w-full place-items-center rounded-xl bg-white/20 px-3 text-[0.96rem] font-semibold leading-none text-white transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
                     >
                       {isSigningIn ? (
                         <Loader2 size={18} className="animate-spin" aria-hidden />
                       ) : (
-                        <span className="leading-none">Agree and continue</span>
+                        <span className="block leading-none">Agree and continue</span>
                       )}
                     </button>
                     <button
@@ -783,6 +791,7 @@ export default function MingleHome(props: MingleHomeProps) {
         {legalSheetKind ? (
           <div
             className="absolute inset-0 z-40 flex items-end bg-black/55"
+            style={{ animation: "legal-overlay-in 0.2s ease both" }}
             onClick={handleCloseLegalSheet}
           >
             <section
@@ -791,6 +800,7 @@ export default function MingleHome(props: MingleHomeProps) {
               aria-label={legalSheetTitle}
               onClick={(event) => event.stopPropagation()}
               className="w-full overflow-hidden rounded-t-[1.1rem] bg-[#111214] pb-[env(safe-area-inset-bottom)]"
+              style={{ animation: "legal-sheet-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both" }}
             >
               <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
                 <button
@@ -815,7 +825,7 @@ export default function MingleHome(props: MingleHomeProps) {
               <iframe
                 title={legalSheetTitle}
                 src={legalSheetUrl}
-                className="h-[68vh] w-full bg-white"
+                className="h-[84vh] w-full bg-white"
               />
             </section>
           </div>
