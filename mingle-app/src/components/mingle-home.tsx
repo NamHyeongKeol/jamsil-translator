@@ -21,7 +21,7 @@ type MingleHomeProps = {
 };
 
 const NATIVE_AUTH_EVENT = "mingle:native-auth";
-const NATIVE_AUTH_FLOW_TIMEOUT_MS = 45_000;
+const NATIVE_AUTH_FLOW_TIMEOUT_MS = 86_400_000; // 24시간 — OAuth는 사용자가 얼마든지 시간을 쓸 수 있어야 함
 type NativeAuthProvider = "apple" | "google";
 type NativeAuthStartCommand = {
   type: "native_auth_start";
