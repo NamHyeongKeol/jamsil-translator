@@ -35,6 +35,7 @@ model User {
 
   messages  AppMessage[]
   eventLogs AppEventLog[]
+  versionPoliciesCreated AppClientVersionPolicy[]
   accounts  Account[]
   sessions  Session[]
 
@@ -176,4 +177,40 @@ model NativeAuthPendingResult {
 
   @@index([expiresAt], map: "native_auth_pending_results_expires_at_idx")
   @@map("native_auth_pending_results")
+}
+
+model AppClientVersion {
+  id        String   @id @default(cuid())
+  platform  String   @default("ios")
+  version   String
+  major     Int
+  minor     Int
+  patch     Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([platform, version], map: "app_client_versions_platform_version_key")
+  @@index([platform, major, minor, patch], map: "app_client_versions_platform_semver_idx")
+  @@index([createdAt], map: "app_client_versions_created_at_idx")
+  @@map("app_client_versions")
+}
+
+model AppClientVersionPolicy {
+  id                      String   @id @default(cuid())
+  platform                String   @default("ios")
+  effectiveFrom           DateTime @default(now()) @map("effective_from")
+  minSupportedVersion     String   @map("min_supported_version")
+  recommendedBelowVersion String?  @map("recommended_below_version")
+  latestVersion           String?  @map("latest_version")
+  updateUrl               String?  @map("update_url")
+  note                    String?
+  createdByUserId         String?  @map("created_by_user_id")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  createdByUser User? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([platform, effectiveFrom, createdAt], map: "app_client_version_policies_platform_effective_idx")
+  @@index([createdByUserId], map: "app_client_version_policies_created_by_user_id_idx")
+  @@index([createdAt], map: "app_client_version_policies_created_at_idx")
+  @@map("app_client_version_policies")
 }
