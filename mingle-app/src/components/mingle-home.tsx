@@ -571,8 +571,9 @@ export default function MingleHome(props: MingleHomeProps) {
     (provider: NativeAuthProvider) => {
       if (isSigningIn) return;
       setSelectedProvider(provider);
-      setAgreedPrivacy(false);
-      setAgreedTerms(false);
+      // 약관은 기본 체크 상태로 진입 (사용자가 직접 해제 가능)
+      setAgreedPrivacy(true);
+      setAgreedTerms(true);
       setAuthPanelStep("terms");
     },
     [isSigningIn],

@@ -162,19 +162,22 @@ export default function NativeOAuthLauncher({
   }, [beginSignIn]);
 
   return (
+    // signIn 중에는 아무것도 렌더링하지 않음 — 즉시 Google/Apple 계정 선택 창으로 이동
     <main className="flex min-h-[100dvh] w-full items-center justify-center bg-white px-6">
-      <section className="w-full max-w-[22rem] rounded-2xl border border-slate-200 bg-slate-50 px-6 py-7 text-center">
-        <h1 className="text-lg font-semibold text-slate-900">{text.title}</h1>
-        <p className="mt-2 text-sm text-slate-600">{text.description}</p>
-        <button
-          type="button"
-          onClick={handleRetry}
-          disabled={isLaunching}
-          className="mt-5 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isLaunching ? text.launching : text.retry}
-        </button>
-      </section>
+      {!isLaunching && (
+        <section className="w-full max-w-[22rem] rounded-2xl border border-slate-200 bg-slate-50 px-6 py-7 text-center">
+          <h1 className="text-lg font-semibold text-slate-900">{text.title}</h1>
+          <p className="mt-2 text-sm text-slate-600">{text.description}</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            disabled={isLaunching}
+            className="mt-5 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {text.retry}
+          </button>
+        </section>
+      )}
     </main>
   );
 }
