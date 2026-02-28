@@ -4,7 +4,21 @@ Location: `mingle-app/rn/appstore-media/copy/screenshot-copy.i18n.md`
 
 ## App Subtitle (separate from screenshots)
 
+- `ar`: `مترجم صوتي فوري`
+- `de`: `Echtzeit-Sprachübersetzer`
 - `en`: `Real-Time Voice Translator`
+- `es`: `Traductor de voz en tiempo real`
+- `fr`: `Traducteur vocal en temps réel`
+- `hi`: `रीयल-टाइम वॉइस अनुवादक`
+- `it`: `Traduttore vocale in tempo reale`
+- `ja`: `リアルタイム音声翻訳`
+- `ko`: `실시간 음성 번역`
+- `pt`: `Tradutor de voz em tempo real`
+- `ru`: `Голосовой переводчик в реальном времени`
+- `th`: `แปลเสียงแบบเรียลไทม์`
+- `vi`: `Dịch giọng nói theo thời gian thực`
+- `zh-cn`: `实时语音翻译`
+- `zh-tw`: `即時語音翻譯`
 
 ---
 
