@@ -1648,7 +1648,7 @@ wait_for_cloudflared_named_tunnel() {
   local pid="$2"
   local timeout_sec="${3:-20}"
   local elapsed=0
-  local ready_pattern='Registered tunnel connection\|Connection .* registered\|Initial protocol'
+  local ready_pattern='Registered tunnel connection|Connection .* registered|Initial protocol'
 
   while (( elapsed < timeout_sec )); do
     if ! kill -0 "$pid" >/dev/null 2>&1; then
