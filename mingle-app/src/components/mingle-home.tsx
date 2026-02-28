@@ -734,7 +734,7 @@ export default function MingleHome(props: MingleHomeProps) {
                 </div>
 
                 <div className="w-1/2 shrink-0 pl-4">
-                  <div className="space-y-3 text-white">
+                  <div className="text-white">
                     <h2 className="text-[1.22rem] font-semibold leading-tight">
                       Service Terms
                     </h2>
@@ -742,7 +742,7 @@ export default function MingleHome(props: MingleHomeProps) {
                       type="button"
                       onClick={handleAgreeAllRequiredTerms}
                       disabled={disabled}
-                      className="flex h-10 w-full items-center gap-2.5 rounded-xl bg-white/8 px-3.5 text-left text-[0.9rem] font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-4 flex h-10 w-full items-center gap-2.5 rounded-xl bg-white/8 px-3.5 text-left text-[0.9rem] font-semibold leading-none text-white transition disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <span
                         className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-[0.62rem] ${
@@ -753,10 +753,12 @@ export default function MingleHome(props: MingleHomeProps) {
                       >
                         ✓
                       </span>
-                      Agree to all
+                      <span className="inline-flex h-full items-center leading-none">
+                        Agree to all
+                      </span>
                     </button>
 
-                    <div className="space-y-0.5">
+                    <div className="mt-1.5 space-y-0.5">
                       <div className="flex items-center gap-2.5 px-1 py-1.5 text-[0.94rem] text-white/90">
                         <input
                           type="checkbox"
@@ -795,12 +797,14 @@ export default function MingleHome(props: MingleHomeProps) {
                       type="button"
                       onClick={handleAgreeAndStart}
                       disabled={!selectedProvider || !hasAgreedAllRequiredTerms || disabled}
-                      className="mt-2 grid h-11 w-full place-items-center rounded-xl bg-white/20 px-3 text-[0.96rem] font-semibold leading-none text-white transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
+                      className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-xl bg-white/20 px-3 text-[0.96rem] font-semibold leading-none text-white transition disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/45"
                     >
                       {isSigningIn ? (
                         <Loader2 size={18} className="animate-spin" aria-hidden />
                       ) : (
-                        <span className="block leading-none">Agree and continue</span>
+                        <span className="inline-flex h-full items-center leading-none">
+                          Agree and continue
+                        </span>
                       )}
                     </button>
                     <button
@@ -832,7 +836,7 @@ export default function MingleHome(props: MingleHomeProps) {
               aria-modal="true"
               aria-label={legalSheetTitle}
               onClick={(event) => event.stopPropagation()}
-              className="w-full overflow-hidden rounded-t-[1.1rem] bg-[#111214] pb-[env(safe-area-inset-bottom)]"
+              className="flex h-[75vh] max-h-[75vh] w-full flex-col overflow-hidden rounded-t-[1.1rem] bg-[#111214] pb-[env(safe-area-inset-bottom)]"
               style={{
                 animation: isLegalSheetClosing
                   ? "legal-sheet-out 0.24s cubic-bezier(0.4, 0, 0.2, 1) both"
@@ -855,7 +859,7 @@ export default function MingleHome(props: MingleHomeProps) {
               <iframe
                 title={legalSheetTitle}
                 src={legalSheetUrl}
-                className="h-[84vh] w-full bg-white"
+                className="min-h-0 w-full flex-1 bg-white"
               />
             </section>
           </div>
