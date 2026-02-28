@@ -236,9 +236,9 @@ export default function MingleHome(props: MingleHomeProps) {
       ? termsOfUseUrl
       : "";
   const legalSheetTitle = legalSheetKind === "privacy"
-    ? "Privacy Policy"
+    ? props.dictionary.profile.privacyPolicyTitle
     : legalSheetKind === "terms"
-      ? "Terms of Use"
+      ? props.dictionary.profile.termsOfUseTitle
       : "";
   const clearLegalSheetCloseTimer = useCallback(() => {
     if (legalSheetCloseTimerRef.current) {
@@ -645,11 +645,6 @@ export default function MingleHome(props: MingleHomeProps) {
 
   const handleDeleteAccount = useCallback(async () => {
     if (isDeletingAccount) return;
-    const confirmed = window.confirm(
-      props.dictionary.profile.deleteAccountConfirm,
-    );
-    if (!confirmed) return;
-
     setIsDeletingAccount(true);
     try {
       const response = await fetch("/api/account/delete", {
@@ -666,7 +661,6 @@ export default function MingleHome(props: MingleHomeProps) {
     }
   }, [
     isDeletingAccount,
-    props.dictionary.profile.deleteAccountConfirm,
     props.dictionary.profile.deleteAccountFailed,
     props.locale,
   ]);
@@ -792,7 +786,7 @@ export default function MingleHome(props: MingleHomeProps) {
                 <div className="w-1/2 shrink-0 pl-4">
                   <div className="text-white">
                     <h2 className="text-[1.22rem] font-semibold leading-tight">
-                      Service Terms
+                      {props.dictionary.profile.serviceTermsTitle}
                     </h2>
                     <button
                       type="button"
@@ -810,7 +804,7 @@ export default function MingleHome(props: MingleHomeProps) {
                         ✓
                       </span>
                       <span className="inline-flex h-full items-center leading-none">
-                        Agree to all
+                        {props.dictionary.profile.agreeToAll}
                       </span>
                     </button>
 
@@ -828,7 +822,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           onClick={() => handleOpenLegalSheet("privacy")}
                           className="flex-1 text-left underline underline-offset-4"
                         >
-                          Privacy Policy (Required)
+                          {props.dictionary.profile.privacyPolicyRequired}
                         </button>
                       </div>
                       <div className="flex items-center gap-2.5 px-1 py-1.5 text-[0.94rem] text-white/90">
@@ -844,7 +838,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           onClick={() => handleOpenLegalSheet("terms")}
                           className="flex-1 text-left underline underline-offset-4"
                         >
-                          Terms of Use (Required)
+                          {props.dictionary.profile.termsOfUseRequired}
                         </button>
                       </div>
                     </div>
@@ -859,7 +853,7 @@ export default function MingleHome(props: MingleHomeProps) {
                         <Loader2 size={18} className="animate-spin" aria-hidden />
                       ) : (
                         <span className="inline-flex h-full items-center leading-none">
-                          Agree and continue
+                          {props.dictionary.profile.agreeAndContinue}
                         </span>
                       )}
                     </button>
@@ -869,7 +863,7 @@ export default function MingleHome(props: MingleHomeProps) {
                       disabled={disabled}
                       className="mt-3 inline-flex w-full items-center justify-center py-1 text-center text-[0.9rem] text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Sign in with another method
+                      {props.dictionary.profile.signInWithAnotherMethod}
                     </button>
                   </div>
                 </div>
@@ -903,7 +897,7 @@ export default function MingleHome(props: MingleHomeProps) {
                 <button
                   type="button"
                   onClick={handleCloseLegalSheet}
-                  aria-label="Close legal sheet"
+                  aria-label={props.dictionary.profile.closeLegalSheet}
                   className="absolute left-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white/90 transition hover:bg-white/20"
                 >
                   <X size={24} strokeWidth={2.35} />
@@ -939,6 +933,9 @@ export default function MingleHome(props: MingleHomeProps) {
         menuLabel={props.dictionary.profile.menuLabel}
         logoutLabel={props.dictionary.profile.logout}
         deleteAccountLabel={props.dictionary.profile.deleteAccount}
+        deleteAccountConfirmMessage={props.dictionary.profile.deleteAccountConfirm}
+        deleteAccountConfirmLabel={props.dictionary.profile.deleteAccountConfirmAction}
+        deleteAccountCancelLabel={props.dictionary.profile.deleteAccountCancel}
         onLogout={handleSignOut}
         onDeleteAccount={handleDeleteAccount}
         isAuthActionPending={isDeletingAccount}

@@ -137,6 +137,9 @@ interface LivePhoneDemoProps {
   menuLabel: string
   logoutLabel: string
   deleteAccountLabel: string
+  deleteAccountConfirmMessage: string
+  deleteAccountConfirmLabel: string
+  deleteAccountCancelLabel: string
   onLogout: () => void
   onDeleteAccount: () => void
   isAuthActionPending?: boolean
@@ -213,6 +216,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   menuLabel,
   logoutLabel,
   deleteAccountLabel,
+  deleteAccountConfirmMessage,
+  deleteAccountConfirmLabel,
+  deleteAccountCancelLabel,
   onLogout,
   onDeleteAccount,
   isAuthActionPending = false,
@@ -226,6 +232,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [deleteAccountDialogOpen, setDeleteAccountDialogOpen] = useState(false)
   const { ttsEnabled: isSoundEnabled, setTtsEnabled: setIsSoundEnabled, aecEnabled, setAecEnabled } = useTtsSettings()
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const utterancesRef = useRef<Utterance[]>([])
@@ -247,6 +254,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const langSelectorButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuPanelRef = useRef<HTMLDivElement | null>(null)
+  const deleteAccountCancelButtonRef = useRef<HTMLButtonElement | null>(null)
   const [isNativeUiBridgeEnabled] = useState(() => {
     if (typeof window === 'undefined') return false
     return isNativeUiBridgeEnabledFromSearch(window.location.search || '')
@@ -289,6 +297,33 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [menuOpen])
+
+  const closeDeleteAccountDialog = useCallback(() => {
+    if (isAuthActionPending) return
+    setDeleteAccountDialogOpen(false)
+  }, [isAuthActionPending])
+
+  const handleDeleteAccountConfirm = useCallback(() => {
+    if (isAuthActionPending) return
+    setDeleteAccountDialogOpen(false)
+    onDeleteAccount()
+  }, [isAuthActionPending, onDeleteAccount])
+
+  useEffect(() => {
+    if (!deleteAccountDialogOpen) return
+    deleteAccountCancelButtonRef.current?.focus()
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      closeDeleteAccountDialog()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [closeDeleteAccountDialog, deleteAccountDialogOpen])
 
   const ensureAudioPlayer = useCallback(() => {
     if (playerAudioRef.current) return playerAudioRef.current
@@ -1225,7 +1260,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                     type="button"
                     onClick={() => {
                       setMenuOpen(false)
-                      onDeleteAccount()
+                      setDeleteAccountDialogOpen(true)
                     }}
                     disabled={isAuthActionPending}
                     className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
@@ -1446,6 +1481,57 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             )}
           </AnimatePresence>
         </div>
+
+        <AnimatePresence>
+          {deleteAccountDialogOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              className="absolute inset-0 z-[60] flex items-center justify-center bg-black/40 px-5"
+              onClick={closeDeleteAccountDialog}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                role="dialog"
+                aria-modal="true"
+                aria-label={deleteAccountLabel}
+                onClick={(event) => event.stopPropagation()}
+                className="w-full max-w-[19rem] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl"
+              >
+                <p className="text-sm font-semibold text-gray-900">
+                  {deleteAccountLabel}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                  {deleteAccountConfirmMessage}
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    ref={deleteAccountCancelButtonRef}
+                    type="button"
+                    onClick={closeDeleteAccountDialog}
+                    disabled={isAuthActionPending}
+                    className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-300 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deleteAccountCancelLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccountConfirm}
+                    disabled={isAuthActionPending}
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-rose-600 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-400"
+                  >
+                    {deleteAccountConfirmLabel}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Bottom Bar with Mic Button */}
         <div
