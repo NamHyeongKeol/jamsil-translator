@@ -501,13 +501,22 @@ export default function MingleHome(props: MingleHomeProps) {
       if (nativeBridgeEnabled) {
         try {
           const requestId = createNativeAuthRequestId();
+          const completeUrl = new URL(
+            "/api/native-auth/complete",
+            window.location.origin,
+          );
+          completeUrl.searchParams.set("provider", provider);
+          completeUrl.searchParams.set("callbackUrl", callbackUrl);
+          completeUrl.searchParams.set("requestId", requestId);
+          completeUrl.searchParams.set("ngrok-skip-browser-warning", "1");
           const startUrl = new URL(
-            "/api/native-auth/start",
+            `/${props.locale}/auth/native`,
             window.location.origin,
           );
           startUrl.searchParams.set("provider", provider);
-          startUrl.searchParams.set("callbackUrl", callbackUrl);
+          startUrl.searchParams.set("callbackUrl", completeUrl.toString());
           startUrl.searchParams.set("requestId", requestId);
+          startUrl.searchParams.set("ngrok-skip-browser-warning", "1");
           const command: NativeAuthStartCommand = {
             type: "native_auth_start",
             payload: {
@@ -553,6 +562,7 @@ export default function MingleHome(props: MingleHomeProps) {
       clearNativeAuthPoller,
       clearNativeAuthTimeout,
       props.dictionary.profile.nativeSignInFailed,
+      props.locale,
       startNativeAuthPoller,
     ],
   );

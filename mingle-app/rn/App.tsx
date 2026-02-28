@@ -634,6 +634,22 @@ function isAuthLikePathname(pathname: string): boolean {
   return false;
 }
 
+function isAllowedNativeAuthStartPath(pathname: string): boolean {
+  const normalized = pathname.trim();
+  if (!normalized.startsWith('/')) return false;
+  if (normalized.startsWith('/api/native-auth/start')) return true;
+
+  const segments = normalized
+    .split('/')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+  if (segments.length !== 3) return false;
+
+  const locale = segments[0]?.toLowerCase() || '';
+  if (!WEB_SUPPORTED_LOCALE_SEGMENTS.has(locale)) return false;
+  return segments[1] === 'auth' && segments[2] === 'native';
+}
+
 function resolveSafeAreaPaletteForUrl(rawUrl: string): SafeAreaPalette {
   const candidate = rawUrl.trim();
   if (!candidate) return DEFAULT_SAFE_AREA_PALETTE;
@@ -1099,7 +1115,7 @@ function AppInner(): React.JSX.Element {
       });
       return;
     }
-    if (!parsedStartUrl.pathname.startsWith('/api/native-auth/start')) {
+    if (!isAllowedNativeAuthStartPath(parsedStartUrl.pathname)) {
       emitAuthToWeb({
         type: 'error',
         provider,
@@ -1107,6 +1123,9 @@ function AppInner(): React.JSX.Element {
       });
       return;
     }
+    const expectedPathPrefix = parsedStartUrl.pathname.startsWith('/api/native-auth/start')
+      ? '/api/native-auth/start'
+      : parsedStartUrl.pathname;
 
     pendingAuthEventRef.current = null;
     authDispatchRetryCountRef.current = 0;
@@ -1122,7 +1141,7 @@ function AppInner(): React.JSX.Element {
         provider,
         startUrl,
         expectedOrigin: trustedNativeAuthOrigin,
-        expectedPathPrefix: '/api/native-auth/start',
+        expectedPathPrefix,
       });
       emitAuthToWeb({
         type: 'success',
