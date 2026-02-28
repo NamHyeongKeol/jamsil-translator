@@ -37,6 +37,9 @@ scripts/devbox up --profile local
 # 5) 디바이스 프로필로 서버+ngrok 실행
 scripts/devbox up --profile device
 
+# 5-a) (선택) ngrok 한도 초과 시 cloudflare quick tunnel 사용
+scripts/devbox up --profile device --tunnel-provider cloudflare
+
 # 5-b) 디바이스 앱 빌드 URL을 Vault dev/prod로 선택
 scripts/devbox up --profile device --device-app-env dev
 scripts/devbox up --profile device --device-app-env prod
@@ -112,6 +115,8 @@ vault login
 
 scripts/devbox bootstrap
 scripts/devbox up --profile device --with-ios-install --with-ios-clean-install --ios-runtime rn
+# ngrok 한도 이슈가 있으면
+# scripts/devbox up --profile device --tunnel-provider cloudflare --with-ios-install --with-ios-clean-install --ios-runtime rn
 ```
 
 ### C) 로컬 `.env.local` 값을 Vault에 다시 반영해야 할 때
