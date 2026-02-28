@@ -3433,6 +3433,7 @@ cmd_up() {
   local android_variant="release"
   local mobile_site_override=""
   local mobile_ws_override=""
+  local tunnel_provider_override=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
