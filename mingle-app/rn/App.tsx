@@ -258,6 +258,7 @@ const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
   'th',
   'vi',
 ]);
+const IOS_VERSION_POLICY_TIMEOUT_MS = 8000;
 const VERSION_POLICY_LOCALE_ALIASES: Record<string, string> = {
   ko: 'ko',
   en: 'en',
@@ -751,6 +752,8 @@ function AppInner(): React.JSX.Element {
     }
 
     let active = true;
+    let settled = false;
+    const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const nativeRuntimeConfig = (NativeModules.NativeSTTModule as
       | {
           runtimeConfig?: {
@@ -768,9 +771,24 @@ function AppInner(): React.JSX.Element {
     );
     const clientBuild = envClientBuild || nativeRuntimeConfig?.clientBuild || '';
 
+    const fallbackToReady = (reason: string, details?: string) => {
+      if (!active || settled) return;
+      settled = true;
+      if (__DEV__) {
+        console.log(`[VersionPolicy] bypass (${reason})${details ? `: ${details}` : ''}`);
+      }
+      setVersionGate({ status: 'ready' });
+    };
+
+    const timeoutId = setTimeout(() => {
+      abortController?.abort();
+      fallbackToReady('timeout');
+    }, IOS_VERSION_POLICY_TIMEOUT_MS);
+
     void fetch(buildIosVersionPolicyUrl(WEB_APP_BASE_URL), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: abortController?.signal,
       body: JSON.stringify({
         clientVersion,
         clientBuild,
@@ -784,9 +802,10 @@ function AppInner(): React.JSX.Element {
         return response.json() as Promise<VersionPolicyResponse>;
       })
       .then((policy) => {
-        if (!active) return;
+        if (!active || settled) return;
 
         if (policy.action === 'force_update') {
+          settled = true;
           setVersionGate({
             status: 'force_update',
             updateUrl: typeof policy.updateUrl === 'string' ? policy.updateUrl : '',
@@ -805,6 +824,7 @@ function AppInner(): React.JSX.Element {
           return;
         }
 
+        settled = true;
         setVersionGate({ status: 'ready' });
         if (policy.action === 'recommend_update' && !recommendPromptShownRef.current) {
           recommendPromptShownRef.current = true;
@@ -841,18 +861,19 @@ function AppInner(): React.JSX.Element {
         }
       })
       .catch((error: unknown) => {
-        if (!active) return;
-        if (__DEV__) {
-          const message = error instanceof Error ? error.message : String(error);
-          console.log(`[VersionPolicy] bypass due to error: ${message}`);
-        }
-        setVersionGate({ status: 'ready' });
+        const message = error instanceof Error ? error.message : String(error);
+        fallbackToReady('error', message);
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
       });
 
     return () => {
       active = false;
+      clearTimeout(timeoutId);
+      abortController?.abort();
     };
-  }, []);
+  }, [versionPolicyFallback, versionPolicyLocale]);
 
   const handleForceUpdatePress = useCallback(() => {
     if (versionGate.status !== 'force_update') return;
