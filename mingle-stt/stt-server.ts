@@ -26,8 +26,8 @@ const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen';
 const FIREWORKS_WS_URL = 'wss://audio-streaming.api.fireworks.ai/v1/audio/transcriptions/streaming';
 const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
 const SONIOX_MANUAL_FINALIZE_SILENCE_MS = (() => {
-    const raw = Number(process.env.SONIOX_MANUAL_FINALIZE_SILENCE_MS || '250');
-    if (!Number.isFinite(raw)) return 250;
+    const raw = Number(process.env.SONIOX_MANUAL_FINALIZE_SILENCE_MS || '500');
+    if (!Number.isFinite(raw)) return 500;
     return Math.max(100, Math.min(1000, Math.floor(raw)));
 })();
 const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
@@ -67,11 +67,18 @@ wss.on('connection', (clientWs) => {
     let finalizePendingTurnFromProvider: (() => Promise<FinalTurnPayload | null>) | null = null;
     let sonioxStopRequested = false;
     let sonioxSegmentationStrategy: SegmentationStrategy | null = null;
+    let sonioxCarryExpiryTimer: NodeJS.Timeout | null = null;
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
     const fireworksApiKey = process.env.FIREWORKS_API_KEY;
     const sonioxApiKey = process.env.SONIOX_API_KEY;
 
+    const clearSonioxCarryExpiryTimer = () => {
+        if (sonioxCarryExpiryTimer) {
+            clearTimeout(sonioxCarryExpiryTimer);
+            sonioxCarryExpiryTimer = null;
+        }
+    };
     const cleanup = () => {
         isClientConnected = false;
         
@@ -94,14 +101,14 @@ wss.on('connection', (clientWs) => {
                 sonioxSegmentationStrategy.resetState();
             }
         }
+        clearSonioxCarryExpiryTimer();
     };
 
     const resetSonioxSegmentState = () => {
-        if (sonioxSegmentationStrategy) {
-            if (sonioxSegmentationStrategy instanceof SilenceTimerStrategy) {
-                sonioxSegmentationStrategy.resetState();
-            }
+        if (sonioxSegmentationStrategy instanceof SilenceTimerStrategy) {
+            sonioxSegmentationStrategy.resetState();
         }
+        clearSonioxCarryExpiryTimer();
     };
 
     // ===== GLADIA 연결 =====
@@ -578,7 +585,38 @@ wss.on('connection', (clientWs) => {
             ): boolean => {
                 if (tokenEndMs !== null) return tokenEndMs > watermarkMs;
                 if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
+                // No timestamp -> keep text (don't drop words), but treat as
+                // non-timestamped progress for carry-promotion gating.
                 return true;
+            };
+            // Returns true only when a token with an actual timestamp is beyond
+            // the watermark.  Used for carry-promotion gating to avoid false
+            // triggers from timestamp-less tokens.
+            const isTokenTimestampedBeyondWatermark = (
+                tokenStartMs: number | null,
+                tokenEndMs: number | null,
+                watermarkMs: number,
+            ): boolean => {
+                if (tokenEndMs !== null) return tokenEndMs > watermarkMs;
+                if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
+                return false;
+            };
+            // Forward-snap only when the boundary cuts through an ASCII word.
+            // This avoids swallowing whole no-space-script suffixes (ko/ja/zh).
+            const isAsciiWordChar = (char: string): boolean => /[A-Za-z0-9']/u.test(char);
+            const snapBoundaryForwardInsideAsciiWord = (text: string, boundary: number): number => {
+                if (boundary <= 0 || boundary >= text.length) return boundary;
+                const prevChar = text[boundary - 1] || '';
+                const currChar = text[boundary] || '';
+                if (!isAsciiWordChar(prevChar) || !isAsciiWordChar(currChar)) {
+                    return boundary;
+                }
+
+                let snapped = boundary;
+                while (snapped < text.length && isAsciiWordChar(text[snapped])) {
+                    snapped += 1;
+                }
+                return snapped;
             };
 
             const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
@@ -693,6 +731,7 @@ wss.on('connection', (clientWs) => {
                     let hasEndpointToken = false;
                     let endpointMarkerText = '';
                     let hasProgressTokenBeyondWatermark = false;
+                    let hasTimestampedProgressBeyondWatermark = false;
                     let rawFinalText = '';
                     let rawNonFinalText = '';
                     let rawEndpointText = '';
@@ -778,6 +817,9 @@ wss.on('connection', (clientWs) => {
                             if (!includeByWatermark) continue;
                             newFinalText += tokenText;
                             hasProgressTokenBeyondWatermark = true;
+                            if (isTokenTimestampedBeyondWatermark(tokenStartMs, tokenEndMs, lastFinalizedEndMs)) {
+                                hasTimestampedProgressBeyondWatermark = true;
+                            }
                             if (tokenEndMs !== null && tokenEndMs > maxSeenFinalEndMs) {
                                 maxSeenFinalEndMs = tokenEndMs;
                             }
@@ -785,6 +827,9 @@ wss.on('connection', (clientWs) => {
                             if (!includeByWatermark) continue;
                             rebuiltNonFinalText += tokenText;
                             hasProgressTokenBeyondWatermark = true;
+                            if (isTokenTimestampedBeyondWatermark(tokenStartMs, tokenEndMs, lastFinalizedEndMs)) {
+                                hasTimestampedProgressBeyondWatermark = true;
+                            }
                         }
                     }
 
@@ -795,9 +840,43 @@ wss.on('connection', (clientWs) => {
                         newFinalText += endpointMarkerText;
                     }
 
+                    // --- Carry promotion ---
+                    // After a snapshot-based endpoint split, carry text (e.g.
+                    // "Right now") is parked in latestNonFinalText as provisional.
+                    // Soniox already considers those tokens finalized and won't
+                    // re-send them in subsequent frames.  When new progress tokens
+                    // arrive for continued speech, we must promote the carry into
+                    // finalizedText as a prefix so it won't be overwritten when
+                    // latestNonFinalText is replaced with the fresh non-final text.
+                    if (latestNonFinalIsProvisionalCarry && previousNonFinalText.trim()) {
+                        const carryRaw = stripEndpointMarkers(previousNonFinalText).trim();
+                        if (carryRaw && hasTimestampedProgressBeyondWatermark) {
+                            // Cancel carry expiry timer since new speech arrived.
+                            clearSonioxCarryExpiryTimer();
+                            // Check if Soniox re-included the carry in its new tokens
+                            // (sometimes overlapping tokens are re-sent).
+                            const incomingClean = stripEndpointMarkers(
+                                `${stripEndpointMarkers(newFinalText)}${rebuiltNonFinalText}`,
+                            ).trim();
+                            if (incomingClean.startsWith(carryRaw)) {
+                                // Soniox re-included the carry; no promotion needed.
+                                latestNonFinalIsProvisionalCarry = false;
+                            } else {
+                                // Soniox moved past carry; promote it as prefix.
+                                // Strip trailing sentence-ending punctuation since the
+                                // carry is merging into the MIDDLE of the next utterance.
+                                // e.g. "Don't be." → "Don't be" when prefixed.
+                                const carryPrefix = carryRaw.replace(/[.!?]+\s*$/, '').trim();
+                                if (carryPrefix) {
+                                    finalizedText = carryPrefix + ' ' + finalizedText;
+                                }
+                                latestNonFinalIsProvisionalCarry = false;
+                            }
+                        }
+                    }
+
                     if (newFinalText) {
                         finalizedText += newFinalText;
-                        latestNonFinalIsProvisionalCarry = false;
                         if (maxSeenFinalEndMs > lastFinalizedEndMs) {
                             lastFinalizedEndMs = maxSeenFinalEndMs;
                         }
@@ -872,6 +951,27 @@ wss.on('connection', (clientWs) => {
                             latestNonFinalIsProvisionalCarry = true;
                             // Suppress timer for carry text
                             strategy.onTranscriptProgress(false, false);
+
+                            // --- Carry expiry ---
+                            // If no new speech arrives within silence+cooldown,
+                            // finalize the carry as its own utterance.
+                            clearSonioxCarryExpiryTimer();
+                            const carryExpiryMs = SONIOX_MANUAL_FINALIZE_SILENCE_MS + SONIOX_MANUAL_FINALIZE_COOLDOWN_MS;
+                            sonioxCarryExpiryTimer = setTimeout(() => {
+                                sonioxCarryExpiryTimer = null;
+                                // Only fire if carry is still pending (hasn't been
+                                // promoted or consumed by new speech).
+                                if (
+                                    latestNonFinalIsProvisionalCarry
+                                    && latestNonFinalText.trim()
+                                    && !finalizedText.trim()
+                                ) {
+                                    const carryText = composeTurnText('', latestNonFinalText);
+                                    if (carryText) {
+                                        emitFinalTurn(carryText, detectedLang);
+                                    }
+                                }
+                            }, carryExpiryMs);
 
                             if (clientWs.readyState === WebSocket.OPEN) {
                                 clientWs.send(JSON.stringify({

@@ -1,18 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AppState,
   Alert,
   Linking,
   NativeModules,
   Platform,
   Pressable,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   addNativeSttListener,
@@ -28,7 +27,6 @@ import {
   stopNativeTts,
 } from './src/nativeTts';
 import {
-  parseNativeAuthCallbackUrl,
   startNativeBrowserAuthSession,
   type NativeAuthProvider,
 } from './src/nativeAuth';
@@ -57,6 +55,8 @@ type VersionGateState =
     };
 type VersionPolicyResponse = {
   action: VersionPolicyAction;
+  platform?: string;
+  policyPlatform?: string;
   locale?: string;
   updateUrl?: string;
   title?: string;
@@ -65,6 +65,15 @@ type VersionPolicyResponse = {
   clientVersion?: string;
   updateButtonLabel?: string;
   laterButtonLabel?: string;
+};
+type IOSSettingsManager = {
+  settings?: {
+    AppleLocale?: string;
+    AppleLanguages?: string[];
+  };
+};
+type AndroidI18nManager = {
+  localeIdentifier?: string;
 };
 
 function readRuntimeEnvValue(keys: string[]): string {
@@ -120,6 +129,28 @@ function resolveConfiguredUrl(
   return normalizeConfiguredUrl(readRuntimeEnvValue(keys), allowedProtocols, options);
 }
 
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase();
+  return normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1';
+}
+
+function isLoopbackUrl(raw: string): boolean {
+  if (!raw) return false;
+  try {
+    return isLoopbackHost(new URL(raw).hostname);
+  } catch {
+    return /(127\.0\.0\.1|localhost|::1)/i.test(raw);
+  }
+}
+
+function formatWebViewLoadError(description: string, currentWebUrl: string): string {
+  const normalizedDescription = description.trim() || 'webview_load_failed';
+  if (!currentWebUrl || !isLoopbackUrl(currentWebUrl)) {
+    return normalizedDescription;
+  }
+  return `${normalizedDescription} (현재 앱 URL이 ${currentWebUrl} 입니다. 실기기에서는 127.0.0.1/localhost에 접속할 수 없습니다. scripts/devbox profile --profile device 후 --device-app-env prod 또는 dev로 설치해 주세요.)`;
+}
+
 const RN_RUNTIME_OS = Platform.OS;
 const NATIVE_RUNTIME_CONFIG = readNativeRuntimeConfig();
 const WEB_APP_BASE_URL = resolveConfiguredUrl(
@@ -169,8 +200,7 @@ const NATIVE_TTS_EVENT = 'mingle:native-tts';
 const NATIVE_UI_EVENT = 'mingle:native-ui';
 const NATIVE_AUTH_EVENT = 'mingle:native-auth';
 const IOS_SAFE_BROWSER_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
-const WEB_SUPPORTED_LOCALES = new Set(['ko', 'en', 'ja']);
-const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
+const WEB_SUPPORTED_LOCALES = new Set([
   'ko',
   'en',
   'ja',
@@ -187,7 +217,7 @@ const VERSION_POLICY_SUPPORTED_LOCALES = new Set([
   'th',
   'vi',
 ]);
-const VERSION_POLICY_LOCALE_ALIASES: Record<string, string> = {
+const WEB_LOCALE_ALIASES: Record<string, string> = {
   ko: 'ko',
   en: 'en',
   ja: 'ja',
@@ -210,133 +240,296 @@ const VERSION_POLICY_LOCALE_ALIASES: Record<string, string> = {
   'zh-hk': 'zh-TW',
   'zh-mo': 'zh-TW',
 };
-const VERSION_POLICY_FALLBACK_COPY: Record<string, {
+const WEB_SUPPORTED_LOCALE_SEGMENTS = new Set(Array.from(WEB_SUPPORTED_LOCALES).map(locale => locale.toLowerCase()));
+
+type SafeAreaPalette = {
+  topColor: string;
+  bottomColor: string;
+  webViewColor: string;
+  statusBarStyle: 'dark-content' | 'light-content';
+  edgeMode: 'fill' | 'transparent';
+};
+
+const DEFAULT_SAFE_AREA_PALETTE: SafeAreaPalette = {
+  topColor: '#ffffff',
+  bottomColor: '#ffffff',
+  webViewColor: '#ffffff',
+  statusBarStyle: 'dark-content',
+  edgeMode: 'fill',
+};
+
+const AUTH_LOGIN_SAFE_AREA_PALETTE: SafeAreaPalette = {
+  topColor: '#fbbc32',
+  bottomColor: '#1c1c1e',
+  webViewColor: '#1c1c1e',
+  statusBarStyle: 'light-content',
+  edgeMode: 'transparent',
+};
+type VersionPolicyLocale =
+  | 'ko'
+  | 'en'
+  | 'ja'
+  | 'zh-CN'
+  | 'zh-TW'
+  | 'fr'
+  | 'de'
+  | 'es'
+  | 'pt'
+  | 'it'
+  | 'ru'
+  | 'ar'
+  | 'hi'
+  | 'th'
+  | 'vi';
+
+const VERSION_POLICY_SUPPORTED_LOCALES = new Set<VersionPolicyLocale>([
+  'ko',
+  'en',
+  'ja',
+  'zh-CN',
+  'zh-TW',
+  'fr',
+  'de',
+  'es',
+  'pt',
+  'it',
+  'ru',
+  'ar',
+  'hi',
+  'th',
+  'vi',
+]);
+const IOS_VERSION_POLICY_TIMEOUT_MS = 8000;
+const VERSION_POLICY_LOCALE_ALIASES: Record<string, VersionPolicyLocale> = {
+  ko: 'ko',
+  en: 'en',
+  ja: 'ja',
+  fr: 'fr',
+  de: 'de',
+  es: 'es',
+  pt: 'pt',
+  it: 'it',
+  ru: 'ru',
+  ar: 'ar',
+  hi: 'hi',
+  th: 'th',
+  vi: 'vi',
+  zh: 'zh-CN',
+  'zh-cn': 'zh-CN',
+  'zh-hans': 'zh-CN',
+  'zh-sg': 'zh-CN',
+  'zh-tw': 'zh-TW',
+  'zh-hant': 'zh-TW',
+  'zh-hk': 'zh-TW',
+  'zh-mo': 'zh-TW',
+};
+const VERSION_POLICY_FALLBACK_COPY: Record<VersionPolicyLocale, {
+  checkingTitle: string;
+  checkingMessage: string;
   forceTitle: string;
   forceMessage: string;
   recommendTitle: string;
   recommendMessage: string;
   updateLabel: string;
   laterLabel: string;
+  updateNowA11y: string;
+  webViewLoadFailedTitle: string;
+  unknownVersionLabel: string;
 }> = {
   ko: {
+    checkingTitle: '버전 확인 중',
+    checkingMessage: '최신 업데이트 정책을 확인하고 있습니다.',
     forceTitle: '업데이트 필요',
     forceMessage: '현재 버전은 더 이상 지원되지 않습니다. 최신 버전으로 업데이트해 주세요.',
     recommendTitle: '업데이트 권장',
     recommendMessage: '새 버전 업데이트를 권장합니다.',
     updateLabel: '업데이트',
     laterLabel: '나중에',
+    updateNowA11y: '지금 업데이트',
+    webViewLoadFailedTitle: 'WebView 로드 실패',
+    unknownVersionLabel: '알 수 없음',
   },
   en: {
+    checkingTitle: 'Checking version',
+    checkingMessage: 'Checking the latest update policy.',
     forceTitle: 'Update Required',
     forceMessage: 'This version is no longer supported. Please update to the latest version.',
     recommendTitle: 'Update Recommended',
     recommendMessage: 'A new version is available. We recommend updating for a better experience.',
     updateLabel: 'Update',
     laterLabel: 'Later',
+    updateNowA11y: 'Update now',
+    webViewLoadFailedTitle: 'WebView Load Failed',
+    unknownVersionLabel: 'unknown',
   },
   ja: {
+    checkingTitle: 'バージョン確認中',
+    checkingMessage: '最新のアップデートポリシーを確認しています。',
     forceTitle: 'アップデートが必要です',
     forceMessage: 'このバージョンはサポートされていません。最新バージョンにアップデートしてください。',
     recommendTitle: 'アップデート推奨',
     recommendMessage: '新しいバージョンが利用可能です。アップデートをお勧めします。',
     updateLabel: 'アップデート',
     laterLabel: 'あとで',
+    updateNowA11y: '今すぐアップデート',
+    webViewLoadFailedTitle: 'WebView の読み込みに失敗しました',
+    unknownVersionLabel: '不明',
   },
   'zh-CN': {
+    checkingTitle: '正在检查版本',
+    checkingMessage: '正在检查最新更新策略。',
     forceTitle: '更新必需',
     forceMessage: '当前版本已不再受支持。请更新到最新版本。',
     recommendTitle: '建议更新',
     recommendMessage: '新版本已发布，建议更新以获得更稳定的体验。',
     updateLabel: '更新',
     laterLabel: '稍后',
+    updateNowA11y: '立即更新',
+    webViewLoadFailedTitle: 'WebView 加载失败',
+    unknownVersionLabel: '未知',
   },
   'zh-TW': {
+    checkingTitle: '正在檢查版本',
+    checkingMessage: '正在檢查最新更新政策。',
     forceTitle: '必須更新',
     forceMessage: '目前版本已不再支援。請更新至最新版本。',
     recommendTitle: '建議更新',
     recommendMessage: '新版本已推出，建議更新以獲得更穩定的體驗。',
     updateLabel: '更新',
     laterLabel: '稍後',
+    updateNowA11y: '立即更新',
+    webViewLoadFailedTitle: 'WebView 載入失敗',
+    unknownVersionLabel: '未知',
   },
   fr: {
+    checkingTitle: 'Vérification de la version',
+    checkingMessage: 'Vérification de la politique de mise à jour la plus récente.',
     forceTitle: 'Mise à jour requise',
     forceMessage: 'Cette version n\'est plus prise en charge. Veuillez mettre à jour vers la dernière version.',
     recommendTitle: 'Mise à jour recommandée',
     recommendMessage: 'Une nouvelle version est disponible. Nous recommandons la mise à jour.',
     updateLabel: 'Mettre à jour',
     laterLabel: 'Plus tard',
+    updateNowA11y: 'Mettre à jour maintenant',
+    webViewLoadFailedTitle: 'Échec du chargement de WebView',
+    unknownVersionLabel: 'inconnu',
   },
   de: {
+    checkingTitle: 'Version wird überprüft',
+    checkingMessage: 'Die neuesten Update-Richtlinien werden geprüft.',
     forceTitle: 'Update erforderlich',
     forceMessage: 'Diese Version wird nicht mehr unterstützt. Bitte aktualisieren Sie auf die neueste Version.',
     recommendTitle: 'Update empfohlen',
     recommendMessage: 'Eine neue Version ist verfügbar. Wir empfehlen ein Update.',
     updateLabel: 'Aktualisieren',
     laterLabel: 'Später',
+    updateNowA11y: 'Jetzt aktualisieren',
+    webViewLoadFailedTitle: 'WebView-Laden fehlgeschlagen',
+    unknownVersionLabel: 'unbekannt',
   },
   es: {
+    checkingTitle: 'Comprobando versión',
+    checkingMessage: 'Estamos comprobando la política de actualización más reciente.',
     forceTitle: 'Actualización obligatoria',
     forceMessage: 'Esta versión ya no es compatible. Actualiza a la última versión.',
     recommendTitle: 'Actualización recomendada',
     recommendMessage: 'Hay una nueva versión disponible. Recomendamos actualizar.',
     updateLabel: 'Actualizar',
     laterLabel: 'Más tarde',
+    updateNowA11y: 'Actualizar ahora',
+    webViewLoadFailedTitle: 'Error al cargar WebView',
+    unknownVersionLabel: 'desconocida',
   },
   pt: {
+    checkingTitle: 'Verificando versão',
+    checkingMessage: 'Estamos verificando a política de atualização mais recente.',
     forceTitle: 'Atualização obrigatória',
     forceMessage: 'Esta versão não é mais compatível. Atualize para a versão mais recente.',
     recommendTitle: 'Atualização recomendada',
     recommendMessage: 'Há uma nova versão disponível. Recomendamos atualizar.',
     updateLabel: 'Atualizar',
     laterLabel: 'Mais tarde',
+    updateNowA11y: 'Atualizar agora',
+    webViewLoadFailedTitle: 'Falha ao carregar o WebView',
+    unknownVersionLabel: 'desconhecida',
   },
   it: {
+    checkingTitle: 'Verifica versione in corso',
+    checkingMessage: 'Stiamo verificando la policy di aggiornamento più recente.',
     forceTitle: 'Aggiornamento obbligatorio',
     forceMessage: 'Questa versione non è più supportata. Aggiorna all\'ultima versione.',
     recommendTitle: 'Aggiornamento consigliato',
     recommendMessage: 'È disponibile una nuova versione. Ti consigliamo di aggiornare.',
     updateLabel: 'Aggiorna',
     laterLabel: 'Più tardi',
+    updateNowA11y: 'Aggiorna ora',
+    webViewLoadFailedTitle: 'Caricamento WebView non riuscito',
+    unknownVersionLabel: 'sconosciuta',
   },
   ru: {
+    checkingTitle: 'Проверка версии',
+    checkingMessage: 'Проверяем актуальную политику обновлений.',
     forceTitle: 'Требуется обновление',
     forceMessage: 'Эта версия больше не поддерживается. Обновите приложение до последней версии.',
     recommendTitle: 'Рекомендуется обновление',
     recommendMessage: 'Доступна новая версия. Рекомендуем обновить приложение.',
     updateLabel: 'Обновить',
     laterLabel: 'Позже',
+    updateNowA11y: 'Обновить сейчас',
+    webViewLoadFailedTitle: 'Не удалось загрузить WebView',
+    unknownVersionLabel: 'неизвестно',
   },
   ar: {
+    checkingTitle: 'جارٍ التحقق من الإصدار',
+    checkingMessage: 'جارٍ التحقق من سياسة التحديث الأحدث.',
     forceTitle: 'التحديث مطلوب',
     forceMessage: 'هذا الإصدار لم يعد مدعومًا. يرجى التحديث إلى أحدث إصدار.',
     recommendTitle: 'يوصى بالتحديث',
     recommendMessage: 'يتوفر إصدار جديد. نوصي بالتحديث.',
     updateLabel: 'تحديث',
     laterLabel: 'لاحقًا',
+    updateNowA11y: 'حدّث الآن',
+    webViewLoadFailedTitle: 'فشل تحميل WebView',
+    unknownVersionLabel: 'غير معروف',
   },
   hi: {
+    checkingTitle: 'संस्करण जाँचा जा रहा है',
+    checkingMessage: 'नवीनतम अपडेट नीति की जाँच की जा रही है।',
     forceTitle: 'अपडेट आवश्यक',
     forceMessage: 'यह संस्करण अब समर्थित नहीं है। कृपया नवीनतम संस्करण में अपडेट करें।',
     recommendTitle: 'अपडेट की अनुशंसा',
     recommendMessage: 'नया संस्करण उपलब्ध है। अपडेट करने की सलाह दी जाती है।',
     updateLabel: 'अपडेट करें',
     laterLabel: 'बाद में',
+    updateNowA11y: 'अभी अपडेट करें',
+    webViewLoadFailedTitle: 'WebView लोड विफल',
+    unknownVersionLabel: 'अज्ञात',
   },
   th: {
+    checkingTitle: 'กำลังตรวจสอบเวอร์ชัน',
+    checkingMessage: 'กำลังตรวจสอบนโยบายอัปเดตล่าสุด',
     forceTitle: 'จำเป็นต้องอัปเดต',
     forceMessage: 'เวอร์ชันนี้ไม่รองรับแล้ว กรุณาอัปเดตเป็นเวอร์ชันล่าสุด',
     recommendTitle: 'แนะนำให้อัปเดต',
     recommendMessage: 'มีเวอร์ชันใหม่พร้อมใช้งาน แนะนำให้อัปเดต',
     updateLabel: 'อัปเดต',
     laterLabel: 'ภายหลัง',
+    updateNowA11y: 'อัปเดตตอนนี้',
+    webViewLoadFailedTitle: 'โหลด WebView ไม่สำเร็จ',
+    unknownVersionLabel: 'ไม่ทราบ',
   },
   vi: {
+    checkingTitle: 'Đang kiểm tra phiên bản',
+    checkingMessage: 'Đang kiểm tra chính sách cập nhật mới nhất.',
     forceTitle: 'Cần cập nhật',
     forceMessage: 'Phiên bản này không còn được hỗ trợ. Vui lòng cập nhật lên phiên bản mới nhất.',
     recommendTitle: 'Khuyến nghị cập nhật',
     recommendMessage: 'Đã có phiên bản mới. Chúng tôi khuyên bạn nên cập nhật.',
     updateLabel: 'Cập nhật',
     laterLabel: 'Để sau',
+    updateNowA11y: 'Cập nhật ngay',
+    webViewLoadFailedTitle: 'Tải WebView thất bại',
+    unknownVersionLabel: 'không rõ',
   },
 };
 
@@ -403,12 +596,17 @@ type NativeAuthAckCommand = {
   };
 };
 
+type NativeAuthResetCommand = {
+  type: 'native_auth_reset';
+};
+
 type WebViewCommand =
   | NativeSttCommand
   | NativeTtsCommand
   | NativeSttAecCommand
   | NativeAuthStartCommand
-  | NativeAuthAckCommand;
+  | NativeAuthAckCommand
+  | NativeAuthResetCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -442,8 +640,17 @@ function normalizeClientVersion(raw: string): string {
   return raw.trim().replace(/^v/i, '');
 }
 
-function buildIosVersionPolicyUrl(baseUrl: string): string {
-  return `${baseUrl}/api/ios/v1.0.0/client/version-policy`;
+function buildVersionPolicyUrl(baseUrl: string, apiNamespace: string): string {
+  const normalizedNamespace = apiNamespace.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+  if (!normalizedNamespace) {
+    return `${baseUrl}/api/client/version-policy`;
+  }
+  return `${baseUrl}/api/${normalizedNamespace}/client/version-policy`;
+}
+
+function resolveVersionPolicyClientPlatform(runtimeOs: string): 'ios' | 'android' {
+  if (runtimeOs === 'android') return 'android';
+  return 'ios';
 }
 
 function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
@@ -456,6 +663,29 @@ function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
 }
 
 function resolveDeviceLocaleTag(): string {
+  if (Platform.OS === 'ios') {
+    const settingsManager = (NativeModules as {
+      SettingsManager?: IOSSettingsManager;
+    }).SettingsManager;
+    const firstAppleLanguage = settingsManager?.settings?.AppleLanguages?.[0];
+    if (typeof firstAppleLanguage === 'string' && firstAppleLanguage.trim()) {
+      return firstAppleLanguage.trim();
+    }
+    // AppleLocale can reflect regional format settings rather than UI language.
+    // Prefer AppleLanguages first so locale follows the device language priority.
+    const appleLocale = settingsManager?.settings?.AppleLocale;
+    if (typeof appleLocale === 'string' && appleLocale.trim()) {
+      return appleLocale.trim();
+    }
+  }
+
+  if (Platform.OS === 'android') {
+    const localeIdentifier = (NativeModules.I18nManager as AndroidI18nManager | undefined)?.localeIdentifier;
+    if (typeof localeIdentifier === 'string' && localeIdentifier.trim()) {
+      return localeIdentifier.trim();
+    }
+  }
+
   try {
     return Intl.DateTimeFormat().resolvedOptions().locale || 'ko';
   } catch {
@@ -464,11 +694,31 @@ function resolveDeviceLocaleTag(): string {
 }
 
 function resolveWebLocaleSegment(rawLocaleTag: string): string {
-  const code = rawLocaleTag.trim().replace(/_/g, '-').split('-')[0]?.toLowerCase() || 'ko';
-  return WEB_SUPPORTED_LOCALES.has(code) ? code : 'ko';
+  const normalized = rawLocaleTag.trim().replace(/_/g, '-').toLowerCase();
+  if (!normalized) return 'ko';
+
+  const directMatch = WEB_LOCALE_ALIASES[normalized];
+  if (directMatch && WEB_SUPPORTED_LOCALES.has(directMatch)) {
+    return directMatch;
+  }
+
+  if (normalized.startsWith('zh-')) {
+    if (normalized.includes('-tw') || normalized.includes('-hant') || normalized.includes('-hk') || normalized.includes('-mo')) {
+      return 'zh-TW';
+    }
+    return 'zh-CN';
+  }
+
+  const base = normalized.split('-')[0] || '';
+  const baseMatch = WEB_LOCALE_ALIASES[base];
+  if (baseMatch && WEB_SUPPORTED_LOCALES.has(baseMatch)) {
+    return baseMatch;
+  }
+
+  return 'ko';
 }
 
-function resolveVersionPolicyLocale(rawLocaleTag: string): string {
+function resolveVersionPolicyLocale(rawLocaleTag: string): VersionPolicyLocale {
   const normalized = rawLocaleTag.trim().replace(/_/g, '-').toLowerCase();
   if (!normalized) return 'en';
 
@@ -493,17 +743,83 @@ function resolveVersionPolicyLocale(rawLocaleTag: string): string {
   return 'en';
 }
 
-function getVersionPolicyFallbackCopy(locale: string) {
-  return VERSION_POLICY_FALLBACK_COPY[locale] || VERSION_POLICY_FALLBACK_COPY.en;
+function getVersionPolicyFallbackCopy(locale: VersionPolicyLocale) {
+  return VERSION_POLICY_FALLBACK_COPY[locale];
 }
 
-function App(): React.JSX.Element {
+function isAuthLikePathname(pathname: string): boolean {
+  const segments = pathname
+    .split('/')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+  if (segments.length === 0) return false;
+
+  const first = segments[0].toLowerCase();
+  if (segments.length === 1 && WEB_SUPPORTED_LOCALE_SEGMENTS.has(first)) {
+    return true;
+  }
+  if (segments[0] === 'auth') {
+    return true;
+  }
+  if (segments.length >= 2 && WEB_SUPPORTED_LOCALE_SEGMENTS.has(first) && segments[1] === 'auth') {
+    return true;
+  }
+  return false;
+}
+
+function isAllowedNativeAuthStartPath(pathname: string): boolean {
+  const normalized = pathname.trim();
+  if (!normalized.startsWith('/')) return false;
+  if (normalized.startsWith('/api/native-auth/start')) return true;
+
+  const segments = normalized
+    .split('/')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+  if (segments.length !== 3) return false;
+
+  const locale = segments[0]?.toLowerCase() || '';
+  if (!WEB_SUPPORTED_LOCALE_SEGMENTS.has(locale)) return false;
+  return segments[1] === 'auth' && segments[2] === 'native';
+}
+
+function resolveSafeAreaPaletteForUrl(rawUrl: string): SafeAreaPalette {
+  const candidate = rawUrl.trim();
+  if (!candidate) return DEFAULT_SAFE_AREA_PALETTE;
+
+  try {
+    const parsed = new URL(candidate);
+    if (isAuthLikePathname(parsed.pathname)) {
+      return AUTH_LOGIN_SAFE_AREA_PALETTE;
+    }
+  } catch {
+    return DEFAULT_SAFE_AREA_PALETTE;
+  }
+
+  return DEFAULT_SAFE_AREA_PALETTE;
+}
+
+function resolveTrustedOrigin(rawUrl: string): string {
+  const candidate = rawUrl.trim();
+  if (!candidate) return '';
+  try {
+    const parsed = new URL(candidate);
+    if (!parsed.host) return '';
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+}
+
+function AppInner(): React.JSX.Element {
   const webViewRef = useRef<WebView>(null);
   const isPageReadyRef = useRef(false);
+  const safeAreaInsets = useSafeAreaInsets();
   const nativeAvailable = useMemo(() => isNativeSttAvailable(), []);
   const [loadError, setLoadError] = useState<string | null>(REQUIRED_CONFIG_ERROR);
   const [versionGate, setVersionGate] = useState<VersionGateState>(() => (
-    Platform.OS === 'ios' && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
+    (Platform.OS === 'ios' || Platform.OS === 'android') && WEB_APP_BASE_URL && !REQUIRED_CONFIG_ERROR
       ? { status: 'checking' }
       : { status: 'ready' }
   ));
@@ -514,7 +830,6 @@ function App(): React.JSX.Element {
   const pendingAuthEventRef = useRef<NativeAuthEvent | null>(null);
   const authDispatchRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authDispatchRetryCountRef = useRef(0);
-  const lastRecoveredNativeAuthUrlRef = useRef('');
   const [iosTopTapOverlayHeight, setIosTopTapOverlayHeight] = useState(() => {
     if (Platform.OS !== 'ios') return 36;
     const manager = (NativeModules as {
@@ -538,13 +853,39 @@ function App(): React.JSX.Element {
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
     return `${WEB_APP_BASE_URL}/${webLocale}?nativeStt=1&nativeUi=1&nativeAuth=1${apiNamespaceQuery}${debugParams}`;
   }, [webLocale]);
+  const trustedNativeAuthOrigin = useMemo(() => resolveTrustedOrigin(WEB_APP_BASE_URL), []);
+  const [safeAreaPalette, setSafeAreaPalette] = useState<SafeAreaPalette>(() => resolveSafeAreaPaletteForUrl(webUrl));
+
+  const updateSafeAreaPalette = useCallback((candidateUrl?: string) => {
+    const nextPalette = resolveSafeAreaPaletteForUrl(candidateUrl || webUrl);
+    setSafeAreaPalette((current) => {
+      if (
+        current.topColor === nextPalette.topColor
+        && current.bottomColor === nextPalette.bottomColor
+        && current.webViewColor === nextPalette.webViewColor
+        && current.statusBarStyle === nextPalette.statusBarStyle
+        && current.edgeMode === nextPalette.edgeMode
+      ) {
+        return current;
+      }
+      return nextPalette;
+    });
+  }, [webUrl]);
+
+  const shouldRenderSafeAreaFill = Platform.OS === 'ios' && safeAreaPalette.edgeMode === 'fill';
 
   useEffect(() => {
-    if (Platform.OS !== 'ios' || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
+    updateSafeAreaPalette(webUrl);
+  }, [updateSafeAreaPalette, webUrl]);
+
+  useEffect(() => {
+    if ((Platform.OS !== 'ios' && Platform.OS !== 'android') || !WEB_APP_BASE_URL || REQUIRED_CONFIG_ERROR) {
       return;
     }
 
     let active = true;
+    let settled = false;
+    const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const nativeRuntimeConfig = (NativeModules.NativeSTTModule as
       | {
           runtimeConfig?: {
@@ -562,10 +903,26 @@ function App(): React.JSX.Element {
     );
     const clientBuild = envClientBuild || nativeRuntimeConfig?.clientBuild || '';
 
-    void fetch(buildIosVersionPolicyUrl(WEB_APP_BASE_URL), {
+    const fallbackToReady = (reason: string, details?: string) => {
+      if (!active || settled) return;
+      settled = true;
+      if (__DEV__) {
+        console.log(`[VersionPolicy] bypass (${reason})${details ? `: ${details}` : ''}`);
+      }
+      setVersionGate({ status: 'ready' });
+    };
+
+    const timeoutId = setTimeout(() => {
+      abortController?.abort();
+      fallbackToReady('timeout');
+    }, IOS_VERSION_POLICY_TIMEOUT_MS);
+
+    void fetch(buildVersionPolicyUrl(WEB_APP_BASE_URL, VALIDATED_API_NAMESPACE), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: abortController?.signal,
       body: JSON.stringify({
+        platform: resolveVersionPolicyClientPlatform(Platform.OS),
         clientVersion,
         clientBuild,
         locale: versionPolicyLocale,
@@ -578,9 +935,10 @@ function App(): React.JSX.Element {
         return response.json() as Promise<VersionPolicyResponse>;
       })
       .then((policy) => {
-        if (!active) return;
+        if (!active || settled) return;
 
         if (policy.action === 'force_update') {
+          settled = true;
           setVersionGate({
             status: 'force_update',
             updateUrl: typeof policy.updateUrl === 'string' ? policy.updateUrl : '',
@@ -599,6 +957,7 @@ function App(): React.JSX.Element {
           return;
         }
 
+        settled = true;
         setVersionGate({ status: 'ready' });
         if (policy.action === 'recommend_update' && !recommendPromptShownRef.current) {
           recommendPromptShownRef.current = true;
@@ -635,18 +994,19 @@ function App(): React.JSX.Element {
         }
       })
       .catch((error: unknown) => {
-        if (!active) return;
-        if (__DEV__) {
-          const message = error instanceof Error ? error.message : String(error);
-          console.log(`[VersionPolicy] bypass due to error: ${message}`);
-        }
-        setVersionGate({ status: 'ready' });
+        const message = error instanceof Error ? error.message : String(error);
+        fallbackToReady('error', message);
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
       });
 
     return () => {
       active = false;
+      clearTimeout(timeoutId);
+      abortController?.abort();
     };
-  }, []);
+  }, [versionPolicyFallback, versionPolicyLocale]);
 
   const handleForceUpdatePress = useCallback(() => {
     if (versionGate.status !== 'force_update') return;
@@ -766,59 +1126,6 @@ function App(): React.JSX.Element {
     };
   }, [clearAuthDispatchRetryTimer]);
 
-  useEffect(() => {
-    const handleIncomingAuthUrl = (incomingUrl: string | null | undefined) => {
-      const normalized = typeof incomingUrl === 'string' ? incomingUrl.trim() : '';
-      if (!normalized) return;
-      if (nativeAuthInFlightRef.current) return;
-      if (lastRecoveredNativeAuthUrlRef.current === normalized) return;
-
-      const parsed = parseNativeAuthCallbackUrl(normalized);
-      if (!parsed) return;
-      lastRecoveredNativeAuthUrlRef.current = normalized;
-
-      if (parsed.status === 'success') {
-        emitAuthToWeb({
-          type: 'success',
-          provider: parsed.provider,
-          callbackUrl: parsed.callbackUrl,
-          bridgeToken: parsed.bridgeToken,
-        });
-        return;
-      }
-
-      emitAuthToWeb({
-        type: 'error',
-        provider: parsed.provider,
-        message: parsed.message || 'native_auth_failed',
-      });
-    };
-
-    void Linking.getInitialURL()
-      .then(handleIncomingAuthUrl)
-      .catch(() => {
-        // no-op: listener below can still receive callbacks while app is alive
-      });
-
-    const urlSubscription = Linking.addEventListener('url', (event) => {
-      handleIncomingAuthUrl(event.url);
-    });
-
-    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState !== 'active') return;
-      void Linking.getInitialURL()
-        .then(handleIncomingAuthUrl)
-        .catch(() => {
-          // no-op
-        });
-    });
-
-    return () => {
-      urlSubscription.remove();
-      appStateSubscription.remove();
-    };
-  }, [emitAuthToWeb]);
-
   const handleIosTopTapOverlayPress = useCallback(() => {
     emitUiToWeb({ type: 'scroll_to_top', source: 'ios_status_bar_overlay' });
   }, [emitUiToWeb]);
@@ -927,6 +1234,52 @@ function App(): React.JSX.Element {
       });
       return;
     }
+    if (!trustedNativeAuthOrigin) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_untrusted_origin_unavailable',
+      });
+      return;
+    }
+    let parsedStartUrl: URL;
+    try {
+      parsedStartUrl = new URL(startUrl);
+    } catch {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url',
+      });
+      return;
+    }
+    if (parsedStartUrl.protocol !== 'http:' && parsedStartUrl.protocol !== 'https:') {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url_protocol',
+      });
+      return;
+    }
+    if (parsedStartUrl.origin !== trustedNativeAuthOrigin) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url_origin',
+      });
+      return;
+    }
+    if (!isAllowedNativeAuthStartPath(parsedStartUrl.pathname)) {
+      emitAuthToWeb({
+        type: 'error',
+        provider,
+        message: 'native_auth_invalid_start_url_path',
+      });
+      return;
+    }
+    const expectedPathPrefix = parsedStartUrl.pathname.startsWith('/api/native-auth/start')
+      ? '/api/native-auth/start'
+      : parsedStartUrl.pathname;
 
     pendingAuthEventRef.current = null;
     authDispatchRetryCountRef.current = 0;
@@ -941,6 +1294,8 @@ function App(): React.JSX.Element {
       const result = await startNativeBrowserAuthSession({
         provider,
         startUrl,
+        expectedOrigin: trustedNativeAuthOrigin,
+        expectedPathPrefix,
       });
       emitAuthToWeb({
         type: 'success',
@@ -958,7 +1313,7 @@ function App(): React.JSX.Element {
     } finally {
       nativeAuthInFlightRef.current = null;
     }
-  }, [clearAuthDispatchRetryTimer, emitAuthToWeb]);
+  }, [clearAuthDispatchRetryTimer, emitAuthToWeb, trustedNativeAuthOrigin]);
 
   const handleWebMessage = useCallback((event: WebViewMessageEvent) => {
     let parsed: WebViewCommand | null = null;
@@ -994,6 +1349,21 @@ function App(): React.JSX.Element {
       clearAuthDispatchRetryTimer();
       if (__DEV__) {
         console.log(`[Web→NativeAuth] ack provider=${provider} outcome=${outcome ?? 'unknown'}`);
+      }
+      return;
+    }
+
+    if (parsed.type === 'native_auth_reset') {
+      // 웹이 로그아웃/세션 만료 시 전송하는 리셋 명령.
+      // 이전 세션의 auth 결과(pendingAuthEventRef)와 retry 타이머를 클리어해서
+      // 이전 로그인의 에러/성공 이벤트가 재전송되지 않도록 함.
+      if (nativeAuthInFlightRef.current === null) {
+        pendingAuthEventRef.current = null;
+        authDispatchRetryCountRef.current = 0;
+        clearAuthDispatchRetryTimer();
+        if (__DEV__) {
+          console.log('[Web→NativeAuth] reset: cleared pending auth state');
+        }
       }
       return;
     }
@@ -1146,24 +1516,42 @@ function App(): React.JSX.Element {
     };
   }, [emitTtsToWeb, resolveCurrentTtsIdentity]);
 
-  const handleLoadStart = useCallback(() => {
+  const handleLoadStart = useCallback((event?: { nativeEvent?: { url?: string } }) => {
     isPageReadyRef.current = false;
-  }, []);
+    updateSafeAreaPalette(event?.nativeEvent?.url);
+  }, [updateSafeAreaPalette]);
 
-  const handleLoadEnd = useCallback(() => {
+  const handleLoadEnd = useCallback((event?: { nativeEvent?: { url?: string } }) => {
     isPageReadyRef.current = true;
+    updateSafeAreaPalette(event?.nativeEvent?.url);
     emitToWeb({ type: 'status', status: nativeStatusRef.current });
     flushPendingAuthToWeb();
-  }, [emitToWeb, flushPendingAuthToWeb]);
+  }, [emitToWeb, flushPendingAuthToWeb, updateSafeAreaPalette]);
 
   const handleLoadError = useCallback((event: { nativeEvent: { description?: string } }) => {
     const description = event.nativeEvent.description || 'webview_load_failed';
-    setLoadError(description);
-  }, []);
+    setLoadError(formatWebViewLoadError(description, webUrl));
+  }, [webUrl]);
+
+  const handleNavigationStateChange = useCallback((navigationState: { url: string }) => {
+    updateSafeAreaPalette(navigationState.url);
+  }, [updateSafeAreaPalette]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.root, { backgroundColor: safeAreaPalette.webViewColor }]}>
+      {shouldRenderSafeAreaFill ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.safeAreaTopFill,
+            {
+              height: safeAreaInsets.top,
+              backgroundColor: safeAreaPalette.topColor,
+            },
+          ]}
+        />
+      ) : null}
+      <StatusBar barStyle={safeAreaPalette.statusBarStyle} />
       {Platform.OS === 'ios' ? (
         <Pressable
           accessibilityRole="button"
@@ -1172,71 +1560,103 @@ function App(): React.JSX.Element {
           style={[styles.iosTopTapOverlay, { height: iosTopTapOverlayHeight }]}
         />
       ) : null}
-      {versionGate.status === 'ready' ? (
-        <WebView
-          ref={webViewRef}
-          source={webUrl
-            ? { uri: webUrl }
-            : { html: '<html><body style="margin:0;background:#fff;"></body></html>' }}
-          originWhitelist={['*']}
-          userAgent={Platform.OS === 'ios' ? IOS_SAFE_BROWSER_USER_AGENT : undefined}
-          javaScriptEnabled
-          domStorageEnabled
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-          setSupportMultipleWindows={false}
-          allowsBackForwardNavigationGestures={false}
-          onMessage={handleWebMessage}
-          onLoadStart={handleLoadStart}
-          onLoadEnd={handleLoadEnd}
-          onError={handleLoadError}
-          style={styles.webView}
+      <View style={[styles.webViewContainer, { backgroundColor: safeAreaPalette.webViewColor }]}>
+        {versionGate.status === 'ready' ? (
+          <WebView
+            ref={webViewRef}
+            source={webUrl
+              ? { uri: webUrl }
+              : { html: '<html><body style=\"margin:0;background:#fff;\"></body></html>' }}
+            originWhitelist={['*']}
+            userAgent={Platform.OS === 'ios' ? IOS_SAFE_BROWSER_USER_AGENT : undefined}
+            javaScriptEnabled
+            domStorageEnabled
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+            setSupportMultipleWindows={false}
+            allowsBackForwardNavigationGestures={false}
+            onMessage={handleWebMessage}
+            onLoadStart={handleLoadStart}
+            onLoadEnd={handleLoadEnd}
+            onError={handleLoadError}
+            onNavigationStateChange={handleNavigationStateChange}
+            style={[styles.webView, { backgroundColor: safeAreaPalette.webViewColor }]}
+          />
+        ) : (
+          <View style={[styles.webView, { backgroundColor: safeAreaPalette.webViewColor }]} />
+        )}
+        {versionGate.status === 'checking' ? (
+          <View style={styles.versionOverlay}>
+            <Text style={styles.versionTitle}>{versionPolicyFallback.checkingTitle}</Text>
+            <Text style={styles.versionDescription}>{versionPolicyFallback.checkingMessage}</Text>
+          </View>
+        ) : null}
+        {versionGate.status === 'force_update' ? (
+          <View style={styles.versionOverlay}>
+            <Text style={styles.versionTitle}>{versionGate.title}</Text>
+            <Text style={styles.versionDescription}>{versionGate.message}</Text>
+            {versionGate.clientVersion || versionGate.latestVersion ? (
+              <Text style={styles.versionMeta}>
+                {versionGate.clientVersion || versionPolicyFallback.unknownVersionLabel} → {versionGate.latestVersion || versionPolicyFallback.unknownVersionLabel}
+              </Text>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={versionPolicyFallback.updateNowA11y}
+              onPress={handleForceUpdatePress}
+              style={({ pressed }) => [
+                styles.updateButton,
+                pressed ? styles.updateButtonPressed : null,
+              ]}
+            >
+              <Text style={styles.updateButtonText}>{versionGate.updateButtonLabel}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {versionGate.status === 'ready' && loadError ? (
+          <View style={styles.errorOverlay}>
+            <Text style={styles.errorTitle}>{versionPolicyFallback.webViewLoadFailedTitle}</Text>
+            <Text style={styles.errorDescription}>{loadError}</Text>
+          </View>
+        ) : null}
+      </View>
+      {shouldRenderSafeAreaFill ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.safeAreaBottomFill,
+            {
+              height: safeAreaInsets.bottom,
+              backgroundColor: safeAreaPalette.bottomColor,
+            },
+          ]}
         />
-      ) : (
-        <View style={styles.webView} />
-      )}
-      {versionGate.status === 'checking' ? (
-        <View style={styles.versionOverlay}>
-          <Text style={styles.versionTitle}>버전 확인 중</Text>
-          <Text style={styles.versionDescription}>최신 업데이트 정책을 확인하고 있습니다.</Text>
-        </View>
       ) : null}
-      {versionGate.status === 'force_update' ? (
-        <View style={styles.versionOverlay}>
-          <Text style={styles.versionTitle}>{versionGate.title}</Text>
-          <Text style={styles.versionDescription}>{versionGate.message}</Text>
-          {versionGate.clientVersion || versionGate.latestVersion ? (
-            <Text style={styles.versionMeta}>
-              {versionGate.clientVersion || 'unknown'} → {versionGate.latestVersion || 'unknown'}
-            </Text>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Update now"
-            onPress={handleForceUpdatePress}
-            style={({ pressed }) => [
-              styles.updateButton,
-              pressed ? styles.updateButtonPressed : null,
-            ]}
-          >
-            <Text style={styles.updateButtonText}>{versionGate.updateButtonLabel}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {versionGate.status === 'ready' && loadError ? (
-        <View style={styles.errorOverlay}>
-          <Text style={styles.errorTitle}>WebView Load Failed</Text>
-          <Text style={styles.errorDescription}>{loadError}</Text>
-        </View>
-      ) : null}
-    </SafeAreaView>
+    </View>
+  );
+}
+
+function App(): React.JSX.Element {
+  return (
+    <SafeAreaProvider>
+      <AppInner />
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  safeAreaTopFill: {
+    width: '100%',
+  },
+  safeAreaBottomFill: {
+    width: '100%',
+  },
+  webViewContainer: {
+    flex: 1,
   },
   iosTopTapOverlay: {
     position: 'absolute',

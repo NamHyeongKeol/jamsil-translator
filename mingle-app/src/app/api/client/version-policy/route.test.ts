@@ -1,17 +1,29 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const ORIGINAL_ENV = {
-  minSupported: process.env.IOS_CLIENT_MIN_SUPPORTED_VERSION,
-  recommendBelow: process.env.IOS_CLIENT_RECOMMENDED_BELOW_VERSION,
-  latest: process.env.IOS_CLIENT_LATEST_VERSION,
-  updateUrl: process.env.IOS_APPSTORE_URL,
-}
+const appClientVersionCreateMock = vi.fn()
+const appClientVersionPolicyFindFirstMock = vi.fn()
 
-function makeRequest(version: string, locale?: string): Request {
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    appClientVersion: {
+      create: appClientVersionCreateMock,
+    },
+    appClientVersionPolicy: {
+      findFirst: appClientVersionPolicyFindFirstMock,
+    },
+  },
+}))
+
+function makeRequest(version: string, locale?: string, platform?: string): Request {
   return new Request('http://localhost:3000/api/client/version-policy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ clientVersion: version, clientBuild: '123', locale: locale || 'ko' }),
+    body: JSON.stringify({
+      clientVersion: version,
+      clientBuild: '123',
+      locale: locale || 'ko',
+      platform: platform || 'ios',
+    }),
   })
 }
 
@@ -41,36 +53,15 @@ const FORCE_LOCALIZATION_CASES = [
 
 describe('/api/client/version-policy route', () => {
   beforeEach(() => {
-    process.env.IOS_CLIENT_MIN_SUPPORTED_VERSION = '1.0.0'
-    process.env.IOS_CLIENT_RECOMMENDED_BELOW_VERSION = '1.2.0'
-    process.env.IOS_CLIENT_LATEST_VERSION = '1.3.0'
-    process.env.IOS_APPSTORE_URL = 'https://apps.apple.com/app/id1234567890'
-  })
+    vi.clearAllMocks()
 
-  afterEach(() => {
-    if (typeof ORIGINAL_ENV.minSupported === 'string') {
-      process.env.IOS_CLIENT_MIN_SUPPORTED_VERSION = ORIGINAL_ENV.minSupported
-    } else {
-      delete process.env.IOS_CLIENT_MIN_SUPPORTED_VERSION
-    }
-
-    if (typeof ORIGINAL_ENV.recommendBelow === 'string') {
-      process.env.IOS_CLIENT_RECOMMENDED_BELOW_VERSION = ORIGINAL_ENV.recommendBelow
-    } else {
-      delete process.env.IOS_CLIENT_RECOMMENDED_BELOW_VERSION
-    }
-
-    if (typeof ORIGINAL_ENV.latest === 'string') {
-      process.env.IOS_CLIENT_LATEST_VERSION = ORIGINAL_ENV.latest
-    } else {
-      delete process.env.IOS_CLIENT_LATEST_VERSION
-    }
-
-    if (typeof ORIGINAL_ENV.updateUrl === 'string') {
-      process.env.IOS_APPSTORE_URL = ORIGINAL_ENV.updateUrl
-    } else {
-      delete process.env.IOS_APPSTORE_URL
-    }
+    appClientVersionCreateMock.mockResolvedValue({ id: 'ver_1' })
+    appClientVersionPolicyFindFirstMock.mockResolvedValue({
+      minSupportedVersion: '1.0.0',
+      recommendedBelowVersion: '1.2.0',
+      latestVersion: '1.3.0',
+      updateUrl: 'https://apps.apple.com/app/id1234567890',
+    })
   })
 
   it('returns force_update when client version is below supported minimum', async () => {
@@ -88,6 +79,15 @@ describe('/api/client/version-policy route', () => {
     expect(json.message).toContain('최신 버전으로 업데이트')
     expect(json.updateButtonLabel).toBe('업데이트')
     expect(json.laterButtonLabel).toBe('나중에')
+    expect(appClientVersionCreateMock).toHaveBeenCalledWith({
+      data: {
+        platform: 'ios',
+        version: '0.9.9',
+        major: 0,
+        minor: 9,
+        patch: 9,
+      },
+    })
   })
 
   it('returns recommend_update when client version is supported but below recommended threshold', async () => {
@@ -98,6 +98,64 @@ describe('/api/client/version-policy route', () => {
     expect(response.status).toBe(200)
     expect(json.action).toBe('recommend_update')
     expect(json.recommendedBelowVersion).toBe('1.2.0')
+  })
+
+  it('uses request platform for policy lookup and version catalog insert', async () => {
+    const POST = await loadLegacyRoutePost()
+    const response = await POST(makeRequest('1.0.0', 'en', 'android') as never)
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json.platform).toBe('android')
+    expect(json.policyPlatform).toBe('android')
+    expect(appClientVersionPolicyFindFirstMock).toHaveBeenCalledWith({
+      where: {
+        platform: 'android',
+        effectiveFrom: { lte: expect.any(Date) },
+      },
+      orderBy: [
+        { effectiveFrom: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      select: {
+        minSupportedVersion: true,
+        recommendedBelowVersion: true,
+        latestVersion: true,
+        updateUrl: true,
+      },
+    })
+    expect(appClientVersionCreateMock).toHaveBeenCalledWith({
+      data: {
+        platform: 'android',
+        version: '1.0.0',
+        major: 1,
+        minor: 0,
+        patch: 0,
+      },
+    })
+  })
+
+  it('falls back to ios policy row when android policy row is missing', async () => {
+    appClientVersionPolicyFindFirstMock
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        minSupportedVersion: '1.0.0',
+        recommendedBelowVersion: '1.2.0',
+        latestVersion: '1.3.0',
+        updateUrl: 'https://apps.apple.com/app/id1234567890',
+      })
+
+    const POST = await loadLegacyRoutePost()
+    const response = await POST(makeRequest('1.1.0', 'en', 'android') as never)
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json.action).toBe('recommend_update')
+    expect(json.platform).toBe('android')
+    expect(json.policyPlatform).toBe('ios')
+    expect(appClientVersionPolicyFindFirstMock).toHaveBeenCalledTimes(2)
+    expect(appClientVersionPolicyFindFirstMock.mock.calls[0]?.[0]?.where?.platform).toBe('android')
+    expect(appClientVersionPolicyFindFirstMock.mock.calls[1]?.[0]?.where?.platform).toBe('ios')
   })
 
   it('returns none when client version is already up to date enough', async () => {
@@ -168,5 +226,46 @@ describe('/api/client/version-policy route', () => {
 
     expect(response.status).toBe(200)
     expect(json.action).toBe('force_update')
+    expect(appClientVersionCreateMock).not.toHaveBeenCalled()
+  })
+
+  it('ignores duplicate client version insert errors', async () => {
+    appClientVersionCreateMock.mockRejectedValueOnce({ code: 'P2002' })
+    const POST = await loadLegacyRoutePost()
+
+    const response = await POST(makeRequest('1.2.3', 'en') as never)
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json.action).toBe('none')
+  })
+
+  it('fails closed when no active policy history exists', async () => {
+    appClientVersionPolicyFindFirstMock.mockResolvedValueOnce(null)
+    const POST = await loadLegacyRoutePost()
+
+    const response = await POST(makeRequest('1.0.0', 'en') as never)
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json.action).toBe('force_update')
+    expect(json.minSupportedVersion).toBe('1.0.0')
+    expect(json.recommendedBelowVersion).toBe('')
+    expect(json.latestVersion).toBe('1.0.0')
+    expect(json.updateUrl).toBe('')
+    expect(json.title).toBe('Update Required')
+  })
+
+  it('fails closed when policy query errors', async () => {
+    appClientVersionPolicyFindFirstMock.mockRejectedValueOnce(new Error('db unavailable'))
+    const POST = await loadLegacyRoutePost()
+
+    const response = await POST(makeRequest('9.9.9', 'en') as never)
+    const json = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(json.action).toBe('force_update')
+    expect(json.minSupportedVersion).toBe('1.0.0')
+    expect(json.latestVersion).toBe('1.0.0')
   })
 })

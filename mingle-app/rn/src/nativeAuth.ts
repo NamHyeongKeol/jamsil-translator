@@ -1,4 +1,4 @@
-import { AppState, Linking } from 'react-native';
+import { AppState, Linking, NativeModules, Platform } from 'react-native';
 
 export type NativeAuthProvider = 'apple' | 'google';
 
@@ -10,6 +10,7 @@ export type NativeAuthSessionResult = {
 
 type NativeAuthCallbackSuccess = NativeAuthSessionResult & {
   status: 'success';
+  requestId: string | null;
 };
 
 type NativeAuthCallbackError = {
@@ -17,6 +18,7 @@ type NativeAuthCallbackError = {
   provider: NativeAuthProvider;
   callbackUrl: string;
   message: string;
+  requestId: string | null;
 };
 
 export type NativeAuthCallbackPayload = NativeAuthCallbackSuccess | NativeAuthCallbackError;
@@ -25,6 +27,19 @@ const AUTH_CALLBACK_SCHEME = 'mingleauth:';
 const AUTH_CALLBACK_HOST = 'auth';
 const DEFAULT_CALLBACK_URL = '/';
 const DEFAULT_TIMEOUT_MS = 180_000;
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{12,128}$/;
+
+type NativeAuthModuleType = {
+  startSession(args: {
+    provider: NativeAuthProvider;
+    startUrl: string;
+    timeoutMs?: number;
+  }): Promise<{
+    provider?: string;
+    callbackUrl?: string;
+    bridgeToken?: string;
+  }>;
+};
 
 function resolveSafeCallbackUrl(rawValue: string): string {
   const trimmed = rawValue.trim();
@@ -42,6 +57,12 @@ function resolveProvider(rawValue: string): NativeAuthProvider | null {
   return null;
 }
 
+function resolveRequestId(rawValue: string): string | null {
+  const trimmed = rawValue.trim();
+  if (!REQUEST_ID_PATTERN.test(trimmed)) return null;
+  return trimmed;
+}
+
 export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPayload | null {
   try {
     const parsed = new URL(url);
@@ -52,6 +73,7 @@ export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPaylo
     if (!provider) return null;
 
     const callbackUrl = resolveSafeCallbackUrl(parsed.searchParams.get('callbackUrl') || DEFAULT_CALLBACK_URL);
+    const requestId = resolveRequestId(parsed.searchParams.get('requestId') || '');
     const status = (parsed.searchParams.get('status') || '').trim().toLowerCase();
 
     if (status === 'success') {
@@ -62,6 +84,7 @@ export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPaylo
           provider,
           callbackUrl,
           message: 'native_auth_missing_bridge_token',
+          requestId,
         };
       }
       return {
@@ -69,6 +92,7 @@ export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPaylo
         provider,
         callbackUrl,
         bridgeToken,
+        requestId,
       };
     }
 
@@ -77,46 +101,61 @@ export function parseNativeAuthCallbackUrl(url: string): NativeAuthCallbackPaylo
       provider,
       callbackUrl,
       message: (parsed.searchParams.get('message') || '').trim() || 'native_auth_failed',
+      requestId,
     };
   } catch {
     return null;
   }
 }
 
-export async function startNativeBrowserAuthSession(args: {
+function getNativeAuthModule(): NativeAuthModuleType | null {
+  const moduleCandidate = (NativeModules as {
+    NativeAuthModule?: NativeAuthModuleType;
+  }).NativeAuthModule;
+  if (!moduleCandidate) return null;
+  if (typeof moduleCandidate.startSession !== 'function') return null;
+  return moduleCandidate;
+}
+
+function resolveNativeModuleResult(
+  rawResult: {
+    provider?: string;
+    callbackUrl?: string;
+    bridgeToken?: string;
+  } | null | undefined,
+  expectedProvider: NativeAuthProvider,
+): NativeAuthSessionResult {
+  const provider = resolveProvider(rawResult?.provider || '') ?? expectedProvider;
+  const callbackUrl = resolveSafeCallbackUrl(rawResult?.callbackUrl || DEFAULT_CALLBACK_URL);
+  const bridgeToken = (rawResult?.bridgeToken || '').trim();
+  if (!bridgeToken) {
+    throw new Error('native_auth_missing_bridge_token');
+  }
+  return {
+    provider,
+    callbackUrl,
+    bridgeToken,
+  };
+}
+
+async function startNativeAuthSessionWithLinking(args: {
   provider: NativeAuthProvider;
   startUrl: string;
-  timeoutMs?: number;
+  expectedRequestId: string | null;
+  timeoutMs: number;
 }): Promise<NativeAuthSessionResult> {
-  const startUrl = args.startUrl.trim();
-  if (!startUrl) {
-    throw new Error('native_auth_missing_start_url');
-  }
-
-  let parsedStartUrl: URL;
-  try {
-    parsedStartUrl = new URL(startUrl);
-  } catch {
-    throw new Error('native_auth_invalid_start_url');
-  }
-  if (parsedStartUrl.protocol !== 'http:' && parsedStartUrl.protocol !== 'https:') {
-    throw new Error('native_auth_invalid_start_url_protocol');
-  }
-
-  const timeoutMs = typeof args.timeoutMs === 'number' && Number.isFinite(args.timeoutMs) && args.timeoutMs > 0
-    ? Math.floor(args.timeoutMs)
-    : DEFAULT_TIMEOUT_MS;
-
   return new Promise<NativeAuthSessionResult>((resolve, reject) => {
     let settled = false;
     let cleanup = () => {};
     let lastHandledUrl = '';
+
     const settleSuccess = (result: NativeAuthSessionResult) => {
       if (settled) return;
       settled = true;
       cleanup();
       resolve(result);
     };
+
     const settleError = (message: string) => {
       if (settled) return;
       settled = true;
@@ -130,6 +169,7 @@ export async function startNativeBrowserAuthSession(args: {
       const parsed = parseNativeAuthCallbackUrl(incomingUrl);
       if (!parsed) return;
       if (parsed.provider !== args.provider) return;
+      if (args.expectedRequestId && parsed.requestId !== args.expectedRequestId) return;
       lastHandledUrl = incomingUrl;
 
       if (parsed.status === 'success') {
@@ -147,6 +187,8 @@ export async function startNativeBrowserAuthSession(args: {
     const urlSubscription = Linking.addEventListener('url', event => {
       handleIncomingUrl(event.url);
     });
+    // AppState 변경 시 getInitialURL로 폴백 처리.
+    // requestId 체크(expectedRequestId)가 있어 이전 세션의 stale deeplink는 필터링됨.
     const appStateSubscription = AppState.addEventListener('change', (nextState) => {
       if (nextState !== 'active') return;
       void Linking.getInitialURL()
@@ -155,12 +197,12 @@ export async function startNativeBrowserAuthSession(args: {
           handleIncomingUrl(initialUrl);
         })
         .catch(() => {
-          // no-op: keep waiting for regular url events or timeout
+          // no-op: url event listener handles live deeplinks
         });
     });
     const timeoutHandle = setTimeout(() => {
       settleError('native_auth_timeout');
-    }, timeoutMs);
+    }, args.timeoutMs);
 
     void Linking.getInitialURL()
       .then((initialUrl) => {
@@ -177,9 +219,79 @@ export async function startNativeBrowserAuthSession(args: {
       clearTimeout(timeoutHandle);
     };
 
-    void Linking.openURL(startUrl).catch((error: unknown) => {
+    void Linking.openURL(args.startUrl).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       settleError(message || 'native_auth_open_url_failed');
     });
+  });
+}
+
+export async function startNativeBrowserAuthSession(args: {
+  provider: NativeAuthProvider;
+  startUrl: string;
+  timeoutMs?: number;
+  expectedOrigin?: string;
+  expectedPathPrefix?: string;
+}): Promise<NativeAuthSessionResult> {
+  const startUrl = args.startUrl.trim();
+  if (!startUrl) {
+    throw new Error('native_auth_missing_start_url');
+  }
+
+  let parsedStartUrl: URL;
+  try {
+    parsedStartUrl = new URL(startUrl);
+  } catch {
+    throw new Error('native_auth_invalid_start_url');
+  }
+  if (parsedStartUrl.protocol !== 'http:' && parsedStartUrl.protocol !== 'https:') {
+    throw new Error('native_auth_invalid_start_url_protocol');
+  }
+  const expectedOriginRaw = typeof args.expectedOrigin === 'string' ? args.expectedOrigin.trim() : '';
+  if (expectedOriginRaw) {
+    let parsedExpectedOrigin: URL;
+    try {
+      parsedExpectedOrigin = new URL(expectedOriginRaw);
+    } catch {
+      throw new Error('native_auth_invalid_expected_origin');
+    }
+    if (parsedExpectedOrigin.origin !== parsedStartUrl.origin) {
+      throw new Error('native_auth_invalid_start_url_origin');
+    }
+  }
+  const expectedPathPrefix = typeof args.expectedPathPrefix === 'string'
+    ? args.expectedPathPrefix.trim()
+    : '';
+  if (expectedPathPrefix && !parsedStartUrl.pathname.startsWith(expectedPathPrefix)) {
+    throw new Error('native_auth_invalid_start_url_path');
+  }
+
+  const expectedRequestId = resolveRequestId(parsedStartUrl.searchParams.get('requestId') || '');
+  const timeoutMs = typeof args.timeoutMs === 'number' && Number.isFinite(args.timeoutMs) && args.timeoutMs > 0
+    ? Math.floor(args.timeoutMs)
+    : DEFAULT_TIMEOUT_MS;
+
+  const nativeAuthModule = Platform.OS === 'ios'
+    ? getNativeAuthModule()
+    : null;
+  if (nativeAuthModule) {
+    try {
+      const nativeResult = await nativeAuthModule.startSession({
+        provider: args.provider,
+        startUrl,
+        timeoutMs,
+      });
+      return resolveNativeModuleResult(nativeResult, args.provider);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error((message || 'native_auth_failed').trim());
+    }
+  }
+
+  return startNativeAuthSessionWithLinking({
+    provider: args.provider,
+    startUrl,
+    expectedRequestId,
+    timeoutMs,
   });
 }

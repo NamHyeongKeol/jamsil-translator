@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "invalid_request_id" }, { status: 400 });
   }
 
-  const pendingResult = consumePendingNativeAuthResult(requestId);
+  const pendingResult = await consumePendingNativeAuthResult(requestId);
   const response = pendingResult
     ? NextResponse.json(pendingResult)
     : NextResponse.json({ status: "pending" });

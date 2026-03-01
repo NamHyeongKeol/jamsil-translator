@@ -1,0 +1,75 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "**": false
+    }
+  },
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/:page(privacy-policy|terms-of-use).html",
+      "destination": "/:page",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ar|de|en|es|fr|hi|it|ja|ko|pt|ru|th|vi|zh-cn|zh-tw)/:page(privacy-policy|terms-of-use).html",
+      "destination": "/:locale/:page",
+      "permanent": true
+    },
+    {
+      "source": "/:page(privacy-policy|terms-of-use)/:locale(ar|de|en|es|fr|hi|it|ja|ko|pt|ru|th|vi|zh-cn|zh-tw)",
+      "destination": "/:locale/:page",
+      "permanent": true
+    },
+    {
+      "source": "/legal/:page(privacy-policy|terms-of-use).html",
+      "destination": "/:page",
+      "permanent": true
+    },
+    {
+      "source": "/legal/:locale(ar|de|en|es|fr|hi|it|ja|ko|pt|ru|th|vi|zh-cn|zh-tw)/:page(privacy-policy|terms-of-use).html",
+      "destination": "/:locale/:page",
+      "permanent": true
+    },
+    {
+      "source": "/legal/:page(privacy-policy|terms-of-use)",
+      "destination": "/:page",
+      "permanent": true
+    },
+    {
+      "source": "/legal/:locale(ar|de|en|es|fr|hi|it|ja|ko|pt|ru|th|vi|zh-cn|zh-tw)/:page(privacy-policy|terms-of-use)",
+      "destination": "/:locale/:page",
+      "permanent": true
+    },
+    {
+      "source": "/legal",
+      "destination": "/",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/legal/:path*",
+      "destination": "/:path*"
+    },
+    {
+      "source": "/:page(privacy-policy|terms-of-use)",
+      "destination": "/:page.html"
+    },
+    {
+      "source": "/:locale(ar|de|en|es|fr|hi|it|ja|ko|pt|ru|th|vi|zh-cn|zh-tw)/:page(privacy-policy|terms-of-use)",
+      "destination": "/:locale/:page.html"
+    },
+    {
+      "source": "/:locale(ar|de|en|es|fr|hi|it|ja|ko|pt|ru|th|vi|zh-cn|zh-tw)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/",
+      "destination": "/index.html"
+    }
+  ]
+}

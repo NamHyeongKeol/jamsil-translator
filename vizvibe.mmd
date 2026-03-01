@@ -476,7 +476,7 @@ flowchart TD
     mingle_app_ios_stt_tts_volume_reboost("iOS STT 중 TTS 볼륨 재보정<br/><sub>안정화 가드는 그대로 유지한 채<br/>AVAudioSession 모드를 default로 재조정하고<br/>mixWithOthers를 제거해 통화 모드처럼 작아지던<br/>STT 활성 중 TTS 출력 레벨을 우선 개선</sub>")
 
     %% @mingle_app_rn_branding_name_icon_sync [ai-task, closed, 2026-02-16, ai]
-    mingle_app_rn_branding_name_icon_sync("RN 앱 브랜딩 이름/아이콘 동기화<br/><sub>iOS Info.plist의 표시명과 번들명을<br/>rnnative에서 Mingle로 변경하고<br/>RN AppIcon 세트를 favicon 기반 PNG들로 재생성해<br/>멀티태스킹/홈화면 아이콘을 브랜드 로고로 통일</sub>")
+    mingle_app_rn_branding_name_icon_sync("RN 앱 브랜딩 이름/아이콘 동기화<br/><sub>iOS Info.plist의 표시명과 번들명을<br/>mingle에서 Mingle로 변경하고<br/>RN AppIcon 세트를 favicon 기반 PNG들로 재생성해<br/>멀티태스킹/홈화면 아이콘을 브랜드 로고로 통일</sub>")
 
     %% @mingle_app_async_nonblocking_db_write [ai-task, closed, 2026-02-16, ai]
     mingle_app_async_nonblocking_db_write("앱 API 비동기 저장 경로 적용 완료<br/><sub>/api/translate/finalize·/translate·/tts/inworld에서<br/>응답 후 DB fire-and-forget 적재를 연결하고<br/>STT final일 때만 Message/MessageContent를 저장,<br/>app_users metadata JSON 대신 개별 컬럼으로 기록</sub>")
@@ -494,7 +494,7 @@ flowchart TD
     mingle_app_ios_dynamic_aec_mode_toggle("iOS AEC 동적 모드 전환<br/><sub>AEC ON 시 .voiceChat 모드로 시스템 AEC 활성화<br/>AEC OFF 및 STT 미사용 시 .default 모드로 전체 볼륨 복구<br/>에코 제거와 쾌적한 출력을 상태에 맞춰 동적 대응</sub>")
 
     %% @mingle_app_ios_splash_cleanup [ai-task, closed, 2026-02-17, ai]
-    mingle_app_ios_splash_cleanup("iOS 스플래시 화면 정리<br/><sub>LaunchScreen.storyboard에서 RN 기본 템플릿의<br/>rnnative 텍스트와 Powered by React Native를 제거하고<br/>깔끔한 흰 화면으로 교체해 브랜드 이미지 정리</sub>")
+    mingle_app_ios_splash_cleanup("iOS 스플래시 화면 정리<br/><sub>LaunchScreen.storyboard에서 RN 기본 템플릿의<br/>mingle 텍스트와 Powered by React Native를 제거하고<br/>깔끔한 흰 화면으로 교체해 브랜드 이미지 정리</sub>")
 
     %% @mingle_app_tts_global_state [ai-task, closed, 2026-02-18, ai]
     mingle_app_tts_global_state("TTS 전역 상태 Context 도입<br/><sub>isSoundEnabled 로컬 state를 TtsSettingsContext로 격상해<br/>음소거 시 Inworld TTS API 요청을 서버에서 완전 차단하고<br/>localStorage 기반 persist로 설정 유지<br/>다른 컴포넌트에서도 useTtsSettings()로 읽기/쓰기 가능</sub>")

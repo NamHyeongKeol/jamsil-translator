@@ -126,6 +126,7 @@ export interface LivePhoneDemoRef {
 interface LivePhoneDemoProps {
   onLimitReached?: () => void
   enableAutoTTS?: boolean
+  uiLocale: string
   tapPlayToStartLabel: string
   usageLimitReachedLabel: string
   usageLimitRetryHintLabel: string
@@ -136,6 +137,9 @@ interface LivePhoneDemoProps {
   menuLabel: string
   logoutLabel: string
   deleteAccountLabel: string
+  deleteAccountConfirmMessage: string
+  deleteAccountConfirmLabel: string
+  deleteAccountCancelLabel: string
   onLogout: () => void
   onDeleteAccount: () => void
   isAuthActionPending?: boolean
@@ -201,6 +205,7 @@ async function saveConversation(utterances: Utterance[], selectedLanguages: stri
 const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function LivePhoneDemo({
   onLimitReached,
   enableAutoTTS = false,
+  uiLocale,
   tapPlayToStartLabel,
   usageLimitReachedLabel,
   usageLimitRetryHintLabel,
@@ -211,6 +216,9 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   menuLabel,
   logoutLabel,
   deleteAccountLabel,
+  deleteAccountConfirmMessage,
+  deleteAccountConfirmLabel,
+  deleteAccountCancelLabel,
   onLogout,
   onDeleteAccount,
   isAuthActionPending = false,
@@ -224,6 +232,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [deleteAccountDialogOpen, setDeleteAccountDialogOpen] = useState(false)
   const { ttsEnabled: isSoundEnabled, setTtsEnabled: setIsSoundEnabled, aecEnabled, setAecEnabled } = useTtsSettings()
   const [speakingItem, setSpeakingItem] = useState<{ utteranceId: string, language: string } | null>(null)
   const utterancesRef = useRef<Utterance[]>([])
@@ -245,6 +254,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   const langSelectorButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuPanelRef = useRef<HTMLDivElement | null>(null)
+  const deleteAccountCancelButtonRef = useRef<HTMLButtonElement | null>(null)
   const [isNativeUiBridgeEnabled] = useState(() => {
     if (typeof window === 'undefined') return false
     return isNativeUiBridgeEnabledFromSearch(window.location.search || '')
@@ -287,6 +297,33 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [menuOpen])
+
+  const closeDeleteAccountDialog = useCallback(() => {
+    if (isAuthActionPending) return
+    setDeleteAccountDialogOpen(false)
+  }, [isAuthActionPending])
+
+  const handleDeleteAccountConfirm = useCallback(() => {
+    if (isAuthActionPending) return
+    setDeleteAccountDialogOpen(false)
+    onDeleteAccount()
+  }, [isAuthActionPending, onDeleteAccount])
+
+  useEffect(() => {
+    if (!deleteAccountDialogOpen) return
+    deleteAccountCancelButtonRef.current?.focus()
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      closeDeleteAccountDialog()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [closeDeleteAccountDialog, deleteAccountDialogOpen])
 
   const ensureAudioPlayer = useCallback(() => {
     if (playerAudioRef.current) return playerAudioRef.current
@@ -1128,13 +1165,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       scrollMetrics.thumbTop + (scrollMetrics.thumbHeight / 2),
     ),
   )
+  const navSurfaceClassName = 'bg-white'
 
   return (
     <PhoneFrame>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Header */}
         <div
-          className="relative shrink-0 flex items-center justify-between border-b border-gray-100"
+          className={`relative z-40 shrink-0 flex items-center justify-between ${navSurfaceClassName}`}
           style={{
             paddingTop: "max(calc(env(safe-area-inset-top) + 20px), 24px)",
             paddingBottom: "10px",
@@ -1181,6 +1219,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 onClose={() => setLangSelectorOpen(false)}
                 selectedLanguages={selectedLanguages}
                 onToggleLanguage={handleToggleLanguage}
+                uiLocale={uiLocale}
                 disabled={isActive}
                 triggerRef={langSelectorButtonRef}
               />
@@ -1194,7 +1233,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   setMenuOpen(o => !o)
                 }}
                 disabled={isAuthActionPending}
-                className="inline-flex h-11 min-w-[44px] items-center justify-center rounded-xl bg-gray-100 px-3 text-gray-700 shadow-sm transition-colors hover:bg-gray-200 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className={`inline-flex h-11 min-w-[44px] items-center justify-center px-2 text-gray-700 transition-colors hover:text-gray-900 active:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60 ${navSurfaceClassName}`}
                 aria-label={menuLabel}
                 aria-expanded={menuOpen}
               >
@@ -1203,7 +1242,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               {menuOpen && (
                 <div
                   ref={menuPanelRef}
-                  className="absolute right-0 top-full z-30 mt-2 w-44 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg"
+                  className={`absolute right-0 top-full z-50 mt-1 w-44 border border-gray-200 p-0 ${navSurfaceClassName}`}
                 >
                   <button
                     type="button"
@@ -1212,7 +1251,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                       onLogout()
                     }}
                     disabled={isAuthActionPending}
-                    className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <LogOut size={15} strokeWidth={2} />
                     <span>{logoutLabel}</span>
@@ -1221,10 +1260,10 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                     type="button"
                     onClick={() => {
                       setMenuOpen(false)
-                      onDeleteAccount()
+                      setDeleteAccountDialogOpen(true)
                     }}
                     disabled={isAuthActionPending}
-                    className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Trash2 size={15} strokeWidth={2} />
                     <span>{deleteAccountLabel}</span>
@@ -1442,6 +1481,57 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             )}
           </AnimatePresence>
         </div>
+
+        <AnimatePresence>
+          {deleteAccountDialogOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              className="absolute inset-0 z-[60] flex items-center justify-center bg-black/40 px-5"
+              onClick={closeDeleteAccountDialog}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                role="dialog"
+                aria-modal="true"
+                aria-label={deleteAccountLabel}
+                onClick={(event) => event.stopPropagation()}
+                className="w-full max-w-[19rem] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl"
+              >
+                <p className="text-sm font-semibold text-gray-900">
+                  {deleteAccountLabel}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                  {deleteAccountConfirmMessage}
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    ref={deleteAccountCancelButtonRef}
+                    type="button"
+                    onClick={closeDeleteAccountDialog}
+                    disabled={isAuthActionPending}
+                    className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-300 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deleteAccountCancelLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccountConfirm}
+                    disabled={isAuthActionPending}
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-rose-600 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-rose-400"
+                  >
+                    {deleteAccountConfirmLabel}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Bottom Bar with Mic Button */}
         <div

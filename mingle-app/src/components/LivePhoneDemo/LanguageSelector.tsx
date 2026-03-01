@@ -17,7 +17,6 @@ const LANGUAGES = [
   { code: "th", flag: "🇹🇭", englishName: "Thai" },
   { code: "vi", flag: "🇻🇳", englishName: "Vietnamese" },
   { code: "it", flag: "🇮🇹", englishName: "Italian" },
-  { code: "id", flag: "🇮🇩", englishName: "Indonesian" },
 ];
 
 const SORTED_LANGUAGES = [...LANGUAGES].sort((a, b) => {
@@ -36,6 +35,7 @@ interface LanguageSelectorProps {
   onClose: () => void;
   selectedLanguages: string[];
   onToggleLanguage: (code: string) => void;
+  uiLocale?: string;
   disabled?: boolean;
   triggerRef?: RefObject<HTMLElement | null>;
 }
@@ -45,20 +45,24 @@ export default function LanguageSelector({
   onClose,
   selectedLanguages,
   onToggleLanguage,
+  uiLocale,
   disabled,
   triggerRef,
 }: LanguageSelectorProps) {
   const ref = useRef<HTMLDivElement>(null);
   const userLocale = useMemo(() => {
+    const normalizedUiLocale = (uiLocale || "").trim();
+    if (normalizedUiLocale) return normalizedUiLocale;
+
     if (typeof window === "undefined") return "en";
     const browserLocale = (
+      document.documentElement.lang ||
       window.navigator.languages?.find(Boolean) ||
       window.navigator.language ||
-      document.documentElement.lang ||
       "en"
     ).trim();
     return browserLocale || "en";
-  }, []);
+  }, [uiLocale]);
 
   const languageNameFormatter = useMemo(() => {
     try {
