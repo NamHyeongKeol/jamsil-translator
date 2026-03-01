@@ -41,21 +41,21 @@ const SONIOX_RAW_JOINED_TOKEN_LOG_FILE = (() => {
     if (configuredPath) return resolve(configuredPath);
     return resolve(process.cwd(), '..', '.devbox-logs', 'stt-raw.log');
 })();
-let sonioxRawJoinedTokenLogStream: ReturnType<typeof createWriteStream> | null = null;
+let sonioxInboundLogStream: ReturnType<typeof createWriteStream> | null = null;
 try {
     mkdirSync(dirname(SONIOX_RAW_JOINED_TOKEN_LOG_FILE), { recursive: true });
-    sonioxRawJoinedTokenLogStream = createWriteStream(SONIOX_RAW_JOINED_TOKEN_LOG_FILE, { flags: 'a' });
-    sonioxRawJoinedTokenLogStream.on('error', (error) => {
-        console.error(`Soniox raw token log stream error: ${error.message}`);
+    sonioxInboundLogStream = createWriteStream(SONIOX_RAW_JOINED_TOKEN_LOG_FILE, { flags: 'a' });
+    sonioxInboundLogStream.on('error', (error) => {
+        console.error(`Soniox inbound log stream error: ${error.message}`);
     });
 } catch (error) {
     console.error(
-        `Failed to initialize Soniox raw token log: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to initialize Soniox inbound log: ${error instanceof Error ? error.message : String(error)}`,
     );
 }
 
-const appendSonioxRawJoinedTokenText = (text: string) => {
-    sonioxRawJoinedTokenLogStream?.write(`${text}\n`);
+const appendSonioxInboundMessage = (rawMessage: string) => {
+    sonioxInboundLogStream?.write(`${rawMessage}\n`);
 };
 
 const server = createServer();
@@ -681,11 +681,8 @@ wss.on('connection', (clientWs) => {
 
                 try {
                     const rawSonioxMessage = event.data.toString();
+                    appendSonioxInboundMessage(rawSonioxMessage);
                     const msg = JSON.parse(rawSonioxMessage);
-                    const rawJoinedTokenText = (msg as { raw_joined_token_text?: unknown }).raw_joined_token_text;
-                    if (typeof rawJoinedTokenText === 'string') {
-                        appendSonioxRawJoinedTokenText(rawJoinedTokenText);
-                    }
 
                     if (msg.error_code) {
                         console.error(`[Soniox] Error: ${msg.error_code} - ${msg.error_message}`);

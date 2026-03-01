@@ -3743,12 +3743,12 @@ $(ngrok_plan_capacity_hint)"
       if [[ "$shared_stt_raw_log_file" != "$stt_raw_log_file" ]]; then
         mkdir -p "$(dirname "$shared_stt_raw_log_file")"
         ln -sfn "$stt_raw_log_file" "$shared_stt_raw_log_file"
-        log "stt raw token symlink: $shared_stt_raw_log_file -> $stt_raw_log_file"
+        log "stt soniox inbound log symlink: $shared_stt_raw_log_file -> $stt_raw_log_file"
       fi
     fi
   fi
-  log "stt raw token log: $stt_raw_log_file"
-  log "tail stt raw log: tail -f $stt_raw_log_file"
+  log "stt soniox inbound log: $stt_raw_log_file"
+  log "tail stt soniox log: tail -f $stt_raw_log_file"
 
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
   (
