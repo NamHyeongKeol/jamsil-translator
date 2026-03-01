@@ -39,6 +39,36 @@ function resolveResetExpiryMinutes(): number {
   return Math.min(Math.floor(raw), 120);
 }
 
+async function replaceActiveResetToken(params: {
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  now: Date;
+}) {
+  const { userId, tokenHash, expiresAt, now } = params;
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "app"."app_users" WHERE id = ${userId} FOR UPDATE`;
+
+    await tx.passwordResetToken.updateMany({
+      where: {
+        userId,
+        usedAt: null,
+      },
+      data: {
+        usedAt: now,
+      },
+    });
+
+    await tx.passwordResetToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+  });
+}
+
 export async function POST(request: Request) {
   if (!isResendConfigured()) {
     return NextResponse.json({ error: "email_service_not_configured" }, { status: 503 });
@@ -70,20 +100,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  const now = new Date();
   const rawToken = createOpaqueToken(32);
   const tokenHash = hashOpaqueToken(rawToken);
-  const expiresAt = new Date(Date.now() + (resolveResetExpiryMinutes() * 60_000));
-
-  await prisma.passwordResetToken.deleteMany({
-    where: { userId: user.id },
-  });
-
-  await prisma.passwordResetToken.create({
-    data: {
-      userId: user.id,
-      tokenHash,
-      expiresAt,
-    },
+  const expiresAt = new Date(now.getTime() + (resolveResetExpiryMinutes() * 60_000));
+  await replaceActiveResetToken({
+    userId: user.id,
+    tokenHash,
+    expiresAt,
+    now,
   });
 
   const baseUrl = resolvePublicBaseUrl();
@@ -102,4 +127,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true });
 }
-

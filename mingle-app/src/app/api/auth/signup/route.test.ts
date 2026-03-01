@@ -2,11 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockUserFindUnique,
-  mockUserUpdate,
   mockUserCreate,
 } = vi.hoisted(() => ({
   mockUserFindUnique: vi.fn(),
-  mockUserUpdate: vi.fn(),
   mockUserCreate: vi.fn(),
 }));
 
@@ -14,7 +12,6 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: mockUserFindUnique,
-      update: mockUserUpdate,
       create: mockUserCreate,
     },
   },
@@ -94,7 +91,6 @@ describe("/api/auth/signup route", () => {
   it("returns 409 when email is already registered with password login", async () => {
     mockUserFindUnique.mockResolvedValue({
       id: "user_existing",
-      passwordHash: "pbkdf2_sha256$210000$salt$digest",
     });
 
     const response = await POST(makeJsonRequest({
@@ -110,19 +106,13 @@ describe("/api/auth/signup route", () => {
       where: { email: "member@example.com" },
       select: {
         id: true,
-        passwordHash: true,
       },
     });
-    expect(mockUserUpdate).not.toHaveBeenCalled();
     expect(mockUserCreate).not.toHaveBeenCalled();
   });
 
-  it("updates existing OAuth account to email-password account", async () => {
-    mockUserFindUnique.mockResolvedValue({
-      id: "user_oauth",
-      passwordHash: null,
-    });
-    mockUserUpdate.mockResolvedValue({ id: "user_oauth" });
+  it("returns 409 when email is already registered with OAuth account", async () => {
+    mockUserFindUnique.mockResolvedValue({ id: "user_oauth" });
 
     const response = await POST(makeJsonRequest({
       email: "Member@Example.com",
@@ -131,17 +121,8 @@ describe("/api/auth/signup route", () => {
     }));
     const json = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(json).toEqual({ ok: true, created: false });
-    expect(mockUserUpdate).toHaveBeenCalledTimes(1);
-    const updateCall = mockUserUpdate.mock.calls[0]?.[0] as {
-      where: { id: string };
-      data: { name: string; passwordHash: string; lastSeenAt: Date };
-    };
-    expect(updateCall.where).toEqual({ id: "user_oauth" });
-    expect(updateCall.data.name).toBe("Member Name");
-    expect(updateCall.data.passwordHash.startsWith("pbkdf2_sha256$")).toBe(true);
-    expect(updateCall.data.lastSeenAt).toBeInstanceOf(Date);
+    expect(response.status).toBe(409);
+    expect(json).toEqual({ error: "email_already_registered" });
     expect(mockUserCreate).not.toHaveBeenCalled();
   });
 
@@ -173,5 +154,20 @@ describe("/api/auth/signup route", () => {
     expect(createCall.data.passwordHash.startsWith("pbkdf2_sha256$")).toBe(true);
     expect(createCall.data.firstSeenAt).toBeInstanceOf(Date);
     expect(createCall.data.lastSeenAt).toBeInstanceOf(Date);
+  });
+
+  it("returns 409 when create hits email unique constraint race", async () => {
+    mockUserFindUnique.mockResolvedValue(null);
+    mockUserCreate.mockRejectedValue({ code: "P2002" });
+
+    const response = await POST(makeJsonRequest({
+      email: "member@example.com",
+      name: "Member",
+      password: "password123",
+    }));
+    const json = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(json).toEqual({ error: "email_already_registered" });
   });
 });

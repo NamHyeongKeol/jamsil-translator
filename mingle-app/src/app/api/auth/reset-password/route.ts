@@ -27,42 +27,70 @@ export async function POST(request: Request) {
 
   const tokenHash = hashOpaqueToken(token);
   const now = new Date();
-  const passwordResetToken = await prisma.passwordResetToken.findUnique({
-    where: { tokenHash },
-    select: {
-      id: true,
-      userId: true,
-      usedAt: true,
-      expiresAt: true,
-    },
-  });
-
-  if (!passwordResetToken) {
-    return NextResponse.json({ error: "invalid_token" }, { status: 400 });
-  }
-  if (passwordResetToken.usedAt) {
-    return NextResponse.json({ error: "token_already_used" }, { status: 400 });
-  }
-  if (passwordResetToken.expiresAt.getTime() <= now.getTime()) {
-    return NextResponse.json({ error: "token_expired" }, { status: 400 });
-  }
-
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: passwordResetToken.userId },
-      data: {
-        passwordHash: hashPassword(password),
-        lastSeenAt: now,
+  const passwordHash = hashPassword(password);
+  const result = await prisma.$transaction(async (tx) => {
+    const passwordResetToken = await tx.passwordResetToken.findUnique({
+      where: { tokenHash },
+      select: {
+        id: true,
+        userId: true,
+        usedAt: true,
+        expiresAt: true,
       },
-    }),
-    prisma.passwordResetToken.update({
-      where: { id: passwordResetToken.id },
+    });
+
+    if (!passwordResetToken) {
+      return { error: "invalid_token" } as const;
+    }
+    if (passwordResetToken.usedAt) {
+      return { error: "token_already_used" } as const;
+    }
+    if (passwordResetToken.expiresAt.getTime() <= now.getTime()) {
+      return { error: "token_expired" } as const;
+    }
+
+    // usedAt NULL 조건으로 토큰을 선점(claim)해 동시 요청 중 하나만 성공시키기.
+    const claimResult = await tx.passwordResetToken.updateMany({
+      where: {
+        id: passwordResetToken.id,
+        usedAt: null,
+        expiresAt: {
+          gt: now,
+        },
+      },
       data: {
         usedAt: now,
       },
-    }),
-  ]);
+    });
+
+    if (claimResult.count !== 1) {
+      return { error: "token_already_used" } as const;
+    }
+
+    await tx.passwordResetToken.updateMany({
+      where: {
+        userId: passwordResetToken.userId,
+        usedAt: null,
+      },
+      data: {
+        usedAt: now,
+      },
+    });
+
+    await tx.user.update({
+      where: { id: passwordResetToken.userId },
+      data: {
+        passwordHash,
+        lastSeenAt: now,
+      },
+    });
+
+    return { ok: true } as const;
+  });
+
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
+  }
 
   return NextResponse.json({ ok: true });
 }
-

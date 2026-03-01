@@ -14,6 +14,12 @@ function normalizeName(rawValue: unknown): string {
   return normalized.slice(0, 128);
 }
 
+function isPrismaUniqueConstraintError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown };
+  return candidate.code === "P2002";
+}
+
 export async function POST(request: Request) {
   let payload: SignupPayload | null = null;
   try {
@@ -42,37 +48,30 @@ export async function POST(request: Request) {
     where: { email },
     select: {
       id: true,
-      passwordHash: true,
     },
   });
 
-  if (existing?.passwordHash) {
+  if (existing) {
+    // 이메일 소유 검증이 없는 회원가입 단계에서 기존 이메일 계정을 덮어쓰지 않도록 차단.
     return NextResponse.json({ error: "email_already_registered" }, { status: 409 });
   }
 
-  if (existing) {
-    await prisma.user.update({
-      where: { id: existing.id },
+  try {
+    await prisma.user.create({
       data: {
+        email,
         name,
         passwordHash,
+        firstSeenAt: now,
         lastSeenAt: now,
       },
     });
-
-    return NextResponse.json({ ok: true, created: false });
+  } catch (error: unknown) {
+    if (isPrismaUniqueConstraintError(error)) {
+      return NextResponse.json({ error: "email_already_registered" }, { status: 409 });
+    }
+    throw error;
   }
-
-  await prisma.user.create({
-    data: {
-      email,
-      name,
-      passwordHash,
-      firstSeenAt: now,
-      lastSeenAt: now,
-    },
-  });
 
   return NextResponse.json({ ok: true, created: true }, { status: 201 });
 }
-

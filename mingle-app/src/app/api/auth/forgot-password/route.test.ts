@@ -2,16 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockUserFindUnique,
-  mockPasswordResetTokenDeleteMany,
+  mockPasswordResetTokenUpdateMany,
   mockPasswordResetTokenCreate,
+  mockTransaction,
+  mockTxQueryRaw,
   mockIsResendConfigured,
   mockSendPasswordResetEmail,
   mockCreateOpaqueToken,
   mockHashOpaqueToken,
 } = vi.hoisted(() => ({
   mockUserFindUnique: vi.fn(),
-  mockPasswordResetTokenDeleteMany: vi.fn(),
+  mockPasswordResetTokenUpdateMany: vi.fn(),
   mockPasswordResetTokenCreate: vi.fn(),
+  mockTransaction: vi.fn(),
+  mockTxQueryRaw: vi.fn(),
   mockIsResendConfigured: vi.fn(),
   mockSendPasswordResetEmail: vi.fn(),
   mockCreateOpaqueToken: vi.fn(),
@@ -23,10 +27,7 @@ vi.mock("@/lib/prisma", () => ({
     user: {
       findUnique: mockUserFindUnique,
     },
-    passwordResetToken: {
-      deleteMany: mockPasswordResetTokenDeleteMany,
-      create: mockPasswordResetTokenCreate,
-    },
+    $transaction: mockTransaction,
   },
 }));
 
@@ -92,6 +93,22 @@ describe("/api/auth/forgot-password route", () => {
     mockIsResendConfigured.mockReturnValue(true);
     mockCreateOpaqueToken.mockReturnValue("raw_token_123");
     mockHashOpaqueToken.mockReturnValue("hashed_token_123");
+    mockTransaction.mockImplementation(async (callback: (tx: {
+      $queryRaw: (...args: unknown[]) => Promise<unknown>;
+      passwordResetToken: {
+        updateMany: (args: unknown) => Promise<unknown>;
+        create: (args: unknown) => Promise<unknown>;
+      };
+    }) => Promise<unknown>) => callback({
+      $queryRaw: mockTxQueryRaw,
+      passwordResetToken: {
+        updateMany: mockPasswordResetTokenUpdateMany,
+        create: mockPasswordResetTokenCreate,
+      },
+    }));
+    mockTxQueryRaw.mockResolvedValue([{ id: "user_1" }]);
+    mockPasswordResetTokenUpdateMany.mockResolvedValue({ count: 0 });
+    mockPasswordResetTokenCreate.mockResolvedValue({ id: "token_1" });
 
     delete process.env.NEXTAUTH_URL;
     delete process.env.NEXT_PUBLIC_SITE_URL;
@@ -158,7 +175,7 @@ describe("/api/auth/forgot-password route", () => {
       where: { email: "member@example.com" },
       select: { id: true },
     });
-    expect(mockPasswordResetTokenDeleteMany).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
     expect(mockPasswordResetTokenCreate).not.toHaveBeenCalled();
     expect(mockSendPasswordResetEmail).not.toHaveBeenCalled();
   });
@@ -172,8 +189,6 @@ describe("/api/auth/forgot-password route", () => {
     process.env.EMAIL_RESET_TOKEN_TTL_MINUTES = "45";
 
     mockUserFindUnique.mockResolvedValue({ id: "user_1" });
-    mockPasswordResetTokenDeleteMany.mockResolvedValue({ count: 1 });
-    mockPasswordResetTokenCreate.mockResolvedValue({ id: "token_1" });
     mockSendPasswordResetEmail.mockResolvedValue(undefined);
 
     const response = await POST(makeJsonRequest({
@@ -186,8 +201,16 @@ describe("/api/auth/forgot-password route", () => {
     expect(json).toEqual({ ok: true });
     expect(mockCreateOpaqueToken).toHaveBeenCalledWith(32);
     expect(mockHashOpaqueToken).toHaveBeenCalledWith("raw_token_123");
-    expect(mockPasswordResetTokenDeleteMany).toHaveBeenCalledWith({
-      where: { userId: "user_1" },
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockTxQueryRaw).toHaveBeenCalledTimes(1);
+    expect(mockPasswordResetTokenUpdateMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user_1",
+        usedAt: null,
+      },
+      data: {
+        usedAt: now,
+      },
     });
 
     const createCall = mockPasswordResetTokenCreate.mock.calls[0]?.[0] as {
@@ -211,8 +234,6 @@ describe("/api/auth/forgot-password route", () => {
   it("falls back to localhost base URL when NEXTAUTH_URL is invalid", async () => {
     process.env.NEXTAUTH_URL = "not-a-url";
     mockUserFindUnique.mockResolvedValue({ id: "user_1" });
-    mockPasswordResetTokenDeleteMany.mockResolvedValue({ count: 1 });
-    mockPasswordResetTokenCreate.mockResolvedValue({ id: "token_1" });
     mockSendPasswordResetEmail.mockResolvedValue(undefined);
 
     const response = await POST(makeJsonRequest({
@@ -231,8 +252,6 @@ describe("/api/auth/forgot-password route", () => {
 
   it("returns 502 when email delivery fails", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user_1" });
-    mockPasswordResetTokenDeleteMany.mockResolvedValue({ count: 1 });
-    mockPasswordResetTokenCreate.mockResolvedValue({ id: "token_1" });
     mockSendPasswordResetEmail.mockRejectedValue(new Error("upstream_failed"));
 
     const response = await POST(makeJsonRequest({

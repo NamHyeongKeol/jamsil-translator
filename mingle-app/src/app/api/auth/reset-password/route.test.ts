@@ -3,25 +3,18 @@ import { hashOpaqueToken } from "@/lib/email-password-auth";
 
 const {
   mockPasswordResetTokenFindUnique,
-  mockPasswordResetTokenUpdate,
+  mockPasswordResetTokenUpdateMany,
   mockUserUpdate,
   mockTransaction,
 } = vi.hoisted(() => ({
   mockPasswordResetTokenFindUnique: vi.fn(),
-  mockPasswordResetTokenUpdate: vi.fn(),
+  mockPasswordResetTokenUpdateMany: vi.fn(),
   mockUserUpdate: vi.fn(),
   mockTransaction: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    passwordResetToken: {
-      findUnique: mockPasswordResetTokenFindUnique,
-      update: mockPasswordResetTokenUpdate,
-    },
-    user: {
-      update: mockUserUpdate,
-    },
     $transaction: mockTransaction,
   },
 }));
@@ -48,6 +41,25 @@ describe("/api/auth/reset-password route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
+    mockTransaction.mockImplementation(async (callback: (tx: {
+      passwordResetToken: {
+        findUnique: (args: unknown) => Promise<unknown>;
+        updateMany: (args: unknown) => Promise<{ count: number }>;
+      };
+      user: {
+        update: (args: unknown) => Promise<unknown>;
+      };
+    }) => Promise<unknown>) => callback({
+      passwordResetToken: {
+        findUnique: mockPasswordResetTokenFindUnique,
+        updateMany: mockPasswordResetTokenUpdateMany,
+      },
+      user: {
+        update: mockUserUpdate,
+      },
+    }));
+    mockPasswordResetTokenUpdateMany.mockResolvedValue({ count: 1 });
+    mockUserUpdate.mockResolvedValue({ id: "user_1" });
   });
 
   afterEach(() => {
@@ -60,7 +72,7 @@ describe("/api/auth/reset-password route", () => {
 
     expect(response.status).toBe(400);
     expect(json).toEqual({ error: "invalid_payload" });
-    expect(mockPasswordResetTokenFindUnique).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 
   it("returns 400 when token or password is missing", async () => {
@@ -72,7 +84,7 @@ describe("/api/auth/reset-password route", () => {
 
     expect(response.status).toBe(400);
     expect(json).toEqual({ error: "missing_required_fields" });
-    expect(mockPasswordResetTokenFindUnique).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 
   it("returns 400 when password policy is not satisfied", async () => {
@@ -84,7 +96,7 @@ describe("/api/auth/reset-password route", () => {
 
     expect(response.status).toBe(400);
     expect(json).toEqual({ error: "invalid_password" });
-    expect(mockPasswordResetTokenFindUnique).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 
   it("returns 400 when token does not exist", async () => {
@@ -107,6 +119,7 @@ describe("/api/auth/reset-password route", () => {
         expiresAt: true,
       },
     });
+    expect(mockPasswordResetTokenUpdateMany).not.toHaveBeenCalled();
   });
 
   it("returns 400 when token is already used", async () => {
@@ -125,7 +138,7 @@ describe("/api/auth/reset-password route", () => {
 
     expect(response.status).toBe(400);
     expect(json).toEqual({ error: "token_already_used" });
-    expect(mockTransaction).not.toHaveBeenCalled();
+    expect(mockPasswordResetTokenUpdateMany).not.toHaveBeenCalled();
   });
 
   it("returns 400 when token is expired", async () => {
@@ -148,7 +161,31 @@ describe("/api/auth/reset-password route", () => {
 
     expect(response.status).toBe(400);
     expect(json).toEqual({ error: "token_expired" });
-    expect(mockTransaction).not.toHaveBeenCalled();
+    expect(mockPasswordResetTokenUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when token claim loses a concurrent race", async () => {
+    const now = new Date("2026-03-02T05:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    mockPasswordResetTokenFindUnique.mockResolvedValue({
+      id: "token_1",
+      userId: "user_1",
+      usedAt: null,
+      expiresAt: new Date("2026-03-02T06:00:00.000Z"),
+    });
+    mockPasswordResetTokenUpdateMany.mockResolvedValueOnce({ count: 0 });
+
+    const response = await POST(makeJsonRequest({
+      token: "reset_token",
+      password: "password123",
+    }));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json).toEqual({ error: "token_already_used" });
+    expect(mockUserUpdate).not.toHaveBeenCalled();
   });
 
   it("updates password and marks reset token used on success", async () => {
@@ -162,9 +199,6 @@ describe("/api/auth/reset-password route", () => {
       usedAt: null,
       expiresAt: new Date("2026-03-02T06:00:00.000Z"),
     });
-    mockUserUpdate.mockResolvedValue({ id: "user_1" });
-    mockPasswordResetTokenUpdate.mockResolvedValue({ id: "token_1" });
-    mockTransaction.mockResolvedValue([]);
 
     const response = await POST(makeJsonRequest({
       token: " reset_token ",
@@ -175,7 +209,7 @@ describe("/api/auth/reset-password route", () => {
     expect(response.status).toBe(200);
     expect(json).toEqual({ ok: true });
     expect(mockUserUpdate).toHaveBeenCalledTimes(1);
-    expect(mockPasswordResetTokenUpdate).toHaveBeenCalledTimes(1);
+    expect(mockPasswordResetTokenUpdateMany).toHaveBeenCalledTimes(2);
 
     const userUpdateCall = mockUserUpdate.mock.calls[0]?.[0] as {
       where: { id: string };
@@ -185,15 +219,25 @@ describe("/api/auth/reset-password route", () => {
     expect(userUpdateCall.data.passwordHash.startsWith("pbkdf2_sha256$")).toBe(true);
     expect(userUpdateCall.data.lastSeenAt).toEqual(now);
 
-    const tokenUpdateCall = mockPasswordResetTokenUpdate.mock.calls[0]?.[0] as {
-      where: { id: string };
+    const claimCall = mockPasswordResetTokenUpdateMany.mock.calls[0]?.[0] as {
+      where: { id: string; usedAt: null; expiresAt: { gt: Date } };
       data: { usedAt: Date };
     };
-    expect(tokenUpdateCall.where).toEqual({ id: "token_1" });
-    expect(tokenUpdateCall.data.usedAt).toEqual(now);
+    expect(claimCall.where).toEqual({
+      id: "token_1",
+      usedAt: null,
+      expiresAt: { gt: now },
+    });
+    expect(claimCall.data.usedAt).toEqual(now);
 
-    expect(mockTransaction).toHaveBeenCalledTimes(1);
-    const transactionPayload = mockTransaction.mock.calls[0]?.[0] as unknown[];
-    expect(transactionPayload).toHaveLength(2);
+    const invalidateCall = mockPasswordResetTokenUpdateMany.mock.calls[1]?.[0] as {
+      where: { userId: string; usedAt: null };
+      data: { usedAt: Date };
+    };
+    expect(invalidateCall.where).toEqual({
+      userId: "user_1",
+      usedAt: null,
+    });
+    expect(invalidateCall.data.usedAt).toEqual(now);
   });
 });
