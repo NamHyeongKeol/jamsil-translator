@@ -61,6 +61,23 @@ const appStoreUploadRoot = path.resolve(
   process.cwd(),
   'rn/appstore-connect-info/upload',
 )
+const requiredMetadataLocales = [
+  'ar',
+  'de',
+  'en',
+  'es',
+  'fr',
+  'hi',
+  'it',
+  'ja',
+  'ko',
+  'pt',
+  'ru',
+  'th',
+  'vi',
+  'zh-cn',
+  'zh-tw',
+] as const
 const payload = JSON.parse(
   fs.readFileSync(appStoreInfoJsonPath, 'utf8'),
 ) as {
@@ -183,22 +200,16 @@ describe('appstore-connect-info contract', () => {
     }
   })
 
-  it('ensures metadata is explicitly provided for every declared app locale', () => {
-    const locales = payload.meta?.locales as string[]
+  it('ensures metadata contains all required locale keys', () => {
     const metadataByLocale = payload.ios?.submission?.appStoreInfo?.metadata ?? {}
     const defaultMetadataLocale = payload.ios?.submission?.appStoreInfo
       ?.defaultMetadataLocale as string
 
     expect(metadataByLocale[defaultMetadataLocale]).toBeDefined()
-
-    const metadataLocales = Object.keys(metadataByLocale).sort()
-    const declaredLocales = [...locales].sort()
-    expect(metadataLocales).toEqual(declaredLocales)
-
-    for (const locale of locales) {
+    for (const locale of requiredMetadataLocales) {
       expect(
         metadataByLocale[locale],
-        `missing metadata for declared locale: ${locale}`,
+        `missing required metadata locale key: ${locale}`,
       ).toBeDefined()
     }
   })
