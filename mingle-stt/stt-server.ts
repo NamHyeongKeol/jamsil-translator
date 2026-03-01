@@ -684,7 +684,23 @@ wss.on('connection', (clientWs) => {
                     const rawSonioxMessage = event.data.toString();
                     const msg = JSON.parse(rawSonioxMessage);
                     if (SHOULD_LOG_SONIOX_RAW_JOINED_TEXT) {
-                        appendSonioxTokenTextLine(rawSonioxMessage);
+                        const logTokens = Array.isArray(msg.tokens)
+                            ? (msg.tokens as Array<{ text?: unknown }>)
+                            : [];
+                        if (logTokens.length > 0) {
+                            const tokenLine = logTokens
+                                .map((token) => {
+                                    const tokenText = typeof token.text === 'string' ? token.text : '';
+                                    if (!tokenText) return '';
+                                    return tokenText
+                                        .replace(/<\/?end>/gi, '<end>')
+                                        .replace(/<\/?fin>/gi, '<fin>');
+                                })
+                                .join('');
+                            if (tokenLine) {
+                                appendSonioxTokenTextLine(tokenLine);
+                            }
+                        }
                     }
 
                     if (msg.error_code) {
