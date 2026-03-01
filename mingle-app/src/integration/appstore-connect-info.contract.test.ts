@@ -183,7 +183,7 @@ describe('appstore-connect-info contract', () => {
     }
   })
 
-  it('ensures each declared app locale resolves metadata via own key or default locale', () => {
+  it('ensures metadata is explicitly provided for every declared app locale', () => {
     const locales = payload.meta?.locales as string[]
     const metadataByLocale = payload.ios?.submission?.appStoreInfo?.metadata ?? {}
     const defaultMetadataLocale = payload.ios?.submission?.appStoreInfo
@@ -191,11 +191,14 @@ describe('appstore-connect-info contract', () => {
 
     expect(metadataByLocale[defaultMetadataLocale]).toBeDefined()
 
+    const metadataLocales = Object.keys(metadataByLocale).sort()
+    const declaredLocales = [...locales].sort()
+    expect(metadataLocales).toEqual(declaredLocales)
+
     for (const locale of locales) {
-      const effectiveMetadata = metadataByLocale[locale] ?? metadataByLocale[defaultMetadataLocale]
       expect(
-        effectiveMetadata,
-        `missing metadata for declared locale: ${locale} and default fallback`,
+        metadataByLocale[locale],
+        `missing metadata for declared locale: ${locale}`,
       ).toBeDefined()
     }
   })
