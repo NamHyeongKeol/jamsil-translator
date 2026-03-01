@@ -183,10 +183,14 @@ function snapBoundaryForwardInsideAsciiWord(text: string, boundary: number): num
     if (boundary <= 0 || boundary >= text.length) return boundary;
     const prevChar = text[boundary - 1] ?? '';
     const currChar = text[boundary] ?? '';
-    const isAsciiWordChar = (c: string): boolean => /[A-Za-z0-9']/u.test(c);
-    if (!isAsciiWordChar(prevChar) || !isAsciiWordChar(currChar)) return boundary;
+
+    // 경계가 이미 공백 위치라면 스냅 불필요
+    if (prevChar === ' ' || currChar === ' ') return boundary;
+
+    // 경계가 단어 중간에 걸린 경우 — 다음 공백(혹은 끝)까지 forward snap
+    // 이렇게 하면 한국어/CJK 단어도 중간에서 잘리지 않는다
     let snapped = boundary;
-    while (snapped < text.length && isAsciiWordChar(text[snapped]!)) {
+    while (snapped < text.length && text[snapped] !== ' ') {
         snapped += 1;
     }
     return snapped;
