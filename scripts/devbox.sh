@@ -123,6 +123,7 @@ Usage:
   scripts/devbox gateway [--openclaw-root PATH] [--mode dev|run] [--]
   scripts/devbox ios-native-build [--ios-configuration Debug|Release] [--ios-coredevice-id ID]
   scripts/devbox ios-native-uninstall [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-coredevice-id ID] [--bundle-id ID]
+  scripts/devbox ios-appstore-sync-metadata [--json PATH] [--api-key-json PATH] [--app-id BUNDLE_ID] [--dry-run] [--no-fallback]
   scripts/devbox ios-rn-ipa [--ios-configuration Debug|Release] [--device-app-env dev|prod] [--site-url URL] [--ws-url URL] [--archive-path PATH] [--export-path PATH] [--export-options-plist PATH] [--export-method app-store-connect|release-testing|debugging|enterprise|app-store|ad-hoc|development] [--team-id TEAM_ID] [--allow-provisioning-updates|--no-allow-provisioning-updates] [--skip-export] [--dry-run]
   scripts/devbox ios-rn-ipa-prod [ios-rn-ipa options...]
   scripts/devbox mobile [--profile local|device] [--host HOST] [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod] [--tunnel-provider ngrok|cloudflare] [--site-url URL] [--ws-url URL]
@@ -139,6 +140,7 @@ Commands:
   gateway      Run OpenClaw gateway from configured openclaw root.
   ios-native-build Build mingle-ios only (no install).
   ios-native-uninstall Uninstall mingle-ios app from simulator/device.
+  ios-appstore-sync-metadata Sync App Store Connect metadata from appstore-connect-info.i18n.json.
   ios-rn-ipa   Archive/export RN iOS app to .xcarchive/.ipa for App Store/TestFlight.
   ios-rn-ipa-prod Same as ios-rn-ipa, defaulting to --device-app-env prod.
   mobile       Build/install RN/native iOS and Android apps (device/simulator).
@@ -3225,6 +3227,271 @@ EOF
   log "next: Xcode Organizer -> Distribute App -> App Store Connect -> Upload"
 }
 
+cmd_ios_appstore_sync_metadata() {
+  local appstore_connect_info_root="${APPSTORE_CONNECT_INFO_ROOT:-$ROOT_DIR/mingle-app/rn/appstore-connect-info}"
+  local default_copy_json="$appstore_connect_info_root/appstore-connect-info.i18n.json"
+  local legacy_copy_json="$ROOT_DIR/mingle-app/rn/appstore-media/copy/screenshot-copy.i18n.json"
+  local copy_json="${COPY_JSON:-$default_copy_json}"
+  local api_key_json="${API_KEY_JSON:-/tmp/asc_api_key.json}"
+  local app_identifier="${APP_IDENTIFIER:-com.minglelabs.mingle.rn}"
+  local dry_run="false"
+  local no_fallback="false"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --json)
+        copy_json="${2:-}"
+        shift 2
+        ;;
+      --api-key-json)
+        api_key_json="${2:-}"
+        shift 2
+        ;;
+      --app-id)
+        app_identifier="${2:-}"
+        shift 2
+        ;;
+      --dry-run)
+        dry_run="true"
+        shift
+        ;;
+      --no-fallback)
+        no_fallback="true"
+        shift
+        ;;
+      -h|--help)
+        cat <<EOF
+Usage: scripts/devbox ios-appstore-sync-metadata [options]
+
+Options:
+  --json <path>           i18n JSON path (default: $copy_json)
+  --api-key-json <path>   App Store Connect API key JSON path (default: $api_key_json)
+  --app-id <bundle-id>    App bundle identifier (default: $app_identifier)
+  --dry-run               Print planned updates only (no ASC write)
+  --no-fallback           Do not fallback metadata locale when target locale is missing
+  -h, --help              Show help
+EOF
+        return 0
+        ;;
+      *)
+        die "unknown option for ios-appstore-sync-metadata: $1"
+        ;;
+    esac
+  done
+
+  if [[ ! -f "$copy_json" && "$copy_json" == "$default_copy_json" && -f "$legacy_copy_json" ]]; then
+    copy_json="$legacy_copy_json"
+  fi
+
+  [[ -f "$copy_json" ]] || die "missing JSON: $copy_json"
+  [[ -f "$api_key_json" ]] || die "missing API key JSON: $api_key_json"
+  require_cmd ruby
+
+  log "syncing App Store Connect metadata from: $copy_json"
+  log "target app id: $app_identifier (dry_run=$dry_run)"
+
+  PATH="/opt/homebrew/opt/ruby/bin:/opt/homebrew/Cellar/fastlane/2.232.2/libexec/bin:$PATH" \
+  GEM_HOME="${FASTLANE_GEM_HOME:-$HOME/.local/share/fastlane/4.0.0}" \
+  GEM_PATH="${FASTLANE_GEM_HOME:-$HOME/.local/share/fastlane/4.0.0}:/opt/homebrew/Cellar/fastlane/2.232.2/libexec" \
+  COPY_JSON="$copy_json" API_KEY_JSON="$api_key_json" APP_IDENTIFIER="$app_identifier" DRY_RUN="$dry_run" NO_FALLBACK="$no_fallback" \
+  ruby - <<'RUBY'
+require 'json'
+require 'spaceship'
+
+def presence(value)
+  return nil if value.nil?
+  if value.is_a?(String)
+    text = value.strip
+    return nil if text.empty?
+    return text
+  end
+  value
+end
+
+copy_json = ENV.fetch('COPY_JSON')
+api_key_json = ENV.fetch('API_KEY_JSON')
+app_identifier = ENV.fetch('APP_IDENTIFIER')
+dry_run = ENV.fetch('DRY_RUN') == 'true'
+no_fallback = ENV.fetch('NO_FALLBACK') == 'true'
+
+payload = JSON.parse(File.read(copy_json))
+
+ios = payload['ios'].is_a?(Hash) ? payload['ios'] : {}
+general_info = ios['generalInfo'].is_a?(Hash) ? ios['generalInfo'] : {}
+app_info = general_info['appInfo'].is_a?(Hash) ? general_info['appInfo'] : {}
+submission = ios['submission'].is_a?(Hash) ? ios['submission'] : {}
+submission_app_store_info = submission['appStoreInfo'].is_a?(Hash) ? submission['appStoreInfo'] : {}
+
+legacy_title_map = payload['title'].is_a?(Hash) ? payload['title'] : {}
+legacy_subtitle_map = payload['subtitle'].is_a?(Hash) ? payload['subtitle'] : {}
+legacy_app_store = payload['appStore'].is_a?(Hash) ? payload['appStore'] : {}
+
+title_map = app_info['title'].is_a?(Hash) ? app_info['title'] : legacy_title_map
+subtitle_map = app_info['subtitle'].is_a?(Hash) ? app_info['subtitle'] : legacy_subtitle_map
+metadata_map = submission_app_store_info['metadata'].is_a?(Hash) ? submission_app_store_info['metadata'] : (legacy_app_store['metadata'].is_a?(Hash) ? legacy_app_store['metadata'] : {})
+default_metadata_locale = no_fallback ? nil : (
+  presence(submission_app_store_info['defaultMetadataLocale']) ||
+  presence(legacy_app_store['defaultMetadataLocale']) ||
+  'en'
+)
+expected_version = presence(submission['version']) || presence(legacy_app_store['version'])
+copyright_value = presence(submission['copyright']) || presence(legacy_app_store['copyright'])
+
+api = JSON.parse(File.read(api_key_json))
+Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+  key_id: api.fetch('key_id'),
+  issuer_id: api.fetch('issuer_id'),
+  key: api.fetch('key'),
+  duration: 1200,
+  in_house: api['in_house']
+)
+
+def json_locale_key_for_asc(locale)
+  normalized = locale.to_s.strip.downcase
+  return '' if normalized.empty?
+
+  explicit = {
+    'en-us' => 'en',
+    'ko' => 'ko',
+    'ja' => 'ja',
+    'zh-hans' => 'zh-cn',
+    'zh-hant' => 'zh-tw',
+    'de-de' => 'de',
+    'es-es' => 'es',
+    'fr-fr' => 'fr',
+    'fr-ca' => 'fr',
+    'it' => 'it',
+    'pt-br' => 'pt',
+    'pt-pt' => 'pt',
+    'ru' => 'ru',
+    'ar-sa' => 'ar',
+    'hi' => 'hi',
+    'th' => 'th',
+    'vi' => 'vi'
+  }
+  return explicit.fetch(normalized, normalized.split('-').first.to_s)
+end
+
+client = Spaceship::ConnectAPI.client.tunes_request_client
+app = Spaceship::ConnectAPI::App.find(app_identifier)
+raise "app not found: #{app_identifier}" unless app
+
+version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+raise "editable iOS version not found for #{app_identifier}" unless version
+
+if expected_version && version.version_string != expected_version
+  raise "editable version mismatch: expected #{expected_version}, actual #{version.version_string}"
+end
+
+version_loc_updates = 0
+app_info_loc_updates = 0
+
+version.get_app_store_version_localizations.each do |loc|
+  asc_locale = loc.locale
+  locale_key = json_locale_key_for_asc(asc_locale)
+  metadata = metadata_map[locale_key]
+  if metadata.nil? && default_metadata_locale
+    metadata = metadata_map[default_metadata_locale]
+  end
+  metadata ||= {}
+
+  attributes = {}
+  if metadata.key?('promotionalText')
+    attributes[:promotionalText] = metadata['promotionalText'].to_s
+  end
+  if metadata.key?('description')
+    attributes[:description] = metadata['description'].to_s
+  end
+  if metadata.key?('keywords')
+    raw_keywords = metadata['keywords']
+    attributes[:keywords] = raw_keywords.is_a?(Array) ? raw_keywords.map(&:to_s).join(',') : raw_keywords.to_s
+  end
+  if metadata.key?('supportUrl')
+    attributes[:supportUrl] = metadata['supportUrl'].to_s
+  end
+  if metadata.key?('marketingUrl')
+    attributes[:marketingUrl] = metadata['marketingUrl'].to_s
+  end
+
+  attributes.delete_if { |_k, v| v.nil? }
+  next if attributes.empty?
+
+  puts "[version-loc] #{asc_locale} <- #{locale_key} #{attributes.keys.join(',')}"
+  unless dry_run
+    client.patch(
+      "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/#{loc.id}",
+      {
+        data: {
+          type: 'appStoreVersionLocalizations',
+          id: loc.id,
+          attributes: attributes
+        }
+      }
+    )
+  end
+  version_loc_updates += 1
+end
+
+app_infos = client.get("https://api.appstoreconnect.apple.com/v1/apps/#{app.id}/appInfos").body['data'] || []
+app_info_id = app_infos.first&.dig('id')
+raise "appInfo not found for app #{app.id}" unless app_info_id
+
+app_info_loc_refs = client.get(
+  "https://api.appstoreconnect.apple.com/v1/appInfos/#{app_info_id}/relationships/appInfoLocalizations"
+).body['data'] || []
+
+app_info_loc_refs.each do |ref|
+  loc_id = ref['id']
+  instance = client.get("https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/#{loc_id}").body['data']
+  asc_locale = instance.dig('attributes', 'locale').to_s
+  locale_key = json_locale_key_for_asc(asc_locale)
+
+  name = title_map[locale_key] || title_map['en']
+  subtitle = subtitle_map[locale_key] || subtitle_map['en']
+
+  attributes = {}
+  attributes[:name] = name if name
+  attributes[:subtitle] = subtitle if subtitle
+  next if attributes.empty?
+
+  puts "[app-info-loc] #{asc_locale} <- #{locale_key} #{attributes.keys.join(',')}"
+  unless dry_run
+    client.patch(
+      "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/#{loc_id}",
+      {
+        data: {
+          type: 'appInfoLocalizations',
+          id: loc_id,
+          attributes: attributes
+        }
+      }
+    )
+  end
+  app_info_loc_updates += 1
+end
+
+if copyright_value
+  puts "[version] set copyright on #{version.version_string}"
+  unless dry_run
+    client.patch(
+      "https://api.appstoreconnect.apple.com/v1/appStoreVersions/#{version.id}",
+      {
+        data: {
+          type: 'appStoreVersions',
+          id: version.id,
+          attributes: {
+            copyright: copyright_value
+          }
+        }
+      }
+    )
+  end
+end
+
+puts "done: version_localizations=#{version_loc_updates}, app_info_localizations=#{app_info_loc_updates}, dry_run=#{dry_run}"
+RUBY
+}
+
 cmd_mobile() {
   require_devbox_env
   require_cmd pnpm
@@ -4152,6 +4419,7 @@ main() {
     gateway|openclaw-gateway) cmd_gateway "$@" ;;
     ios-native-build|ios-build-native) cmd_ios_native_build "$@" ;;
     ios-native-uninstall|ios-uninstall-native|ios-native-remove) cmd_ios_native_uninstall "$@" ;;
+    ios-appstore-sync-metadata|ios-sync-appstore-metadata) cmd_ios_appstore_sync_metadata "$@" ;;
     ios-rn-ipa|ios-build-rn-ipa) cmd_ios_rn_ipa "$@" ;;
     ios-rn-ipa-prod|ios-build-rn-ipa-prod) cmd_ios_rn_ipa --device-app-env prod "$@" ;;
     mobile) cmd_mobile "$@" ;;
