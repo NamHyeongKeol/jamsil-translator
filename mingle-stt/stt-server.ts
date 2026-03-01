@@ -31,13 +31,13 @@ const SONIOX_RAW_TOKEN_LOG_PATH = process.env.SONIOX_RAW_TOKEN_LOG_PATH || '/tmp
 let sonioxRawTokenLogDirReady = false;
 let sonioxRawTokenLogWriteFailed = false;
 
-const appendSonioxRawTokenLog = (entry: Record<string, unknown>) => {
+const appendSonioxRawTokenLogLine = (line: string) => {
     try {
         if (!sonioxRawTokenLogDirReady) {
             mkdirSync(dirname(SONIOX_RAW_TOKEN_LOG_PATH), { recursive: true });
             sonioxRawTokenLogDirReady = true;
         }
-        appendFileSync(SONIOX_RAW_TOKEN_LOG_PATH, `${JSON.stringify(entry)}\n`, 'utf8');
+        appendFileSync(SONIOX_RAW_TOKEN_LOG_PATH, `${line}\n`, 'utf8');
     } catch (error) {
         if (!sonioxRawTokenLogWriteFailed) {
             sonioxRawTokenLogWriteFailed = true;
@@ -663,7 +663,6 @@ wss.on('connection', (clientWs) => {
             let latestNonFinalIsProvisionalCarry = false;
             let lastFinalizedEndMs = -1;
             let detectedLang = config.languages[0] || 'en';
-            let sonioxFrameSeq = 0;
             sonioxStopRequested = false;
             const stripEndpointMarkers = (text: string): string => text.replace(/<\/?(?:end|fin)>/ig, '');
             const extractFirstEndpointMarker = (text: string): string => {
@@ -834,18 +833,10 @@ wss.on('connection', (clientWs) => {
                     if (tokens.length === 0) {
                         return;
                     }
-                    sonioxFrameSeq += 1;
                     const rawJoinedTokenText = tokens
                         .map((token) => (typeof token.text === 'string' ? token.text : ''))
                         .join('');
-                    appendSonioxRawTokenLog({
-                        timestamp: new Date().toISOString(),
-                        connection_id: connId,
-                        frame_seq: sonioxFrameSeq,
-                        raw_joined_token_text: rawJoinedTokenText,
-                        raw_tokens: msg.tokens,
-                        raw_message: rawSonioxMessage,
-                    });
+                    appendSonioxRawTokenLogLine(rawJoinedTokenText);
 
                     const previousFinalizedText = finalizedText;
                     const previousNonFinalText = latestNonFinalText;
