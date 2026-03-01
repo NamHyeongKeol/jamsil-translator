@@ -229,8 +229,8 @@
         ],
         "vi": [
           {
-            "line1": "Rào cản ngôn ngữ đã hết",
-            "line2": "Chỉ cần tập trung hội thoại"
+            "line1": "Hết rào cản ngôn ngữ",
+            "line2": "Chỉ tập trung hội thoại"
           },
           {
             "line1": "Hơn 3 ngôn ngữ",
@@ -365,8 +365,8 @@
         ],
         "fr": [
           {
-            "line1": "Fini",
-            "line2": "les barrières linguistiques"
+            "line1": "Fini les barrières",
+            "line2": "de langue"
           },
           {
             "line1": "3+ langues",
