@@ -30,10 +30,10 @@ Date: 2026-02-21
     - auto-generate command:
       - `scripts/ios-appstore-media.sh --no-build`
     - output directories:
-      - `mingle-app/rn/appstore-media/generated/final/iphone-69`
-      - `mingle-app/rn/appstore-media/generated/final/ipad-13`
-      - `mingle-app/rn/appstore-media/generated/preview`
-      - upload root: `mingle-app/rn/appstore-media/upload/en-US`
+      - `mingle-app/rn/appstore-connect-info/generated/final/iphone-69`
+      - `mingle-app/rn/appstore-connect-info/generated/final/ipad-13`
+      - `mingle-app/rn/appstore-connect-info/generated/preview`
+      - upload root: `mingle-app/rn/appstore-connect-info/upload/en-US`
 - [ ] Submit TestFlight build and run smoke QA on real devices
 
 ## 3. Recommended pre-submit smoke checks
