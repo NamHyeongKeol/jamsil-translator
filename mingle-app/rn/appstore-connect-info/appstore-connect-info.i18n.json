@@ -257,8 +257,8 @@
             "line2": "Chuyển app tự do"
           },
           {
-            "line1": "Tự động nhận diện tiếng",
-            "line2": "Tự động đổi ngôn ngữ"
+            "line1": "Tự động nhận diện",
+            "line2": "Tự động chuyển ngôn ngữ"
           }
         ],
         "hi": [
@@ -355,7 +355,7 @@
             "line2": "interpretación en vivo"
           },
           {
-            "line1": "Corre en segundo plano",
+            "line1": "En segundo plano",
             "line2": "cambia app libremente"
           },
           {
@@ -389,7 +389,7 @@
             "line2": "interprétation en direct"
           },
           {
-            "line1": "Tourne en arrière-plan",
+            "line1": "En arrière-plan",
             "line2": "changez d’app librement"
           },
           {
@@ -457,7 +457,7 @@
             "line2": "interpretação ao vivo"
           },
           {
-            "line1": "Roda em segundo plano",
+            "line1": "Em segundo plano",
             "line2": "troque de app livremente"
           },
           {
@@ -479,7 +479,7 @@
             "line2": "живые субтитры"
           },
           {
-            "line1": "Аудио из приложений",
+            "line1": "Звук из приложений",
             "line2": "живые субтитры"
           },
           {
