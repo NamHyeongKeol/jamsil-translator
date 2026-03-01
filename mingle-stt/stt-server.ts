@@ -55,7 +55,7 @@ try {
 }
 
 const appendSonioxTokenTextLine = (text: string) => {
-    sonioxInboundLogStream?.write(`${text}\n`);
+    // sonioxInboundLogStream?.write(`${text}\n`);
 };
 
 const server = createServer();
