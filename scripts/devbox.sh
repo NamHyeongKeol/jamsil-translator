@@ -3732,8 +3732,21 @@ $(ngrok_plan_capacity_hint)"
   fi
 
   local stt_raw_log_file="$ROOT_DIR/.devbox-logs/stt-raw.log"
+  local shared_stt_raw_log_file=""
+  local git_common_dir=""
+  local repo_root_from_common=""
   mkdir -p "$(dirname "$stt_raw_log_file")"
   : > "$stt_raw_log_file"
+  if git_common_dir="$(git -C "$ROOT_DIR" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+    if repo_root_from_common="$(cd "$git_common_dir/.." 2>/dev/null && pwd -P)"; then
+      shared_stt_raw_log_file="$repo_root_from_common/.devbox-logs/stt-raw.log"
+      if [[ "$shared_stt_raw_log_file" != "$stt_raw_log_file" ]]; then
+        mkdir -p "$(dirname "$shared_stt_raw_log_file")"
+        ln -sfn "$stt_raw_log_file" "$shared_stt_raw_log_file"
+        log "stt raw token symlink: $shared_stt_raw_log_file -> $stt_raw_log_file"
+      fi
+    fi
+  fi
   log "stt raw token log: $stt_raw_log_file"
   log "tail stt raw log: tail -f $stt_raw_log_file"
 
