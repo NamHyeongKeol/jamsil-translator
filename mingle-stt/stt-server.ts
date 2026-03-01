@@ -661,6 +661,14 @@ wss.on('connection', (clientWs) => {
                 try {
                     const rawSonioxMessage = event.data.toString();
                     const msg = JSON.parse(rawSonioxMessage);
+                    const rawJoinedTokenText = (msg as { raw_joined_token_text?: unknown }).raw_joined_token_text;
+                    if (rawJoinedTokenText !== undefined) {
+                        if (typeof rawJoinedTokenText === 'string') {
+                            console.log(rawJoinedTokenText);
+                        } else {
+                            console.log(JSON.stringify(rawJoinedTokenText));
+                        }
+                    }
 
                     if (msg.error_code) {
                         console.error(`[Soniox] Error: ${msg.error_code} - ${msg.error_message}`);
