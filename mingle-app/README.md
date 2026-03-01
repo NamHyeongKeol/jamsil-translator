@@ -277,6 +277,7 @@ If you apply SQL manually to remote, use:
 - `prisma/migrations/20260227211000_add_client_version_policy_history/migration.sql`
 - `prisma/migrations/20260227221000_add_native_auth_pending_results/migration.sql`
 - `prisma/migrations/20260227232000_add_client_platform_to_version_policy_history/migration.sql`
+- `prisma/migrations/20260302051000_add_email_password_auth_and_reset_tokens/migration.sql`
 
 ## React Native (mingle-app/rn)
 

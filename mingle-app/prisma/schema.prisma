@@ -13,6 +13,7 @@ model User {
   externalUserId  String?  @unique @map("external_user_id")
   email           String?  @unique(map: "app_users_email_key")
   emailVerified   DateTime? @map("email_verified")
+  passwordHash    String?  @map("password_hash")
   name            String?
   image           String?
   latestIpAddress String?  @map("latest_ip_address")
@@ -38,6 +39,7 @@ model User {
   versionPoliciesCreated AppClientVersionPolicy[]
   accounts  Account[]
   sessions  Session[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([lastSeenAt], map: "app_users_last_seen_at_idx")
   @@map("app_users")
@@ -162,6 +164,22 @@ model VerificationToken {
 
   @@unique([identifier, token], map: "auth_verification_tokens_identifier_token_key")
   @@map("auth_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique(map: "app_password_reset_tokens_token_hash_key") @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt], map: "app_password_reset_tokens_user_expires_idx")
+  @@index([expiresAt], map: "app_password_reset_tokens_expires_at_idx")
+  @@map("app_password_reset_tokens")
 }
 
 model NativeAuthPendingResult {

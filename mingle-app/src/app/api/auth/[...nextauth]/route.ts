@@ -41,10 +41,23 @@ function resolveRouteAuthOptions(baseAuthOptions: NextAuthOptions, nextauth: str
   }
 
   const requestedProvider = summarizeText(nextauth?.[1] || "", 32).toLowerCase();
+  const providers = baseAuthOptions.providers || [];
+  const requestedProviderConfig = requestedProvider
+    ? providers.find((provider) => provider.id === requestedProvider)
+    : null;
+
+  // Programmatic sign-in for credentials providers (e.g. signIn("email-password"))
+  // requires the provider to remain available on signin action.
+  if (requestedProviderConfig?.type === "credentials") {
+    return {
+      ...baseAuthOptions,
+      providers: [requestedProviderConfig],
+    };
+  }
 
   // Keep built-in NextAuth sign-in page for OAuth providers only.
   // Force social provider order to Apple -> Google for consistent UX with native app.
-  let oauthOnlyProviders = (baseAuthOptions.providers || [])
+  let oauthOnlyProviders = providers
     .filter((provider) => provider.type !== "credentials")
     .slice()
     .sort((a, b) => {
