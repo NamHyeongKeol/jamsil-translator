@@ -154,6 +154,10 @@ Global Options:
                         Relative paths resolve from repository root.
                         auto -> .devbox-logs/devbox-<worktree>-<timestamp>.log
 
+Default Shortcut:
+  scripts/devbox up
+    == scripts/devbox --log-file auto up --profile device --tunnel-provider cloudflare --with-ios-install --ios-runtime rn
+
 Environment:
   DEVBOX_NGROK_WEB_DOMAIN  Optional fixed ngrok domain for devbox_web tunnel.
                            Example: abcdef.ngrok-free.app
@@ -3994,6 +3998,25 @@ $(ngrok_plan_capacity_hint)"
     return 0
   fi
 
+  local stt_raw_log_file="$ROOT_DIR/.devbox-logs/stt-raw.log"
+  local shared_stt_raw_log_file=""
+  local git_common_dir=""
+  local repo_root_from_common=""
+  mkdir -p "$(dirname "$stt_raw_log_file")"
+  : > "$stt_raw_log_file"
+  if git_common_dir="$(git -C "$ROOT_DIR" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+    if repo_root_from_common="$(cd "$git_common_dir/.." 2>/dev/null && pwd -P)"; then
+      shared_stt_raw_log_file="$repo_root_from_common/.devbox-logs/stt-raw.log"
+      if [[ "$shared_stt_raw_log_file" != "$stt_raw_log_file" ]]; then
+        mkdir -p "$(dirname "$shared_stt_raw_log_file")"
+        ln -sfn "$stt_raw_log_file" "$shared_stt_raw_log_file"
+        log "stt soniox inbound log symlink: $shared_stt_raw_log_file -> $stt_raw_log_file"
+      fi
+    fi
+  fi
+  log "stt soniox inbound log: $stt_raw_log_file"
+  log "tail stt soniox log: tail -f $stt_raw_log_file"
+
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
   (
     cd "$ROOT_DIR/mingle-stt"
@@ -4004,7 +4027,7 @@ $(ngrok_plan_capacity_hint)"
       . "$runtime_stt_env_file"
       set +a
     fi
-    PORT="$DEVBOX_STT_PORT" pnpm dev
+    PORT="$DEVBOX_STT_PORT" SONIOX_RAW_JOINED_TOKEN_LOG_FILE="$stt_raw_log_file" pnpm dev
   ) &
   pids+=("$!")
 
@@ -4409,6 +4432,22 @@ main() {
     set --
   fi
 
+  local auto_up_defaults=0
+  local -a auto_up_default_args=(
+    --profile device
+    --tunnel-provider cloudflare
+    --with-ios-install
+    --ios-runtime rn
+  )
+  if [[ "$cmd" == "up" && "$#" -eq 0 ]]; then
+    auto_up_defaults=1
+    if [[ -z "$log_file_option" ]]; then
+      DEVBOX_LOG_FILE="$(default_log_file_path)"
+      enable_log_capture "$DEVBOX_LOG_FILE"
+    fi
+    log "no options for 'up'; applying defaults: --profile device --tunnel-provider cloudflare --with-ios-install --ios-runtime rn"
+  fi
+
   case "$cmd" in
     init) cmd_init "$@" ;;
     bootstrap) cmd_bootstrap "$@" ;;
@@ -4423,7 +4462,13 @@ main() {
     ios-rn-ipa|ios-build-rn-ipa) cmd_ios_rn_ipa "$@" ;;
     ios-rn-ipa-prod|ios-build-rn-ipa-prod) cmd_ios_rn_ipa --device-app-env prod "$@" ;;
     mobile) cmd_mobile "$@" ;;
-    up) cmd_up "$@" ;;
+    up)
+      if [[ "$auto_up_defaults" -eq 1 ]]; then
+        cmd_up "${auto_up_default_args[@]}"
+      else
+        cmd_up "$@"
+      fi
+      ;;
     down) cmd_down "$@" ;;
     test|test-live) cmd_test "$@" ;;
     status) cmd_status "$@" ;;
