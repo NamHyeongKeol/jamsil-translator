@@ -31,9 +31,35 @@ function isNonEmptyKeywords(value: unknown): boolean {
   )
 }
 
+function mapUploadLocaleToJsonLocale(uploadLocaleDirName: string): string {
+  const normalized = uploadLocaleDirName.trim().toLowerCase()
+  if (normalized.length === 0) {
+    return normalized
+  }
+
+  const explicit: Record<string, string> = {
+    'en-us': 'en',
+    'zh-hans': 'zh-cn',
+    'zh-hant': 'zh-tw',
+    'de-de': 'de',
+    'es-es': 'es',
+    'fr-fr': 'fr',
+    'fr-ca': 'fr',
+    'pt-br': 'pt',
+    'pt-pt': 'pt',
+    'ar-sa': 'ar',
+  }
+
+  return explicit[normalized] ?? normalized.split('-')[0]
+}
+
 const appStoreInfoJsonPath = path.resolve(
   process.cwd(),
   'rn/appstore-connect-info/appstore-connect-info.i18n.json',
+)
+const appStoreUploadRoot = path.resolve(
+  process.cwd(),
+  'rn/appstore-connect-info/upload',
 )
 const payload = JSON.parse(
   fs.readFileSync(appStoreInfoJsonPath, 'utf8'),
@@ -171,6 +197,59 @@ describe('appstore-connect-info contract', () => {
         effectiveMetadata,
         `missing metadata for declared locale: ${locale} and default fallback`,
       ).toBeDefined()
+    }
+  })
+
+  it('validates media packages only for locales currently present in upload directory', () => {
+    const totalShots = payload.meta?.shots as number
+    const screenshots = payload.ios?.submission?.screenshots ?? {}
+    const uploadLocaleDirs = fs
+      .readdirSync(appStoreUploadRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort()
+
+    expect(uploadLocaleDirs.length).toBeGreaterThan(0)
+
+    for (const uploadLocale of uploadLocaleDirs) {
+      const mappedLocale = mapUploadLocaleToJsonLocale(uploadLocale)
+      const localeShots = screenshots[mappedLocale]
+
+      expect(
+        localeShots,
+        `missing screenshot copy for upload locale: ${uploadLocale} (mapped: ${mappedLocale})`,
+      ).toBeDefined()
+      expect(
+        localeShots?.length,
+        `unexpected screenshot count for upload locale: ${uploadLocale}`,
+      ).toBe(totalShots)
+
+      const files = fs
+        .readdirSync(path.join(appStoreUploadRoot, uploadLocale), { withFileTypes: true })
+        .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
+        .map((entry) => entry.name)
+
+      const mediaFiles = files.filter((fileName) =>
+        /\.(png|jpg|jpeg|mp4|mov)$/i.test(fileName),
+      )
+      expect(
+        mediaFiles.length,
+        `insufficient media file count for upload locale: ${uploadLocale}`,
+      ).toBeGreaterThanOrEqual(totalShots)
+
+      const shotIndexes = new Set(
+        mediaFiles
+          .map((fileName) => fileName.match(/^(\d{2})-/)?.[1])
+          .filter((value): value is string => Boolean(value)),
+      )
+
+      for (let index = 1; index <= totalShots; index += 1) {
+        const key = String(index).padStart(2, '0')
+        expect(
+          shotIndexes.has(key),
+          `missing shot index ${key} in upload locale: ${uploadLocale}`,
+        ).toBe(true)
+      }
     }
   })
 })
