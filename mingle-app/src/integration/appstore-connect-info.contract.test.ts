@@ -232,10 +232,20 @@ describe('appstore-connect-info contract', () => {
       const mediaFiles = files.filter((fileName) =>
         /\.(png|jpg|jpeg|mp4|mov)$/i.test(fileName),
       )
+      const imageFiles = mediaFiles.filter((fileName) => /\.(png|jpg|jpeg)$/i.test(fileName))
+
+      expect(
+        files.length,
+        `upload locale folder has no files: ${uploadLocale}`,
+      ).toBeGreaterThan(0)
       expect(
         mediaFiles.length,
         `insufficient media file count for upload locale: ${uploadLocale}`,
       ).toBeGreaterThanOrEqual(totalShots)
+      expect(
+        imageFiles.length,
+        `missing screenshot image files for upload locale: ${uploadLocale}`,
+      ).toBeGreaterThan(0)
 
       const shotIndexes = new Set(
         mediaFiles
