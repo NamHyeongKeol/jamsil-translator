@@ -152,6 +152,10 @@ Global Options:
                         Relative paths resolve from repository root.
                         auto -> .devbox-logs/devbox-<worktree>-<timestamp>.log
 
+Default Shortcut:
+  scripts/devbox up
+    == scripts/devbox --log-file auto up --profile device --tunnel-provider cloudflare --with-ios-install --ios-runtime rn
+
 Environment:
   DEVBOX_NGROK_WEB_DOMAIN  Optional fixed ngrok domain for devbox_web tunnel.
                            Example: abcdef.ngrok-free.app
@@ -4142,6 +4146,22 @@ main() {
     set --
   fi
 
+  local auto_up_defaults=0
+  local -a auto_up_default_args=(
+    --profile device
+    --tunnel-provider cloudflare
+    --with-ios-install
+    --ios-runtime rn
+  )
+  if [[ "$cmd" == "up" && "$#" -eq 0 ]]; then
+    auto_up_defaults=1
+    if [[ -z "$log_file_option" ]]; then
+      DEVBOX_LOG_FILE="$(default_log_file_path)"
+      enable_log_capture "$DEVBOX_LOG_FILE"
+    fi
+    log "no options for 'up'; applying defaults: --profile device --tunnel-provider cloudflare --with-ios-install --ios-runtime rn"
+  fi
+
   case "$cmd" in
     init) cmd_init "$@" ;;
     bootstrap) cmd_bootstrap "$@" ;;
@@ -4155,7 +4175,13 @@ main() {
     ios-rn-ipa|ios-build-rn-ipa) cmd_ios_rn_ipa "$@" ;;
     ios-rn-ipa-prod|ios-build-rn-ipa-prod) cmd_ios_rn_ipa --device-app-env prod "$@" ;;
     mobile) cmd_mobile "$@" ;;
-    up) cmd_up "$@" ;;
+    up)
+      if [[ "$auto_up_defaults" -eq 1 ]]; then
+        cmd_up "${auto_up_default_args[@]}"
+      else
+        cmd_up "$@"
+      fi
+      ;;
     down) cmd_down "$@" ;;
     test|test-live) cmd_test "$@" ;;
     status) cmd_status "$@" ;;
