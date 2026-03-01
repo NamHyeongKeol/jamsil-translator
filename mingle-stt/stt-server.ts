@@ -36,7 +36,6 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
 const SONIOX_SEGMENTATION_STRATEGY_ID = readSegmentationStrategyId();
-const SHOULD_LOG_SONIOX_RAW_JOINED_TEXT = SONIOX_SEGMENTATION_STRATEGY_ID === 'fin';
 const SONIOX_RAW_JOINED_TOKEN_LOG_FILE = (() => {
     const configuredPath = (process.env.SONIOX_RAW_JOINED_TOKEN_LOG_FILE || '').trim();
     if (configuredPath) return resolve(configuredPath);
@@ -683,23 +682,21 @@ wss.on('connection', (clientWs) => {
                 try {
                     const rawSonioxMessage = event.data.toString();
                     const msg = JSON.parse(rawSonioxMessage);
-                    if (SHOULD_LOG_SONIOX_RAW_JOINED_TEXT) {
-                        const logTokens = Array.isArray(msg.tokens)
-                            ? (msg.tokens as Array<{ text?: unknown }>)
-                            : [];
-                        if (logTokens.length > 0) {
-                            const tokenLine = logTokens
-                                .map((token) => {
-                                    const tokenText = typeof token.text === 'string' ? token.text : '';
-                                    if (!tokenText) return '';
-                                    return tokenText
-                                        .replace(/<\/?end>/gi, '<end>')
-                                        .replace(/<\/?fin>/gi, '<fin>');
-                                })
-                                .join('');
-                            if (tokenLine) {
-                                appendSonioxTokenTextLine(tokenLine);
-                            }
+                    const logTokens = Array.isArray(msg.tokens)
+                        ? (msg.tokens as Array<{ text?: unknown }>)
+                        : [];
+                    if (logTokens.length > 0) {
+                        const tokenLine = logTokens
+                            .map((token) => {
+                                const tokenText = typeof token.text === 'string' ? token.text : '';
+                                if (!tokenText) return '';
+                                return tokenText
+                                    .replace(/<\/?end>/gi, '<end>')
+                                    .replace(/<\/?fin>/gi, '<fin>');
+                            })
+                            .join('');
+                        if (tokenLine) {
+                            appendSonioxTokenTextLine(tokenLine);
                         }
                     }
 
