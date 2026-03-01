@@ -199,11 +199,18 @@ function snapBoundaryForwardInsideAsciiWord(text: string, boundary: number): num
 export class SonioxEndpointStrategy implements SegmentationStrategy {
     readonly id: SegmentationStrategyId = 'end';
 
+    private readonly endpointDelayMs: number;
+
+    constructor(endpointDelayMs: number) {
+        // Soniox 허용 범위: 500~3000ms
+        this.endpointDelayMs = Math.max(500, Math.min(3000, endpointDelayMs));
+    }
+
     sonioxConfigOverrides(): Record<string, unknown> {
         return {
             enable_endpoint_detection: true,
             // 발화 종료 후 <end> 마커까지 최대 대기 시간. 허용 범위: 500~3000ms, 기본값 2000ms
-            max_endpoint_delay_ms: 500,
+            max_endpoint_delay_ms: this.endpointDelayMs,
         };
     }
 
@@ -396,7 +403,7 @@ export function createSegmentationStrategy(
 ): SegmentationStrategy {
     switch (id) {
         case 'end':
-            return new SonioxEndpointStrategy();
+            return new SonioxEndpointStrategy(opts.silenceMs);
         case 'llm':
             // Phase 2: LLM 전략 구현 전까지 fin으로 fallback
             console.warn('[stt-server] llm segmentation not yet implemented; using fin');
