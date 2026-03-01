@@ -3731,6 +3731,12 @@ $(ngrok_plan_capacity_hint)"
     return 0
   fi
 
+  local stt_raw_log_file="$ROOT_DIR/.devbox-logs/stt-raw.log"
+  mkdir -p "$(dirname "$stt_raw_log_file")"
+  : > "$stt_raw_log_file"
+  log "stt raw token log: $stt_raw_log_file"
+  log "tail stt raw log: tail -f $stt_raw_log_file"
+
   log "starting mingle-stt(port=$DEVBOX_STT_PORT) + mingle-app(port=$DEVBOX_WEB_PORT)"
   (
     cd "$ROOT_DIR/mingle-stt"
@@ -3741,7 +3747,7 @@ $(ngrok_plan_capacity_hint)"
       . "$runtime_stt_env_file"
       set +a
     fi
-    PORT="$DEVBOX_STT_PORT" pnpm dev
+    PORT="$DEVBOX_STT_PORT" SONIOX_RAW_JOINED_TOKEN_LOG_FILE="$stt_raw_log_file" pnpm dev
   ) &
   pids+=("$!")
 

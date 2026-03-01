@@ -1,6 +1,6 @@
 import { createServer } from 'http';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
+import { createWriteStream, existsSync, mkdirSync } from 'fs';
+import { dirname, resolve } from 'path';
 import { WebSocket, WebSocketServer } from 'ws';
 import fetch from 'node-fetch';
 import { config as loadDotenv } from 'dotenv';
@@ -36,6 +36,27 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
 const SONIOX_SEGMENTATION_STRATEGY_ID = readSegmentationStrategyId();
+const SONIOX_RAW_JOINED_TOKEN_LOG_FILE = (() => {
+    const configuredPath = (process.env.SONIOX_RAW_JOINED_TOKEN_LOG_FILE || '').trim();
+    if (configuredPath) return resolve(configuredPath);
+    return resolve(process.cwd(), '..', '.devbox-logs', 'stt-raw.log');
+})();
+let sonioxRawJoinedTokenLogStream: ReturnType<typeof createWriteStream> | null = null;
+try {
+    mkdirSync(dirname(SONIOX_RAW_JOINED_TOKEN_LOG_FILE), { recursive: true });
+    sonioxRawJoinedTokenLogStream = createWriteStream(SONIOX_RAW_JOINED_TOKEN_LOG_FILE, { flags: 'a' });
+    sonioxRawJoinedTokenLogStream.on('error', (error) => {
+        console.error(`Soniox raw token log stream error: ${error.message}`);
+    });
+} catch (error) {
+    console.error(
+        `Failed to initialize Soniox raw token log: ${error instanceof Error ? error.message : String(error)}`,
+    );
+}
+
+const appendSonioxRawJoinedTokenText = (text: string) => {
+    sonioxRawJoinedTokenLogStream?.write(`${text}\n`);
+};
 
 const server = createServer();
 const wss = new WebSocketServer({ server });
@@ -662,12 +683,8 @@ wss.on('connection', (clientWs) => {
                     const rawSonioxMessage = event.data.toString();
                     const msg = JSON.parse(rawSonioxMessage);
                     const rawJoinedTokenText = (msg as { raw_joined_token_text?: unknown }).raw_joined_token_text;
-                    if (rawJoinedTokenText !== undefined) {
-                        if (typeof rawJoinedTokenText === 'string') {
-                            console.log(rawJoinedTokenText);
-                        } else {
-                            console.log(JSON.stringify(rawJoinedTokenText));
-                        }
+                    if (typeof rawJoinedTokenText === 'string') {
+                        appendSonioxRawJoinedTokenText(rawJoinedTokenText);
                     }
 
                     if (msg.error_code) {
