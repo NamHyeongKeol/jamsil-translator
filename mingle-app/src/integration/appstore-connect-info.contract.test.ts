@@ -61,6 +61,25 @@ const appStoreUploadRoot = path.resolve(
   process.cwd(),
   'rn/appstore-connect-info/upload',
 )
+const requiredMetadataLocales = [
+  'ar',
+  'de',
+  'en',
+  'es',
+  'fr',
+  'hi',
+  'it',
+  'ja',
+  'ko',
+  'pt',
+  'ru',
+  'th',
+  'vi',
+  'zh-cn',
+  'zh-tw',
+] as const
+const maxPromotionalTextLength = 170
+const maxKeywordsLength = 80
 const payload = JSON.parse(
   fs.readFileSync(appStoreInfoJsonPath, 'utf8'),
 ) as {
@@ -164,6 +183,12 @@ describe('appstore-connect-info contract', () => {
         isNonEmptyString(metadata.promotionalText),
         `missing promotionalText for metadata locale: ${locale}`,
       ).toBe(true)
+      if (isNonEmptyString(metadata.promotionalText)) {
+        expect(
+          [...metadata.promotionalText].length <= maxPromotionalTextLength,
+          `promotionalText exceeds ${maxPromotionalTextLength} chars for metadata locale: ${locale}`,
+        ).toBe(true)
+      }
       expect(
         isNonEmptyString(metadata.description),
         `missing description for metadata locale: ${locale}`,
@@ -172,6 +197,15 @@ describe('appstore-connect-info contract', () => {
         isNonEmptyKeywords(metadata.keywords),
         `missing keywords for metadata locale: ${locale}`,
       ).toBe(true)
+      if (isNonEmptyKeywords(metadata.keywords)) {
+        const keywordText = Array.isArray(metadata.keywords)
+          ? metadata.keywords.map(String).join(',')
+          : String(metadata.keywords)
+        expect(
+          [...keywordText].length <= maxKeywordsLength,
+          `keywords exceed ${maxKeywordsLength} chars for metadata locale: ${locale}`,
+        ).toBe(true)
+      }
       expect(
         isNonEmptyString(metadata.supportUrl),
         `missing supportUrl for metadata locale: ${locale}`,
@@ -183,19 +217,16 @@ describe('appstore-connect-info contract', () => {
     }
   })
 
-  it('ensures each declared app locale resolves metadata via own key or default locale', () => {
-    const locales = payload.meta?.locales as string[]
+  it('ensures metadata contains all required locale keys', () => {
     const metadataByLocale = payload.ios?.submission?.appStoreInfo?.metadata ?? {}
     const defaultMetadataLocale = payload.ios?.submission?.appStoreInfo
       ?.defaultMetadataLocale as string
 
     expect(metadataByLocale[defaultMetadataLocale]).toBeDefined()
-
-    for (const locale of locales) {
-      const effectiveMetadata = metadataByLocale[locale] ?? metadataByLocale[defaultMetadataLocale]
+    for (const locale of requiredMetadataLocales) {
       expect(
-        effectiveMetadata,
-        `missing metadata for declared locale: ${locale} and default fallback`,
+        metadataByLocale[locale],
+        `missing required metadata locale key: ${locale}`,
       ).toBeDefined()
     }
   })
