@@ -5,7 +5,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT_CANON="$(cd "$ROOT_DIR" && pwd -P)"
 LOCAL_TOOLS_BIN="$ROOT_DIR/.tools/bin"
 DEVBOX_LOG_DIR="$ROOT_DIR/.devbox-logs"
-DEVBOX_ENV_FILE="$ROOT_DIR/.devbox.env"
 APP_ENV_FILE="$ROOT_DIR/mingle-app/.env.local"
 STT_ENV_FILE="$ROOT_DIR/mingle-stt/.env.local"
 NGROK_LOCAL_CONFIG="$ROOT_DIR/ngrok.mobile.local.yml"
@@ -61,7 +60,7 @@ NGROK_STT_URL=""
 NGROK_LAST_ERROR=""
 NGROK_LAST_ERROR_KIND=""
 
-# Values loaded from shell/vault/.env.local (and optionally .devbox.env when present).
+# Values loaded from shell/vault/.env.local.
 DEVBOX_WORKTREE_NAME=""
 DEVBOX_ROOT_DIR=""
 DEVBOX_WEB_PORT=""
@@ -162,8 +161,6 @@ Environment:
   DEVBOX_CLOUDFLARE_STT_HOSTNAME  Named tunnel stt hostname (e.g. stt-dev.example.com)
   DEVBOX_IOS_TEAM_ID       Optional iOS Team ID used by ios-rn-ipa exportOptions.
                            Example: 3RFBMN8TKZ
-  DEVBOX_PERSIST_ENV_FILE  Optional: set to true/1 to write .devbox.env during init/profile.
-                           Default is stateless (no .devbox.env writes).
 EOF
 }
 
@@ -561,15 +558,8 @@ read_app_setting_value() {
 }
 
 derive_worktree_name() {
-  local branch fallback hash
-  branch="$(git -C "$ROOT_DIR" branch --show-current 2>/dev/null || true)"
-  if [[ -n "$branch" ]]; then
-    branch="${branch//\//-}"
-    branch="${branch// /-}"
-    printf '%s' "$branch"
-    return
-  fi
-
+  local fallback hash
+  # Keep this stable per worktree path (independent of current git branch).
   fallback="$(basename "$(dirname "$ROOT_CANON")")"
   hash="$(printf '%s' "$ROOT_CANON" | cksum | awk '{print $1}')"
   printf '%s-%s' "$fallback" "$((hash % 100000))"
@@ -577,29 +567,7 @@ derive_worktree_name() {
 
 collect_reserved_ports() {
   RESERVED_ALL_PORTS=""
-
-  if ! git -C "$ROOT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    return
-  fi
-
-  local worktree_path worktree_canon env_file port
-  while IFS= read -r worktree_path; do
-    [[ -n "$worktree_path" ]] || continue
-    if ! worktree_canon="$(cd "$worktree_path" 2>/dev/null && pwd -P)"; then
-      continue
-    fi
-    [[ "$worktree_canon" == "$ROOT_CANON" ]] && continue
-
-    env_file="$worktree_canon/.devbox.env"
-    [[ -f "$env_file" ]] || continue
-
-    for key in DEVBOX_WEB_PORT DEVBOX_STT_PORT DEVBOX_METRO_PORT DEVBOX_NGROK_API_PORT; do
-      port="$(read_env_value_from_file "$key" "$env_file")"
-      if is_numeric "$port"; then
-        RESERVED_ALL_PORTS="$(append_port "$RESERVED_ALL_PORTS" "$port")"
-      fi
-    done
-  done < <(git -C "$ROOT_DIR" worktree list --porcelain | awk '/^worktree /{print substr($0,10)}')
+  # .devbox.env is no longer used; port collision checks rely on active listeners.
 }
 
 calc_default_ports() {
@@ -1126,74 +1094,8 @@ strip_env_keys() {
   normalize_file_spacing "$file"
 }
 
-write_devbox_env() {
-  ensure_single_line_value "DEVBOX_WORKTREE_NAME" "$DEVBOX_WORKTREE_NAME"
-  ensure_single_line_value "DEVBOX_ROOT_DIR" "$ROOT_CANON"
-  ensure_single_line_value "DEVBOX_WEB_PORT" "$DEVBOX_WEB_PORT"
-  ensure_single_line_value "DEVBOX_STT_PORT" "$DEVBOX_STT_PORT"
-  ensure_single_line_value "DEVBOX_METRO_PORT" "$DEVBOX_METRO_PORT"
-  ensure_single_line_value "DEVBOX_PROFILE" "$DEVBOX_PROFILE"
-  ensure_single_line_value "DEVBOX_LOCAL_HOST" "$DEVBOX_LOCAL_HOST"
-  ensure_single_line_value "DEVBOX_SITE_URL" "$DEVBOX_SITE_URL"
-  ensure_single_line_value "DEVBOX_RN_WS_URL" "$DEVBOX_RN_WS_URL"
-  ensure_single_line_value "DEVBOX_PUBLIC_WS_URL" "$DEVBOX_PUBLIC_WS_URL"
-  ensure_single_line_value "DEVBOX_TEST_API_BASE_URL" "$DEVBOX_TEST_API_BASE_URL"
-  ensure_single_line_value "DEVBOX_TEST_WS_URL" "$DEVBOX_TEST_WS_URL"
-  ensure_single_line_value "DEVBOX_VAULT_APP_PATH" "$DEVBOX_VAULT_APP_PATH"
-  ensure_single_line_value "DEVBOX_VAULT_STT_PATH" "$DEVBOX_VAULT_STT_PATH"
-  ensure_single_line_value "DEVBOX_NGROK_API_PORT" "$DEVBOX_NGROK_API_PORT"
-  ensure_single_line_value "DEVBOX_OPENCLAW_ROOT" "$DEVBOX_OPENCLAW_ROOT"
-  ensure_single_line_value "DEVBOX_IOS_TEAM_ID" "$DEVBOX_IOS_TEAM_ID"
-
-  cat > "$DEVBOX_ENV_FILE" <<EOF
-DEVBOX_WORKTREE_NAME=$DEVBOX_WORKTREE_NAME
-DEVBOX_ROOT_DIR=$ROOT_CANON
-DEVBOX_WEB_PORT=$DEVBOX_WEB_PORT
-DEVBOX_STT_PORT=$DEVBOX_STT_PORT
-DEVBOX_METRO_PORT=$DEVBOX_METRO_PORT
-DEVBOX_PROFILE=$DEVBOX_PROFILE
-DEVBOX_LOCAL_HOST=$DEVBOX_LOCAL_HOST
-DEVBOX_SITE_URL=$DEVBOX_SITE_URL
-DEVBOX_RN_WS_URL=$DEVBOX_RN_WS_URL
-DEVBOX_PUBLIC_WS_URL=$DEVBOX_PUBLIC_WS_URL
-DEVBOX_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL
-DEVBOX_TEST_WS_URL=$DEVBOX_TEST_WS_URL
-DEVBOX_VAULT_APP_PATH=$DEVBOX_VAULT_APP_PATH
-DEVBOX_VAULT_STT_PATH=$DEVBOX_VAULT_STT_PATH
-DEVBOX_NGROK_API_PORT=$DEVBOX_NGROK_API_PORT
-DEVBOX_OPENCLAW_ROOT=$DEVBOX_OPENCLAW_ROOT
-DEVBOX_IOS_TEAM_ID=$DEVBOX_IOS_TEAM_ID
-EOF
-}
-
-load_devbox_env() {
-  local line key value
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    [[ -z "$line" ]] && continue
-    [[ "${line:0:1}" == "#" ]] && continue
-    [[ "$line" == *=* ]] || die "invalid line in $DEVBOX_ENV_FILE: $line"
-
-    key="${line%%=*}"
-    value="${line#*=}"
-    [[ "$key" =~ ^[A-Z0-9_]+$ ]] || die "invalid key in $DEVBOX_ENV_FILE: $key"
-
-    case "$key" in
-      DEVBOX_WORKTREE_NAME|DEVBOX_ROOT_DIR|DEVBOX_WEB_PORT|DEVBOX_STT_PORT|DEVBOX_METRO_PORT|DEVBOX_PROFILE|DEVBOX_LOCAL_HOST|DEVBOX_SITE_URL|DEVBOX_RN_WS_URL|DEVBOX_PUBLIC_WS_URL|DEVBOX_TEST_API_BASE_URL|DEVBOX_TEST_WS_URL|DEVBOX_VAULT_APP_PATH|DEVBOX_VAULT_STT_PATH|DEVBOX_NGROK_API_PORT|DEVBOX_OPENCLAW_ROOT|DEVBOX_IOS_TEAM_ID)
-        printf -v "$key" '%s' "$value"
-        ;;
-      *)
-        die "unknown key in $DEVBOX_ENV_FILE: $key"
-        ;;
-    esac
-  done < "$DEVBOX_ENV_FILE"
-}
-
 require_devbox_env() {
   local value=""
-
-  if is_truthy "${DEVBOX_PERSIST_ENV_FILE:-0}" && [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    load_devbox_env
-  fi
 
   if [[ -z "$DEVBOX_WORKTREE_NAME" ]]; then
     DEVBOX_WORKTREE_NAME="$(derive_worktree_name)"
@@ -2717,9 +2619,6 @@ resolve_device_app_env_override() {
 }
 
 save_and_refresh() {
-  if is_truthy "${DEVBOX_PERSIST_ENV_FILE:-0}"; then
-    write_devbox_env
-  fi
   refresh_runtime_files
 }
 
@@ -3112,11 +3011,7 @@ cmd_ios_rn_ipa() {
   local device_app_env_path=""
   local temp_export_options_plist=""
 
-  if [[ -f "$DEVBOX_ENV_FILE" ]]; then
-    require_devbox_env
-  else
-    log "no .devbox.env found; ios-rn-ipa will use vault/.env.local/shell values only"
-  fi
+  require_devbox_env
 
   timestamp="$(date '+%Y%m%d-%H%M%S')"
   archive_path="/tmp/mingle-${timestamp}.xcarchive"
@@ -3459,7 +3354,7 @@ cmd_mobile() {
       profile_already_saved=1
       ;;
     *)
-      die "unsupported DEVBOX_PROFILE in .devbox.env: $active_profile (expected local|device)"
+      die "unsupported DEVBOX_PROFILE: $active_profile (expected local|device)"
       ;;
   esac
   if [[ "$profile_already_saved" -eq 0 ]]; then
@@ -4114,7 +4009,6 @@ cmd_status() {
   local cloudflare_mode="quick"
   local ngrok_line=""
   local ngrok_domain_line=""
-  local devbox_env_note="$DEVBOX_ENV_FILE (optional; write only when DEVBOX_PERSIST_ENV_FILE=true)"
   detected_ngrok_web_domain="$(resolve_ngrok_web_domain || true)"
   tunnel_provider="$(resolve_tunnel_provider "")"
   if [[ "$tunnel_provider" == "cloudflare" ]]; then
@@ -4153,7 +4047,6 @@ OpenClaw    : root=${DEVBOX_OPENCLAW_ROOT:-$(resolve_openclaw_root)}
 iOS Team ID : ${DEVBOX_IOS_TEAM_ID:-"(auto: mingle.xcodeproj DEVELOPMENT_TEAM)"}
 
 Files:
-- $devbox_env_note
 - $APP_ENV_FILE
 - $STT_ENV_FILE
 - $NGROK_LOCAL_CONFIG
