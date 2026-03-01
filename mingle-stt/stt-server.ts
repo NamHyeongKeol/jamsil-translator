@@ -68,6 +68,8 @@ wss.on('connection', (clientWs) => {
     let sonioxStopRequested = false;
     let sonioxSegmentationStrategy: SegmentationStrategy | null = null;
     let sonioxCarryExpiryTimer: NodeJS.Timeout | null = null;
+    let sonioxFinalizeSnapshotTextLen: number | null = null;
+    let sonioxCurrentMergedTextLen = 0;
     const gladiaApiKey = process.env.GLADIA_API_KEY;
     const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
     const fireworksApiKey = process.env.FIREWORKS_API_KEY;
@@ -102,6 +104,8 @@ wss.on('connection', (clientWs) => {
             }
         }
         clearSonioxCarryExpiryTimer();
+        sonioxFinalizeSnapshotTextLen = null;
+        sonioxCurrentMergedTextLen = 0;
     };
 
     const resetSonioxSegmentState = () => {
@@ -109,6 +113,8 @@ wss.on('connection', (clientWs) => {
             sonioxSegmentationStrategy.resetState();
         }
         clearSonioxCarryExpiryTimer();
+        sonioxFinalizeSnapshotTextLen = null;
+        sonioxCurrentMergedTextLen = 0;
     };
 
     // ===== GLADIA 연결 =====
@@ -554,9 +560,11 @@ wss.on('connection', (clientWs) => {
                         if (!localSttWs || localSttWs.readyState !== WebSocket.OPEN) return;
                         if (sonioxStopRequested) return;
                         try {
+                            sonioxFinalizeSnapshotTextLen = sonioxCurrentMergedTextLen;
                             localSttWs.send(JSON.stringify({ type: 'finalize' }));
                         } catch (error) {
                             console.error('Soniox manual finalize send failed:', error);
+                            sonioxFinalizeSnapshotTextLen = null;
                         }
                     },
                 },
@@ -601,24 +609,6 @@ wss.on('connection', (clientWs) => {
                 if (tokenStartMs !== null) return tokenStartMs > watermarkMs;
                 return false;
             };
-            // Forward-snap only when the boundary cuts through an ASCII word.
-            // This avoids swallowing whole no-space-script suffixes (ko/ja/zh).
-            const isAsciiWordChar = (char: string): boolean => /[A-Za-z0-9']/u.test(char);
-            const snapBoundaryForwardInsideAsciiWord = (text: string, boundary: number): number => {
-                if (boundary <= 0 || boundary >= text.length) return boundary;
-                const prevChar = text[boundary - 1] || '';
-                const currChar = text[boundary] || '';
-                if (!isAsciiWordChar(prevChar) || !isAsciiWordChar(currChar)) {
-                    return boundary;
-                }
-
-                let snapped = boundary;
-                while (snapped < text.length && isAsciiWordChar(text[snapped])) {
-                    snapped += 1;
-                }
-                return snapped;
-            };
-
             const emitFinalTurn = (text: string, language: string): FinalTurnPayload | null => {
                 // Keep endpoint markers in server-emitted text; client normalizes them away.
                 const cleanedText = text.trim();
@@ -913,6 +903,7 @@ wss.on('connection', (clientWs) => {
                     // === 전략에 transcript progress 알림 ===
                     const previousMergedSnapshot = composeTurnText(previousFinalizedText, previousNonFinalText);
                     const mergedSnapshot = composeTurnText(finalizedText, latestNonFinalText);
+                    sonioxCurrentMergedTextLen = mergedSnapshot.length;
                     const previousMergedTextForIdle = stripEndpointMarkers(previousMergedSnapshot);
                     const mergedTextForIdle = stripEndpointMarkers(mergedSnapshot);
                     const hasPendingTranscript = mergedSnapshot.length > 0
@@ -931,8 +922,12 @@ wss.on('connection', (clientWs) => {
                         hadPendingTextBeforeFrame,
                         detectedLanguage: detectedLang,
                         isProvisionalCarry: latestNonFinalIsProvisionalCarry,
+                        finalizeSnapshotTextLen: sonioxFinalizeSnapshotTextLen,
                     };
                     const decision = strategy.onTokenFrame(tokenFrameCtx);
+                    if (decision.action === 'finalize' && decision.snapshotConsumed) {
+                        sonioxFinalizeSnapshotTextLen = null;
+                    }
 
                     if (decision.action === 'finalize') {
                         if (stripEndpointMarkers(decision.text).trim()) {
@@ -992,9 +987,11 @@ wss.on('connection', (clientWs) => {
                         // LLM 전략 등에서 직접 finalize 명령 전송 요청
                         if (sttWs && sttWs.readyState === WebSocket.OPEN && !sonioxStopRequested) {
                             try {
+                                sonioxFinalizeSnapshotTextLen = sonioxCurrentMergedTextLen;
                                 sttWs.send(JSON.stringify({ type: 'finalize' }));
                             } catch (error) {
                                 console.error('Soniox finalize send failed:', error);
+                                sonioxFinalizeSnapshotTextLen = null;
                             }
                         }
                     }

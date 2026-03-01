@@ -23,11 +23,13 @@ export interface TokenFrameContext {
     detectedLanguage: string;
     /** carry인 non-final인지 */
     isProvisionalCarry: boolean;
+    /** manual finalize 직전의 merged text 길이 snapshot */
+    finalizeSnapshotTextLen: number | null;
 }
 
 export type SegmentationDecision =
     | { action: 'none' }
-    | { action: 'finalize'; text: string; carryText: string }
+    | { action: 'finalize'; text: string; carryText: string; snapshotConsumed?: boolean }
     | { action: 'send-finalize-command' };
 
 export interface SegmentationStrategy {
@@ -71,6 +73,59 @@ export function splitTurnAtFirstEndpointMarker(text: string): { finalText: strin
     };
 }
 
+function isAsciiWordChar(char: string): boolean {
+    return /[A-Za-z0-9']/u.test(char);
+}
+
+function snapBoundaryForwardInsideAsciiWord(text: string, boundary: number): number {
+    if (boundary <= 0 || boundary >= text.length) return boundary;
+    const prevChar = text[boundary - 1] || '';
+    const currChar = text[boundary] || '';
+    if (!isAsciiWordChar(prevChar) || !isAsciiWordChar(currChar)) {
+        return boundary;
+    }
+
+    let snapped = boundary;
+    while (snapped < text.length && isAsciiWordChar(text[snapped])) {
+        snapped += 1;
+    }
+    return snapped;
+}
+
+function splitTurnAtEndpointWithSnapshot(
+    mergedAtEndpoint: string,
+    finalizeSnapshotTextLen: number | null,
+): { finalText: string; carryText: string; usedSnapshotBoundary: boolean } {
+    if (finalizeSnapshotTextLen !== null && finalizeSnapshotTextLen >= 0) {
+        let snapshotBoundary = Math.min(
+            Math.max(0, finalizeSnapshotTextLen),
+            mergedAtEndpoint.length,
+        );
+
+        // Keep English word boundaries readable when snapshot cuts mid-token.
+        snapshotBoundary = snapBoundaryForwardInsideAsciiWord(
+            mergedAtEndpoint,
+            snapshotBoundary,
+        );
+
+        const textUpToSnapshot = mergedAtEndpoint.slice(0, snapshotBoundary);
+        const textAfterSnapshot = mergedAtEndpoint.slice(snapshotBoundary);
+        const marker = extractFirstEndpointMarker(mergedAtEndpoint);
+        return {
+            finalText: `${stripEndpointMarkers(textUpToSnapshot).trim()}${marker}`.trim(),
+            carryText: stripEndpointMarkers(textAfterSnapshot).trim(),
+            usedSnapshotBoundary: true,
+        };
+    }
+
+    const split = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
+    return {
+        finalText: split.finalText,
+        carryText: split.carryText,
+        usedSnapshotBoundary: false,
+    };
+}
+
 // ===== 전략 A: Soniox Endpoint =====
 
 export class SonioxEndpointStrategy implements SegmentationStrategy {
@@ -95,20 +150,24 @@ export class SonioxEndpointStrategy implements SegmentationStrategy {
         }
 
         const mergedAtEndpoint = `${ctx.finalizedText || ''}${ctx.nonFinalText || ''}`.trim();
-        const { finalText, carryText } = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
+        const { finalText, carryText, usedSnapshotBoundary } = splitTurnAtEndpointWithSnapshot(
+            mergedAtEndpoint,
+            ctx.finalizeSnapshotTextLen,
+        );
         let finalTextToEmit = finalText;
         let carryTextToEmit = carryText;
 
-        if (!stripEndpointMarkers(finalTextToEmit).trim() && carryTextToEmit) {
+        if (!stripEndpointMarkers(finalTextToEmit).trim() && carryTextToEmit && !usedSnapshotBoundary) {
             finalTextToEmit = `${carryTextToEmit}${extractFirstEndpointMarker(finalTextToEmit)}`.trim();
             carryTextToEmit = '';
         }
 
-        if (!stripEndpointMarkers(finalTextToEmit).trim()) {
-            return { action: 'none' };
-        }
-
-        return { action: 'finalize', text: finalTextToEmit, carryText: carryTextToEmit };
+        return {
+            action: 'finalize',
+            text: finalTextToEmit,
+            carryText: carryTextToEmit,
+            snapshotConsumed: usedSnapshotBoundary,
+        };
     }
 
     onTranscriptProgress(_hasPendingTranscript: boolean, _transcriptAdded: boolean): void {
@@ -168,20 +227,24 @@ export class SilenceTimerStrategy implements SegmentationStrategy {
         }
 
         const mergedAtEndpoint = `${ctx.finalizedText || ''}${ctx.nonFinalText || ''}`.trim();
-        const { finalText, carryText } = splitTurnAtFirstEndpointMarker(mergedAtEndpoint);
+        const { finalText, carryText, usedSnapshotBoundary } = splitTurnAtEndpointWithSnapshot(
+            mergedAtEndpoint,
+            ctx.finalizeSnapshotTextLen,
+        );
         let finalTextToEmit = finalText;
         let carryTextToEmit = carryText;
 
-        if (!stripEndpointMarkers(finalTextToEmit).trim() && carryTextToEmit) {
+        if (!stripEndpointMarkers(finalTextToEmit).trim() && carryTextToEmit && !usedSnapshotBoundary) {
             finalTextToEmit = `${carryTextToEmit}${extractFirstEndpointMarker(finalTextToEmit)}`.trim();
             carryTextToEmit = '';
         }
 
-        if (!stripEndpointMarkers(finalTextToEmit).trim()) {
-            return { action: 'none' };
-        }
-
-        return { action: 'finalize', text: finalTextToEmit, carryText: carryTextToEmit };
+        return {
+            action: 'finalize',
+            text: finalTextToEmit,
+            carryText: carryTextToEmit,
+            snapshotConsumed: usedSnapshotBoundary,
+        };
     }
 
     onTranscriptProgress(hasPendingTranscript: boolean, transcriptAdded: boolean): void {
