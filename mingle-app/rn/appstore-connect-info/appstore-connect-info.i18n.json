@@ -550,6 +550,41 @@
             "keywords": "동시통역,대화통역,통화통역,실시간자막,자동언어감지,다국어번역,보이스번역",
             "supportUrl": "https://mingle-landing.vercel.app/normal",
             "marketingUrl": "https://mingle-landing.vercel.app/normal"
+          },
+          "zh-cn": {
+            "promotionalText": "语言障碍到此为止。Mingle 可为长对话提供不中断的实时口译，支持三种以上语言的全方向翻译。",
+            "description": "• Mingle 支持 3 种以上语言的全方向口译与翻译。即使在同一段对话中混合多种语言，也能全部实时翻译；发言人切换时，您无需手动选择或切换语言。\n• 提供不中断的翻译与实时文字稿。不是一句一句停顿翻译，而是沿着对话或会议的整体流程连续翻译，让您自然把握上下文。\n• 其他应用的音频也可实时显示字幕与翻译。开启扬声器后，在后台运行通话、广播或 Discord 等语音应用，并将 Mingle 保持在前台时，这些音频会作为 Mingle 输入，立即显示文字稿与翻译。\n• 可将翻译内容以语音实时播报。打开语音输出后，就像身边有同声传译员一样，您可通过聆听直接理解内容，不看屏幕也能使用，跑步时也方便。\n• 后台运行时可自由切换应用。即使锁屏或将 Mingle 切到后台，它也不会中断，并会持续实时记录对话与翻译内容。",
+            "keywords": "同声传译,对话口译,通话口译,实时字幕,自动语言检测,多语言翻译,语音翻译",
+            "supportUrl": "https://mingle-landing.vercel.app/normal",
+            "marketingUrl": "https://mingle-landing.vercel.app/normal"
+          },
+          "zh-tw": {
+            "promotionalText": "語言隔閡就此結束。Mingle 為長對話提供不中斷的即時口譯，支援三種以上語言的全方向翻譯。",
+            "description": "• Mingle 支援三種以上語言的全方向口譯與翻譯。即使同一段對話混合多種語言，也能全部即時翻譯；說話者切換時，您不需要手動選擇或切換語言。\n• 提供不中斷翻譯與即時逐字稿。不是每句停下來翻譯，而是沿著對話或會議的整體流程連續翻譯，讓您自然掌握上下文。\n• 其他 App 的音訊也能即時顯示字幕與翻譯。開啟擴音後，在背景執行通話、廣播或 Discord 等語音 App，並將 Mingle 保持在前景時，這些音訊會作為 Mingle 輸入，立即顯示逐字稿與翻譯。\n• 可將翻譯內容以語音即時播報。開啟語音輸出後，就像身邊有同步口譯員一樣，您可只靠聆聽理解內容，不看螢幕也能使用，跑步時也方便。\n• 背景執行時可自由切換 App。即使鎖定螢幕或把 Mingle 切到背景，它也不會中斷，並會持續即時記錄對話與翻譯內容。",
+            "keywords": "同步口譯,對話口譯,通話口譯,即時字幕,自動語言偵測,多語翻譯,語音翻譯",
+            "supportUrl": "https://mingle-landing.vercel.app/normal",
+            "marketingUrl": "https://mingle-landing.vercel.app/normal"
+          },
+          "ja": {
+            "promotionalText": "言語の壁はもう終わり。Mingleなら長い会話も途切れずリアルタイム通訳。3言語以上でも全方向に翻訳できます。",
+            "description": "• Mingleは3言語以上でも全方向の通訳・翻訳を提供します。複数言語が同時に混ざる会話でもリアルタイムで翻訳されるため、話者が変わるたびに言語を手動で選択・切り替えする必要はありません。\n• 途切れない翻訳とリアルタイム字幕を提供します。一文ごとに止まって翻訳するのではなく、会話や会議の流れ全体に沿って連続翻訳されるため、文脈まで自然に把握できます。\n• 他アプリの音声もリアルタイム字幕と翻訳で確認できます。スピーカーフォンで通話、ラジオ、Discordなどの音声アプリをバックグラウンドで動かし、Mingleをフォアグラウンドで開いておくと、その音声がMingle入力として取り込まれ、字幕と翻訳がすぐ表示されます。\n• 翻訳結果を音声でリアルタイム同時通訳できます。音声出力をオンにすると、通訳者がそばにいるように内容を聞けるため、画面を見なくても理解でき、ランニング中でも使えます。\n• バックグラウンド実行のままアプリを自由に切り替えできます。画面をロックしたりMingleをバックグラウンドにしても停止せず、会話ログと翻訳をリアルタイムで記録し続けます。",
+            "keywords": "同時通訳,会話通訳,通話通訳,リアルタイム字幕,自動言語検出,多言語翻訳,音声翻訳",
+            "supportUrl": "https://mingle-landing.vercel.app/normal",
+            "marketingUrl": "https://mingle-landing.vercel.app/normal"
+          },
+          "vi": {
+            "promotionalText": "Rào cản ngôn ngữ đã kết thúc. Mingle phiên dịch thời gian thực liên tục cho hội thoại dài và hỗ trợ dịch đa chiều 3+ ngôn ngữ.",
+            "description": "• Mingle hỗ trợ phiên dịch và dịch thuật đa chiều với hơn 3 ngôn ngữ. Ngay cả khi nhiều ngôn ngữ được dùng xen kẽ trong cùng một cuộc trò chuyện, mọi nội dung vẫn được dịch theo thời gian thực, nên bạn không cần tự chọn hay chuyển ngôn ngữ mỗi khi đổi người nói.\n• Cung cấp bản dịch liên tục và transcript thời gian thực. Thay vì dừng lại sau từng câu, Mingle dịch liên tục theo toàn bộ mạch hội thoại hoặc cuộc họp để bạn nắm được ngữ cảnh tự nhiên.\n• Ngay cả âm thanh từ ứng dụng khác cũng có thể hiển thị phụ đề và bản dịch theo thời gian thực. Khi bật loa ngoài cho cuộc gọi, radio hoặc ứng dụng thoại như Discord chạy nền và giữ Mingle ở tiền cảnh, âm thanh đó sẽ đi vào Mingle để hiển thị transcript và bản dịch ngay lập tức.\n• Có thể phát bản dịch bằng giọng nói theo thời gian thực. Khi bật đầu ra giọng nói, nội dung dịch sẽ được đọc như có thông dịch viên bên cạnh, giúp bạn hiểu chỉ bằng nghe mà không cần nhìn màn hình, kể cả khi đang chạy bộ.\n• Chạy nền và chuyển ứng dụng tự do. Dù khóa màn hình hay đưa Mingle xuống nền, ứng dụng vẫn tiếp tục hoạt động và ghi lại hội thoại cùng bản dịch theo thời gian thực.",
+            "keywords": "dịchgiọngnói,phiêndịch,phụđềtrựctiếp,dịchcuộcgọi,đangônngữ,tựđộngđổingônngữ,dịchthờigianthực",
+            "supportUrl": "https://mingle-landing.vercel.app/normal",
+            "marketingUrl": "https://mingle-landing.vercel.app/normal"
+          },
+          "th": {
+            "promotionalText": "จบปัญหากำแพงภาษา Mingle แปลและล่ามแบบเรียลไทม์ต่อเนื่องสำหรับบทสนทนายาว รองรับ 3+ ภาษาแบบทุกทิศทาง",
+            "description": "• Mingle รองรับการล่ามและแปลแบบทุกทิศทางมากกว่า 3 ภาษา แม้ในบทสนทนาเดียวจะมีหลายภาษาปะปนกัน ระบบก็แปลแบบเรียลไทม์ทั้งหมดได้ โดยไม่ต้องเลือกหรือสลับภาษาเองทุกครั้งที่ผู้พูดเปลี่ยน\n• ให้การแปลต่อเนื่องพร้อมสคริปต์แบบเรียลไทม์ ไม่ได้หยุดแปลทีละประโยค แต่แปลต่อเนื่องตามทั้งบริบทของบทสนทนาหรือการประชุม ทำให้เข้าใจเนื้อหาได้เป็นธรรมชาติ\n• แม้เป็นเสียงจากแอปอื่นก็แสดงซับและคำแปลแบบเรียลไทม์ได้ เมื่อเปิดลำโพงสำหรับสายโทร วิทยุ หรือแอปเสียงอย่าง Discord ไว้เบื้องหลัง และเปิด Mingle ไว้ด้านหน้า เสียงนั้นจะเข้ามาเป็นอินพุตของ Mingle และแสดงสคริปต์กับคำแปลทันที\n• สามารถฟังคำแปลเป็นเสียงแบบล่ามพร้อมกันเรียลไทม์ได้ เมื่อเปิดเสียงออก ระบบจะอ่านคำแปลเหมือนมีล่ามอยู่ข้าง ๆ ทำให้เข้าใจได้แม้ไม่ต้องมองหน้าจอ และใช้งานระหว่างวิ่งได้สะดวก\n• ทำงานต่อได้ในเบื้องหลังและสลับแอปได้อิสระ แม้ล็อกหน้าจอหรือย้าย Mingle ไปเบื้องหลัง ระบบก็ไม่หยุด และยังบันทึกบทสนทนากับคำแปลแบบเรียลไทม์ต่อเนื่อง",
+            "keywords": "ล่ามเรียลไทม์,ล่ามสนทนา,แปลสายโทร,ซับเรียลไทม์,สลับภาษาอัตโนมัติ,แปลหลายภาษา,แปลเสียง",
+            "supportUrl": "https://mingle-landing.vercel.app/normal",
+            "marketingUrl": "https://mingle-landing.vercel.app/normal"
           }
         }
       },
