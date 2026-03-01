@@ -37,7 +37,7 @@ export function splitTurnAtFirstEndpointMarker(text: string): { finalText: strin
 
 // ===== 전략 타입 =====
 
-export type SegmentationStrategyId = 'silence-timer' | 'soniox-endpoint' | 'llm-segmentation';
+export type SegmentationStrategyId = 'fin' | 'end' | 'llm';
 
 /** onTokenFrame()이 돌려주는 결정 */
 export type SegmentationDecision =
@@ -197,7 +197,7 @@ function snapBoundaryForwardInsideAsciiWord(text: string, boundary: number): num
 // 서버는 마커를 받으면 즉시 finalize. manual finalize 타이머는 사용하지 않는다.
 
 export class SonioxEndpointStrategy implements SegmentationStrategy {
-    readonly id: SegmentationStrategyId = 'soniox-endpoint';
+    readonly id: SegmentationStrategyId = 'end';
 
     sonioxConfigOverrides(): Record<string, unknown> {
         return { enable_endpoint_detection: true };
@@ -233,7 +233,7 @@ export interface SilenceTimerStrategyOptions {
 }
 
 export class SilenceTimerStrategy implements SegmentationStrategy {
-    readonly id: SegmentationStrategyId = 'silence-timer';
+    readonly id: SegmentationStrategyId = 'fin';
 
     private readonly silenceMs: number;
     private readonly cooldownMs: number;
@@ -380,9 +380,10 @@ export class SilenceTimerStrategy implements SegmentationStrategy {
 
 export function readSegmentationStrategyId(): SegmentationStrategyId {
     const raw = (process.env['SONIOX_SEGMENTATION_STRATEGY'] ?? '').trim().toLowerCase();
-    if (raw === 'soniox-endpoint') return 'soniox-endpoint';
-    if (raw === 'llm-segmentation') return 'llm-segmentation';
-    return 'silence-timer';
+    if (raw === 'end') return 'end';
+    if (raw === 'llm') return 'llm';
+    // 'fin' 이거나 값이 없으면 기존 동작(fin) 사용
+    return 'fin';
 }
 
 export function createSegmentationStrategy(
@@ -390,13 +391,13 @@ export function createSegmentationStrategy(
     opts: SilenceTimerStrategyOptions,
 ): SegmentationStrategy {
     switch (id) {
-        case 'soniox-endpoint':
+        case 'end':
             return new SonioxEndpointStrategy();
-        case 'llm-segmentation':
-            // Phase 2: LLM 전략 구현 전까지 silence-timer 로 fallback
-            console.warn('[stt-server] llm-segmentation not yet implemented; using silence-timer');
+        case 'llm':
+            // Phase 2: LLM 전략 구현 전까지 fin으로 fallback
+            console.warn('[stt-server] llm segmentation not yet implemented; using fin');
             return new SilenceTimerStrategy(opts);
-        case 'silence-timer':
+        case 'fin':
         default:
             return new SilenceTimerStrategy(opts);
     }
