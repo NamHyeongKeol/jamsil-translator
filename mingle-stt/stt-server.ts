@@ -882,7 +882,9 @@ wss.on('connection', (clientWs) => {
                                 // e.g. "Don't be." → "Don't be" when prefixed.
                                 const carryPrefix = carryRaw.replace(/[.!?]+\s*$/, '').trim();
                                 if (carryPrefix) {
-                                    finalizedText = carryPrefix + ' ' + finalizedText;
+                                    finalizedText = finalizedText
+                                        ? carryPrefix + ' ' + finalizedText
+                                        : carryPrefix;
                                 }
                                 latestNonFinalIsProvisionalCarry = false;
                             }
