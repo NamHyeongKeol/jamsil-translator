@@ -683,14 +683,8 @@ wss.on('connection', (clientWs) => {
                 try {
                     const rawSonioxMessage = event.data.toString();
                     const msg = JSON.parse(rawSonioxMessage);
-                    if (SHOULD_LOG_SONIOX_RAW_JOINED_TEXT && typeof msg.raw_joined_token_text === 'string') {
-                        const normalizedRawJoinedText = msg.raw_joined_token_text.replace(
-                            /<\/?(end|fin)>/gi,
-                            (_match: string, marker: string) => `<${String(marker).toLowerCase()}>`,
-                        );
-                        if (normalizedRawJoinedText.trim().length > 0) {
-                            appendSonioxTokenTextLine(normalizedRawJoinedText);
-                        }
+                    if (SHOULD_LOG_SONIOX_RAW_JOINED_TEXT) {
+                        appendSonioxTokenTextLine(rawSonioxMessage);
                     }
 
                     if (msg.error_code) {
