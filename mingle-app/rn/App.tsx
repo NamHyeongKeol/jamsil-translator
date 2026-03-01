@@ -667,13 +667,15 @@ function resolveDeviceLocaleTag(): string {
     const settingsManager = (NativeModules as {
       SettingsManager?: IOSSettingsManager;
     }).SettingsManager;
-    const appleLocale = settingsManager?.settings?.AppleLocale;
-    if (typeof appleLocale === 'string' && appleLocale.trim()) {
-      return appleLocale.trim();
-    }
     const firstAppleLanguage = settingsManager?.settings?.AppleLanguages?.[0];
     if (typeof firstAppleLanguage === 'string' && firstAppleLanguage.trim()) {
       return firstAppleLanguage.trim();
+    }
+    // AppleLocale can reflect regional format settings rather than UI language.
+    // Prefer AppleLanguages first so locale follows the device language priority.
+    const appleLocale = settingsManager?.settings?.AppleLocale;
+    if (typeof appleLocale === 'string' && appleLocale.trim()) {
+      return appleLocale.trim();
     }
   }
 
