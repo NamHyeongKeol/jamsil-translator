@@ -288,6 +288,28 @@ class NativeSTTModule: RCTEventEmitter {
         return ""
     }
 
+    private static func readDevicePreferredLanguages() -> [String] {
+        var output: [String] = []
+        for raw in Locale.preferredLanguages {
+            let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if value.isEmpty {
+                continue
+            }
+            if output.contains(value) {
+                continue
+            }
+            output.append(value)
+        }
+        return output
+    }
+
+    private static func readDeviceLocaleTag() -> String {
+        for language in Self.readDevicePreferredLanguages() {
+            return language
+        }
+        return ""
+    }
+
     override func constantsToExport() -> [AnyHashable: Any]! {
         return [
             "runtimeConfig": [
@@ -304,6 +326,8 @@ class NativeSTTModule: RCTEventEmitter {
                 "apiNamespace": Self.readRuntimeConfigValue("MingleApiNamespace"),
                 "clientVersion": Self.readRuntimeConfigValue("CFBundleShortVersionString"),
                 "clientBuild": Self.readRuntimeConfigValue("CFBundleVersion"),
+                "deviceLocaleTag": Self.readDeviceLocaleTag(),
+                "devicePreferredLanguages": Self.readDevicePreferredLanguages(),
             ],
         ]
     }
@@ -327,6 +351,8 @@ class NativeSTTModule: RCTEventEmitter {
             "apiNamespace": Self.readRuntimeConfigValue("MingleApiNamespace"),
             "clientVersion": Self.readRuntimeConfigValue("CFBundleShortVersionString"),
             "clientBuild": Self.readRuntimeConfigValue("CFBundleVersion"),
+            "deviceLocaleTag": Self.readDeviceLocaleTag(),
+            "devicePreferredLanguages": Self.readDevicePreferredLanguages(),
         ])
     }
 
