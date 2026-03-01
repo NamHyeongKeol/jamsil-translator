@@ -1100,4 +1100,5 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(
         `[stt-server] soniox_finalize_tuning silenceMs=${SONIOX_MANUAL_FINALIZE_SILENCE_MS} cooldownMs=${SONIOX_MANUAL_FINALIZE_COOLDOWN_MS}`,
     );
+    console.log(`[stt-server] soniox_segmentation_strategy=${SONIOX_SEGMENTATION_STRATEGY_ID}`);
 });
