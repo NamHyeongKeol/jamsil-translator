@@ -78,6 +78,7 @@ const requiredMetadataLocales = [
   'zh-cn',
   'zh-tw',
 ] as const
+const maxPromotionalTextLength = 170
 const payload = JSON.parse(
   fs.readFileSync(appStoreInfoJsonPath, 'utf8'),
 ) as {
@@ -181,6 +182,12 @@ describe('appstore-connect-info contract', () => {
         isNonEmptyString(metadata.promotionalText),
         `missing promotionalText for metadata locale: ${locale}`,
       ).toBe(true)
+      if (isNonEmptyString(metadata.promotionalText)) {
+        expect(
+          [...metadata.promotionalText].length <= maxPromotionalTextLength,
+          `promotionalText exceeds ${maxPromotionalTextLength} chars for metadata locale: ${locale}`,
+        ).toBe(true)
+      }
       expect(
         isNonEmptyString(metadata.description),
         `missing description for metadata locale: ${locale}`,
