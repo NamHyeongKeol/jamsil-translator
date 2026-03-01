@@ -27,7 +27,7 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     if (!Number.isFinite(raw)) return 1200;
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
-const SONIOX_RAW_TOKEN_LOG_PATH = process.env.SONIOX_RAW_TOKEN_LOG_PATH || '/tmp/mingle-soniox-raw-tokens.jsonl';
+const SONIOX_RAW_TOKEN_LOG_PATH = process.env.SONIOX_RAW_TOKEN_LOG_PATH || '/tmp/mingle-soniox-raw-token-lines.log';
 let sonioxRawTokenLogDirReady = false;
 let sonioxRawTokenLogWriteFailed = false;
 
@@ -1318,4 +1318,5 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(
         `[stt-server] soniox_finalize_tuning silenceMs=${SONIOX_MANUAL_FINALIZE_SILENCE_MS} cooldownMs=${SONIOX_MANUAL_FINALIZE_COOLDOWN_MS}`,
     );
+    console.log(`[stt-server] soniox_raw_token_log_path=${SONIOX_RAW_TOKEN_LOG_PATH}`);
 });
