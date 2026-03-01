@@ -79,7 +79,7 @@ const requiredMetadataLocales = [
   'zh-tw',
 ] as const
 const maxPromotionalTextLength = 170
-const maxKeywordsLength = 100
+const maxKeywordsLength = 80
 const payload = JSON.parse(
   fs.readFileSync(appStoreInfoJsonPath, 'utf8'),
 ) as {
