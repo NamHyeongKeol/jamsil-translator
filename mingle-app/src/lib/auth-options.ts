@@ -5,6 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { resolveAppleOAuthCredentials, type AppleOAuthCredentials } from "@/lib/apple-oauth";
+import { verifyPassword } from "@/lib/email-password-auth";
 import { verifyNativeAuthBridgeToken } from "@/lib/native-auth-bridge";
 import { prisma } from "@/lib/prisma";
 
@@ -211,6 +212,50 @@ const authDebugEnabled = isFeatureEnabled(process.env.AUTH_DEBUG, process.env.NO
 
 function buildProviders(): NextAuthOptions["providers"] {
   const providers: NextAuthOptions["providers"] = [
+    CredentialsProvider({
+      id: "email-password",
+      name: "Email Password",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const email = normalizeEmail(credentials?.email);
+        const password = typeof credentials?.password === "string" ? credentials.password : "";
+        if (!email || !password) return null;
+
+        const user = await prisma.user.findUnique({
+          where: { email },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            externalUserId: true,
+            passwordHash: true,
+          },
+        });
+        if (!user?.passwordHash) return null;
+
+        const isPasswordValid = verifyPassword(password, user.passwordHash);
+        if (!isPasswordValid) return null;
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            lastSeenAt: new Date(),
+          },
+        }).catch(() => {
+          // no-op
+        });
+
+        return {
+          id: user.id,
+          name: user.name || "Mingle User",
+          email: user.email || email,
+          externalUserId: user.externalUserId || null,
+        };
+      },
+    }),
     CredentialsProvider({
       id: "native-bridge",
       name: "Native Bridge",

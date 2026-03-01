@@ -214,6 +214,7 @@ export default function MingleHome(props: MingleHomeProps) {
   const [emailSheetMode, setEmailSheetMode] = useState<EmailAuthSheetMode>("login");
   const [emailAuthErrorCode, setEmailAuthErrorCode] =
     useState<EmailAuthErrorCode | null>(null);
+  const [isEmailSubmitting, setIsEmailSubmitting] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
@@ -432,6 +433,7 @@ export default function MingleHome(props: MingleHomeProps) {
       setIsEmailSheetClosing(false);
       setEmailSheetMode("login");
       setEmailAuthErrorCode(null);
+      setIsEmailSubmitting(false);
       setLoginEmail("");
       setLoginPassword("");
       setSignupEmail("");
@@ -645,6 +647,7 @@ export default function MingleHome(props: MingleHomeProps) {
       setIsEmailSheetClosing(false);
       setEmailSheetMode("login");
       setEmailAuthErrorCode(null);
+      setIsEmailSubmitting(false);
       setSelectedProvider(provider);
       // 약관은 기본 체크 상태로 진입 (사용자가 직접 해제 가능)
       setAgreedPrivacy(true);
@@ -661,6 +664,7 @@ export default function MingleHome(props: MingleHomeProps) {
     setIsEmailSheetClosing(false);
     setEmailSheetMode("login");
     setEmailAuthErrorCode(null);
+    setIsEmailSubmitting(false);
     setAuthPanelStep("provider");
     setSelectedProvider(null);
     setAgreedPrivacy(false);
@@ -692,10 +696,11 @@ export default function MingleHome(props: MingleHomeProps) {
 
   const handleSwitchEmailSheetMode = useCallback(
     (nextMode: EmailAuthSheetMode) => {
+      if (isEmailSubmitting) return;
       setEmailAuthErrorCode(null);
       setEmailSheetMode(nextMode);
     },
-    [],
+    [isEmailSubmitting],
   );
 
   const handleOpenEmailSheet = useCallback(() => {
@@ -704,9 +709,11 @@ export default function MingleHome(props: MingleHomeProps) {
     setIsEmailSheetOpen(true);
     setEmailSheetMode("login");
     setEmailAuthErrorCode(null);
+    setIsEmailSubmitting(false);
   }, [clearEmailSheetCloseTimer]);
 
   const handleCloseEmailSheet = useCallback(() => {
+    if (isEmailSubmitting) return;
     if (!isEmailSheetOpen || isEmailSheetClosing) return;
     setIsEmailSheetClosing(true);
     clearEmailSheetCloseTimer();
@@ -715,12 +722,20 @@ export default function MingleHome(props: MingleHomeProps) {
       setIsEmailSheetClosing(false);
       setEmailSheetMode("login");
       setEmailAuthErrorCode(null);
+      setIsEmailSubmitting(false);
       emailSheetCloseTimerRef.current = null;
     }, EMAIL_SHEET_EXIT_MS);
-  }, [clearEmailSheetCloseTimer, isEmailSheetClosing, isEmailSheetOpen]);
+  }, [
+    clearEmailSheetCloseTimer,
+    isEmailSheetClosing,
+    isEmailSheetOpen,
+    isEmailSubmitting,
+  ]);
 
-  const handleEmailSignInSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
+  const handleEmailSignInSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isEmailSubmitting) return;
+
     const email = loginEmail.trim().toLowerCase();
     const password = loginPassword.trim();
     if (!email || !password) {
@@ -731,16 +746,43 @@ export default function MingleHome(props: MingleHomeProps) {
       setEmailAuthErrorCode("invalid_email");
       return;
     }
+
     setEmailAuthErrorCode(null);
-    window.alert(props.dictionary.profile.emailAuthNotReadyMessage);
+    setIsEmailSubmitting(true);
+
+    try {
+      const result = await signIn("email-password", {
+        email,
+        password,
+        callbackUrl,
+        redirect: false,
+      });
+      if (!result?.ok || result.error) {
+        setIsEmailSubmitting(false);
+        window.alert(props.dictionary.profile.emailAuthFailedMessage);
+        return;
+      }
+
+      const nextUrl = typeof result.url === "string" && result.url
+        ? result.url
+        : callbackUrl;
+      window.location.assign(nextUrl);
+    } catch {
+      setIsEmailSubmitting(false);
+      window.alert(props.dictionary.profile.emailAuthFailedMessage);
+    }
   }, [
+    callbackUrl,
+    isEmailSubmitting,
     loginEmail,
     loginPassword,
-    props.dictionary.profile.emailAuthNotReadyMessage,
+    props.dictionary.profile.emailAuthFailedMessage,
   ]);
 
-  const handleEmailSignUpSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
+  const handleEmailSignUpSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isEmailSubmitting) return;
+
     const email = signupEmail.trim().toLowerCase();
     const name = signupName.trim();
     const password = signupPassword.trim();
@@ -757,9 +799,54 @@ export default function MingleHome(props: MingleHomeProps) {
       setEmailAuthErrorCode("password_mismatch");
       return;
     }
+
     setEmailAuthErrorCode(null);
-    window.alert(props.dictionary.profile.emailAuthNotReadyMessage);
+    setIsEmailSubmitting(true);
+
+    try {
+      const signupResponse = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          name,
+          password,
+        }),
+      });
+      if (!signupResponse.ok && signupResponse.status !== 409) {
+        setIsEmailSubmitting(false);
+        window.alert(props.dictionary.profile.emailAuthNotReadyMessage);
+        return;
+      }
+
+      const signInResponse = await signIn("email-password", {
+        email,
+        password,
+        callbackUrl,
+        redirect: false,
+      });
+      if (!signInResponse?.ok || signInResponse.error) {
+        setIsEmailSubmitting(false);
+        setLoginEmail(email);
+        setLoginPassword("");
+        handleSwitchEmailSheetMode("login");
+        window.alert(props.dictionary.profile.emailAuthFailedMessage);
+        return;
+      }
+
+      const nextUrl = typeof signInResponse.url === "string" && signInResponse.url
+        ? signInResponse.url
+        : callbackUrl;
+      window.location.assign(nextUrl);
+    } catch {
+      setIsEmailSubmitting(false);
+      window.alert(props.dictionary.profile.emailAuthFailedMessage);
+    }
   }, [
+    callbackUrl,
+    handleSwitchEmailSheetMode,
+    isEmailSubmitting,
+    props.dictionary.profile.emailAuthFailedMessage,
     props.dictionary.profile.emailAuthNotReadyMessage,
     signupEmail,
     signupName,
@@ -767,8 +854,10 @@ export default function MingleHome(props: MingleHomeProps) {
     signupPasswordConfirm,
   ]);
 
-  const handleEmailForgotPasswordSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
+  const handleEmailForgotPasswordSubmit = useCallback(async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isEmailSubmitting) return;
+
     const email = forgotPasswordEmail.trim().toLowerCase();
     if (!email) {
       setEmailAuthErrorCode("required");
@@ -778,13 +867,40 @@ export default function MingleHome(props: MingleHomeProps) {
       setEmailAuthErrorCode("invalid_email");
       return;
     }
+
     setEmailAuthErrorCode(null);
-    window.alert(props.dictionary.profile.emailResetRequestedMessage);
-    handleSwitchEmailSheetMode("login");
+    setIsEmailSubmitting(true);
+
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          locale: props.locale,
+        }),
+      });
+      setIsEmailSubmitting(false);
+      if (!response.ok) {
+        window.alert(props.dictionary.profile.emailAuthNotReadyMessage);
+        return;
+      }
+
+      setLoginEmail(email);
+      setForgotPasswordEmail("");
+      window.alert(props.dictionary.profile.emailResetRequestedMessage);
+      handleSwitchEmailSheetMode("login");
+    } catch {
+      setIsEmailSubmitting(false);
+      window.alert(props.dictionary.profile.emailAuthNotReadyMessage);
+    }
   }, [
     forgotPasswordEmail,
     handleSwitchEmailSheetMode,
+    isEmailSubmitting,
+    props.dictionary.profile.emailAuthNotReadyMessage,
     props.dictionary.profile.emailResetRequestedMessage,
+    props.locale,
   ]);
 
   const handleAgreeAndStart = useCallback(() => {
@@ -849,6 +965,7 @@ export default function MingleHome(props: MingleHomeProps) {
   if (status === "loading" || status !== "authenticated") {
     const isLoading = status === "loading";
     const disabled = isSigningIn || isLoading;
+    const emailSheetDisabled = isEmailSubmitting || isLoading;
 
     return (
       // ① main bg = 다크 (#1C1C1E) → 가장자리 흰색 제거
@@ -1160,8 +1277,9 @@ export default function MingleHome(props: MingleHomeProps) {
                       <button
                         type="button"
                         onClick={handleCloseEmailSheet}
+                        disabled={emailSheetDisabled}
                         aria-label={props.dictionary.profile.closeEmailAuthSheet}
-                        className="absolute -right-1 top-0 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                        className="absolute -right-1 top-0 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <X size={26} strokeWidth={2.2} />
                       </button>
@@ -1177,6 +1295,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           setLoginEmail(event.target.value);
                           setEmailAuthErrorCode(null);
                         }}
+                        disabled={emailSheetDisabled}
                         autoComplete="email"
                         inputMode="email"
                         className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[1rem] text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
@@ -1190,7 +1309,8 @@ export default function MingleHome(props: MingleHomeProps) {
                         <button
                           type="button"
                           onClick={() => handleSwitchEmailSheetMode("forgot")}
-                          className="text-[0.82rem] font-medium text-slate-500 underline underline-offset-4 transition hover:text-slate-800"
+                          disabled={emailSheetDisabled}
+                          className="text-[0.82rem] font-medium text-slate-500 underline underline-offset-4 transition hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {props.dictionary.profile.emailForgotPasswordLink}
                         </button>
@@ -1201,6 +1321,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           setLoginPassword(event.target.value);
                           setEmailAuthErrorCode(null);
                         }}
+                        disabled={emailSheetDisabled}
                         autoComplete="current-password"
                         type="password"
                         className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[1rem] text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
@@ -1213,9 +1334,14 @@ export default function MingleHome(props: MingleHomeProps) {
 
                       <button
                         type="submit"
-                        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#111111] text-[1rem] font-semibold text-white transition active:scale-[0.99]"
+                        disabled={emailSheetDisabled}
+                        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#111111] text-[1rem] font-semibold text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
-                        {props.dictionary.profile.emailSignInAction}
+                        {isEmailSubmitting ? (
+                          <Loader2 size={18} className="animate-spin" aria-hidden />
+                        ) : (
+                          props.dictionary.profile.emailSignInAction
+                        )}
                       </button>
 
                       <div className="mt-6 flex items-center gap-3 text-[0.9rem] text-slate-500">
@@ -1229,7 +1355,8 @@ export default function MingleHome(props: MingleHomeProps) {
                         <button
                           type="button"
                           onClick={() => handleSwitchEmailSheetMode("signup")}
-                          className="font-semibold text-slate-900 underline underline-offset-4"
+                          disabled={emailSheetDisabled}
+                          className="font-semibold text-slate-900 underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {props.dictionary.profile.emailCreateAccountLink}
                         </button>
@@ -1248,8 +1375,9 @@ export default function MingleHome(props: MingleHomeProps) {
                       <button
                         type="button"
                         onClick={handleCloseEmailSheet}
+                        disabled={emailSheetDisabled}
                         aria-label={props.dictionary.profile.closeEmailAuthSheet}
-                        className="absolute -right-1 top-0 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                        className="absolute -right-1 top-0 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <X size={26} strokeWidth={2.2} />
                       </button>
@@ -1265,6 +1393,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           setSignupEmail(event.target.value);
                           setEmailAuthErrorCode(null);
                         }}
+                        disabled={emailSheetDisabled}
                         autoComplete="email"
                         inputMode="email"
                         className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[1rem] text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
@@ -1280,6 +1409,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           setSignupName(event.target.value);
                           setEmailAuthErrorCode(null);
                         }}
+                        disabled={emailSheetDisabled}
                         autoComplete="name"
                         className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[1rem] text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
                         placeholder={props.dictionary.profile.nameFieldPlaceholder}
@@ -1294,6 +1424,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           setSignupPassword(event.target.value);
                           setEmailAuthErrorCode(null);
                         }}
+                        disabled={emailSheetDisabled}
                         autoComplete="new-password"
                         type="password"
                         className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[1rem] text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
@@ -1309,6 +1440,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           setSignupPasswordConfirm(event.target.value);
                           setEmailAuthErrorCode(null);
                         }}
+                        disabled={emailSheetDisabled}
                         autoComplete="new-password"
                         type="password"
                         className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[1rem] text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
@@ -1321,9 +1453,14 @@ export default function MingleHome(props: MingleHomeProps) {
 
                       <button
                         type="submit"
-                        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#111111] text-[1rem] font-semibold text-white transition active:scale-[0.99]"
+                        disabled={emailSheetDisabled}
+                        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#111111] text-[1rem] font-semibold text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
-                        {props.dictionary.profile.emailSignUpAction}
+                        {isEmailSubmitting ? (
+                          <Loader2 size={18} className="animate-spin" aria-hidden />
+                        ) : (
+                          props.dictionary.profile.emailSignUpAction
+                        )}
                       </button>
 
                       <div className="mt-6 flex items-center gap-3 text-[0.9rem] text-slate-500">
@@ -1337,7 +1474,8 @@ export default function MingleHome(props: MingleHomeProps) {
                         <button
                           type="button"
                           onClick={() => handleSwitchEmailSheetMode("login")}
-                          className="font-semibold text-slate-900 underline underline-offset-4"
+                          disabled={emailSheetDisabled}
+                          className="font-semibold text-slate-900 underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {props.dictionary.profile.emailBackToLoginLink}
                         </button>
@@ -1350,8 +1488,9 @@ export default function MingleHome(props: MingleHomeProps) {
                       <button
                         type="button"
                         onClick={() => handleSwitchEmailSheetMode("login")}
+                        disabled={emailSheetDisabled}
                         aria-label={props.dictionary.profile.emailBackLabel}
-                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <ArrowLeft size={24} strokeWidth={2.2} />
                       </button>
@@ -1366,8 +1505,9 @@ export default function MingleHome(props: MingleHomeProps) {
                       <button
                         type="button"
                         onClick={handleCloseEmailSheet}
+                        disabled={emailSheetDisabled}
                         aria-label={props.dictionary.profile.closeEmailAuthSheet}
-                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <X size={26} strokeWidth={2.2} />
                       </button>
@@ -1383,6 +1523,7 @@ export default function MingleHome(props: MingleHomeProps) {
                           setForgotPasswordEmail(event.target.value);
                           setEmailAuthErrorCode(null);
                         }}
+                        disabled={emailSheetDisabled}
                         autoComplete="email"
                         inputMode="email"
                         className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-[1rem] text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
@@ -1395,15 +1536,21 @@ export default function MingleHome(props: MingleHomeProps) {
 
                       <button
                         type="submit"
-                        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#111111] text-[1rem] font-semibold text-white transition active:scale-[0.99]"
+                        disabled={emailSheetDisabled}
+                        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#111111] text-[1rem] font-semibold text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
-                        {props.dictionary.profile.emailSendResetAction}
+                        {isEmailSubmitting ? (
+                          <Loader2 size={18} className="animate-spin" aria-hidden />
+                        ) : (
+                          props.dictionary.profile.emailSendResetAction
+                        )}
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleSwitchEmailSheetMode("login")}
-                        className="mt-5 inline-flex w-full items-center justify-center text-[1rem] font-medium text-slate-600 underline underline-offset-4 transition hover:text-slate-900"
+                        disabled={emailSheetDisabled}
+                        className="mt-5 inline-flex w-full items-center justify-center text-[1rem] font-medium text-slate-600 underline underline-offset-4 transition hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {props.dictionary.profile.emailBackToLoginLink}
                       </button>

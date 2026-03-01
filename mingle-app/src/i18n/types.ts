@@ -95,7 +95,12 @@ export type AppDictionary = {
     emailAlreadyAccountPrompt: string;
     emailCreateAccountLink: string;
     emailBackToLoginLink: string;
+    emailResetPageTitle: string;
+    emailResetPageSubtitle: string;
+    emailResetPasswordAction: string;
+    emailResetPasswordSuccess: string;
     orLabel: string;
+    emailAuthFailedMessage: string;
     emailAuthNotReadyMessage: string;
     emailResetRequestedMessage: string;
     emailRequiredFieldsMessage: string;
