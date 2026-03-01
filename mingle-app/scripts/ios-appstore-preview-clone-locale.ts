@@ -75,9 +75,11 @@ type CanvasMetaResponse = {
       x: number;
       y: number;
       width: number;
+      font?: { size: number };
       lineCount: number;
       wrappedByWidth: boolean;
       maxLineWidth: number;
+      lines?: string[];
       bounds: { x: number; y: number; width: number; height: number };
     }>;
   };
@@ -117,6 +119,35 @@ type Options = {
   locale: string;
   i18nJsonPath: string;
   dryRun: boolean;
+};
+
+type OneLineAdjustStatus = 'unchanged' | 'fit_by_width' | 'fit_by_font' | 'needs_text_change';
+
+type OneLineAdjustRow = {
+  canvasIndex: number;
+  canvasId: string;
+  canvasName: string;
+  textBoxId: string;
+  text: string;
+  beforeLineCount: number;
+  afterLineCount: number;
+  beforeWidth: number;
+  afterWidth: number;
+  beforeFontSize: number;
+  afterFontSize: number;
+  beforeX: number;
+  afterX: number;
+  status: OneLineAdjustStatus;
+};
+
+type SingleTextMetaResponse = {
+  textBoxMeta: {
+    id: string;
+    lineCount: number;
+    width: number;
+    x: number;
+    text: string;
+  };
 };
 
 function printUsage() {
@@ -324,45 +355,176 @@ async function cloneMediaByIndex(
   }
 }
 
-async function fitAndCenterTextBoxes(apiBase: string, projectId: string) {
+async function enforceOneLineByWidthAndFont(apiBase: string, projectId: string) {
   const full = await fetchJson<FullProjectResponse>(
     `${apiBase}/api/projects/${projectId}/full?includeMeta=false&includeRawFile=false`,
   );
+  const report: OneLineAdjustRow[] = [];
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-  for (const canvas of full.state.canvases) {
+  for (const [canvasIndex, canvas] of full.state.canvases.entries()) {
     const metaUrl = `${apiBase}/api/projects/${projectId}/canvases/${canvas.id}/meta`;
     const patchUrl = `${apiBase}/api/projects/${projectId}/canvases/${canvas.id}/text-boxes`;
+    const singlePatchUrl = (textBoxId: string) =>
+      `${apiBase}/api/projects/${projectId}/canvases/${canvas.id}/text-boxes/${textBoxId}`;
+    const singleMetaUrl = (textBoxId: string) =>
+      `${apiBase}/api/projects/${projectId}/canvases/${canvas.id}/text-boxes/${textBoxId}/meta`;
 
-    const initialMeta = await fetchJson<CanvasMetaResponse>(metaUrl);
-    if (initialMeta.canvasMeta.textBoxes.length === 0) continue;
+    const currentCanvas = canvas.state;
+    const currentTextBoxMap = new Map(currentCanvas.textBoxes.map((box) => [box.id, box]));
+    const canvasMeta = await fetchJson<CanvasMetaResponse>(metaUrl);
+    const textBoxes = canvasMeta.canvasMeta.textBoxes;
+    if (textBoxes.length === 0) continue;
 
-    const widenUpdates = initialMeta.canvasMeta.textBoxes.map((box) => ({
-      id: box.id,
-      width: 1200,
-    }));
-    await fetchJson<JsonObject>(patchUrl, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updates: widenUpdates }),
-    });
+    const canvasWidth = canvasMeta.canvasMeta.canvasPreset.width;
+    const centeredX = (boxWidth: number) => (canvasWidth - boxWidth) / 2;
 
-    const measuredMeta = await fetchJson<CanvasMetaResponse>(metaUrl);
-    const canvasWidth = measuredMeta.canvasMeta.canvasPreset.width;
-    const fitUpdates = measuredMeta.canvasMeta.textBoxes.map((box) => {
-      const fittedWidth = Math.max(120, Math.ceil(box.maxLineWidth) + 4);
-      return {
-        id: box.id,
-        width: fittedWidth,
-        x: (canvasWidth - fittedWidth) / 2,
+    for (const boxMeta of textBoxes) {
+      const originalBox = currentTextBoxMap.get(boxMeta.id);
+      if (!originalBox) continue;
+
+      const baseRow = {
+        canvasIndex: canvasIndex + 1,
+        canvasId: canvas.id,
+        canvasName: canvas.name,
+        textBoxId: boxMeta.id,
+        text: boxMeta.text,
+        beforeLineCount: boxMeta.lineCount,
+        beforeWidth: originalBox.width,
+        beforeFontSize: originalBox.fontSize,
+        beforeX: originalBox.x,
       };
-    });
 
-    await fetchJson<JsonObject>(patchUrl, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updates: fitUpdates }),
-    });
+      // Keep boxes that are already single-line untouched.
+      if (boxMeta.lineCount <= 1) {
+        report.push({
+          ...baseRow,
+          afterLineCount: boxMeta.lineCount,
+          afterWidth: originalBox.width,
+          afterFontSize: originalBox.fontSize,
+          afterX: originalBox.x,
+          status: 'unchanged',
+        });
+        continue;
+      }
+
+      const getLineCount = async () => {
+        const textMeta = await fetchJson<SingleTextMetaResponse>(singleMetaUrl(boxMeta.id));
+        return textMeta.textBoxMeta.lineCount;
+      };
+
+      const patchBox = async (patch: Partial<TextBoxModel>) => {
+        await fetchJson<JsonObject>(singlePatchUrl(boxMeta.id), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+      };
+
+      // Step 1: widen gradually (binary search) up to max width and stop when single-line.
+      const maxWidth = 1200;
+      const startWidth = Math.max(120, Math.ceil(originalBox.width));
+      let widthFit = false;
+      let finalWidth = startWidth;
+      let lineCountAtFinalWidth = boxMeta.lineCount;
+
+      await patchBox({ width: maxWidth, x: centeredX(maxWidth) });
+      let lineCountAtMax = await getLineCount();
+
+      if (lineCountAtMax <= 1) {
+        let left = startWidth;
+        let right = maxWidth;
+        let best = maxWidth;
+        while (left <= right) {
+          const mid = Math.floor((left + right) / 2);
+          await patchBox({ width: mid, x: centeredX(mid) });
+          const lineCountAtMid = await getLineCount();
+          if (lineCountAtMid <= 1) {
+            best = mid;
+            right = mid - 1;
+          } else {
+            left = mid + 1;
+          }
+        }
+        finalWidth = best;
+        await patchBox({ width: finalWidth, x: centeredX(finalWidth) });
+        lineCountAtFinalWidth = await getLineCount();
+        widthFit = lineCountAtFinalWidth <= 1;
+      } else {
+        finalWidth = maxWidth;
+        lineCountAtFinalWidth = lineCountAtMax;
+      }
+
+      if (widthFit) {
+        report.push({
+          ...baseRow,
+          afterLineCount: lineCountAtFinalWidth,
+          afterWidth: finalWidth,
+          afterFontSize: originalBox.fontSize,
+          afterX: centeredX(finalWidth),
+          status: 'fit_by_width',
+        });
+        continue;
+      }
+
+      // Step 2: at max width, shrink font up to 10% and stop when single-line.
+      const originalFont = originalBox.fontSize;
+      let fitted = false;
+      let finalFont = originalFont;
+      let finalLineCount = lineCountAtFinalWidth;
+
+      await patchBox({ width: maxWidth, x: centeredX(maxWidth) });
+
+      for (let step = 1; step <= 10; step += 1) {
+        const nextFont = clamp(originalFont * (1 - step / 100), 18, 160);
+        await patchBox({ fontSize: nextFont });
+        const textMeta = await fetchJson<SingleTextMetaResponse>(singleMetaUrl(boxMeta.id));
+        finalFont = nextFont;
+        finalLineCount = textMeta.textBoxMeta.lineCount;
+        if (finalLineCount <= 1) {
+          fitted = true;
+          break;
+        }
+      }
+
+      report.push({
+        ...baseRow,
+        afterLineCount: finalLineCount,
+        afterWidth: fitted ? maxWidth : originalBox.width,
+        afterFontSize: finalFont,
+        afterX: fitted ? centeredX(maxWidth) : originalBox.x,
+        status: fitted ? 'fit_by_font' : 'needs_text_change',
+      });
+
+      // Step 3: if still failing, do not apply changes (restore original box).
+      if (!fitted) {
+        await patchBox({
+          width: originalBox.width,
+          fontSize: originalBox.fontSize,
+          x: originalBox.x,
+        });
+      }
+    }
+
+    // Keep center-x coherent for all touched boxes after line-fit operation.
+    const touchedUpdates = report
+      .filter(
+        (row) =>
+          row.canvasId === canvas.id &&
+          (row.status === 'fit_by_width' || row.status === 'fit_by_font'),
+      )
+      .map((row) => ({ id: row.textBoxId, x: row.afterX }));
+
+    if (touchedUpdates.length > 0) {
+      await fetchJson<JsonObject>(patchUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: touchedUpdates }),
+      });
+    }
   }
+
+  return report;
 }
 
 async function main() {
@@ -420,8 +582,34 @@ async function main() {
   await cloneMediaByIndex(apiBase, sourceFull, refreshedTarget);
   console.log('[media] copy by canvas index done');
 
-  await fitAndCenterTextBoxes(apiBase, imported.project.id);
-  console.log('[layout] text width fit + x-center done');
+  const adjustReport = await enforceOneLineByWidthAndFont(apiBase, imported.project.id);
+  const reportSummary = {
+    total: adjustReport.length,
+    unchanged: adjustReport.filter((row) => row.status === 'unchanged').length,
+    fitByWidth: adjustReport.filter((row) => row.status === 'fit_by_width').length,
+    fitByFont: adjustReport.filter((row) => row.status === 'fit_by_font').length,
+    needsTextChange: adjustReport.filter((row) => row.status === 'needs_text_change').length,
+  };
+  console.log('[layout] one-line enforcement done');
+  console.log(JSON.stringify({ oneLineSummary: reportSummary }, null, 2));
+
+  const textChangeRows = adjustReport.filter((row) => row.status === 'needs_text_change');
+  if (textChangeRows.length > 0) {
+    console.log('[layout] text-change required rows:');
+    console.log(
+      JSON.stringify(
+        textChangeRows.map((row) => ({
+          canvasIndex: row.canvasIndex,
+          canvasName: row.canvasName,
+          textBoxId: row.textBoxId,
+          text: row.text,
+          afterLineCount: row.afterLineCount,
+        })),
+        null,
+        2,
+      ),
+    );
+  }
 
   const finalState = await fetchJson<FullProjectResponse>(
     `${apiBase}/api/projects/${imported.project.id}/full?includeMeta=false&includeRawFile=false`,
@@ -446,4 +634,3 @@ main().catch((error) => {
   console.error(`[error] ${message}`);
   process.exit(1);
 });
-
