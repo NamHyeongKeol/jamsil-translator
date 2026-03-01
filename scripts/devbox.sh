@@ -17,6 +17,10 @@ MINGLE_IOS_TEST_SCRIPT="$MINGLE_IOS_DIR/scripts/test-ios.sh"
 MANAGED_START="# >>> devbox managed (auto)"
 MANAGED_END="# <<< devbox managed (auto)"
 IOS_RN_REQUIRED_API_NAMESPACE="ios/v1.0.0"
+DEVBOX_FIXED_WEB_PORT=3518
+DEVBOX_FIXED_STT_PORT=5518
+DEVBOX_FIXED_METRO_PORT=8518
+DEVBOX_FIXED_NGROK_API_PORT=10518
 
 if [[ -d "$LOCAL_TOOLS_BIN" ]]; then
   PATH="$LOCAL_TOOLS_BIN:$PATH"
@@ -128,7 +132,7 @@ Usage:
   scripts/devbox status
 
 Commands:
-  init         Generate worktree-specific ports/config runtime files.
+  init         Generate fixed ports/config runtime files.
   bootstrap    Read-only for .env.local; install deps and optionally push local env keys to Vault.
   profile      Apply local/device profile to managed env files.
   ngrok-config Regenerate ngrok.mobile.local.yml from current ports.
@@ -572,44 +576,35 @@ collect_reserved_ports() {
 
 calc_default_ports() {
   collect_reserved_ports
+  DEFAULT_WEB_PORT="$DEVBOX_FIXED_WEB_PORT"
+  DEFAULT_STT_PORT="$DEVBOX_FIXED_STT_PORT"
+  DEFAULT_METRO_PORT="$DEVBOX_FIXED_METRO_PORT"
+  DEFAULT_NGROK_API_PORT="$DEVBOX_FIXED_NGROK_API_PORT"
+}
 
-  local range seed_text seed slot web stt metro ngrok_api
-  range=800
-  seed_text="$ROOT_CANON|$DEVBOX_WORKTREE_NAME"
-  seed="$(printf '%s' "$seed_text" | cksum | awk '{print $1}')"
+enforce_fixed_ports() {
+  local requested_web="${DEVBOX_WEB_PORT:-}"
+  local requested_stt="${DEVBOX_STT_PORT:-}"
+  local requested_metro="${DEVBOX_METRO_PORT:-}"
+  local requested_ngrok_api="${DEVBOX_NGROK_API_PORT:-}"
 
-  for ((attempt = 0; attempt < range; attempt++)); do
-    slot=$(((seed + attempt) % range))
-    web=$((3200 + slot))
-    stt=$((5200 + slot))
-    metro=$((8200 + slot))
-    ngrok_api=$((10200 + slot))
+  if [[ -n "$requested_web" && "$requested_web" != "$DEFAULT_WEB_PORT" ]]; then
+    warn "DEVBOX_WEB_PORT override($requested_web) ignored; using fixed port $DEFAULT_WEB_PORT"
+  fi
+  if [[ -n "$requested_stt" && "$requested_stt" != "$DEFAULT_STT_PORT" ]]; then
+    warn "DEVBOX_STT_PORT override($requested_stt) ignored; using fixed port $DEFAULT_STT_PORT"
+  fi
+  if [[ -n "$requested_metro" && "$requested_metro" != "$DEFAULT_METRO_PORT" ]]; then
+    warn "DEVBOX_METRO_PORT override($requested_metro) ignored; using fixed port $DEFAULT_METRO_PORT"
+  fi
+  if [[ -n "$requested_ngrok_api" && "$requested_ngrok_api" != "$DEFAULT_NGROK_API_PORT" ]]; then
+    warn "DEVBOX_NGROK_API_PORT override($requested_ngrok_api) ignored; using fixed port $DEFAULT_NGROK_API_PORT"
+  fi
 
-    if port_list_contains "$RESERVED_ALL_PORTS" "$web"; then
-      continue
-    fi
-    if port_list_contains "$RESERVED_ALL_PORTS" "$stt"; then
-      continue
-    fi
-    if port_list_contains "$RESERVED_ALL_PORTS" "$metro"; then
-      continue
-    fi
-    if port_list_contains "$RESERVED_ALL_PORTS" "$ngrok_api"; then
-      continue
-    fi
-
-    if port_in_use "$web" || port_in_use "$stt" || port_in_use "$metro" || port_in_use "$ngrok_api"; then
-      continue
-    fi
-
-    DEFAULT_WEB_PORT="$web"
-    DEFAULT_STT_PORT="$stt"
-    DEFAULT_METRO_PORT="$metro"
-    DEFAULT_NGROK_API_PORT="$ngrok_api"
-    return
-  done
-
-  die "failed to allocate default ports (range exhausted: web 3200-3999, stt 5200-5999, metro 8200-8999, ngrok-api 10200-10999)"
+  DEVBOX_WEB_PORT="$DEFAULT_WEB_PORT"
+  DEVBOX_STT_PORT="$DEFAULT_STT_PORT"
+  DEVBOX_METRO_PORT="$DEFAULT_METRO_PORT"
+  DEVBOX_NGROK_API_PORT="$DEFAULT_NGROK_API_PORT"
 }
 
 ensure_file_parent() {
@@ -1121,26 +1116,7 @@ require_devbox_env() {
 
   calc_default_ports
 
-  if [[ -z "${DEVBOX_WEB_PORT:-}" ]]; then
-    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_WEB_PORT || true)")"
-    [[ -n "$value" ]] && DEVBOX_WEB_PORT="$value"
-  fi
-  if [[ -z "${DEVBOX_STT_PORT:-}" ]]; then
-    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_STT_PORT || true)")"
-    [[ -n "$value" ]] && DEVBOX_STT_PORT="$value"
-  fi
-  if [[ -z "${DEVBOX_METRO_PORT:-}" ]]; then
-    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_METRO_PORT || true)")"
-    [[ -n "$value" ]] && DEVBOX_METRO_PORT="$value"
-  fi
-  if [[ -z "${DEVBOX_NGROK_API_PORT:-}" ]]; then
-    value="$(trim_whitespace "$(read_app_setting_value DEVBOX_NGROK_API_PORT || true)")"
-    [[ -n "$value" ]] && DEVBOX_NGROK_API_PORT="$value"
-  fi
-
-  [[ -n "${DEVBOX_WEB_PORT:-}" ]] || DEVBOX_WEB_PORT="$DEFAULT_WEB_PORT"
-  [[ -n "${DEVBOX_STT_PORT:-}" ]] || DEVBOX_STT_PORT="$DEFAULT_STT_PORT"
-  [[ -n "${DEVBOX_METRO_PORT:-}" ]] || DEVBOX_METRO_PORT="$DEFAULT_METRO_PORT"
+  enforce_fixed_ports
 
   if [[ -z "${DEVBOX_PROFILE:-}" ]]; then
     value="$(trim_whitespace "$(read_app_setting_value DEVBOX_PROFILE || true)")"
@@ -1184,9 +1160,6 @@ require_devbox_env() {
   : "${DEVBOX_WEB_PORT:?missing DEVBOX_WEB_PORT}"
   : "${DEVBOX_STT_PORT:?missing DEVBOX_STT_PORT}"
   : "${DEVBOX_METRO_PORT:?missing DEVBOX_METRO_PORT}"
-  if [[ -z "${DEVBOX_NGROK_API_PORT:-}" ]]; then
-    DEVBOX_NGROK_API_PORT="$((DEVBOX_WEB_PORT + 7000))"
-  fi
   : "${DEVBOX_PROFILE:?missing DEVBOX_PROFILE}"
   case "$DEVBOX_PROFILE" in
     local|device) ;;
@@ -2820,10 +2793,23 @@ cmd_init() {
   DEVBOX_WORKTREE_NAME="$(derive_worktree_name)"
   calc_default_ports
 
-  [[ -n "$web_port" ]] || web_port="$DEFAULT_WEB_PORT"
-  [[ -n "$stt_port" ]] || stt_port="$DEFAULT_STT_PORT"
-  [[ -n "$metro_port" ]] || metro_port="$DEFAULT_METRO_PORT"
-  [[ -n "$ngrok_api_port" ]] || ngrok_api_port="$DEFAULT_NGROK_API_PORT"
+  if [[ -n "$web_port" && "$web_port" != "$DEFAULT_WEB_PORT" ]]; then
+    die "web port is fixed to $DEFAULT_WEB_PORT; remove --web-port override"
+  fi
+  if [[ -n "$stt_port" && "$stt_port" != "$DEFAULT_STT_PORT" ]]; then
+    die "stt port is fixed to $DEFAULT_STT_PORT; remove --stt-port override"
+  fi
+  if [[ -n "$metro_port" && "$metro_port" != "$DEFAULT_METRO_PORT" ]]; then
+    die "metro port is fixed to $DEFAULT_METRO_PORT; remove --metro-port override"
+  fi
+  if [[ -n "$ngrok_api_port" && "$ngrok_api_port" != "$DEFAULT_NGROK_API_PORT" ]]; then
+    die "ngrok api port is fixed to $DEFAULT_NGROK_API_PORT; remove --ngrok-api-port override"
+  fi
+
+  web_port="$DEFAULT_WEB_PORT"
+  stt_port="$DEFAULT_STT_PORT"
+  metro_port="$DEFAULT_METRO_PORT"
+  ngrok_api_port="$DEFAULT_NGROK_API_PORT"
 
   validate_port "web port" "$web_port"
   validate_port "stt port" "$stt_port"
