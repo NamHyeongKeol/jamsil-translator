@@ -1,6 +1,6 @@
 import { createServer } from 'http';
-import { appendFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, resolve } from 'path';
+import { existsSync } from 'fs';
+import { resolve } from 'path';
 import { WebSocket, WebSocketServer } from 'ws';
 import fetch from 'node-fetch';
 import { config as loadDotenv } from 'dotenv';
@@ -27,24 +27,6 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     if (!Number.isFinite(raw)) return 1200;
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
-const SONIOX_RAW_TOKEN_LOG_PATH = process.env.SONIOX_RAW_TOKEN_LOG_PATH || '/tmp/mingle-soniox-raw-token-lines.log';
-let sonioxRawTokenLogDirReady = false;
-let sonioxRawTokenLogWriteFailed = false;
-
-const appendSonioxRawTokenLogLine = (line: string) => {
-    try {
-        if (!sonioxRawTokenLogDirReady) {
-            mkdirSync(dirname(SONIOX_RAW_TOKEN_LOG_PATH), { recursive: true });
-            sonioxRawTokenLogDirReady = true;
-        }
-        appendFileSync(SONIOX_RAW_TOKEN_LOG_PATH, `${line}\n`, 'utf8');
-    } catch (error) {
-        if (!sonioxRawTokenLogWriteFailed) {
-            sonioxRawTokenLogWriteFailed = true;
-            console.error('[Soniox] raw token log write failed:', error);
-        }
-    }
-};
 
 const server = createServer();
 const wss = new WebSocketServer({ server });
@@ -833,10 +815,6 @@ wss.on('connection', (clientWs) => {
                     if (tokens.length === 0) {
                         return;
                     }
-                    const rawJoinedTokenText = tokens
-                        .map((token) => (typeof token.text === 'string' ? token.text : ''))
-                        .join('');
-                    appendSonioxRawTokenLogLine(rawJoinedTokenText);
 
                     const previousFinalizedText = finalizedText;
                     const previousNonFinalText = latestNonFinalText;
@@ -1318,5 +1296,4 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(
         `[stt-server] soniox_finalize_tuning silenceMs=${SONIOX_MANUAL_FINALIZE_SILENCE_MS} cooldownMs=${SONIOX_MANUAL_FINALIZE_COOLDOWN_MS}`,
     );
-    console.log(`[stt-server] soniox_raw_token_log_path=${SONIOX_RAW_TOKEN_LOG_PATH}`);
 });
