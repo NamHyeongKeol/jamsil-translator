@@ -200,7 +200,11 @@ export class SonioxEndpointStrategy implements SegmentationStrategy {
     readonly id: SegmentationStrategyId = 'end';
 
     sonioxConfigOverrides(): Record<string, unknown> {
-        return { enable_endpoint_detection: true };
+        return {
+            enable_endpoint_detection: true,
+            // 발화 종료 후 <end> 마커까지 최대 대기 시간. 허용 범위: 500~3000ms, 기본값 2000ms
+            max_endpoint_delay_ms: 500,
+        };
     }
 
     getSnapshotTextLen(): number | null { return null; }
