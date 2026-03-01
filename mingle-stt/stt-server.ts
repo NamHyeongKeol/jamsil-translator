@@ -1,6 +1,6 @@
 import { createServer } from 'http';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
+import { appendFileSync, existsSync, mkdirSync } from 'fs';
+import { dirname, resolve } from 'path';
 import { WebSocket, WebSocketServer } from 'ws';
 import fetch from 'node-fetch';
 import { config as loadDotenv } from 'dotenv';
@@ -27,6 +27,24 @@ const SONIOX_MANUAL_FINALIZE_COOLDOWN_MS = (() => {
     if (!Number.isFinite(raw)) return 1200;
     return Math.max(300, Math.min(5000, Math.floor(raw)));
 })();
+const SONIOX_RAW_TOKEN_LOG_PATH = process.env.SONIOX_RAW_TOKEN_LOG_PATH || '/tmp/mingle-soniox-raw-tokens.jsonl';
+let sonioxRawTokenLogDirReady = false;
+let sonioxRawTokenLogWriteFailed = false;
+
+const appendSonioxRawTokenLog = (entry: Record<string, unknown>) => {
+    try {
+        if (!sonioxRawTokenLogDirReady) {
+            mkdirSync(dirname(SONIOX_RAW_TOKEN_LOG_PATH), { recursive: true });
+            sonioxRawTokenLogDirReady = true;
+        }
+        appendFileSync(SONIOX_RAW_TOKEN_LOG_PATH, `${JSON.stringify(entry)}\n`, 'utf8');
+    } catch (error) {
+        if (!sonioxRawTokenLogWriteFailed) {
+            sonioxRawTokenLogWriteFailed = true;
+            console.error('[Soniox] raw token log write failed:', error);
+        }
+    }
+};
 
 const server = createServer();
 const wss = new WebSocketServer({ server });
@@ -645,6 +663,7 @@ wss.on('connection', (clientWs) => {
             let latestNonFinalIsProvisionalCarry = false;
             let lastFinalizedEndMs = -1;
             let detectedLang = config.languages[0] || 'en';
+            let sonioxFrameSeq = 0;
             sonioxStopRequested = false;
             const stripEndpointMarkers = (text: string): string => text.replace(/<\/?(?:end|fin)>/ig, '');
             const extractFirstEndpointMarker = (text: string): string => {
@@ -815,6 +834,18 @@ wss.on('connection', (clientWs) => {
                     if (tokens.length === 0) {
                         return;
                     }
+                    sonioxFrameSeq += 1;
+                    const rawJoinedTokenText = tokens
+                        .map((token) => (typeof token.text === 'string' ? token.text : ''))
+                        .join('');
+                    appendSonioxRawTokenLog({
+                        timestamp: new Date().toISOString(),
+                        connection_id: connId,
+                        frame_seq: sonioxFrameSeq,
+                        raw_joined_token_text: rawJoinedTokenText,
+                        raw_tokens: msg.tokens,
+                        raw_message: rawSonioxMessage,
+                    });
 
                     const previousFinalizedText = finalizedText;
                     const previousNonFinalText = latestNonFinalText;
