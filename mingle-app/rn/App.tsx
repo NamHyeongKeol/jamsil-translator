@@ -39,6 +39,8 @@ type NativeRuntimeConfig = {
   apiNamespace?: string;
   clientVersion?: string;
   clientBuild?: string;
+  deviceLocaleTag?: string;
+  devicePreferredLanguages?: string[];
 };
 type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none';
 type VersionGateState =
@@ -664,13 +666,32 @@ function resolveIosTopTapOverlayHeight(rawStatusBarHeight: unknown): number {
 
 function resolveDeviceLocaleTag(): string {
   if (Platform.OS === 'ios') {
+    const runtimeLocaleTag = NATIVE_RUNTIME_CONFIG.deviceLocaleTag;
+    if (typeof runtimeLocaleTag === 'string' && runtimeLocaleTag.trim()) {
+      return runtimeLocaleTag.trim();
+    }
+
+    const runtimePreferredLanguages = NATIVE_RUNTIME_CONFIG.devicePreferredLanguages;
+    if (Array.isArray(runtimePreferredLanguages)) {
+      for (const language of runtimePreferredLanguages) {
+        if (typeof language === 'string' && language.trim()) {
+          return language.trim();
+        }
+      }
+    }
+
     const settingsManager = (NativeModules as {
       SettingsManager?: IOSSettingsManager;
     }).SettingsManager;
-    const firstAppleLanguage = settingsManager?.settings?.AppleLanguages?.[0];
-    if (typeof firstAppleLanguage === 'string' && firstAppleLanguage.trim()) {
-      return firstAppleLanguage.trim();
+    const appleLanguages = settingsManager?.settings?.AppleLanguages;
+    if (Array.isArray(appleLanguages)) {
+      for (const language of appleLanguages) {
+        if (typeof language === 'string' && language.trim()) {
+          return language.trim();
+        }
+      }
     }
+
     // AppleLocale can reflect regional format settings rather than UI language.
     // Prefer AppleLanguages first so locale follows the device language priority.
     const appleLocale = settingsManager?.settings?.AppleLocale;
