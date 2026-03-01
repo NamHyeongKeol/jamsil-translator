@@ -78,6 +78,10 @@ DEVBOX_VAULT_APP_PATH=""
 DEVBOX_VAULT_STT_PATH=""
 DEVBOX_NGROK_API_PORT=""
 DEVBOX_TUNNEL_PROVIDER="${DEVBOX_TUNNEL_PROVIDER:-}"
+# NOTE:
+# Cloudflare named tunnel variables are commonly stored in shell startup files
+# (e.g. ~/.zshrc). read_app_setting_value() will look them up there when they
+# are not present in process env or local .env files.
 DEVBOX_CLOUDFLARE_TUNNEL_TOKEN="${DEVBOX_CLOUDFLARE_TUNNEL_TOKEN:-}"
 DEVBOX_CLOUDFLARE_WEB_HOSTNAME="${DEVBOX_CLOUDFLARE_WEB_HOSTNAME:-}"
 DEVBOX_CLOUDFLARE_STT_HOSTNAME="${DEVBOX_CLOUDFLARE_STT_HOSTNAME:-}"
@@ -152,6 +156,8 @@ Environment:
                            Default: ngrok
   DEVBOX_CLOUDFLARE_TUNNEL_TOKEN  Optional: when set with hostnames below,
                             cloudflare provider uses named tunnel mode.
+                           This can be defined in shell rc files
+                           (e.g. ~/.zshrc, ~/.zprofile).
   DEVBOX_CLOUDFLARE_WEB_HOSTNAME  Named tunnel web hostname (e.g. web-dev.example.com)
   DEVBOX_CLOUDFLARE_STT_HOSTNAME  Named tunnel stt hostname (e.g. stt-dev.example.com)
   DEVBOX_IOS_TEAM_ID       Optional iOS Team ID used by ios-rn-ipa exportOptions.
