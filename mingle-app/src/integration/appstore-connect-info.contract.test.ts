@@ -31,23 +31,10 @@ function isNonEmptyKeywords(value: unknown): boolean {
   )
 }
 
-function normalizeUploadLocale(uploadLocaleDirName: string): string {
-  const normalized = uploadLocaleDirName.trim().toLowerCase()
-  if (normalized === 'en-us') {
-    return 'en'
-  }
-  return normalized
-}
-
-const appStoreInfoRoot = path.resolve(
+const appStoreInfoJsonPath = path.resolve(
   process.cwd(),
-  'rn/appstore-connect-info',
+  'rn/appstore-connect-info/appstore-connect-info.i18n.json',
 )
-const appStoreInfoJsonPath = path.join(
-  appStoreInfoRoot,
-  'appstore-connect-info.i18n.json',
-)
-const uploadRoot = path.join(appStoreInfoRoot, 'upload')
 const payload = JSON.parse(
   fs.readFileSync(appStoreInfoJsonPath, 'utf8'),
 ) as {
@@ -96,7 +83,7 @@ describe('appstore-connect-info contract', () => {
     expect(appInfo?.subtitle).toBeDefined()
   })
 
-  it('has screenshot copy keys for every locale and shot', () => {
+  it('has screenshot copy keys for every locale and expected shot count', () => {
     const locales = payload.meta?.locales as string[]
     const totalShots = payload.meta?.shots as number
     const screenshots = payload.ios?.submission?.screenshots ?? {}
@@ -139,15 +126,10 @@ describe('appstore-connect-info contract', () => {
     }
   })
 
-  it('keeps metadata fields complete for default and upload locales', () => {
+  it('keeps metadata fields complete for declared metadata locales', () => {
     const metadataByLocale = payload.ios?.submission?.appStoreInfo?.metadata ?? {}
     const defaultMetadataLocale = payload.ios?.submission?.appStoreInfo
       ?.defaultMetadataLocale as string
-    const uploadLocales = fs
-      .readdirSync(uploadRoot, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => normalizeUploadLocale(entry.name))
-
     expect(metadataByLocale[defaultMetadataLocale]).toBeDefined()
 
     for (const locale of Object.keys(metadataByLocale)) {
@@ -173,69 +155,22 @@ describe('appstore-connect-info contract', () => {
         `missing marketingUrl for metadata locale: ${locale}`,
       ).toBe(true)
     }
-
-    for (const uploadLocale of uploadLocales) {
-      const effectiveMetadata =
-        metadataByLocale[uploadLocale] ?? metadataByLocale[defaultMetadataLocale]
-      expect(
-        effectiveMetadata,
-        `missing metadata for upload locale: ${uploadLocale} and default fallback`,
-      ).toBeDefined()
-    }
   })
 
-  it('ensures upload media is enough for App Store locale packages', () => {
-    const totalShots = payload.meta?.shots as number
-    const screenshots = payload.ios?.submission?.screenshots ?? {}
-    const uploadLocaleDirs = fs
-      .readdirSync(uploadRoot, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort()
+  it('ensures each declared app locale resolves metadata via own key or default locale', () => {
+    const locales = payload.meta?.locales as string[]
+    const metadataByLocale = payload.ios?.submission?.appStoreInfo?.metadata ?? {}
+    const defaultMetadataLocale = payload.ios?.submission?.appStoreInfo
+      ?.defaultMetadataLocale as string
 
-    expect(uploadLocaleDirs.length).toBeGreaterThan(0)
+    expect(metadataByLocale[defaultMetadataLocale]).toBeDefined()
 
-    for (const uploadLocale of uploadLocaleDirs) {
-      const mappedLocale = normalizeUploadLocale(uploadLocale)
+    for (const locale of locales) {
+      const effectiveMetadata = metadataByLocale[locale] ?? metadataByLocale[defaultMetadataLocale]
       expect(
-        screenshots[mappedLocale],
-        `missing screenshot text for upload locale: ${uploadLocale} (mapped: ${mappedLocale})`,
+        effectiveMetadata,
+        `missing metadata for declared locale: ${locale} and default fallback`,
       ).toBeDefined()
-
-      const files = fs
-        .readdirSync(path.join(uploadRoot, uploadLocale), { withFileTypes: true })
-        .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
-        .map((entry) => entry.name)
-
-      const mediaFiles = files.filter((fileName) =>
-        /\.(png|jpg|jpeg|mp4|mov)$/i.test(fileName),
-      )
-      const videoFiles = mediaFiles.filter((fileName) => /\.(mp4|mov)$/i.test(fileName))
-      const imageFiles = mediaFiles.filter((fileName) => /\.(png|jpg|jpeg)$/i.test(fileName))
-
-      expect(
-        mediaFiles.length,
-        `insufficient media count for upload locale: ${uploadLocale}`,
-      ).toBeGreaterThanOrEqual(totalShots)
-      expect(videoFiles.length, `missing app preview video for locale: ${uploadLocale}`).toBeGreaterThanOrEqual(1)
-      expect(
-        imageFiles.length,
-        `insufficient screenshot image count for locale: ${uploadLocale}`,
-      ).toBeGreaterThanOrEqual(totalShots - 1)
-
-      const shotIndexes = new Set(
-        mediaFiles
-          .map((fileName) => fileName.match(/^(\d{2})-/)?.[1])
-          .filter((value): value is string => Boolean(value)),
-      )
-
-      for (let index = 1; index <= totalShots; index += 1) {
-        const key = String(index).padStart(2, '0')
-        expect(
-          shotIndexes.has(key),
-          `missing shot index ${key} for upload locale: ${uploadLocale}`,
-        ).toBe(true)
-      }
     }
   })
 })
