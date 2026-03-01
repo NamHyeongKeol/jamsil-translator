@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APPSTORE_MEDIA_ROOT="${APPSTORE_MEDIA_ROOT:-$REPO_ROOT/mingle-app/rn/appstore-media}"
+APPSTORE_MEDIA_ROOT="${APPSTORE_MEDIA_ROOT:-$REPO_ROOT/mingle-app/rn/appstore-connect-info}"
 
 API_KEY_JSON="${API_KEY_JSON:-/tmp/asc_api_key.json}"
 APP_IDENTIFIER="${APP_IDENTIFIER:-com.minglelabs.mingle.rn}"

@@ -2,7 +2,10 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-COPY_JSON="${COPY_JSON:-$REPO_ROOT/mingle-app/rn/appstore-media/copy/screenshot-copy.i18n.json}"
+APPSTORE_CONNECT_INFO_ROOT="${APPSTORE_CONNECT_INFO_ROOT:-$REPO_ROOT/mingle-app/rn/appstore-connect-info}"
+DEFAULT_COPY_JSON="$APPSTORE_CONNECT_INFO_ROOT/appstore-connect-info.i18n.json"
+LEGACY_COPY_JSON="$REPO_ROOT/mingle-app/rn/appstore-media/copy/screenshot-copy.i18n.json"
+COPY_JSON="${COPY_JSON:-$DEFAULT_COPY_JSON}"
 API_KEY_JSON="${API_KEY_JSON:-/tmp/asc_api_key.json}"
 APP_IDENTIFIER="${APP_IDENTIFIER:-com.minglelabs.mingle.rn}"
 DRY_RUN=false
@@ -21,7 +24,7 @@ Options:
   -h, --help              Show help
 
 JSON source:
-  Uses title/subtitle and appStore metadata from screenshot-copy.i18n.json
+  Uses `ios.generalInfo.appInfo` and `ios.submission.appStoreInfo` from appstore-connect-info.i18n.json
 EOF
 }
 
@@ -59,6 +62,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ ! -f "$COPY_JSON" && "$COPY_JSON" == "$DEFAULT_COPY_JSON" && -f "$LEGACY_COPY_JSON" ]]; then
+  COPY_JSON="$LEGACY_COPY_JSON"
+fi
+
 [[ -f "$COPY_JSON" ]] || { echo "Missing JSON: $COPY_JSON" >&2; exit 1; }
 [[ -f "$API_KEY_JSON" ]] || { echo "Missing API key JSON: $API_KEY_JSON" >&2; exit 1; }
 
@@ -92,13 +99,27 @@ dry_run = ENV.fetch('DRY_RUN') == 'true'
 no_fallback = ENV.fetch('NO_FALLBACK') == 'true'
 
 payload = JSON.parse(File.read(copy_json))
-title_map = payload.fetch('title', {})
-subtitle_map = payload.fetch('subtitle', {})
-app_store = payload.fetch('appStore', {})
-metadata_map = app_store.fetch('metadata', {})
-default_metadata_locale = no_fallback ? nil : presence(app_store['defaultMetadataLocale']) || 'en'
-expected_version = presence(app_store['version'])
-copyright_value = presence(app_store['copyright'])
+
+ios = payload['ios'].is_a?(Hash) ? payload['ios'] : {}
+general_info = ios['generalInfo'].is_a?(Hash) ? ios['generalInfo'] : {}
+app_info = general_info['appInfo'].is_a?(Hash) ? general_info['appInfo'] : {}
+submission = ios['submission'].is_a?(Hash) ? ios['submission'] : {}
+submission_app_store_info = submission['appStoreInfo'].is_a?(Hash) ? submission['appStoreInfo'] : {}
+
+legacy_title_map = payload['title'].is_a?(Hash) ? payload['title'] : {}
+legacy_subtitle_map = payload['subtitle'].is_a?(Hash) ? payload['subtitle'] : {}
+legacy_app_store = payload['appStore'].is_a?(Hash) ? payload['appStore'] : {}
+
+title_map = app_info['title'].is_a?(Hash) ? app_info['title'] : legacy_title_map
+subtitle_map = app_info['subtitle'].is_a?(Hash) ? app_info['subtitle'] : legacy_subtitle_map
+metadata_map = submission_app_store_info['metadata'].is_a?(Hash) ? submission_app_store_info['metadata'] : (legacy_app_store['metadata'].is_a?(Hash) ? legacy_app_store['metadata'] : {})
+default_metadata_locale = no_fallback ? nil : (
+  presence(submission_app_store_info['defaultMetadataLocale']) ||
+  presence(legacy_app_store['defaultMetadataLocale']) ||
+  'en'
+)
+expected_version = presence(submission['version']) || presence(legacy_app_store['version'])
+copyright_value = presence(submission['copyright']) || presence(legacy_app_store['copyright'])
 
 api = JSON.parse(File.read(api_key_json))
 Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(

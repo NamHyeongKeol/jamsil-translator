@@ -4,7 +4,7 @@ set -euo pipefail
 # Generate App Store screenshots and preview videos from iOS simulator captures.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APPSTORE_MEDIA_ROOT="${APPSTORE_MEDIA_ROOT:-$REPO_ROOT/mingle-app/rn/appstore-media}"
+APPSTORE_MEDIA_ROOT="${APPSTORE_MEDIA_ROOT:-$REPO_ROOT/mingle-app/rn/appstore-connect-info}"
 
 OUT_DIR="${OUT_DIR:-$APPSTORE_MEDIA_ROOT/generated}"
 APP_ID="${APP_ID:-com.minglelabs.mingle.rn}"
