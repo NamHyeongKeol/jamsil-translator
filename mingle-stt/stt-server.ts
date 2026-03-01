@@ -682,23 +682,24 @@ wss.on('connection', (clientWs) => {
                 try {
                     const rawSonioxMessage = event.data.toString();
                     const msg = JSON.parse(rawSonioxMessage);
-                    const logTokens = Array.isArray(msg.tokens)
-                        ? (msg.tokens as Array<{ text?: unknown }>)
-                        : [];
-                    if (logTokens.length > 0) {
-                        const tokenLine = logTokens
-                            .map((token) => {
-                                const tokenText = typeof token.text === 'string' ? token.text : '';
-                                if (!tokenText) return '';
-                                return tokenText
-                                    .replace(/<\/?end>/gi, '<end>')
-                                    .replace(/<\/?fin>/gi, '<fin>');
-                            })
-                            .join('');
-                        if (tokenLine) {
-                            appendSonioxTokenTextLine(tokenLine);
-                        }
-                    }
+                    // Soniox raw token joined string logging is intentionally disabled.
+                    // const logTokens = Array.isArray(msg.tokens)
+                    //     ? (msg.tokens as Array<{ text?: unknown }>)
+                    //     : [];
+                    // if (logTokens.length > 0) {
+                    //     const tokenLine = logTokens
+                    //         .map((token) => {
+                    //             const tokenText = typeof token.text === 'string' ? token.text : '';
+                    //             if (!tokenText) return '';
+                    //             return tokenText
+                    //                 .replace(/<\/?end>/gi, '<end>')
+                    //                 .replace(/<\/?fin>/gi, '<fin>');
+                    //         })
+                    //         .join('');
+                    //     if (tokenLine) {
+                    //         appendSonioxTokenTextLine(tokenLine);
+                    //     }
+                    // }
 
                     if (msg.error_code) {
                         console.error(`[Soniox] Error: ${msg.error_code} - ${msg.error_message}`);
