@@ -54,8 +54,8 @@ try {
     );
 }
 
-const appendSonioxInboundMessage = (rawMessage: string) => {
-    sonioxInboundLogStream?.write(`${rawMessage}\n`);
+const appendSonioxTokenTextLine = (text: string) => {
+    sonioxInboundLogStream?.write(`${text}\n`);
 };
 
 const server = createServer();
@@ -681,8 +681,23 @@ wss.on('connection', (clientWs) => {
 
                 try {
                     const rawSonioxMessage = event.data.toString();
-                    appendSonioxInboundMessage(rawSonioxMessage);
                     const msg = JSON.parse(rawSonioxMessage);
+                    const rawTokensForLog = Array.isArray(msg.tokens)
+                        ? (msg.tokens as Array<{ text?: unknown }>)
+                        : [];
+                    if (rawTokensForLog.length > 0) {
+                        const tokenLine = rawTokensForLog
+                            .map((token) => {
+                                const tokenText = typeof token.text === 'string' ? token.text : '';
+                                if (!tokenText) return '';
+                                if (/<\/?(?:end|fin)>/i.test(tokenText)) return '<end>';
+                                return tokenText;
+                            })
+                            .join('');
+                        if (tokenLine) {
+                            appendSonioxTokenTextLine(tokenLine);
+                        }
+                    }
 
                     if (msg.error_code) {
                         console.error(`[Soniox] Error: ${msg.error_code} - ${msg.error_message}`);
