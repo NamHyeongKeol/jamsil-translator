@@ -13,6 +13,7 @@
   - `ios.submission.screenshots`: "iOS 앱 > 1.0.0 제출 준비 중" screenshot copy
   - `ios.submission.appStoreInfo`: version metadata (promo text, description, keywords, URLs)
   - `ios.generalInfo.appInfo`: app info metadata (title, subtitle)
+- `RUNBOOK.appstore-preview-localization.md`: appstore-preview API localization workflow
 
 ## Default behavior
 
@@ -27,4 +28,5 @@ scripts/ios-appstore-media.sh --no-build
 scripts/ios-appstore-upload.sh --locale en-US
 scripts/devbox ios-appstore-sync-metadata --dry-run
 scripts/devbox ios-appstore-sync-metadata
+pnpm dlx tsx scripts/ios-appstore-preview-clone-locale.ts --locale ja --target-project-name "Mingle 일본어"
 ```
