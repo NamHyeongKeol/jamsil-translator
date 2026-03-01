@@ -10,7 +10,7 @@
   - `preview`
 - `upload/<locale>/`: files prepared for `scripts/ios-appstore-upload.sh`
 - `copy/`: localized screenshot text source
-  - `screenshot-copy.i18n.json` (single source, 7 shots + subtitle)
+  - `screenshot-copy.i18n.json` (single source, screenshots + title/subtitle + App Store metadata)
 
 ## Default behavior
 
@@ -22,4 +22,5 @@
 ```bash
 scripts/ios-appstore-media.sh --no-build
 scripts/ios-appstore-upload.sh --locale en-US
+scripts/ios-appstore-sync-metadata.sh
 ```
