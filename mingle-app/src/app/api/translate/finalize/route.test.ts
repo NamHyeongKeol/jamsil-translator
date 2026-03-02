@@ -361,4 +361,36 @@ describe('/api/translate/finalize route', () => {
     const userPrompt = String(mockGenerateContent.mock.calls[0]?.[0] ?? '')
     expect(userPrompt).not.toContain('Immediate previous turn')
   })
+
+  it('omits immediate previous turn when ageMs is missing', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => '{"ko":"안녕하세요"}',
+        usageMetadata: {},
+      },
+    })
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const POST = await importRouteWithEnv()
+
+    const res = await POST(makeJsonRequest({
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguages: ['ko'],
+      immediatePreviousTurn: {
+        sourceLanguage: 'en',
+        sourceText: 'turn without age',
+        translations: {
+          ko: 'age 없는 턴',
+        },
+      },
+    }) as never)
+
+    expect(res.status).toBe(200)
+
+    const userPrompt = String(mockGenerateContent.mock.calls[0]?.[0] ?? '')
+    expect(userPrompt).not.toContain('Immediate previous turn')
+    expect(userPrompt).not.toContain('turn without age')
+  })
 })
