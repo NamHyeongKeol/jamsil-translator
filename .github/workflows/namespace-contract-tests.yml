@@ -59,7 +59,7 @@ jobs:
       - name: Run app namespace contract tests
         env:
           NEXT_PUBLIC_API_NAMESPACE: ${{ matrix.api_namespace }}
-        run: pnpm --dir mingle-app test:unit -- src/lib/api-contract.test.ts src/app/api/namespace-routing.contract.test.ts src/lib/rn-api-namespace.test.ts
+        run: pnpm --dir mingle-app test:unit src/lib/api-contract.test.ts src/app/api/namespace-routing.contract.test.ts src/lib/rn-api-namespace.test.ts
 
   landing-namespace-contracts:
     name: Landing Namespace Contracts
