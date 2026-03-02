@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockGenerateContent = vi.fn()
+const mockGetGenerativeModel = vi.fn(() => ({
+  generateContent: mockGenerateContent,
+}))
 const ensureTrackingContextMock = vi.fn()
 
 vi.mock('@/lib/app-analytics', () => {
@@ -25,10 +28,8 @@ vi.mock('@/lib/app-analytics', () => {
 
 vi.mock('@google/generative-ai', () => {
   class GoogleGenerativeAI {
-    getGenerativeModel() {
-      return {
-        generateContent: mockGenerateContent,
-      }
+    getGenerativeModel(config: unknown) {
+      return mockGetGenerativeModel(config)
     }
   }
 
@@ -264,5 +265,100 @@ describe('/api/translate/finalize route', () => {
       ja: 'fallback-ja',
     })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('builds compact prompt with previous state first and no recent-turns section', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => '{"ko":"안녕하세요"}',
+        usageMetadata: {},
+      },
+    })
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const POST = await importRouteWithEnv()
+
+    const res = await POST(makeJsonRequest({
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguages: ['ko'],
+      currentTurnPreviousState: {
+        sourceLanguage: 'en',
+        sourceText: 'hello-before',
+        translations: {
+          ko: '이전 번역',
+        },
+      },
+      immediatePreviousTurn: {
+        sourceLanguage: 'en',
+        sourceText: 'just before this',
+        translations: {
+          ko: '직전 번역',
+        },
+        ageMs: 3000,
+      },
+      recentTurns: [
+        {
+          sourceLanguage: 'en',
+          sourceText: 'old recent context should be ignored',
+          translations: { ko: '무시됨' },
+          ageMs: 2000,
+        },
+      ],
+    }) as never)
+
+    expect(res.status).toBe(200)
+
+    const userPrompt = String(mockGenerateContent.mock.calls[0]?.[0] ?? '')
+    const previousStateIndex = userPrompt.indexOf('Previous state of current turn:')
+    const immediateIndex = userPrompt.indexOf('Immediate previous turn (~3s ago):')
+
+    expect(previousStateIndex).toBeGreaterThanOrEqual(0)
+    expect(immediateIndex).toBeGreaterThanOrEqual(0)
+    expect(previousStateIndex).toBeLessThan(immediateIndex)
+    expect(userPrompt).not.toContain('Recent turns (last 10s):')
+    expect(userPrompt).not.toContain('Context reliability:')
+    expect(userPrompt).toContain('  Translations:')
+    expect(userPrompt).not.toContain('old recent context should be ignored')
+
+    const modelConfig = mockGetGenerativeModel.mock.calls[0]?.[0] as { systemInstruction?: string }
+    expect(modelConfig.systemInstruction).toBe([
+      'You are an expert live-conversation translator.',
+      'Return ONLY strict JSON with keys exactly matching target language codes.',
+      'No explanations, no markdown, no extra keys.',
+    ].join('\n'))
+  })
+
+  it('omits immediate previous turn when age exceeds 5 seconds', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => '{"ko":"안녕하세요"}',
+        usageMetadata: {},
+      },
+    })
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const POST = await importRouteWithEnv()
+
+    const res = await POST(makeJsonRequest({
+      text: 'hello',
+      sourceLanguage: 'en',
+      targetLanguages: ['ko'],
+      immediatePreviousTurn: {
+        sourceLanguage: 'en',
+        sourceText: 'too old turn',
+        translations: {
+          ko: '오래된 턴',
+        },
+        ageMs: 6001,
+      },
+    }) as never)
+
+    expect(res.status).toBe(200)
+
+    const userPrompt = String(mockGenerateContent.mock.calls[0]?.[0] ?? '')
+    expect(userPrompt).not.toContain('Immediate previous turn')
   })
 })

@@ -13,7 +13,6 @@ import {
   normalizeTargetLanguages,
   parseCurrentTurnPreviousState,
   parseImmediatePreviousTurn,
-  parseRecentTurns,
   parseTranslations,
   type CurrentTurnPreviousState,
   type RecentTurnContext,
@@ -25,6 +24,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
 const DEFAULT_MODEL = process.env.DEMO_TRANSLATE_MODEL || 'gemini-2.5-flash-lite'
 const DEFAULT_TTS_MODEL_ID = process.env.INWORLD_TTS_MODEL_ID || 'inworld-tts-1.5-mini'
 const DEFAULT_TTS_SPEAKING_RATE = Number(process.env.INWORLD_TTS_SPEAKING_RATE || '1.3')
+const IMMEDIATE_PREVIOUS_TURN_MAX_AGE_MS = 5_000
 
 const LANG_NAMES: Record<string, string> = {
   en: 'English', ko: 'Korean', zh: 'Chinese', ja: 'Japanese',
@@ -55,7 +55,6 @@ type TranslateContext = {
   text: string
   sourceLanguage: string
   targetLanguages: string[]
-  recentTurns: RecentTurnContext[]
   immediatePreviousTurn: RecentTurnContext | null
   currentTurnPreviousState: CurrentTurnPreviousState | null
   isFinal: boolean
@@ -89,7 +88,7 @@ function parseFinalizeTestFaultMode(value: unknown): FinalizeTestFaultMode | nul
   return null
 }
 
-function formatSingleRecentTurnForPrompt(label: string, turn: RecentTurnContext): string {
+function formatSingleTurnForPrompt(label: string, turn: RecentTurnContext): string {
   const ageSuffix = typeof turn.ageMs === 'number'
     ? ` (~${Math.round(turn.ageMs / 1000)}s ago)`
     : ''
@@ -98,45 +97,18 @@ function formatSingleRecentTurnForPrompt(label: string, turn: RecentTurnContext)
     .join('\n')
 
   return [
-    `${label}${ageSuffix}`,
-    `  Context reliability: ${turn.isFinalized ? 'finalized' : 'provisional'}`,
+    `${label}${ageSuffix}:`,
     `  Original [${turn.sourceLanguage}]: "${turn.sourceText}"`,
-    '  Prior translations:',
-    translationLines || '    - (no translation captured)',
+    '  Translations:',
+    translationLines || '    - (none)',
   ].join('\n')
 }
 
-function buildRecentTurnIdentity(turn: RecentTurnContext): string {
-  return [
-    turn.sourceLanguage,
-    turn.sourceText,
-    String(turn.ageMs ?? -1),
-    turn.isFinalized ? 'finalized' : 'provisional',
-  ].join('::')
-}
-
-function formatRecentTurnsForPrompt(turns: RecentTurnContext[], immediatePreviousTurn: RecentTurnContext | null): string {
-  if (turns.length === 0) return 'None'
-
-  const immediateIdentity = immediatePreviousTurn ? buildRecentTurnIdentity(immediatePreviousTurn) : ''
-  let skippedImmediate = false
-  const turnsWithoutImmediate = turns.filter((turn) => {
-    if (!immediateIdentity) return true
-    if (skippedImmediate) return true
-    if (buildRecentTurnIdentity(turn) !== immediateIdentity) return true
-    skippedImmediate = true
-    return false
-  })
-
-  if (turnsWithoutImmediate.length === 0) return 'None'
-  return turnsWithoutImmediate
-    .map((turn, index) => formatSingleRecentTurnForPrompt(`Turn ${index + 1}`, turn))
-    .join('\n\n')
-}
-
-function formatImmediatePreviousTurnForPrompt(turn: RecentTurnContext | null): string {
-  if (!turn) return 'None'
-  return formatSingleRecentTurnForPrompt('Immediate previous turn', turn)
+function selectPromptImmediatePreviousTurn(turn: RecentTurnContext | null): RecentTurnContext | null {
+  if (!turn) return null
+  if (typeof turn.ageMs !== 'number') return null
+  if (turn.ageMs > IMMEDIATE_PREVIOUS_TURN_MAX_AGE_MS) return null
+  return turn
 }
 
 function formatCurrentTurnPreviousStateForPrompt(state: CurrentTurnPreviousState | null): string {
@@ -153,40 +125,39 @@ function formatCurrentTurnPreviousStateForPrompt(state: CurrentTurnPreviousState
 }
 
 function buildPrompt(ctx: TranslateContext): { systemPrompt: string, userPrompt: string } {
-  const immediatePreviousTurn = formatImmediatePreviousTurnForPrompt(ctx.immediatePreviousTurn)
-  const recentTurns = formatRecentTurnsForPrompt(ctx.recentTurns, ctx.immediatePreviousTurn)
+  const immediatePreviousTurn = selectPromptImmediatePreviousTurn(ctx.immediatePreviousTurn)
   const currentTurnPreviousState = formatCurrentTurnPreviousStateForPrompt(ctx.currentTurnPreviousState)
   const targetLangCodes = ctx.targetLanguages.join(', ')
+  const userPromptLines = [
+    'Current turn:',
+    `source=${ctx.sourceLanguage}`,
+    `targets=${targetLangCodes}`,
+    `is_final=${ctx.isFinal ? 'yes' : 'no'}`,
+    `text="${ctx.text}"`,
+    '',
+    'Previous state of current turn:',
+    currentTurnPreviousState,
+  ]
+
+  if (immediatePreviousTurn) {
+    userPromptLines.push(
+      '',
+      formatSingleTurnForPrompt('Immediate previous turn', immediatePreviousTurn),
+    )
+  }
+
+  userPromptLines.push(
+    '',
+    'If is_final=no, avoid over-completing unfinished thoughts.',
+  )
+
   return {
     systemPrompt: [
       'You are an expert live-conversation translator.',
       'Return ONLY strict JSON with keys exactly matching target language codes.',
-      'Context priority (high to low): current turn > previous state of current turn > immediate previous turn > other recent turns.',
-      'Use finalized context as strong evidence.',
-      'Use provisional context only as a weak hint.',
-      'If the current turn is fragmented, complete omitted subject/object naturally using higher-priority context.',
-      'Do not invent facts that are not supported by the provided context.',
-      'Preserve speaker intent, tone, and tense.',
       'No explanations, no markdown, no extra keys.',
     ].join('\n'),
-    userPrompt: [
-      'Current turn:',
-      `source=${ctx.sourceLanguage}`,
-      `targets=${targetLangCodes}`,
-      `is_final=${ctx.isFinal ? 'yes' : 'no'}`,
-      `text="${ctx.text}"`,
-      '',
-      'Immediate previous turn (highest external context priority):',
-      immediatePreviousTurn,
-      '',
-      'Recent turns (last 10s):',
-      recentTurns,
-      '',
-      'Previous state of current turn:',
-      currentTurnPreviousState,
-      '',
-      'If is_final=no, avoid over-completing unfinished thoughts.',
-    ].join('\n'),
+    userPrompt: userPromptLines.join('\n'),
   }
 }
 
@@ -266,7 +237,6 @@ async function translateWithGemini(ctx: TranslateContext): Promise<TranslationEn
       sourceLanguage: ctx.sourceLanguage,
       targetLanguages: ctx.targetLanguages,
       textPreview: ctx.text.slice(0, 120),
-      recentTurnsCount: ctx.recentTurns.length,
       promptFeedback: response.promptFeedback ?? null,
       candidates: candidateMeta,
       usage: {
@@ -284,7 +254,6 @@ async function translateWithGemini(ctx: TranslateContext): Promise<TranslationEn
       sourceLanguage: ctx.sourceLanguage,
       targetLanguages: ctx.targetLanguages,
       textPreview: ctx.text.slice(0, 120),
-      recentTurnsCount: ctx.recentTurns.length,
       promptFeedback: response.promptFeedback ?? null,
       candidates: candidateMeta,
       responseTextLength: content.length,
@@ -394,17 +363,11 @@ export async function handleTranslateFinalizeV1(request: NextRequest) {
     return response
   }
 
-  const recentTurns = parseRecentTurns(body.recentTurns)
-  const immediatePreviousTurn = (
-    parseImmediatePreviousTurn(body.immediatePreviousTurn)
-    || recentTurns[recentTurns.length - 1]
-    || null
-  )
+  const immediatePreviousTurn = parseImmediatePreviousTurn(body.immediatePreviousTurn)
   const ctx: TranslateContext = {
     text,
     sourceLanguage,
     targetLanguages,
-    recentTurns,
     immediatePreviousTurn,
     currentTurnPreviousState,
     isFinal,
@@ -502,7 +465,6 @@ export async function handleTranslateFinalizeV1(request: NextRequest) {
         sourceLanguage,
         targetLanguages,
         textPreview: text.slice(0, 120),
-        recentTurnsCount: recentTurns.length,
       })
       if (!geminiRequestFailed && Object.keys(fallbackTranslations).length > 0) {
         console.warn('[translate/finalize] fallback_from_current_turn_previous_state', {
