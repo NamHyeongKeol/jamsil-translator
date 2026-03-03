@@ -264,19 +264,27 @@ describe('appstore-connect-info contract', () => {
         /\.(png|jpg|jpeg|mp4|mov)$/i.test(fileName),
       )
       const imageFiles = mediaFiles.filter((fileName) => /\.(png|jpg|jpeg)$/i.test(fileName))
+      const videoFiles = mediaFiles.filter((fileName) => /\.(mp4|mov)$/i.test(fileName))
 
       expect(
         files.length,
         `upload locale folder has no files: ${uploadLocale}`,
       ).toBeGreaterThan(0)
+
+      // Some locales intentionally keep preview-only assets and rely on default screenshot locale.
+      // Enforce full shot coverage only when screenshot images are present.
+      if (imageFiles.length === 0) {
+        expect(
+          videoFiles.length,
+          `preview-only upload locale must include video files: ${uploadLocale}`,
+        ).toBeGreaterThan(0)
+        continue
+      }
+
       expect(
         mediaFiles.length,
         `insufficient media file count for upload locale: ${uploadLocale}`,
       ).toBeGreaterThanOrEqual(totalShots)
-      expect(
-        imageFiles.length,
-        `missing screenshot image files for upload locale: ${uploadLocale}`,
-      ).toBeGreaterThan(0)
 
       const shotIndexes = new Set(
         mediaFiles
