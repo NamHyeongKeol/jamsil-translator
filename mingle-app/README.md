@@ -20,18 +20,20 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Live STT/API Integration Test (included in `pnpm test`)
+## Live STT/API Integration Test (opt-in)
 
-`pnpm test` runs both unit tests and live integration tests that:
+`pnpm test` runs unit tests only by default.
+Live integration tests run only when explicitly invoked:
 
 1. Streams an audio fixture to local STT WebSocket server
 2. Sends the finalized transcript to `/api/translate/finalize` (or `/api/ios/v1.0.0/translate/finalize`)
 
 Useful commands:
 
-- `pnpm test` (unit + live integration)
+- `pnpm test` (unit only, default)
 - `pnpm test:unit` (unit only, excludes live integration)
-- `pnpm test:live` (all live `.live.test.ts` only)
+- `pnpm test:live` (all live `.live.test.ts` only, opt-in)
+- `pnpm test:all` (unit + live integration)
 
 Default local endpoints:
 
@@ -119,7 +121,7 @@ Translation/TTS behavior:
 
 ### Live E2E suites
 
-Always-on suites:
+Suites executed by `pnpm test:live` (or `pnpm test:all`):
 
 - `src/integration/live/stt-finalize.live.test.ts`
 - `src/integration/live/e2e.stop-chain.live.test.ts`

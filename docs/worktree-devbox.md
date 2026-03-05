@@ -8,7 +8,7 @@
 - `mingle-app` + `mingle-stt` 동시 실행 단일 명령 제공
 - PC웹/iOS웹/안드웹/iOS앱/안드앱 테스트 URL/WS 자동 동기화
 - 디바이스 테스트용 ngrok 상시 지원
-- live 테스트(`pnpm test:live`) 포트 자동 주입
+- live 테스트(`pnpm test:live`) 포트 자동 주입 (`devbox test`는 기본 비활성)
 - `mingle-ios` 네이티브 빌드/테스트 동시 자동화
 
 ## 빠른 시작
@@ -80,6 +80,8 @@ scripts/devbox --log-file auto up --profile device --with-ios-install
 
 # 14) (선택) 테스트 실행
 scripts/devbox test --target app
+# live STT 통합테스트는 명시적으로만 실행
+# scripts/devbox test --target app --with-live
 scripts/devbox test --target ios-native
 scripts/devbox test --target all
 
@@ -248,8 +250,9 @@ scripts/devbox bootstrap --vault-push
   - `--skip-export`는 archive까지만 생성, `--dry-run`은 명령만 출력
   - `scripts/devbox ios-rn-ipa-prod`는 `--device-app-env prod`를 기본 적용한 별칭
 
-- `scripts/devbox test --target app|ios-native|all`
-  - `app`: 현재 devbox 설정값으로 `mingle-app` live integration test 실행
+- `scripts/devbox test --target app|ios-native|all [--with-live]`
+  - `app` 기본값: 현재 devbox 설정값으로 `mingle-app` unit test 실행
+  - `app --with-live`: 현재 devbox 설정값으로 `mingle-app` live integration test 실행
   - `ios-native`: `mingle-ios/scripts/test-ios.sh`를 통해 네이티브 iOS test build 실행
   - `all`: 두 테스트를 순서대로 실행
   - iOS는 `--ios-configuration Debug|Release` 지정 가능

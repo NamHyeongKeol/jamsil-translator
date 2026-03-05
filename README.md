@@ -58,6 +58,8 @@ scripts/devbox up --profile device --device-app-env prod --with-ios-install --wi
 # scripts/devbox --log-file auto up --profile device --with-ios-install
 # 테스트
 scripts/devbox test --target app
+# live STT 통합테스트를 돌리려면 명시 옵션 필요
+# scripts/devbox test --target app --with-live
 # scripts/devbox test --target ios-native
 # scripts/devbox test --target all
 scripts/devbox status
@@ -104,7 +106,7 @@ scripts/devbox status
   Team ID를 고정하려면 `.zshrc`(또는 셸)에 `export DEVBOX_IOS_TEAM_ID=3RFBMN8TKZ`를 넣거나,
   `.devbox.env`에 같은 키를 넣어 사용하세요.
 - `scripts/devbox up --profile device --with-mobile-install`으로 서버 준비 + 모바일 설치를 한 번에 실행할 수 있습니다.
-- `scripts/devbox test --target app|ios-native|all`로 live 테스트와 네이티브 iOS 테스트 빌드를 분리/통합 실행할 수 있습니다.
+- `scripts/devbox test --target app|ios-native|all`의 app 타깃은 기본 unit만 실행하며, live는 `--with-live`를 줄 때만 실행됩니다.
 
 ## Learn More
 

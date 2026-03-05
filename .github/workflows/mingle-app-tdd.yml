@@ -18,6 +18,12 @@ on:
       - "data/**"
       - ".github/workflows/mingle-app-tdd.yml"
   workflow_dispatch:
+    inputs:
+      run_live_tests:
+        description: "Run live STT integration tests (requires GEMINI_API_KEY and SONIOX_API_KEY)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -135,10 +141,10 @@ jobs:
         run: pnpm test:unit
 
   live-tests:
-    name: Live Integration (STT + Finalize)
+    name: Live Integration (STT + Finalize, Opt-In)
     needs: unit-tests
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_live_tests == 'true' }}
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       SONIOX_API_KEY: ${{ secrets.SONIOX_API_KEY }}

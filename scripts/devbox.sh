@@ -129,7 +129,7 @@ Usage:
   scripts/devbox mobile [--profile local|device] [--host HOST] [--platform ios|android|all] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--with-ios-clean-install] [--device-app-env dev|prod] [--tunnel-provider ngrok|cloudflare] [--site-url URL] [--ws-url URL]
   scripts/devbox up [--profile local|device] [--host HOST] [--with-metro] [--with-ios-install] [--with-android-install] [--with-mobile-install] [--with-ios-clean-install] [--ios-runtime rn|native|both] [--ios-native-target device|simulator] [--ios-simulator-name NAME] [--ios-simulator-udid UDID] [--ios-udid UDID] [--ios-coredevice-id ID] [--android-serial SERIAL] [--ios-configuration Debug|Release] [--android-variant debug|release] [--tunnel-provider ngrok|cloudflare] [--device-app-env dev|prod] [--vault-app-path PATH] [--vault-stt-path PATH]
   scripts/devbox down
-  scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [vitest args...]
+  scripts/devbox test [--target app|ios-native|all] [--ios-configuration Debug|Release] [--with-live] [vitest args...]
   scripts/devbox status
 
 Commands:
@@ -146,7 +146,7 @@ Commands:
   mobile       Build/install RN/native iOS and Android apps (device/simulator).
   up           Start STT + Next app together (device profile includes tunnel startup).
   down         Stop devbox runtime processes (web/stt/metro/tunnels) for this repo.
-  test         Run mingle-app live tests and/or mingle-ios native test build.
+  test         Run mingle-app unit tests by default (live with --with-live) and/or mingle-ios native test build.
   status       Print current endpoints for PC/iOS/Android web and app targets.
 
 Global Options:
@@ -4224,12 +4224,14 @@ cmd_test() {
   require_devbox_env
   local target="app"
   local ios_configuration="Debug"
+  local with_live=0
   local -a app_test_args=()
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --target) target="${2:-}"; shift 2 ;;
       --ios-configuration) ios_configuration="${2:-}"; shift 2 ;;
+      --with-live) with_live=1; shift ;;
       --) shift; app_test_args+=("$@"); break ;;
       *) app_test_args+=("$1"); shift ;;
     esac
@@ -4248,16 +4250,23 @@ cmd_test() {
 
   if [[ "$run_app" -eq 1 ]]; then
     require_cmd pnpm
+    local app_test_script="test:unit"
+    if [[ "$with_live" -eq 1 ]]; then
+      app_test_script="test:live"
+      log "running mingle-app live integration tests (--with-live)"
+    else
+      log "running mingle-app unit tests (live tests are disabled by default; add --with-live to enable)"
+    fi
     (
       cd "$ROOT_DIR/mingle-app"
       if ((${#app_test_args[@]} > 0)); then
         MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
         MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
-          pnpm test:live "${app_test_args[@]}"
+          pnpm "$app_test_script" "${app_test_args[@]}"
       else
         MINGLE_TEST_API_BASE_URL="$DEVBOX_TEST_API_BASE_URL" \
         MINGLE_TEST_WS_URL="$DEVBOX_TEST_WS_URL" \
-          pnpm test:live
+          pnpm "$app_test_script"
       fi
     )
   fi
@@ -4350,6 +4359,7 @@ Run:
 - scripts/devbox mobile --platform ios --ios-runtime native --ios-native-target simulator --ios-simulator-name "iPhone 16"
 - scripts/devbox mobile --platform android
 - scripts/devbox test --target ios-native
+- scripts/devbox test --with-live
 - scripts/devbox profile --profile local --host <LAN_IP>
 - scripts/devbox test
 EOF
