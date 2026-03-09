@@ -66,13 +66,14 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang={DEFAULT_LOCALE}>
+    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
       <head>
         {/* 첫 페인트 전 동기 실행 → flash 없이 zoom 값 설정 */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){
-  var z = Math.min(1, window.innerWidth / 400);
+  var w = document.documentElement.clientWidth || window.innerWidth || 400;
+  var z = w >= 400 ? 1 : w / 400;
   document.documentElement.style.setProperty('--canvas-zoom', z);
 })();`,
           }}
