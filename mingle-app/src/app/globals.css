@@ -195,6 +195,12 @@
   overflow: hidden;
 }
 
+@media (max-width: 480px) {
+  .mobile-canvas-shell {
+    max-width: none;
+  }
+}
+
 @layer utilities {
   .no-scrollbar {
     -ms-overflow-style: none;
