@@ -188,17 +188,10 @@
 }
 
 .mobile-canvas-shell {
+  width: 100%;
+  max-width: 400px;
   height: 100svh;
   min-height: 100svh;
-  overflow: hidden;
-}
-
-.mobile-canvas-frame {
-  width: 400px;
-  height: 100svh;
-  min-height: 100svh;
-  transform-origin: top left;
-  will-change: transform;
   overflow: hidden;
 }
 
