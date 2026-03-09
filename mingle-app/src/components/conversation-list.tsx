@@ -4,6 +4,7 @@ import type { AppDictionary } from "@/i18n/types";
 import { useState, useMemo } from "react";
 import { Search, MessageCirclePlus } from "lucide-react";
 import BottomTabBar from "@/components/bottom-tab-bar";
+import MingleWordmark from "@/components/mingle-wordmark";
 
 // ── 국기 매핑 ────────────────────────────────────────────────────────────
 const LOCALE_FLAG: Record<string, string> = {
@@ -227,10 +228,8 @@ export default function ConversationList({
           height: "calc(56px + env(safe-area-inset-top, 44px))",
         }}
       >
-        {/* Mingle 로고 */}
-        <span className="text-[20px] font-black tracking-tight text-slate-900">
-          Mingle
-        </span>
+        {/* Mingle 워드마크 */}
+        <MingleWordmark />
 
         {/* 우측 아이콘 */}
         <div className="flex items-center gap-1">

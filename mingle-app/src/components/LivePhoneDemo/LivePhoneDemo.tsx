@@ -7,6 +7,7 @@ import PhoneFrame from './PhoneFrame'
 import ChatBubble from './ChatBubble'
 import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
+import MingleWordmark from '@/components/mingle-wordmark'
 import useRealtimeSTT from './useRealtimeSTT'
 import { useTtsSettings } from '@/context/tts-settings'
 import { buildClientApiPath } from '@/lib/api-contract'
@@ -1189,9 +1190,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               style={{ height: "max(env(safe-area-inset-top), 20px)" }}
             />
           )}
-          <span className="text-[2.05rem] font-extrabold leading-[1.08] bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
-            Mingle
-          </span>
+          <MingleWordmark />
           <div className="relative flex items-center gap-1">
             <div className="relative mr-1.5">
               <button
