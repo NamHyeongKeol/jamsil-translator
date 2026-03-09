@@ -267,6 +267,50 @@ const AUTH_LOGIN_SAFE_AREA_PALETTE: SafeAreaPalette = {
   statusBarStyle: 'light-content',
   edgeMode: 'transparent',
 };
+
+const WEBVIEW_NAVIGATION_BRIDGE_SCRIPT = `
+  (function () {
+    if (window.__MINGLE_NATIVE_NAV_BRIDGE_INSTALLED__) {
+      return true;
+    }
+    window.__MINGLE_NATIVE_NAV_BRIDGE_INSTALLED__ = true;
+
+    var postCurrentUrl = function () {
+      var bridge = window.ReactNativeWebView;
+      if (!bridge || typeof bridge.postMessage !== 'function') {
+        return;
+      }
+      try {
+        bridge.postMessage(JSON.stringify({
+          type: 'native_navigation_state',
+          payload: { url: window.location.href }
+        }));
+      } catch (error) {
+        // Ignore bridge serialization failures.
+      }
+    };
+
+    var wrapHistoryMethod = function (methodName) {
+      var original = window.history[methodName];
+      if (typeof original !== 'function') {
+        return;
+      }
+      window.history[methodName] = function () {
+        var result = original.apply(window.history, arguments);
+        postCurrentUrl();
+        return result;
+      };
+    };
+
+    wrapHistoryMethod('pushState');
+    wrapHistoryMethod('replaceState');
+    window.addEventListener('popstate', postCurrentUrl);
+    window.addEventListener('hashchange', postCurrentUrl);
+    postCurrentUrl();
+    return true;
+  })();
+`;
+
 type VersionPolicyLocale =
   | 'ko'
   | 'en'
@@ -602,13 +646,21 @@ type NativeAuthResetCommand = {
   type: 'native_auth_reset';
 };
 
+type NativeNavigationStateCommand = {
+  type: 'native_navigation_state';
+  payload?: {
+    url?: string;
+  };
+};
+
 type WebViewCommand =
   | NativeSttCommand
   | NativeTtsCommand
   | NativeSttAecCommand
   | NativeAuthStartCommand
   | NativeAuthAckCommand
-  | NativeAuthResetCommand;
+  | NativeAuthResetCommand
+  | NativeNavigationStateCommand;
 
 type NativeSttEvent =
   | { type: 'status'; status: string }
@@ -1345,6 +1397,12 @@ function AppInner(): React.JSX.Element {
     }
     if (!parsed || typeof parsed !== 'object') return;
 
+    if (parsed.type === 'native_navigation_state') {
+      const url = typeof parsed.payload?.url === 'string' ? parsed.payload.url : '';
+      updateSafeAreaPalette(url);
+      return;
+    }
+
     if (parsed.type === 'native_auth_ack') {
       const provider = parsed.payload?.provider === 'google' || parsed.payload?.provider === 'apple'
         ? parsed.payload.provider
@@ -1454,7 +1512,7 @@ function AppInner(): React.JSX.Element {
       }
       void handleNativeAuthStart(parsed.payload);
     }
-  }, [clearAuthDispatchRetryTimer, emitTtsToWeb, handleNativeAuthStart, handleNativeStart, handleNativeStop]);
+  }, [clearAuthDispatchRetryTimer, emitTtsToWeb, handleNativeAuthStart, handleNativeStart, handleNativeStop, updateSafeAreaPalette]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') return;
@@ -1596,6 +1654,7 @@ function AppInner(): React.JSX.Element {
             mediaPlaybackRequiresUserAction={false}
             setSupportMultipleWindows={false}
             allowsBackForwardNavigationGestures={false}
+            injectedJavaScriptBeforeContentLoaded={WEBVIEW_NAVIGATION_BRIDGE_SCRIPT}
             onMessage={handleWebMessage}
             onLoadStart={handleLoadStart}
             onLoadEnd={handleLoadEnd}
