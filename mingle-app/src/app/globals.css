@@ -195,7 +195,7 @@
   overflow: hidden;
 }
 
-@media (max-width: 480px) {
+@media (hover: none) and (pointer: coarse), (max-width: 820px) {
   .mobile-canvas-shell {
     max-width: none;
   }
