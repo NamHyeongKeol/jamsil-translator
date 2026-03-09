@@ -1,11 +1,13 @@
 "use client";
 
+import type { AppDictionary } from "@/i18n/types";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 
 type BottomTabBarProps = {
   locale: string;
+  dictionary: AppDictionary;
 };
 
 function DefaultProfileIcon({ size = 26 }: { size?: number }) {
@@ -18,13 +20,19 @@ function DefaultProfileIcon({ size = 26 }: { size?: number }) {
   );
 }
 
-function ProfileAvatar({ imageUrl }: { imageUrl?: string | null }) {
+function ProfileAvatar({
+  imageUrl,
+  altLabel,
+}: {
+  imageUrl?: string | null;
+  altLabel: string;
+}) {
   if (imageUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={imageUrl}
-        alt="프로필"
+        alt={altLabel}
         width={28}
         height={28}
         className="h-7 w-7 rounded-full object-cover"
@@ -34,7 +42,7 @@ function ProfileAvatar({ imageUrl }: { imageUrl?: string | null }) {
   return <DefaultProfileIcon size={28} />;
 }
 
-export default function BottomTabBar({ locale }: BottomTabBarProps) {
+export default function BottomTabBar({ locale, dictionary }: BottomTabBarProps) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const router = useRouter();
@@ -58,7 +66,7 @@ export default function BottomTabBar({ locale }: BottomTabBarProps) {
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
         height: "calc(60px + env(safe-area-inset-bottom, 0px))",
       }}
-      aria-label="하단 탭 바"
+      aria-label={dictionary.navigation.bottomTabBarLabel}
     >
       {/* 대화목록 탭 */}
       <button
@@ -66,7 +74,7 @@ export default function BottomTabBar({ locale }: BottomTabBarProps) {
         onClick={() => router.push(conversationsPath)}
         className="flex flex-1 items-center justify-center transition-opacity active:opacity-60"
         style={{ paddingBottom: 0 }}
-        aria-label="대화목록"
+        aria-label={dictionary.navigation.conversationsTab}
         aria-current={isConversationsActive ? "page" : undefined}
       >
         <MessageCircle
@@ -83,7 +91,7 @@ export default function BottomTabBar({ locale }: BottomTabBarProps) {
         onClick={() => router.push(mypagePath)}
         className="flex flex-1 items-center justify-center transition-opacity active:opacity-60"
         style={{ paddingBottom: 0 }}
-        aria-label="마이페이지"
+        aria-label={dictionary.navigation.myPageTab}
         aria-current={isMypageActive ? "page" : undefined}
       >
         <div
@@ -93,7 +101,10 @@ export default function BottomTabBar({ locale }: BottomTabBarProps) {
             outlineOffset: "1px",
           }}
         >
-          <ProfileAvatar imageUrl={session?.user?.image} />
+          <ProfileAvatar
+            imageUrl={session?.user?.image}
+            altLabel={dictionary.navigation.profileImageAlt}
+          />
         </div>
       </button>
     </nav>

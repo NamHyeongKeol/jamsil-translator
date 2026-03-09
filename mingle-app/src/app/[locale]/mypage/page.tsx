@@ -22,8 +22,5 @@ export default async function MyPageRoute({ params }: MyPageRouteProps) {
     redirect(`/${locale}`);
   }
 
-  // dictionary를 사용하지 않더라도 향후 확장을 위해 로드
-  getDictionary(locale);
-
-  return <MyPage locale={locale} />;
+  return <MyPage locale={locale} dictionary={getDictionary(locale)} />;
 }

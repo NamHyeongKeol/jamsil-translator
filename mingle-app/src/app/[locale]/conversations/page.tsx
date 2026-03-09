@@ -1,5 +1,5 @@
 import ConversationList from "@/components/conversation-list";
-import { isSupportedLocale } from "@/i18n";
+import { getDictionary, isSupportedLocale } from "@/i18n";
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { getAuthOptions } from "@/lib/auth-options";
@@ -20,5 +20,5 @@ export default async function ConversationsPage({ params }: ConversationsPagePro
     redirect(`/${locale}`);
   }
 
-  return <ConversationList locale={locale} />;
+  return <ConversationList locale={locale} dictionary={getDictionary(locale)} />;
 }

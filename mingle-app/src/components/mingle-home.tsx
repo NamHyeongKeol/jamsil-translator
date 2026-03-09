@@ -1590,7 +1590,7 @@ export default function MingleHome(props: MingleHomeProps) {
           isAuthActionPending={isDeletingAccount}
         />
       </div>
-      <BottomTabBar locale={props.locale} />
+      <BottomTabBar locale={props.locale} dictionary={props.dictionary} />
     </main>
   );
 }

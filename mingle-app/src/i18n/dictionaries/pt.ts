@@ -1,6 +1,6 @@
 import { createProfileLocalizedDictionary } from "@/i18n/dictionaries/create-profile-localized-dictionary";
 
-export const ptDictionary = createProfileLocalizedDictionary({
+export const ptDictionary = createProfileLocalizedDictionary("pt", {
   authTitle: "Autenticação",
   loginRequiredTitle: "Login necessário",
   loginRequiredDescription: "Faça login com Apple ou Google para usar o tradutor.",

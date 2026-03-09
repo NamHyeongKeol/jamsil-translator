@@ -1,6 +1,6 @@
 import { createProfileLocalizedDictionary } from "@/i18n/dictionaries/create-profile-localized-dictionary";
 
-export const thDictionary = createProfileLocalizedDictionary({
+export const thDictionary = createProfileLocalizedDictionary("th", {
   authTitle: "การยืนยันตัวตน",
   loginRequiredTitle: "ต้องเข้าสู่ระบบ",
   loginRequiredDescription: "กรุณาเข้าสู่ระบบด้วย Apple หรือ Google เพื่อใช้ตัวแปลภาษา",

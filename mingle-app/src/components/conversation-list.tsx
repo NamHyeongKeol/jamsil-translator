@@ -1,5 +1,6 @@
 "use client";
 
+import type { AppDictionary } from "@/i18n/types";
 import { useState, useMemo } from "react";
 import { Search, MessageCirclePlus } from "lucide-react";
 import BottomTabBar from "@/components/bottom-tab-bar";
@@ -22,14 +23,66 @@ interface ConversationItem {
   avatarColor: string;
 }
 
-const DUMMY_CONVERSATIONS: ConversationItem[] = [
-  { id: "1", name: "Yuki", countryLocale: "ja", lastMessage: "こんにちは！", time: "02:07", unread: 0, avatarColor: "#f9a8d4" },
-  { id: "2", name: "Maria", countryLocale: "es", lastMessage: "Hola, ¿cómo estás?", time: "어제", unread: 2, avatarColor: "#a5b4fc" },
-  { id: "3", name: "Wei", countryLocale: "zh", lastMessage: "你好！很高兴认识你", time: "어제", unread: 1, avatarColor: "#6ee7b7" },
-  { id: "4", name: "Emma", countryLocale: "en", lastMessage: "Nice to meet you!", time: "어제", unread: 1, avatarColor: "#fcd34d" },
-  { id: "5", name: "Linh", countryLocale: "vi", lastMessage: "Xin chào bạn!", time: "토요일", unread: 0, avatarColor: "#f87171" },
-  { id: "6", name: "Paris", countryLocale: "fr", lastMessage: "Bonjour!", time: "토요일", unread: 1, avatarColor: "#93c5fd" },
-];
+function buildDummyConversations(
+  dictionary: AppDictionary,
+): ConversationItem[] {
+  return [
+    {
+      id: "1",
+      name: "Yuki",
+      countryLocale: "ja",
+      lastMessage: dictionary.conversations.sampleMessages.yuki,
+      time: "02:07",
+      unread: 0,
+      avatarColor: "#f9a8d4",
+    },
+    {
+      id: "2",
+      name: "Maria",
+      countryLocale: "es",
+      lastMessage: dictionary.conversations.sampleMessages.maria,
+      time: dictionary.conversations.yesterdayLabel,
+      unread: 2,
+      avatarColor: "#a5b4fc",
+    },
+    {
+      id: "3",
+      name: "Wei",
+      countryLocale: "zh",
+      lastMessage: dictionary.conversations.sampleMessages.wei,
+      time: dictionary.conversations.yesterdayLabel,
+      unread: 1,
+      avatarColor: "#6ee7b7",
+    },
+    {
+      id: "4",
+      name: "Emma",
+      countryLocale: "en",
+      lastMessage: dictionary.conversations.sampleMessages.emma,
+      time: dictionary.conversations.yesterdayLabel,
+      unread: 1,
+      avatarColor: "#fcd34d",
+    },
+    {
+      id: "5",
+      name: "Linh",
+      countryLocale: "vi",
+      lastMessage: dictionary.conversations.sampleMessages.linh,
+      time: dictionary.conversations.saturdayLabel,
+      unread: 0,
+      avatarColor: "#f87171",
+    },
+    {
+      id: "6",
+      name: "Paris",
+      countryLocale: "fr",
+      lastMessage: dictionary.conversations.sampleMessages.paris,
+      time: dictionary.conversations.saturdayLabel,
+      unread: 1,
+      avatarColor: "#93c5fd",
+    },
+  ];
+}
 
 // ── 대화방 아이템 ─────────────────────────────────────────────────────────
 function ConversationRow({ item }: { item: ConversationItem }) {
@@ -78,10 +131,12 @@ function SearchOverlay({
   open,
   onClose,
   conversations,
+  dictionary,
 }: {
   open: boolean;
   onClose: () => void;
   conversations: ConversationItem[];
+  dictionary: AppDictionary;
 }) {
   const [query, setQuery] = useState("");
 
@@ -111,7 +166,7 @@ function SearchOverlay({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="대화방 또는 메시지 검색"
+            placeholder={dictionary.conversations.searchPlaceholder}
             className="flex-1 bg-transparent text-[15px] outline-none placeholder:text-gray-400"
           />
         </div>
@@ -120,7 +175,7 @@ function SearchOverlay({
           onClick={() => { setQuery(""); onClose(); }}
           className="shrink-0 text-[15px] font-medium text-[#7c3aed]"
         >
-          취소
+          {dictionary.conversations.cancelAction}
         </button>
       </div>
 
@@ -128,7 +183,7 @@ function SearchOverlay({
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-gray-400">
-            <p className="text-[14px]">검색 결과가 없어요</p>
+            <p className="text-[14px]">{dictionary.conversations.noSearchResults}</p>
           </div>
         ) : (
           filtered.map((item) => <ConversationRow key={item.id} item={item} />)
@@ -141,10 +196,18 @@ function SearchOverlay({
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────
 type ConversationListProps = {
   locale: string;
+  dictionary: AppDictionary;
 };
 
-export default function ConversationList({ locale }: ConversationListProps) {
+export default function ConversationList({
+  locale,
+  dictionary,
+}: ConversationListProps) {
   const [showSearch, setShowSearch] = useState(false);
+  const conversations = useMemo(
+    () => buildDummyConversations(dictionary),
+    [dictionary],
+  );
 
   return (
     <main className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-white text-slate-900">
@@ -152,7 +215,8 @@ export default function ConversationList({ locale }: ConversationListProps) {
       <SearchOverlay
         open={showSearch}
         onClose={() => setShowSearch(false)}
-        conversations={DUMMY_CONVERSATIONS}
+        conversations={conversations}
+        dictionary={dictionary}
       />
 
       {/* ── 상단 헤더 ── */}
@@ -175,7 +239,7 @@ export default function ConversationList({ locale }: ConversationListProps) {
             type="button"
             onClick={() => setShowSearch(true)}
             className="flex h-10 w-10 items-center justify-center rounded-full transition active:bg-gray-100"
-            aria-label="검색"
+            aria-label={dictionary.conversations.searchButtonLabel}
           >
             <Search size={22} strokeWidth={2} />
           </button>
@@ -183,7 +247,7 @@ export default function ConversationList({ locale }: ConversationListProps) {
           <button
             type="button"
             className="flex h-10 w-10 items-center justify-center rounded-full transition active:bg-gray-100"
-            aria-label="새 대화 시작"
+            aria-label={dictionary.conversations.newConversationButtonLabel}
           >
             <MessageCirclePlus size={22} strokeWidth={2} />
           </button>
@@ -192,18 +256,22 @@ export default function ConversationList({ locale }: ConversationListProps) {
 
       {/* ── 대화 목록 ── */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {DUMMY_CONVERSATIONS.length === 0 ? (
+        {conversations.length === 0 ? (
           <div className="flex flex-col items-center py-20 text-gray-400">
             <span className="mb-3 text-5xl">💬</span>
-            <p className="text-[15px] font-semibold text-slate-700">아직 대화가 없어요</p>
-            <p className="mt-1 text-[13px] text-gray-400">새 대화를 시작해보세요</p>
+            <p className="text-[15px] font-semibold text-slate-700">
+              {dictionary.conversations.emptyTitle}
+            </p>
+            <p className="mt-1 text-[13px] text-gray-400">
+              {dictionary.conversations.emptyDescription}
+            </p>
           </div>
         ) : (
           <div>
-            {DUMMY_CONVERSATIONS.map((item, idx) => (
+            {conversations.map((item, idx) => (
               <div key={item.id}>
                 <ConversationRow item={item} />
-                {idx < DUMMY_CONVERSATIONS.length - 1 && (
+                {idx < conversations.length - 1 && (
                   <div className="mx-4 h-px bg-gray-100" />
                 )}
               </div>
@@ -213,7 +281,7 @@ export default function ConversationList({ locale }: ConversationListProps) {
       </div>
 
       {/* ── 하단 탭바 ── */}
-      <BottomTabBar locale={locale} />
+      <BottomTabBar locale={locale} dictionary={dictionary} />
     </main>
   );
 }

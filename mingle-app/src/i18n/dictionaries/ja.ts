@@ -1,3 +1,4 @@
+import { draftScreenDictionaries } from "@/i18n/dictionaries/draft-screen-locales";
 import type { AppDictionary } from "@/i18n/types";
 
 export const jaDictionary: AppDictionary = {
@@ -10,6 +11,7 @@ export const jaDictionary: AppDictionary = {
     muteTts: "音声再生をミュート",
     unmuteTts: "音声再生をミュート解除",
   },
+  navigation: draftScreenDictionaries.ja.navigation,
   tabs: {
     chats: "チャット",
     connect: "つながる",
@@ -47,6 +49,8 @@ export const jaDictionary: AppDictionary = {
     likesLabel: "いいね",
     commentsLabel: "コメント",
   },
+  conversations: draftScreenDictionaries.ja.conversations,
+  myPage: draftScreenDictionaries.ja.myPage,
   profile: {
     postsLabel: "投稿",
     followersLabel: "フォロワー",

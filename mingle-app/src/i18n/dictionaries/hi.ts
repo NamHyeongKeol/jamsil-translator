@@ -1,6 +1,6 @@
 import { createProfileLocalizedDictionary } from "@/i18n/dictionaries/create-profile-localized-dictionary";
 
-export const hiDictionary = createProfileLocalizedDictionary({
+export const hiDictionary = createProfileLocalizedDictionary("hi", {
   authTitle: "प्रमाणीकरण",
   loginRequiredTitle: "लॉगिन आवश्यक है",
   loginRequiredDescription: "अनुवादक उपयोग करने के लिए कृपया Apple या Google से लॉगिन करें।",

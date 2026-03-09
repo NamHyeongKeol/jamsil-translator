@@ -1,6 +1,6 @@
 import { createProfileLocalizedDictionary } from "@/i18n/dictionaries/create-profile-localized-dictionary";
 
-export const viDictionary = createProfileLocalizedDictionary({
+export const viDictionary = createProfileLocalizedDictionary("vi", {
   authTitle: "Xác thực",
   loginRequiredTitle: "Yêu cầu đăng nhập",
   loginRequiredDescription: "Vui lòng đăng nhập bằng Apple hoặc Google để sử dụng trình dịch.",

@@ -1,3 +1,4 @@
+import { draftScreenDictionaries } from "@/i18n/dictionaries/draft-screen-locales";
 import type { AppDictionary } from "@/i18n/types";
 
 export const enDictionary: AppDictionary = {
@@ -10,6 +11,7 @@ export const enDictionary: AppDictionary = {
     muteTts: "Mute TTS",
     unmuteTts: "Unmute TTS",
   },
+  navigation: draftScreenDictionaries.en.navigation,
   tabs: {
     chats: "Chats",
     connect: "Connect",
@@ -47,6 +49,8 @@ export const enDictionary: AppDictionary = {
     likesLabel: "Likes",
     commentsLabel: "Comments",
   },
+  conversations: draftScreenDictionaries.en.conversations,
+  myPage: draftScreenDictionaries.en.myPage,
   profile: {
     postsLabel: "posts",
     followersLabel: "followers",

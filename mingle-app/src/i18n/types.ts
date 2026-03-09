@@ -8,6 +8,12 @@ export type AppDictionary = {
     muteTts: string;
     unmuteTts: string;
   };
+  navigation: {
+    bottomTabBarLabel: string;
+    conversationsTab: string;
+    myPageTab: string;
+    profileImageAlt: string;
+  };
   tabs: {
     chats: string;
     connect: string;
@@ -44,6 +50,46 @@ export type AppDictionary = {
     videoLabel: string;
     likesLabel: string;
     commentsLabel: string;
+  };
+  conversations: {
+    searchPlaceholder: string;
+    cancelAction: string;
+    noSearchResults: string;
+    searchButtonLabel: string;
+    newConversationButtonLabel: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    yesterdayLabel: string;
+    saturdayLabel: string;
+    sampleMessages: {
+      yuki: string;
+      maria: string;
+      wei: string;
+      emma: string;
+      linh: string;
+      paris: string;
+    };
+  };
+  myPage: {
+    languageSettings: string;
+    noFollowers: string;
+    noFollowing: string;
+    editProfileTitle: string;
+    cancelAction: string;
+    doneAction: string;
+    changePhotoAction: string;
+    usernameLabel: string;
+    usernamePlaceholder: string;
+    bioLabel: string;
+    bioPlaceholder: string;
+    nationalityLabel: string;
+    addBioPrompt: string;
+    addPostButtonLabel: string;
+    backButtonLabel: string;
+    profileImageAlt: string;
+    sharePostsTitle: string;
+    sharePostsDescription: string;
+    anonymousUser: string;
   };
   profile: {
     postsLabel: string;

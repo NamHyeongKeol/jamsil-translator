@@ -1,3 +1,4 @@
+import { draftScreenDictionaries } from "@/i18n/dictionaries/draft-screen-locales";
 import type { AppDictionary } from "@/i18n/types";
 
 export const koDictionary: AppDictionary = {
@@ -10,6 +11,7 @@ export const koDictionary: AppDictionary = {
     muteTts: "음성 끄기",
     unmuteTts: "음성 켜기",
   },
+  navigation: draftScreenDictionaries.ko.navigation,
   tabs: {
     chats: "채팅",
     connect: "친구 찾기",
@@ -47,6 +49,8 @@ export const koDictionary: AppDictionary = {
     likesLabel: "좋아요",
     commentsLabel: "댓글",
   },
+  conversations: draftScreenDictionaries.ko.conversations,
+  myPage: draftScreenDictionaries.ko.myPage,
   profile: {
     postsLabel: "게시물",
     followersLabel: "팔로워",

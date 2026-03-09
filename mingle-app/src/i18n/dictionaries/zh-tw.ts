@@ -1,6 +1,6 @@
 import { createProfileLocalizedDictionary } from "@/i18n/dictionaries/create-profile-localized-dictionary";
 
-export const zhTwDictionary = createProfileLocalizedDictionary({
+export const zhTwDictionary = createProfileLocalizedDictionary("zh-TW", {
   authTitle: "驗證",
   loginRequiredTitle: "需要登入",
   loginRequiredDescription: "請使用 Apple 或 Google 登入後再使用翻譯器。",
