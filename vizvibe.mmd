@@ -2,7 +2,7 @@ flowchart TD
     %% === PROJECT GOALS ===
     %% Ultimate Goal: Mingle - 소셜링 중심의 실시간 번역 앱으로 외국인과 깊이 있는 대화 가능하게
     %% Current Goal: Mingle 프리토타입 검증 및 핵심 기능 구현
-    %% @lastActive: mingle_app_rn_ios_appdelegate_linking_module_fix
+    %% @lastActive: mingle_app_mypage_instagram_redesign
 
     %% === START ===
     %% @project_start [start, closed]
@@ -132,6 +132,12 @@ flowchart TD
 
     %% @mingle_app_rn_ios_appdelegate_linking_module_fix [ai-task, closed, 2026-02-25, ai]
     mingle_app_rn_ios_appdelegate_linking_module_fix("RN iOS AppDelegate Linking 모듈 참조 수정<br/><sub>딥링크 복귀 연결을 위해 추가한 import에서<br/>React_RCTLinking 모듈명이 실제 Pod에 없어<br/>Release 빌드가 즉시 실패하던 경로를 확인하고<br/>React 모듈 경유 RCTLinkingManager 호출로 정정</sub>")
+
+    %% @mingle_app_webview_bottom_tabs [ai-task, closed, 2026-03-09, ai]
+    mingle_app_webview_bottom_tabs("웹뷰 하단탭 구현<br/><sub>BottomTabBar 컴포넌트(말풍선/프로필 원형)를<br/>웹 레벨에서 신규 생성하고 authenticated 상태의<br/>mingle-home에 통합. /[locale]/mypage 라우트 및<br/>MyPage placeholder 컴포넌트도 함께 추가</sub>")
+
+    %% @mingle_app_mypage_instagram_redesign [ai-task, closed, 2026-03-09, ai]
+    mingle_app_mypage_instagram_redesign("마이페이지 인스타 스타일 리디자인<br/><sub>하단탭 safe area CSS env() 즉시적용+라벨제거<br/>상단바/프로필+국기배지/통계/bio<br/>편집시트/팔로워 슬라이딩 패널<br/>게시물 3컬럼 그리드</sub>")
 
     %% @mingle_app_rn_ios_native_oauth_callback_origin_fix [ai-task, closed, 2026-02-25, ai]
     mingle_app_rn_ios_native_oauth_callback_origin_fix("RN iOS OAuth callback origin 고정<br/><sub>네이티브 브라우저 로그인 시작 시 프록시 환경에서<br/>callbackUrl/signIn URL이 localhost로 생성돼<br/>iPhone Chrome에서 인증 후 복귀가 끊기던 문제를<br/>x-forwarded/NEXTAUTH_URL 우선 origin 해석으로 수정</sub>")
@@ -1763,7 +1769,9 @@ flowchart TD
     style opencode_codex_oauth_pending fill:#1a1a2e,stroke:#4ade80,color:#86efac,stroke-width:1px
 
     %% Last active node (highlighted purple)
-    style mingle_app_rn_ios_native_oauth_google_only_launcher fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_mypage_instagram_redesign fill:#2d1f4e,stroke:#c084fc,color:#e9d5ff,stroke-width:2px
+    style mingle_app_webview_bottom_tabs fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
+    style mingle_app_rn_ios_native_oauth_google_only_launcher fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style mingle_worktree_devbox_runtime_vault_env_injection fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style translation_decouple_http fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px
     style finalize_tts_double_playback_rootcause fill:#1a1a2e,stroke:#a78bfa,color:#c4b5fd,stroke-width:1px

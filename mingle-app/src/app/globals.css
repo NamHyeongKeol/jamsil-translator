@@ -48,10 +48,12 @@
 }
 
 :root {
-  --font-geist-sans: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR",
-    system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-geist-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  --font-geist-sans:
+    "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  --font-geist-mono:
+    ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
 
   --radius: 0.72rem;
 
@@ -164,6 +166,14 @@
     display: none;
     width: 0;
     height: 0;
+  }
+
+  /* Safe area: viewport-fit=cover와 함께 초기 렌더부터 env() 적용 */
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
   }
 }
 

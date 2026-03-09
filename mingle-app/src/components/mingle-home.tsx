@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { ArrowLeft, Loader2, Mail, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import BottomTabBar from "@/components/bottom-tab-bar";
 import { signIn, signOut, useSession } from "next-auth/react";
 import type { AppDictionary } from "@/i18n/types";
 
@@ -1566,27 +1567,30 @@ export default function MingleHome(props: MingleHomeProps) {
   }
 
   return (
-    <main className="h-full min-h-0 w-full overflow-hidden bg-white text-slate-900">
-      <LivePhoneDemo
-        enableAutoTTS
-        uiLocale={props.locale}
-        tapPlayToStartLabel={props.dictionary.demo.tapPlayToStart}
-        usageLimitReachedLabel={props.dictionary.demo.usageLimitReached}
-        usageLimitRetryHintLabel={props.dictionary.demo.usageLimitRetryHint}
-        connectingLabel={props.dictionary.demo.connecting}
-        connectionFailedLabel={props.dictionary.demo.connectionFailed}
-        muteTtsLabel={props.dictionary.demo.muteTts}
-        unmuteTtsLabel={props.dictionary.demo.unmuteTts}
-        menuLabel={props.dictionary.profile.menuLabel}
-        logoutLabel={props.dictionary.profile.logout}
-        deleteAccountLabel={props.dictionary.profile.deleteAccount}
-        deleteAccountConfirmMessage={props.dictionary.profile.deleteAccountConfirm}
-        deleteAccountConfirmLabel={props.dictionary.profile.deleteAccountConfirmAction}
-        deleteAccountCancelLabel={props.dictionary.profile.deleteAccountCancel}
-        onLogout={handleSignOut}
-        onDeleteAccount={handleDeleteAccount}
-        isAuthActionPending={isDeletingAccount}
-      />
+    <main className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white text-slate-900">
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <LivePhoneDemo
+          enableAutoTTS
+          uiLocale={props.locale}
+          tapPlayToStartLabel={props.dictionary.demo.tapPlayToStart}
+          usageLimitReachedLabel={props.dictionary.demo.usageLimitReached}
+          usageLimitRetryHintLabel={props.dictionary.demo.usageLimitRetryHint}
+          connectingLabel={props.dictionary.demo.connecting}
+          connectionFailedLabel={props.dictionary.demo.connectionFailed}
+          muteTtsLabel={props.dictionary.demo.muteTts}
+          unmuteTtsLabel={props.dictionary.demo.unmuteTts}
+          menuLabel={props.dictionary.profile.menuLabel}
+          logoutLabel={props.dictionary.profile.logout}
+          deleteAccountLabel={props.dictionary.profile.deleteAccount}
+          deleteAccountConfirmMessage={props.dictionary.profile.deleteAccountConfirm}
+          deleteAccountConfirmLabel={props.dictionary.profile.deleteAccountConfirmAction}
+          deleteAccountCancelLabel={props.dictionary.profile.deleteAccountCancel}
+          onLogout={handleSignOut}
+          onDeleteAccount={handleDeleteAccount}
+          isAuthActionPending={isDeletingAccount}
+        />
+      </div>
+      <BottomTabBar locale={props.locale} />
     </main>
   );
 }
