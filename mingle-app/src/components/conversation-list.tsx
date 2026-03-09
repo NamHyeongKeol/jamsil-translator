@@ -271,6 +271,16 @@ const SearchOverlay = forwardRef<SearchOverlayHandle, SearchOverlayProps>(functi
     () => EMPTY_RECENT_SEARCHES,
   );
 
+  const blurInput = useCallback(() => {
+    inputRef.current?.blur();
+
+    if (typeof document === "undefined") return;
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+  }, []);
+
   const focusInput = useCallback(() => {
     const input = inputRef.current;
     if (!input) return;
@@ -287,7 +297,10 @@ const SearchOverlay = forwardRef<SearchOverlayHandle, SearchOverlayProps>(functi
   useImperativeHandle(ref, () => ({ focusInput }), [focusInput]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      blurInput();
+      return;
+    }
 
     focusInput();
     const animationFrameId = window.requestAnimationFrame(() => {
@@ -301,7 +314,7 @@ const SearchOverlay = forwardRef<SearchOverlayHandle, SearchOverlayProps>(functi
       window.cancelAnimationFrame(animationFrameId);
       window.clearTimeout(timeoutId);
     };
-  }, [focusInput, open]);
+  }, [blurInput, focusInput, open]);
 
   const persistRecentSearch = useCallback((rawValue: string) => {
     const normalized = normalizeSearchTerm(rawValue);
@@ -317,9 +330,10 @@ const SearchOverlay = forwardRef<SearchOverlayHandle, SearchOverlayProps>(functi
 
   const dismissSearch = useCallback(() => {
     persistRecentSearch(query);
+    blurInput();
     setQuery("");
     onClose();
-  }, [onClose, persistRecentSearch, query]);
+  }, [blurInput, onClose, persistRecentSearch, query]);
 
   const filtered = useMemo(() => {
     const normalizedQuery = normalizeSearchTerm(query).toLocaleLowerCase();
