@@ -19,6 +19,10 @@ import MingleWordmark from "@/components/mingle-wordmark";
 const RECENT_SEARCHES_STORAGE_KEY = "mingle:conversation-searches";
 const RECENT_SEARCHES_SYNC_EVENT = "mingle:conversation-searches-sync";
 const MAX_RECENT_SEARCHES = 6;
+const EMPTY_RECENT_SEARCHES: string[] = [];
+
+let recentSearchesSnapshot = EMPTY_RECENT_SEARCHES;
+let recentSearchesSnapshotRaw = "__initial__";
 
 // ── 국기 매핑 ────────────────────────────────────────────────────────────
 const LOCALE_FLAG: Record<string, string> = {
@@ -103,23 +107,49 @@ function normalizeSearchTerm(rawValue: string): string {
   return rawValue.trim().replace(/\s+/g, " ");
 }
 
+function normalizeRecentSearches(values: string[]): string[] {
+  const deduped: string[] = [];
+
+  for (const value of values) {
+    const normalized = normalizeSearchTerm(value);
+    if (!normalized) continue;
+    if (deduped.some((item) => item.toLocaleLowerCase() === normalized.toLocaleLowerCase())) {
+      continue;
+    }
+    deduped.push(normalized);
+    if (deduped.length >= MAX_RECENT_SEARCHES) break;
+  }
+
+  return deduped;
+}
+
+function cacheRecentSearchesSnapshot(rawValue: string | null, nextValues: string[]): string[] {
+  const normalized = normalizeRecentSearches(nextValues);
+  recentSearchesSnapshotRaw = rawValue ?? "__null__";
+  recentSearchesSnapshot = normalized.length > 0 ? normalized : EMPTY_RECENT_SEARCHES;
+  return recentSearchesSnapshot;
+}
+
 function readStoredRecentSearches(): string[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_RECENT_SEARCHES;
 
   try {
     const stored = window.localStorage.getItem(RECENT_SEARCHES_STORAGE_KEY);
-    if (!stored) return [];
+    const cacheKey = stored ?? "__null__";
+    if (cacheKey === recentSearchesSnapshotRaw) {
+      return recentSearchesSnapshot;
+    }
+    if (!stored) return cacheRecentSearchesSnapshot(null, []);
 
     const parsed = JSON.parse(stored) as unknown;
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) return cacheRecentSearchesSnapshot(stored, []);
 
-    return parsed
-      .filter((value): value is string => typeof value === "string")
-      .map((value) => normalizeSearchTerm(value))
-      .filter(Boolean)
-      .slice(0, MAX_RECENT_SEARCHES);
+    return cacheRecentSearchesSnapshot(
+      stored,
+      parsed.filter((value): value is string => typeof value === "string"),
+    );
   } catch {
-    return [];
+    return cacheRecentSearchesSnapshot(null, []);
   }
 }
 
@@ -127,9 +157,12 @@ function writeStoredRecentSearches(nextRecentSearches: string[]): void {
   if (typeof window === "undefined") return;
 
   try {
+    const normalized = normalizeRecentSearches(nextRecentSearches);
+    const serialized = JSON.stringify(normalized);
+    cacheRecentSearchesSnapshot(serialized, normalized);
     window.localStorage.setItem(
       RECENT_SEARCHES_STORAGE_KEY,
-      JSON.stringify(nextRecentSearches),
+      serialized,
     );
     window.dispatchEvent(new Event(RECENT_SEARCHES_SYNC_EVENT));
   } catch {
@@ -235,7 +268,7 @@ const SearchOverlay = forwardRef<SearchOverlayHandle, SearchOverlayProps>(functi
   const recentSearches = useSyncExternalStore(
     subscribeRecentSearches,
     readStoredRecentSearches,
-    () => [],
+    () => EMPTY_RECENT_SEARCHES,
   );
 
   const focusInput = useCallback(() => {
