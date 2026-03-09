@@ -67,6 +67,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang={DEFAULT_LOCALE}>
+      <head>
+        {/* 첫 페인트 전 동기 실행 → flash 없이 zoom 값 설정 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+  var z = Math.min(1, window.innerWidth / 400);
+  document.documentElement.style.setProperty('--canvas-zoom', z);
+})();`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <TtsSettingsProvider>
           <AuthSessionProvider>
