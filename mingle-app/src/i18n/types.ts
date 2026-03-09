@@ -75,6 +75,9 @@ export type AppDictionary = {
   };
   myPage: {
     languageSettings: string;
+    comingSoonTitle: string;
+    comingSoonDescription: string;
+    confirmAction: string;
     noFollowers: string;
     noFollowing: string;
     editProfileTitle: string;

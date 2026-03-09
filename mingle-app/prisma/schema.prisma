@@ -9,37 +9,43 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(cuid())
-  externalUserId  String?  @unique @map("external_user_id")
-  email           String?  @unique(map: "app_users_email_key")
+  id              String    @id @default(cuid())
+  externalUserId  String?   @unique @map("external_user_id")
+  email           String?   @unique(map: "app_users_email_key")
   emailVerified   DateTime? @map("email_verified")
-  passwordHash    String?  @map("password_hash")
+  passwordHash    String?   @map("password_hash")
   name            String?
   image           String?
-  latestIpAddress String?  @map("latest_ip_address")
-  latestUserAgent String?  @map("latest_user_agent")
+  latestIpAddress String?   @map("latest_ip_address")
+  latestUserAgent String?   @map("latest_user_agent")
   language        String?
-  pageLanguage    String?  @map("page_language")
+  pageLanguage    String?   @map("page_language")
   referrer        String?
-  fullUrl         String?  @map("full_url")
-  queryParams     String?  @map("query_params")
-  screenWidth     Int?     @map("screen_width")
-  screenHeight    Int?     @map("screen_height")
+  fullUrl         String?   @map("full_url")
+  queryParams     String?   @map("query_params")
+  screenWidth     Int?      @map("screen_width")
+  screenHeight    Int?      @map("screen_height")
   timezone        String?
   platform        String?
   pathname        String?
-  totalUsageSec   Int      @default(0) @map("total_usage_sec")
-  firstSeenAt     DateTime @default(now()) @map("first_seen_at")
-  lastSeenAt      DateTime @default(now()) @map("last_seen_at")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  totalUsageSec   Int       @default(0) @map("total_usage_sec")
+  firstSeenAt     DateTime  @default(now()) @map("first_seen_at")
+  lastSeenAt      DateTime  @default(now()) @map("last_seen_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  messages  AppMessage[]
-  eventLogs AppEventLog[]
+  // 마이페이지 프로필
+  displayName String? @map("display_name") // 사용자 설정 닉네임
+  bio         String? @db.Text // 한 줄 소개
+  nationality String? // 국적 로케일 (ko, en 등)
+  appLocale   String? @map("app_locale") // 앱 UI 언어 locale
+
+  messages               AppMessage[]
+  eventLogs              AppEventLog[]
   versionPoliciesCreated AppClientVersionPolicy[]
-  accounts  Account[]
-  sessions  Session[]
-  passwordResetTokens PasswordResetToken[]
+  accounts               Account[]
+  sessions               Session[]
+  passwordResetTokens    PasswordResetToken[]
 
   @@index([lastSeenAt], map: "app_users_last_seen_at_idx")
   @@map("app_users")
@@ -167,13 +173,13 @@ model VerificationToken {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  tokenHash String   @unique(map: "app_password_reset_tokens_token_hash_key") @map("token_hash")
-  expiresAt DateTime @map("expires_at")
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique(map: "app_password_reset_tokens_token_hash_key") @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -183,15 +189,15 @@ model PasswordResetToken {
 }
 
 model NativeAuthPendingResult {
-  requestId  String   @id @map("request_id")
-  status     String
-  provider   String?
-  callbackUrl String  @map("callback_url")
-  bridgeToken String? @map("bridge_token")
-  message    String?
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  requestId   String   @id @map("request_id")
+  status      String
+  provider    String?
+  callbackUrl String   @map("callback_url")
+  bridgeToken String?  @map("bridge_token")
+  message     String?
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([expiresAt], map: "native_auth_pending_results_expires_at_idx")
   @@map("native_auth_pending_results")

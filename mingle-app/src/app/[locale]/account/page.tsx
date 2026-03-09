@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { getAuthOptions } from "@/lib/auth-options";
 import { isSupportedLocale } from "@/i18n";
+import { getUserPreferredLocale } from "@/lib/user-preferred-locale";
 
 type AccountPageProps = {
   params: Promise<{
@@ -20,6 +21,11 @@ export default async function AccountPage({ params }: AccountPageProps) {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user) {
     redirect(`/${locale}`);
+  }
+
+  const preferredLocale = await getUserPreferredLocale(session.user.id);
+  if (preferredLocale && preferredLocale !== locale) {
+    redirect(`/${preferredLocale}/account`);
   }
 
   return (

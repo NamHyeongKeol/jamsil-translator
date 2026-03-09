@@ -39,6 +39,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "언어 설정",
+        comingSoonTitle: "아직 준비중입니다!",
+        comingSoonDescription: "빠른 시일 내에 만나보실 수 있어요.",
+        confirmAction: "확인",
         noFollowers: "아직 팔로워가 없어요",
         noFollowing: "아직 팔로잉이 없어요",
         editProfileTitle: "프로필 편집",
@@ -90,6 +93,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "Language settings",
+        comingSoonTitle: "Coming soon",
+        comingSoonDescription: "This will be available here soon.",
+        confirmAction: "OK",
         noFollowers: "No followers yet",
         noFollowing: "Not following anyone yet",
         editProfileTitle: "Edit profile",
@@ -141,6 +147,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "言語設定",
+        comingSoonTitle: "準備中です",
+        comingSoonDescription: "まもなくこちらでご利用いただけます。",
+        confirmAction: "確認",
         noFollowers: "まだフォロワーがいません",
         noFollowing: "まだフォロー中の人がいません",
         editProfileTitle: "プロフィール編集",
@@ -192,6 +201,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "语言设置",
+        comingSoonTitle: "即将推出",
+        comingSoonDescription: "很快就会在这里提供。",
+        confirmAction: "确定",
         noFollowers: "还没有关注者",
         noFollowing: "还没有关注任何人",
         editProfileTitle: "编辑资料",
@@ -243,6 +255,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "語言設定",
+        comingSoonTitle: "即將推出",
+        comingSoonDescription: "很快就會在這裡提供。",
+        confirmAction: "確認",
         noFollowers: "還沒有追蹤者",
         noFollowing: "目前尚未追蹤任何人",
         editProfileTitle: "編輯個人資料",
@@ -294,6 +309,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "Paramètres de langue",
+        comingSoonTitle: "Bientôt disponible",
+        comingSoonDescription: "Ce sera bientôt disponible ici.",
+        confirmAction: "OK",
         noFollowers: "Vous n'avez pas encore d'abonnés",
         noFollowing: "Vous ne suivez encore personne",
         editProfileTitle: "Modifier le profil",
@@ -345,6 +363,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "Spracheinstellungen",
+        comingSoonTitle: "Demnächst verfügbar",
+        comingSoonDescription: "Das wird hier bald verfügbar sein.",
+        confirmAction: "OK",
         noFollowers: "Noch keine Follower",
         noFollowing: "Sie folgen noch niemandem",
         editProfileTitle: "Profil bearbeiten",
@@ -396,6 +417,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "Configuración de idioma",
+        comingSoonTitle: "Próximamente",
+        comingSoonDescription: "Esto estará disponible aquí pronto.",
+        confirmAction: "Aceptar",
         noFollowers: "Aún no tienes seguidores",
         noFollowing: "Aún no sigues a nadie",
         editProfileTitle: "Editar perfil",
@@ -447,6 +471,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "Configurações de idioma",
+        comingSoonTitle: "Em breve",
+        comingSoonDescription: "Isso estará disponível aqui em breve.",
+        confirmAction: "OK",
         noFollowers: "Você ainda não tem seguidores",
         noFollowing: "Você ainda não segue ninguém",
         editProfileTitle: "Editar perfil",
@@ -498,6 +525,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "Impostazioni lingua",
+        comingSoonTitle: "Prossimamente",
+        comingSoonDescription: "Sarà disponibile qui a breve.",
+        confirmAction: "OK",
         noFollowers: "Non hai ancora follower",
         noFollowing: "Non segui ancora nessuno",
         editProfileTitle: "Modifica profilo",
@@ -549,6 +579,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "Настройки языка",
+        comingSoonTitle: "Скоро будет",
+        comingSoonDescription: "Скоро это будет доступно здесь.",
+        confirmAction: "ОК",
         noFollowers: "У вас пока нет подписчиков",
         noFollowing: "Вы пока ни на кого не подписаны",
         editProfileTitle: "Редактировать профиль",
@@ -600,6 +633,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "إعدادات اللغة",
+        comingSoonTitle: "قريبًا",
+        comingSoonDescription: "سيكون هذا متاحًا هنا قريبًا.",
+        confirmAction: "حسنًا",
         noFollowers: "لا يوجد متابعون بعد",
         noFollowing: "أنت لا تتابع أحدًا بعد",
         editProfileTitle: "تعديل الملف الشخصي",
@@ -651,6 +687,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "भाषा सेटिंग्स",
+        comingSoonTitle: "जल्द आ रहा है",
+        comingSoonDescription: "यह यहां जल्द उपलब्ध होगा।",
+        confirmAction: "ठीक है",
         noFollowers: "अभी तक कोई फ़ॉलोअर नहीं है",
         noFollowing: "आप अभी किसी को फ़ॉलो नहीं कर रहे हैं",
         editProfileTitle: "प्रोफ़ाइल संपादित करें",
@@ -702,6 +741,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "การตั้งค่าภาษา",
+        comingSoonTitle: "เร็วๆ นี้",
+        comingSoonDescription: "ฟีเจอร์นี้จะพร้อมใช้งานที่นี่เร็วๆ นี้",
+        confirmAction: "ตกลง",
         noFollowers: "ยังไม่มีผู้ติดตาม",
         noFollowing: "คุณยังไม่ได้ติดตามใคร",
         editProfileTitle: "แก้ไขโปรไฟล์",
@@ -753,6 +795,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       },
       myPage: {
         languageSettings: "Cài đặt ngôn ngữ",
+        comingSoonTitle: "Sắp có",
+        comingSoonDescription: "Tính năng này sẽ sớm có tại đây.",
+        confirmAction: "OK",
         noFollowers: "Bạn chưa có người theo dõi nào",
         noFollowing: "Bạn chưa theo dõi ai",
         editProfileTitle: "Chỉnh sửa hồ sơ",
