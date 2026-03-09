@@ -319,40 +319,34 @@ type ActivePolicyRecord = {
 }
 
 async function readActiveVersionPolicyForPlatform(
-  now: Date,
   platform: ClientPlatform,
 ): Promise<ActivePolicyRecord | null> {
-  return prisma.appClientVersionPolicy.findFirst({
-    where: {
-      platform,
-      effectiveFrom: {
-        lte: now,
-      },
-    },
-    orderBy: [
-      { effectiveFrom: 'desc' },
-      { createdAt: 'desc' },
-    ],
-    select: {
-      minSupportedVersion: true,
-      recommendedBelowVersion: true,
-      latestVersion: true,
-      updateUrl: true,
-    },
-  })
+  const rows = await prisma.$queryRaw<ActivePolicyRecord[]>`
+    SELECT
+      "min_supported_version" AS "minSupportedVersion",
+      "recommended_below_version" AS "recommendedBelowVersion",
+      "latest_version" AS "latestVersion",
+      "update_url" AS "updateUrl"
+    FROM "app"."app_client_version_policies"
+    WHERE "platform" = ${platform}
+      AND "effective_from" <= CURRENT_TIMESTAMP
+    ORDER BY "effective_from" DESC, "created_at" DESC
+    LIMIT 1
+  `
+
+  return rows[0] ?? null
 }
 
 async function readActiveVersionPolicy(
-  now: Date,
   requestedPlatform: ClientPlatform,
 ): Promise<VersionPolicyReadResult> {
   try {
     let policyPlatform: ClientPlatform = requestedPlatform
-    let record = await readActiveVersionPolicyForPlatform(now, policyPlatform)
+    let record = await readActiveVersionPolicyForPlatform(policyPlatform)
 
     if (!record && requestedPlatform !== DEFAULT_CLIENT_PLATFORM) {
       policyPlatform = DEFAULT_CLIENT_PLATFORM
-      record = await readActiveVersionPolicyForPlatform(now, policyPlatform)
+      record = await readActiveVersionPolicyForPlatform(policyPlatform)
       if (record) {
         console.warn('[client-version-policy] fallback to ios policy row', {
           requestedPlatform,
@@ -439,9 +433,8 @@ export async function handleClientVersionPolicy(
   const clientBuildRaw = typeof body.clientBuild === 'string' ? body.clientBuild.trim() : ''
   const clientVersion = parseSemver3(clientVersionRaw)
 
-  const now = new Date()
   const [policyRead] = await Promise.all([
-    readActiveVersionPolicy(now, clientPlatform),
+    readActiveVersionPolicy(clientPlatform),
     insertClientVersionIfMissing(clientVersion, clientPlatform),
   ])
 
