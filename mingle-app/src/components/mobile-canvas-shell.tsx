@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 
 const ZOOM_STYLE_ID = "__mingle_canvas_zoom";
 
-/** head 인라인 스크립트와 동일한 로직 – useLayoutEffect는 첫 페인트 전 실행 */
 function applyZoom() {
   document.getElementById(ZOOM_STYLE_ID)?.remove();
   const w = window.innerWidth;
@@ -25,15 +24,31 @@ function applyZoom() {
 }
 
 export default function MobileCanvasShell({ children }: { children: ReactNode }) {
-  // head 인라인 스크립트로 1차 적용 완료 상태.
-  // useLayoutEffect는 혹시 초기값이 틀렸을 경우를 위한 보험 (첫 페인트 전 실행됨).
   useLayoutEffect(() => {
-    applyZoom();
+    // requestAnimationFrame: 브라우저가 첫 레이아웃을 완료한 후 innerWidth를 읽음
+    // → 모바일 WebView 초기 로드 타이밍 문제 해결
+    const rafId = requestAnimationFrame(() => {
+      applyZoom();
+      // 측정 완료 후 shell을 보이게 (visibility: hidden으로 초기 flash 방지)
+      const shell = document.querySelector<HTMLElement>(".mobile-canvas-shell");
+      if (shell) shell.style.visibility = "";
+    });
+
+    // PC에서 창 크기 조절 시 실시간 zoom 재적용
+    window.addEventListener("resize", applyZoom);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", applyZoom);
+    };
   }, []);
 
   return (
     <div className="mobile-canvas-stage">
-      <div className="mobile-canvas-shell">{children}</div>
+      {/* visibility:hidden → rAF 후 해제: 잘못된 zoom으로 첫 프레임이 보이는 flash 방지 */}
+      <div className="mobile-canvas-shell" style={{ visibility: "hidden" }}>
+        {children}
+      </div>
     </div>
   );
 }

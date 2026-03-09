@@ -67,24 +67,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang={DEFAULT_LOCALE}>
-      <head>
-        {/* <head> 파싱 시 동기 실행 → body 렌더 전에 zoom <style> 주입 → flash 없음 */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){
-  var STYLE_ID='__mingle_canvas_zoom';
-  var w=window.innerWidth;
-  if(w>0&&w<400){
-    var z=w/400;
-    var s=document.createElement('style');
-    s.id=STYLE_ID;
-    s.textContent='.mobile-canvas-shell{zoom:'+z+' !important;height:calc(100svh/'+z+') !important;min-height:calc(100svh/'+z+') !important}';
-    document.head.appendChild(s);
-  }
-})();`,
-          }}
-        />
-      </head>
       <body className="antialiased">
         <TtsSettingsProvider>
           <AuthSessionProvider>
