@@ -255,9 +255,13 @@ function SettingsPanel({
       <div className="flex-1 overflow-y-auto">
         {/* 언어 설정 - 오른쪽 화살표 */}
         <button type="button" onClick={onLanguage}
-          className="flex w-full items-center gap-5 px-6 py-4 text-left transition hover:bg-gray-50 active:bg-gray-100">
-          <Globe size={20} className="shrink-0 text-slate-500" />
-          <span className="flex-1 text-[15px] font-medium text-slate-800">{dictionary.myPage.languageSettings}</span>
+          className="flex w-full items-center px-6 py-4 text-left transition hover:bg-gray-50 active:bg-gray-100">
+          <div className="flex min-w-0 flex-1 items-center">
+            <span className="mr-4 inline-flex h-6 w-6 shrink-0 items-center justify-center">
+              <Globe size={20} className="text-slate-500" />
+            </span>
+            <span className="flex-1 text-[15px] font-medium text-slate-800">{dictionary.myPage.languageSettings}</span>
+          </div>
           {selectedLanguage && (
             <span className="flex items-center gap-2 text-[13px] text-slate-500">
               <span aria-hidden="true" className="text-base">{selectedLanguage.flag}</span>
@@ -269,15 +273,19 @@ function SettingsPanel({
         <div className="mx-6 h-px bg-gray-100" />
         {/* 로그아웃 */}
         <button type="button" onClick={onLogout}
-          className="flex w-full items-center gap-5 px-6 py-4 text-left transition hover:bg-gray-50 active:bg-gray-100">
-          <LogOut size={20} className="shrink-0 text-slate-500" />
+          className="flex w-full items-center px-6 py-4 text-left transition hover:bg-gray-50 active:bg-gray-100">
+          <span className="mr-4 inline-flex h-6 w-6 shrink-0 items-center justify-center">
+            <LogOut size={20} className="text-slate-500" />
+          </span>
           <span className="flex-1 text-[15px] font-medium text-slate-800">{dictionary.profile.logout}</span>
         </button>
         <div className="mx-6 h-px bg-gray-100" />
         {/* 회원탈퇴 */}
         <button type="button" onClick={onDeleteAccount}
-          className="flex w-full items-center gap-5 px-6 py-4 text-left transition hover:bg-red-50 active:bg-red-100">
-          <Trash2 size={20} className="shrink-0 text-red-500" />
+          className="flex w-full items-center px-6 py-4 text-left transition hover:bg-red-50 active:bg-red-100">
+          <span className="mr-4 inline-flex h-6 w-6 shrink-0 items-center justify-center">
+            <Trash2 size={20} className="text-red-500" />
+          </span>
           <span className="flex-1 text-[15px] font-medium text-red-500">{dictionary.profile.deleteAccount}</span>
         </button>
       </div>
