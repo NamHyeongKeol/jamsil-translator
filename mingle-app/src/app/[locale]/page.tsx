@@ -1,7 +1,8 @@
 import MingleHome from "@/components/mingle-home";
 import { getDictionary, isSupportedLocale } from "@/i18n";
-import { notFound } from "next/navigation";
-import { isAppleOAuthConfigured, isGoogleOAuthConfigured } from "@/lib/auth-options";
+import { getAuthOptions, isAppleOAuthConfigured, isGoogleOAuthConfigured } from "@/lib/auth-options";
+import { getServerSession } from "next-auth";
+import { notFound, redirect } from "next/navigation";
 
 type LocalePageProps = {
   params: Promise<{
@@ -14,6 +15,11 @@ export default async function LocalePage({ params }: LocalePageProps) {
 
   if (!isSupportedLocale(locale)) {
     notFound();
+  }
+
+  const session = await getServerSession(getAuthOptions());
+  if (session?.user) {
+    redirect(`/${locale}/conversations`);
   }
 
   return (

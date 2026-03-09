@@ -241,7 +241,7 @@ export default function MingleHome(props: MingleHomeProps) {
     null,
   );
   const callbackUrl = useMemo(
-    () => `/${props.locale}/translator`,
+    () => `/${props.locale}/conversations`,
     [props.locale],
   );
   const localeSegment = useMemo(
