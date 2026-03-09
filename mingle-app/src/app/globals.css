@@ -177,29 +177,27 @@
   }
 }
 
+/* stage: 항상 flex 중앙 정렬
+   - 뷰포트 > 400px: shell(400px)이 가운데, 양옆 body 배경색 여백
+   - 뷰포트 ≤ 400px: zoom으로 shell이 축소되어 여백 없이 꽉 참 */
 .mobile-canvas-stage {
   width: 100%;
   height: 100svh;
   min-height: 100svh;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
-/* 기본: 400px 쾔츠. 뷰포트 < 400px 일 때는 head 인라인 스크립트와
-   useLayoutEffect가 zoom <style>을 주입해 모든 요소를 정비례 축소 */
+/* shell: 항상 400px 고정폭 (zoom으로 축소 시 시각적으로 줄어듦)
+   flex: 0 0 400px → 내부 컨텐츠 크기에 상관없이 반드시 400px 유지 */
 .mobile-canvas-shell {
+  flex: 0 0 400px;
   width: 400px;
   height: 100svh;
   min-height: 100svh;
   overflow: hidden;
-}
-
-/* 데스크톱 (마우스 + 821px↑): 400px 캐니버스를 가운데 배치 */
-@media (min-width: 821px) and (hover: hover) and (pointer: fine) {
-  .mobile-canvas-stage {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-  }
 }
 
 @layer utilities {
