@@ -260,14 +260,6 @@ const DEFAULT_SAFE_AREA_PALETTE: SafeAreaPalette = {
   edgeMode: 'fill',
 };
 
-const AUTH_LOGIN_SAFE_AREA_PALETTE: SafeAreaPalette = {
-  topColor: '#fbbc32',
-  bottomColor: '#1c1c1e',
-  webViewColor: '#1c1c1e',
-  statusBarStyle: 'light-content',
-  edgeMode: 'transparent',
-};
-
 const WEBVIEW_NAVIGATION_BRIDGE_SCRIPT = `
   (function () {
     if (window.__MINGLE_NATIVE_NAV_BRIDGE_INSTALLED__) {
@@ -820,26 +812,6 @@ function getVersionPolicyFallbackCopy(locale: VersionPolicyLocale) {
   return VERSION_POLICY_FALLBACK_COPY[locale];
 }
 
-function isAuthLikePathname(pathname: string): boolean {
-  const segments = pathname
-    .split('/')
-    .map(segment => segment.trim())
-    .filter(Boolean);
-  if (segments.length === 0) return false;
-
-  const first = segments[0].toLowerCase();
-  if (segments.length === 1 && WEB_SUPPORTED_LOCALE_SEGMENTS.has(first)) {
-    return true;
-  }
-  if (segments[0] === 'auth') {
-    return true;
-  }
-  if (segments.length >= 2 && WEB_SUPPORTED_LOCALE_SEGMENTS.has(first) && segments[1] === 'auth') {
-    return true;
-  }
-  return false;
-}
-
 function isAllowedNativeAuthStartPath(pathname: string): boolean {
   const normalized = pathname.trim();
   if (!normalized.startsWith('/')) return false;
@@ -856,19 +828,7 @@ function isAllowedNativeAuthStartPath(pathname: string): boolean {
   return segments[1] === 'auth' && segments[2] === 'native';
 }
 
-function resolveSafeAreaPaletteForUrl(rawUrl: string): SafeAreaPalette {
-  const candidate = rawUrl.trim();
-  if (!candidate) return DEFAULT_SAFE_AREA_PALETTE;
-
-  try {
-    const parsed = new URL(candidate);
-    if (isAuthLikePathname(parsed.pathname)) {
-      return AUTH_LOGIN_SAFE_AREA_PALETTE;
-    }
-  } catch {
-    return DEFAULT_SAFE_AREA_PALETTE;
-  }
-
+function resolveSafeAreaPaletteForUrl(_rawUrl: string): SafeAreaPalette {
   return DEFAULT_SAFE_AREA_PALETTE;
 }
 
