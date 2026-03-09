@@ -18,6 +18,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "대화방 또는 메시지 검색",
         cancelAction: "취소",
+        recentSearchesTitle: "최근 검색",
+        clearRecentSearchesAction: "전체 삭제",
+        noRecentSearches: "최근 검색이 없어요",
         noSearchResults: "검색 결과가 없어요",
         searchButtonLabel: "검색",
         newConversationButtonLabel: "새 대화 시작",
@@ -66,6 +69,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "Search conversations or messages",
         cancelAction: "Cancel",
+        recentSearchesTitle: "Recent searches",
+        clearRecentSearchesAction: "Clear all",
+        noRecentSearches: "No recent searches",
         noSearchResults: "No search results",
         searchButtonLabel: "Search",
         newConversationButtonLabel: "Start a new conversation",
@@ -114,6 +120,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "会話またはメッセージを検索",
         cancelAction: "キャンセル",
+        recentSearchesTitle: "最近の検索",
+        clearRecentSearchesAction: "すべて削除",
+        noRecentSearches: "最近の検索はありません",
         noSearchResults: "検索結果がありません",
         searchButtonLabel: "検索",
         newConversationButtonLabel: "新しい会話を始める",
@@ -162,6 +171,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "搜索会话或消息",
         cancelAction: "取消",
+        recentSearchesTitle: "最近搜索",
+        clearRecentSearchesAction: "清除全部",
+        noRecentSearches: "最近没有搜索记录",
         noSearchResults: "没有搜索结果",
         searchButtonLabel: "搜索",
         newConversationButtonLabel: "开始新会话",
@@ -210,6 +222,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "搜尋對話或訊息",
         cancelAction: "取消",
+        recentSearchesTitle: "最近搜尋",
+        clearRecentSearchesAction: "全部清除",
+        noRecentSearches: "最近沒有搜尋記錄",
         noSearchResults: "找不到搜尋結果",
         searchButtonLabel: "搜尋",
         newConversationButtonLabel: "開始新對話",
@@ -258,6 +273,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "Rechercher des conversations ou des messages",
         cancelAction: "Annuler",
+        recentSearchesTitle: "Recherches recentes",
+        clearRecentSearchesAction: "Tout effacer",
+        noRecentSearches: "Aucune recherche recente",
         noSearchResults: "Aucun résultat",
         searchButtonLabel: "Rechercher",
         newConversationButtonLabel: "Commencer une nouvelle conversation",
@@ -306,6 +324,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "Unterhaltungen oder Nachrichten suchen",
         cancelAction: "Abbrechen",
+        recentSearchesTitle: "Letzte Suchen",
+        clearRecentSearchesAction: "Alle loschen",
+        noRecentSearches: "Keine letzten Suchen",
         noSearchResults: "Keine Suchergebnisse",
         searchButtonLabel: "Suchen",
         newConversationButtonLabel: "Neue Unterhaltung starten",
@@ -354,6 +375,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "Buscar conversaciones o mensajes",
         cancelAction: "Cancelar",
+        recentSearchesTitle: "Busquedas recientes",
+        clearRecentSearchesAction: "Borrar todo",
+        noRecentSearches: "No hay busquedas recientes",
         noSearchResults: "No hay resultados",
         searchButtonLabel: "Buscar",
         newConversationButtonLabel: "Iniciar una nueva conversación",
@@ -402,6 +426,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "Pesquisar conversas ou mensagens",
         cancelAction: "Cancelar",
+        recentSearchesTitle: "Pesquisas recentes",
+        clearRecentSearchesAction: "Limpar tudo",
+        noRecentSearches: "Nenhuma pesquisa recente",
         noSearchResults: "Nenhum resultado encontrado",
         searchButtonLabel: "Pesquisar",
         newConversationButtonLabel: "Iniciar uma nova conversa",
@@ -450,6 +477,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "Cerca conversazioni o messaggi",
         cancelAction: "Annulla",
+        recentSearchesTitle: "Ricerche recenti",
+        clearRecentSearchesAction: "Cancella tutto",
+        noRecentSearches: "Nessuna ricerca recente",
         noSearchResults: "Nessun risultato",
         searchButtonLabel: "Cerca",
         newConversationButtonLabel: "Avvia una nuova conversazione",
@@ -498,6 +528,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "Поиск диалогов или сообщений",
         cancelAction: "Отмена",
+        recentSearchesTitle: "Недавние поиски",
+        clearRecentSearchesAction: "Очистить все",
+        noRecentSearches: "Недавних поисков нет",
         noSearchResults: "Ничего не найдено",
         searchButtonLabel: "Поиск",
         newConversationButtonLabel: "Начать новый диалог",
@@ -546,6 +579,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "ابحث في المحادثات أو الرسائل",
         cancelAction: "إلغاء",
+        recentSearchesTitle: "عمليات البحث الأخيرة",
+        clearRecentSearchesAction: "مسح الكل",
+        noRecentSearches: "لا توجد عمليات بحث حديثة",
         noSearchResults: "لا توجد نتائج",
         searchButtonLabel: "بحث",
         newConversationButtonLabel: "ابدأ محادثة جديدة",
@@ -594,6 +630,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "बातचीत या संदेश खोजें",
         cancelAction: "रद्द करें",
+        recentSearchesTitle: "हाल की खोजें",
+        clearRecentSearchesAction: "सभी हटाएं",
+        noRecentSearches: "हाल की कोई खोज नहीं",
         noSearchResults: "कोई परिणाम नहीं मिला",
         searchButtonLabel: "खोजें",
         newConversationButtonLabel: "नई बातचीत शुरू करें",
@@ -642,6 +681,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "ค้นหาบทสนทนาหรือข้อความ",
         cancelAction: "ยกเลิก",
+        recentSearchesTitle: "การค้นหาล่าสุด",
+        clearRecentSearchesAction: "ล้างทั้งหมด",
+        noRecentSearches: "ยังไม่มีการค้นหาล่าสุด",
         noSearchResults: "ไม่พบผลการค้นหา",
         searchButtonLabel: "ค้นหา",
         newConversationButtonLabel: "เริ่มบทสนทนาใหม่",
@@ -690,6 +732,9 @@ export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
       conversations: {
         searchPlaceholder: "Tìm cuộc trò chuyện hoặc tin nhắn",
         cancelAction: "Hủy",
+        recentSearchesTitle: "Tìm kiếm gần đây",
+        clearRecentSearchesAction: "Xóa tất cả",
+        noRecentSearches: "Chưa có tìm kiếm gần đây",
         noSearchResults: "Không có kết quả",
         searchButtonLabel: "Tìm kiếm",
         newConversationButtonLabel: "Bắt đầu cuộc trò chuyện mới",

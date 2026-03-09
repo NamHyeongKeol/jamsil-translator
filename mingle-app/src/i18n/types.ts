@@ -54,6 +54,9 @@ export type AppDictionary = {
   conversations: {
     searchPlaceholder: string;
     cancelAction: string;
+    recentSearchesTitle: string;
+    clearRecentSearchesAction: string;
+    noRecentSearches: string;
     noSearchResults: string;
     searchButtonLabel: string;
     newConversationButtonLabel: string;
