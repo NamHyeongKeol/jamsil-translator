@@ -20,6 +20,9 @@ type MingleHomeProps = {
   locale: string;
 };
 
+// Keep auth implementation intact for future re-enable, but disable auth gate for App Review.
+const REQUIRE_AUTH_FOR_TRANSLATOR = false;
+
 const NATIVE_AUTH_EVENT = "mingle:native-auth";
 const NATIVE_AUTH_FLOW_TIMEOUT_MS = 86_400_000; // 24시간 — OAuth는 사용자가 얼마든지 시간을 쓸 수 있어야 함
 type NativeAuthProvider = "apple" | "google";
@@ -962,7 +965,10 @@ export default function MingleHome(props: MingleHomeProps) {
 
   // loading 상태와 unauthenticated 상태를 하나의 레이아웃으로 통합
   // — 패널은 항상 렌더, 내부 콘텐츠만 전환 (툭 튀어나오는 pop-in 방지)
-  if (status === "loading" || status !== "authenticated") {
+  const shouldShowAuthGate =
+    REQUIRE_AUTH_FOR_TRANSLATOR &&
+    (status === "loading" || status !== "authenticated");
+  if (shouldShowAuthGate) {
     const isLoading = status === "loading";
     const disabled = isSigningIn || isLoading;
     const emailSheetDisabled = isEmailSubmitting || isLoading;
@@ -1586,6 +1592,7 @@ export default function MingleHome(props: MingleHomeProps) {
         onLogout={handleSignOut}
         onDeleteAccount={handleDeleteAccount}
         isAuthActionPending={isDeletingAccount}
+        showAccountMenu={status === "authenticated"}
       />
     </main>
   );
