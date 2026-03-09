@@ -184,30 +184,21 @@
   overflow: hidden;
 }
 
+/* 기본: 400px 쾔츠. 뷰포트 < 400px 일 때는 head 인라인 스크립트와
+   useLayoutEffect가 zoom <style>을 주입해 모든 요소를 정비례 축소 */
 .mobile-canvas-shell {
-  /* --canvas-zoom: layout.tsx <head> 인라인 스크립트에서 첫 페인트 전 세팅
-     viewport < 400px → 비례 축소 (모든 요소: 텍스트/마진/패딩/간격 포함)
-     viewport >= 400px → zoom: 1 (원본 크기) */
-  zoom: var(--canvas-zoom, 1);
   width: 400px;
-  height: calc(100svh / var(--canvas-zoom, 1));
-  min-height: calc(100svh / var(--canvas-zoom, 1));
+  height: 100svh;
+  min-height: 100svh;
   overflow: hidden;
 }
 
-/* 데스크톱 (마우스 포인터 + 821px 이상): 400px 캔버스를 가운데 배치 */
+/* 데스크톱 (마우스 + 821px↑): 400px 캐니버스를 가운데 배치 */
 @media (min-width: 821px) and (hover: hover) and (pointer: fine) {
   .mobile-canvas-stage {
     display: flex;
     justify-content: center;
     align-items: flex-start;
-  }
-
-  .mobile-canvas-shell {
-    zoom: 1;
-    width: 400px;
-    height: 100svh;
-    min-height: 100svh;
   }
 }
 

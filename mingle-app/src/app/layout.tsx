@@ -66,15 +66,21 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+    <html lang={DEFAULT_LOCALE}>
       <head>
-        {/* 첫 페인트 전 동기 실행 → flash 없이 zoom 값 설정 */}
+        {/* <head> 파싱 시 동기 실행 → body 렌더 전에 zoom <style> 주입 → flash 없음 */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){
-  var w = document.documentElement.clientWidth || window.innerWidth || 400;
-  var z = w >= 400 ? 1 : w / 400;
-  document.documentElement.style.setProperty('--canvas-zoom', z);
+  var STYLE_ID='__mingle_canvas_zoom';
+  var w=window.innerWidth;
+  if(w>0&&w<400){
+    var z=w/400;
+    var s=document.createElement('style');
+    s.id=STYLE_ID;
+    s.textContent='.mobile-canvas-shell{zoom:'+z+' !important;height:calc(100svh/'+z+') !important;min-height:calc(100svh/'+z+') !important}';
+    document.head.appendChild(s);
+  }
 })();`,
           }}
         />
