@@ -68,9 +68,25 @@ export const TRANSLATED_LOCALES = SUPPORTED_LOCALES;
 
 export type TranslatedAppLocale = AppLocale;
 
-export const LEGAL_DOCUMENT_LOCALES = SUPPORTED_LOCALES;
+export const LEGAL_DOCUMENT_LOCALES = [
+  "ko",
+  "en",
+  "ja",
+  "zh-CN",
+  "zh-TW",
+  "fr",
+  "de",
+  "es",
+  "pt",
+  "it",
+  "ru",
+  "ar",
+  "hi",
+  "th",
+  "vi",
+] as const;
 
-export type LegalDocumentLocale = AppLocale;
+export type LegalDocumentLocale = (typeof LEGAL_DOCUMENT_LOCALES)[number];
 
 export const DEFAULT_LOCALE: AppLocale = "ko";
 
@@ -81,6 +97,70 @@ export function isSupportedLocale(value: string): value is AppLocale {
 export function isTranslatedLocale(value: AppLocale): value is TranslatedAppLocale {
   return isSupportedLocale(value);
 }
+
+const LEGAL_DOCUMENT_LOCALE_MAP: Record<AppLocale, LegalDocumentLocale> = {
+  ko: "ko",
+  en: "en",
+  ja: "ja",
+  "zh-CN": "zh-CN",
+  "zh-TW": "zh-TW",
+  fr: "fr",
+  de: "de",
+  es: "es",
+  pt: "pt",
+  it: "it",
+  ru: "ru",
+  ar: "ar",
+  af: "en",
+  sq: "en",
+  az: "en",
+  eu: "en",
+  be: "en",
+  bn: "en",
+  bs: "en",
+  bg: "en",
+  ca: "en",
+  hr: "en",
+  cs: "en",
+  da: "en",
+  nl: "en",
+  et: "en",
+  fi: "en",
+  gl: "en",
+  el: "en",
+  gu: "en",
+  he: "en",
+  hi: "hi",
+  hu: "en",
+  id: "en",
+  kn: "en",
+  kk: "en",
+  th: "th",
+  lv: "en",
+  lt: "en",
+  mk: "en",
+  ms: "en",
+  ml: "en",
+  mr: "en",
+  no: "en",
+  fa: "en",
+  pl: "en",
+  pa: "en",
+  ro: "en",
+  sr: "en",
+  sk: "en",
+  sl: "en",
+  sw: "en",
+  sv: "en",
+  tl: "en",
+  ta: "en",
+  te: "en",
+  tr: "en",
+  uk: "en",
+  ur: "en",
+  vi: "vi",
+  cy: "en",
+};
 
 const LOCALE_ALIAS_MAP: Record<string, AppLocale> = {
   ko: "ko",
@@ -177,11 +257,11 @@ export function resolveDictionaryLocale(locale: AppLocale): TranslatedAppLocale 
 }
 
 export function resolveLegalDocumentLocale(locale: AppLocale): LegalDocumentLocale {
-  return locale;
+  return LEGAL_DOCUMENT_LOCALE_MAP[locale];
 }
 
 export function resolveLegalDocumentPathSegment(locale: AppLocale): string {
-  return locale.toLowerCase();
+  return resolveLegalDocumentLocale(locale).toLowerCase();
 }
 
 export function resolveSupportedLocaleTag(rawValue: string): AppLocale | null {

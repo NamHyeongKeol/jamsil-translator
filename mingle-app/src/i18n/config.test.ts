@@ -24,7 +24,7 @@ describe("i18n config", () => {
       "cy",
     ]));
     expect(TRANSLATED_LOCALES).toEqual(SUPPORTED_LOCALES);
-    expect(LEGAL_DOCUMENT_LOCALES).toHaveLength(61);
+    expect(LEGAL_DOCUMENT_LOCALES).toHaveLength(15);
   });
 
   it("normalizes locale aliases into supported locale tags", () => {
@@ -36,13 +36,13 @@ describe("i18n config", () => {
     expect(resolveSupportedLocaleTag("")).toBeNull();
   });
 
-  it("resolves full app and legal locale catalogs without english collapse", () => {
+  it("resolves full app dictionaries while keeping legal document fallback mapping", () => {
     expect(resolveDictionaryLocale("pl")).toBe("pl");
     expect(resolveDictionaryLocale("he")).toBe("he");
     expect(resolveDictionaryLocale("zh-TW")).toBe("zh-TW");
-    expect(resolveLegalDocumentLocale("pl")).toBe("pl");
+    expect(resolveLegalDocumentLocale("pl")).toBe("en");
     expect(resolveLegalDocumentLocale("hi")).toBe("hi");
-    expect(resolveLegalDocumentPathSegment("pl")).toBe("pl");
+    expect(resolveLegalDocumentPathSegment("pl")).toBe("en");
     expect(resolveLegalDocumentPathSegment("zh-CN")).toBe("zh-cn");
   });
 });
