@@ -5,6 +5,7 @@ import {
   TRANSLATED_LOCALES,
   resolveDictionaryLocale,
   resolveLegalDocumentLocale,
+  resolveLegalDocumentPathSegment,
   resolveSupportedLocaleTag,
 } from "@/i18n";
 
@@ -41,5 +42,7 @@ describe("i18n config", () => {
     expect(resolveDictionaryLocale("zh-TW")).toBe("zh-TW");
     expect(resolveLegalDocumentLocale("pl")).toBe("en");
     expect(resolveLegalDocumentLocale("hi")).toBe("hi");
+    expect(resolveLegalDocumentPathSegment("pl")).toBe("en");
+    expect(resolveLegalDocumentPathSegment("zh-CN")).toBe("zh-cn");
   });
 });

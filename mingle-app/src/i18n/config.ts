@@ -260,6 +260,10 @@ export function resolveLegalDocumentLocale(locale: AppLocale): LegalDocumentLoca
   return LEGAL_DOCUMENT_LOCALE_MAP[locale];
 }
 
+export function resolveLegalDocumentPathSegment(locale: AppLocale): string {
+  return resolveLegalDocumentLocale(locale).toLowerCase();
+}
+
 export function resolveSupportedLocaleTag(rawValue: string): AppLocale | null {
   const normalized = rawValue.trim().replace(/_/g, "-").toLowerCase();
   if (!normalized) return null;

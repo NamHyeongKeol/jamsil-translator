@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getDictionary, type AppLocale } from "@/i18n";
+import type { AppLocale, AppDictionary } from "@/i18n";
 
 type NativeOAuthProvider = "apple" | "google";
 
@@ -11,6 +11,7 @@ type NativeOAuthLauncherProps = {
   locale: AppLocale;
   provider: NativeOAuthProvider;
   callbackUrl: string;
+  text: AppDictionary["authLauncher"];
 };
 
 function resolveSafeCallbackUrl(rawValue: string): string | null {
@@ -31,11 +32,11 @@ export default function NativeOAuthLauncher({
   locale,
   provider,
   callbackUrl,
+  text,
 }: NativeOAuthLauncherProps) {
   const router = useRouter();
   const launchedRef = useRef(false);
   const [isLaunching, setIsLaunching] = useState(true);
-  const text = getDictionary(locale).authLauncher;
 
   const beginSignIn = useCallback(async () => {
     const safeCallbackUrl = resolveSafeCallbackUrl(callbackUrl);

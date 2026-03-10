@@ -3,89 +3,9 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { getSttLanguageFlag } from '@/lib/stt-languages'
+import { formatChatBubbleTimestamp } from './chat-bubble.timestamp'
 
 const RECENT_THRESHOLD_MS = 90_000
-
-function getBaseLang(): string {
-  if (typeof navigator === 'undefined') return 'en'
-  return (navigator.language || 'en').split('-')[0].toLowerCase()
-}
-
-function formatSecondsAgo(sec: number, lang: string): string {
-  switch (lang) {
-    case 'ko': return `${sec}초 전`
-    case 'ja': return `${sec}秒前`
-    case 'zh': return `${sec}秒前`
-    case 'es': return `hace ${sec}s`
-    case 'fr': return `il y a ${sec}s`
-    case 'de': return `vor ${sec}s`
-    case 'pt': return `há ${sec}s`
-    case 'it': return `${sec}s fa`
-    default: return `${sec}s ago`
-  }
-}
-
-function formatAmPm(lang: string): { am: string, pm: string } {
-  switch (lang) {
-    case 'ko': return { am: '오전', pm: '오후' }
-    case 'ja': return { am: '午前', pm: '午後' }
-    case 'zh': return { am: '上午', pm: '下午' }
-    default: return { am: 'AM', pm: 'PM' }
-  }
-}
-
-function format12Hour(date: Date, lang: string): string {
-  const h24 = date.getHours()
-  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24
-  const min = date.getMinutes().toString().padStart(2, '0')
-  const { am, pm } = formatAmPm(lang)
-  const period = h24 < 12 ? am : pm
-  return `${period} ${h12}:${min}`
-}
-
-function formatTimestamp(createdAtMs: number | undefined): string {
-  if (!createdAtMs) return ''
-  const now = Date.now()
-  const created = new Date(createdAtMs)
-  const current = new Date(now)
-  const lang = getBaseLang()
-
-  const sameYear = created.getFullYear() === current.getFullYear()
-  const sameMonth = sameYear && created.getMonth() === current.getMonth()
-  const sameDay = sameMonth && created.getDate() === current.getDate()
-  const sameMinute = sameDay && created.getHours() === current.getHours() && created.getMinutes() === current.getMinutes()
-
-  // Same minute → relative
-  if (sameMinute) {
-    const sec = Math.max(0, Math.floor((now - createdAtMs) / 1000))
-    return formatSecondsAgo(sec, lang)
-  }
-
-  const time = format12Hour(created, lang)
-
-  // Today → time only
-  if (sameDay) return time
-
-  // This month → day + time
-  if (sameMonth) return `${created.getDate()}${lang === 'ko' ? '일' : lang === 'ja' ? '日' : ''} ${time}`
-
-  // This year → month/day + time
-  if (sameYear) {
-    const m = created.getMonth() + 1
-    const d = created.getDate()
-    if (lang === 'ko') return `${m}월 ${d}일 ${time}`
-    if (lang === 'ja') return `${m}月${d}日 ${time}`
-    return `${m}/${d} ${time}`
-  }
-
-  // Different year → year/month/day + time
-  const y = created.getFullYear()
-  const m = created.getMonth() + 1
-  const d = created.getDate()
-  if (lang === 'ko') return `${y}년 ${m}월 ${d}일 ${time}`
-  if (lang === 'ja') return `${y}年${m}月${d}日 ${time}`
-  return `${y}/${m}/${d} ${time}`
-}
 
 export interface Utterance {
   id: string
@@ -99,6 +19,7 @@ export interface Utterance {
 
 interface ChatBubbleProps {
   utterance: Utterance
+  uiLocale: string
   isSpeaking?: boolean
   speakingLanguage?: string | null
 }
@@ -141,7 +62,7 @@ function SpeakingIndicator() {
   )
 }
 
-function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
+function ChatBubble({ utterance, uiLocale, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
   const flag = getSttLanguageFlag(utterance.originalLang)
   // Keep target language list fixed per utterance so language toggles
   // do not retroactively add/remove bubbles on old messages.
@@ -156,7 +77,7 @@ function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: 
   const pendingLangs = targetLangs
     .filter(lang => !utterance.translations[lang])
 
-  const timestamp = formatTimestamp(utterance.createdAtMs)
+  const timestamp = formatChatBubbleTimestamp(utterance.createdAtMs, uiLocale)
 
   return (
     <motion.div
@@ -234,6 +155,7 @@ function chatBubbleAreEqual(prev: ChatBubbleProps, next: ChatBubbleProps): boole
   const createdAtMs = next.utterance.createdAtMs
   if (createdAtMs && (Date.now() - createdAtMs) < RECENT_THRESHOLD_MS) return false
 
+  if (prev.uiLocale !== next.uiLocale) return false
   if (prev.isSpeaking !== next.isSpeaking) return false
   if (prev.speakingLanguage !== next.speakingLanguage) return false
 

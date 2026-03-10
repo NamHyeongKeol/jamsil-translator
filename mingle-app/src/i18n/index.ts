@@ -7,6 +7,7 @@ export {
   isTranslatedLocale,
   resolveDictionaryLocale,
   resolveLegalDocumentLocale,
+  resolveLegalDocumentPathSegment,
   resolveSupportedLocaleTag,
   type AppLocale,
   type LegalDocumentLocale,

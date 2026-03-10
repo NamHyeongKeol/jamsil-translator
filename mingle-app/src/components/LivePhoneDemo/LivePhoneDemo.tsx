@@ -1309,6 +1309,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               >
                 <ChatBubble
                   utterance={u}
+                  uiLocale={uiLocale}
                   isSpeaking={speakingItem?.utteranceId === u.id}
                   speakingLanguage={speakingItem?.language ?? null}
                 />
