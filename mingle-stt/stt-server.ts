@@ -12,6 +12,12 @@ import {
     stripEndpointMarkers,
     SilenceTimerStrategy,
 } from './segmentation-strategy';
+import {
+    getUnsupportedDeepgramMultilingualLanguages,
+    resolveDeepgramStreamingLanguage,
+    resolveFireworksLanguage,
+    sanitizeRequestedSttLanguages,
+} from './stt-languages';
 
 const envCandidates = ['.env.local', '.env'];
 for (const filename of envCandidates) {
@@ -236,35 +242,17 @@ wss.on('connection', (clientWs) => {
         }
 
         try {
-            // Deepgram 언어 코드 매핑 (일부 언어는 다른 형식 필요)
-            const langMap: Record<string, string> = {
-                'en': 'en-US',
-                'ko': 'ko',
-                'zh': 'zh-CN',
-                'ja': 'ja',
-                'es': 'es',
-                'fr': 'fr',
-                'de': 'de',
-                'ru': 'ru',
-                'pt': 'pt-BR',
-                'ar': 'ar',
-                'hi': 'hi',
-                'vi': 'vi',
-                'it': 'it',
-                'id': 'id',
-                'tr': 'tr',
-                'pl': 'pl',
-                'nl': 'nl',
-                'sv': 'sv',
-                'th': 'th',
-                'ms': 'ms',
-            };
-
-            const primaryLang = langMap[config.languages[0]] || 'en-US';
+            const resolvedLanguage = resolveDeepgramStreamingLanguage(config.languages[0] || 'en');
+            if (!resolvedLanguage) {
+                const unsupportedLanguage = config.languages[0] || 'unknown';
+                console.error(`[conn:${connId}] deepgram unsupported language=${unsupportedLanguage}`);
+                clientWs.close(1011, `Unsupported Deepgram streaming language: ${unsupportedLanguage}`);
+                return;
+            }
             
             // Deepgram WebSocket URL 생성
             const wsUrl = new URL(DEEPGRAM_WS_URL);
-            wsUrl.searchParams.set('model', 'nova-3');  // 최신 모델 - 더 높은 정확도 + 다국어 코드 스위칭
+            wsUrl.searchParams.set('model', resolvedLanguage.model);
             wsUrl.searchParams.set('encoding', 'linear16');
             wsUrl.searchParams.set('sample_rate', config.sample_rate.toString());
             wsUrl.searchParams.set('channels', '1');
@@ -274,7 +262,7 @@ wss.on('connection', (clientWs) => {
             wsUrl.searchParams.set('endpointing', '100'); // ms
             
             // 항상 첫 번째 선택된 언어로 지정 (detect_language는 스트리밍에서 400 에러 유발)
-            wsUrl.searchParams.set('language', primaryLang);
+            wsUrl.searchParams.set('language', resolvedLanguage.providerCode);
 
             sttWs = new WebSocket(wsUrl.toString(), {
                 headers: {
@@ -357,6 +345,18 @@ wss.on('connection', (clientWs) => {
         }
 
         try {
+            const unsupportedLanguages = getUnsupportedDeepgramMultilingualLanguages(config.languages);
+            if (unsupportedLanguages.length > 0) {
+                console.error(
+                    `[conn:${connId}] deepgram-multi unsupported languages=${unsupportedLanguages.join(',')}`,
+                );
+                clientWs.close(
+                    1011,
+                    `Unsupported Deepgram multi languages: ${unsupportedLanguages.join(',')}`,
+                );
+                return;
+            }
+
             // Deepgram WebSocket URL 생성 - multi 언어 모드
             const wsUrl = new URL(DEEPGRAM_WS_URL);
             wsUrl.searchParams.set('model', 'nova-3');
@@ -462,14 +462,8 @@ wss.on('connection', (clientWs) => {
             // Fireworks URL 생성
             const wsUrl = new URL(FIREWORKS_WS_URL);
             
-            // Fireworks 언어 코드 매핑
-            const langMap: Record<string, string> = {
-                'en': 'en', 'ko': 'ko', 'zh': 'zh', 'ja': 'ja',
-                'es': 'es', 'fr': 'fr', 'de': 'de', 'ru': 'ru',
-                'pt': 'pt', 'it': 'it'
-            };
             // 1순위 언어 사용
-            const language = langMap[config.languages[0]] || 'en';
+            const language = resolveFireworksLanguage(config.languages[0] || 'en');
             
             // 최신 V2 모델 사용 (더 빠르고 정확함)
             wsUrl.searchParams.set('model', 'fireworks-asr-large');
@@ -1094,25 +1088,32 @@ wss.on('connection', (clientWs) => {
             return;
         }
 
-        if (data.sample_rate && data.languages) {
-            currentModel = data.stt_model || 'gladia';
-            selectedLanguages = data.languages;
+        if (data.sample_rate && Array.isArray(data.languages)) {
+            const config: ClientConfig = {
+                sample_rate: Number(data.sample_rate),
+                languages: sanitizeRequestedSttLanguages(data.languages),
+                stt_model: data.stt_model || 'gladia',
+                lang_hints_strict: data.lang_hints_strict !== false,
+            };
+
+            currentModel = config.stt_model;
+            selectedLanguages = config.languages;
             finalizePendingTurnFromProvider = null;
             sonioxStopRequested = false;
             console.log(`[conn:${connId}] config model=${currentModel} langs=${selectedLanguages.join(',')}`);
             
             if (currentModel === 'deepgram') {
-                startDeepgramConnection(data as ClientConfig);
+                startDeepgramConnection(config);
             } else if (currentModel === 'deepgram-multi') {
-                startDeepgramMultiConnection(data as ClientConfig);
+                startDeepgramMultiConnection(config);
             } else if (currentModel === 'fireworks') {
-                startFireworksConnection(data as ClientConfig);
+                startFireworksConnection(config);
             } else if (currentModel === 'soniox') {
-                startSonioxConnection(data as ClientConfig);
+                startSonioxConnection(config);
             } else if (currentModel === 'gladia-stt') {
-                startGladiaConnection(data as ClientConfig, false);
+                startGladiaConnection(config, false);
             } else {
-                startGladiaConnection(data as ClientConfig, true);
+                startGladiaConnection(config, true);
             }
         } else if (sttWs && sttWs.readyState === WebSocket.OPEN) {
             // 오디오 프레임 전송
