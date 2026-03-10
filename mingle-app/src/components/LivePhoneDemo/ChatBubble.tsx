@@ -2,13 +2,7 @@
 
 import { memo } from 'react'
 import { motion } from 'framer-motion'
-
-const FLAG_MAP: Record<string, string> = {
-  en: '🇺🇸', ko: '🇰🇷', ja: '🇯🇵', zh: '🇨🇳', es: '🇪🇸',
-  fr: '🇫🇷', de: '🇩🇪', ru: '🇷🇺', pt: '🇧🇷', ar: '🇸🇦',
-  hi: '🇮🇳', th: '🇹🇭', vi: '🇻🇳', it: '🇮🇹', id: '🇮🇩',
-  tr: '🇹🇷', pl: '🇵🇱', nl: '🇳🇱', sv: '🇸🇪', ms: '🇲🇾',
-}
+import { getSttLanguageFlag } from '@/lib/stt-languages'
 
 const RECENT_THRESHOLD_MS = 90_000
 
@@ -148,7 +142,7 @@ function SpeakingIndicator() {
 }
 
 function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: ChatBubbleProps) {
-  const flag = FLAG_MAP[utterance.originalLang] || '🌐'
+  const flag = getSttLanguageFlag(utterance.originalLang)
   // Keep target language list fixed per utterance so language toggles
   // do not retroactively add/remove bubbles on old messages.
   const targetLangs = buildTargetLanguagesForUtterance(utterance)
@@ -199,7 +193,7 @@ function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: 
         >
           <div className="flex items-center justify-between mb-0.5">
             <div className="flex items-center gap-1.5">
-              <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+              <span className="text-base">{getSttLanguageFlag(lang)}</span>
               <span className={`text-xs font-semibold uppercase ${
                 isFinalized ? 'text-amber-500' : 'text-gray-400'
               }`}>{lang}</span>

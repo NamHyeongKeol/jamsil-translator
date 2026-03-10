@@ -90,3 +90,9 @@ export const STT_LANGUAGE_NAME_MAP: Record<SttLanguageCode, string> = Object.fro
 export function canonicalizeSttLanguageCode(rawValue: string): SttLanguageCode | '' {
   return canonicalizeTranslationLanguageCode(rawValue)
 }
+
+export function getSttLanguageFlag(rawValue: string): string {
+  const canonical = canonicalizeSttLanguageCode(rawValue)
+  if (!canonical) return '🌐'
+  return STT_LANGUAGE_FLAG_MAP[canonical] || '🌐'
+}

@@ -6,6 +6,7 @@ import {
   STT_LANGUAGE_NAME_MAP,
   STT_LANGUAGE_OPTIONS,
   canonicalizeSttLanguageCode,
+  getSttLanguageFlag,
 } from '@/lib/stt-languages'
 
 describe('STT language catalog', () => {
@@ -30,5 +31,12 @@ describe('STT language catalog', () => {
     expect(canonicalizeSttLanguageCode('fil-PH')).toBe('tl')
     expect(canonicalizeSttLanguageCode('iw-IL')).toBe('he')
     expect(canonicalizeSttLanguageCode('zh-TW')).toBe('zh')
+  })
+
+  it('returns flags for canonical and aliased language codes', () => {
+    expect(getSttLanguageFlag('af')).toBe('🇿🇦')
+    expect(getSttLanguageFlag('zh-TW')).toBe('🇨🇳')
+    expect(getSttLanguageFlag('fil-PH')).toBe('🇵🇭')
+    expect(getSttLanguageFlag('unknown')).toBe('🌐')
   })
 })

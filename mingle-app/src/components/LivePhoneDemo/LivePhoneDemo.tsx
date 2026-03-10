@@ -9,7 +9,11 @@ import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
 import { useTtsSettings } from '@/context/tts-settings'
-import { DEFAULT_STT_LANGUAGES, canonicalizeSttLanguageCode } from '@/lib/stt-languages'
+import {
+  DEFAULT_STT_LANGUAGES,
+  canonicalizeSttLanguageCode,
+  getSttLanguageFlag,
+} from '@/lib/stt-languages'
 import {
   AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
   deriveScrollAutoFollowState,
@@ -124,13 +128,6 @@ function findTopVisibleUtteranceDateLabel(container: HTMLDivElement, locale: str
     return formatScrollDateLabel(createdAtMs, locale)
   }
   return ''
-}
-
-const FLAG_MAP: Record<string, string> = {
-  en: '🇺🇸', ko: '🇰🇷', ja: '🇯🇵', zh: '🇨🇳', es: '🇪🇸',
-  fr: '🇫🇷', de: '🇩🇪', ru: '🇷🇺', pt: '🇧🇷', ar: '🇸🇦',
-  hi: '🇮🇳', th: '🇹🇭', vi: '🇻🇳', it: '🇮🇹', id: '🇮🇩',
-  tr: '🇹🇷', pl: '🇵🇱', nl: '🇳🇱', sv: '🇸🇪', ms: '🇲🇾',
 }
 
 export interface LivePhoneDemoRef {
@@ -1212,7 +1209,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                     className="text-[1.35rem]"
                     title={lang.toUpperCase()}
                   >
-                    {FLAG_MAP[lang] || '🌐'}
+                    {getSttLanguageFlag(lang)}
                   </span>
                 ))}
               </button>
