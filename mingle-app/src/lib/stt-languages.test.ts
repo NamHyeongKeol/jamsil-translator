@@ -12,11 +12,11 @@ describe('STT language catalog', () => {
   it('contains the full 60-language STT list', () => {
     expect(STT_LANGUAGE_CODES).toHaveLength(60)
     expect(STT_LANGUAGE_OPTIONS).toEqual(expect.arrayContaining([
-      { code: 'af', englishName: 'Afrikaans' },
-      { code: 'zh', englishName: 'Chinese' },
-      { code: 'he', englishName: 'Hebrew' },
-      { code: 'tl', englishName: 'Tagalog' },
-      { code: 'cy', englishName: 'Welsh' },
+      { code: 'af', englishName: 'Afrikaans', flag: '🇿🇦' },
+      { code: 'zh', englishName: 'Chinese', flag: '🇨🇳' },
+      { code: 'he', englishName: 'Hebrew', flag: '🇮🇱' },
+      { code: 'tl', englishName: 'Tagalog', flag: '🇵🇭' },
+      { code: 'cy', englishName: 'Welsh', flag: '🇬🇧' },
     ]))
   })
 

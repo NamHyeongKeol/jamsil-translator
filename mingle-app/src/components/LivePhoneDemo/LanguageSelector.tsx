@@ -111,9 +111,7 @@ export default function LanguageSelector({
             >
               {isSelected && "✓"}
             </span>
-            <span className="w-7 rounded bg-gray-100 px-1 py-0.5 text-center text-[10px] font-medium uppercase text-gray-500">
-              {lang.code}
-            </span>
+            <span>{lang.flag}</span>
             <span className="text-gray-700 truncate">{localizedName}</span>
           </button>
         );
