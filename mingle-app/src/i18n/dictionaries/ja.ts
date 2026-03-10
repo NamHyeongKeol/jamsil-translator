@@ -47,6 +47,21 @@ export const jaDictionary: AppDictionary = {
     likesLabel: "いいね",
     commentsLabel: "コメント",
   },
+  authLauncher: {
+    title: "ログインへ移動しています",
+    description: "しばらくお待ちください。自動でログイン画面を開きます。",
+    launching: "移動中...",
+    retry: "再試行",
+  },
+  account: {
+    title: "アカウント",
+    description: "保護ルート確認用のアカウントページです。",
+    nameLabel: "名前",
+    emailLabel: "メール",
+    unknownUser: "不明なユーザー",
+    noEmail: "メールなし",
+    backHome: "ホームに戻る",
+  },
   profile: {
     postsLabel: "投稿",
     followersLabel: "フォロワー",

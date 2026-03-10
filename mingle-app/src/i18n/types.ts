@@ -45,6 +45,21 @@ export type AppDictionary = {
     likesLabel: string;
     commentsLabel: string;
   };
+  authLauncher: {
+    title: string;
+    description: string;
+    launching: string;
+    retry: string;
+  };
+  account: {
+    title: string;
+    description: string;
+    nameLabel: string;
+    emailLabel: string;
+    unknownUser: string;
+    noEmail: string;
+    backHome: string;
+  };
   profile: {
     postsLabel: string;
     followersLabel: string;
