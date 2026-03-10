@@ -1,12 +1,7 @@
 import type { AppLocale } from "@/i18n/config";
-import type { AppDictionary } from "@/i18n/types";
+import type { DraftScreenDictionary } from "@/i18n/types";
 
-type DraftScreenDictionary = Pick<
-  AppDictionary,
-  "navigation" | "conversations" | "myPage"
->;
-
-export const draftScreenDictionaries: Record<AppLocale, DraftScreenDictionary> =
+export const draftScreenDictionaries: Partial<Record<AppLocale, DraftScreenDictionary>> =
   {
     ko: {
       navigation: {

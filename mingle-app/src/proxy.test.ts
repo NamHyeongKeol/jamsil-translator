@@ -15,5 +15,8 @@ describe("proxy locale resolver", () => {
   it("maps known non-Chinese locale tags", () => {
     expect(resolveSupportedLocaleTag("fr-FR")).toBe("fr");
     expect(resolveSupportedLocaleTag("en-US")).toBe("en");
+    expect(resolveSupportedLocaleTag("pl-PL")).toBe("pl");
+    expect(resolveSupportedLocaleTag("fil-PH")).toBe("tl");
+    expect(resolveSupportedLocaleTag("iw-IL")).toBe("he");
   });
 });

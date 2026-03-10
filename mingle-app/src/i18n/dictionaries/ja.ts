@@ -1,7 +1,6 @@
-import { draftScreenDictionaries } from "@/i18n/dictionaries/draft-screen-locales";
-import type { AppDictionary } from "@/i18n/types";
+import type { BaseAppDictionary } from "@/i18n/types";
 
-export const jaDictionary: AppDictionary = {
+export const jaDictionary: BaseAppDictionary = {
   demo: {
     tapPlayToStart: "再生ボタンをタップして開始",
     usageLimitReached: "使用制限に達しました",
@@ -11,7 +10,6 @@ export const jaDictionary: AppDictionary = {
     muteTts: "音声再生をミュート",
     unmuteTts: "音声再生をミュート解除",
   },
-  navigation: draftScreenDictionaries.ja.navigation,
   tabs: {
     chats: "チャット",
     connect: "つながる",
@@ -49,8 +47,21 @@ export const jaDictionary: AppDictionary = {
     likesLabel: "いいね",
     commentsLabel: "コメント",
   },
-  conversations: draftScreenDictionaries.ja.conversations,
-  myPage: draftScreenDictionaries.ja.myPage,
+  authLauncher: {
+    title: "ログインへ移動しています",
+    description: "しばらくお待ちください。自動でログイン画面を開きます。",
+    launching: "移動中...",
+    retry: "再試行",
+  },
+  account: {
+    title: "アカウント",
+    description: "保護ルート確認用のアカウントページです。",
+    nameLabel: "名前",
+    emailLabel: "メール",
+    unknownUser: "不明なユーザー",
+    noEmail: "メールなし",
+    backHome: "ホームに戻る",
+  },
   profile: {
     postsLabel: "投稿",
     followersLabel: "フォロワー",

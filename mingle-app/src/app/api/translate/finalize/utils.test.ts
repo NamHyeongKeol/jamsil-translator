@@ -10,18 +10,21 @@ import {
 } from './utils'
 
 describe('translate/finalize utils', () => {
-  it('normalizes language codes to base lowercase form', () => {
+  it('normalizes language codes to supported canonical forms', () => {
     expect(normalizeLang(' KO-KR ')).toBe('ko')
     expect(normalizeLang('en_US')).toBe('en')
+    expect(normalizeLang('fil-PH')).toBe('tl')
+    expect(normalizeLang('iw-IL')).toBe('he')
+    expect(normalizeLang('zh-Hant-TW')).toBe('zh')
     expect(normalizeLang('')).toBe('')
   })
 
   it('normalizes target languages by dedupe and source exclusion', () => {
     const normalized = normalizeTargetLanguages(
-      ['ko', 'KO', 'en-US', 'ja', 123, '', 'en'] as unknown[],
+      ['ko', 'KO', 'en-US', 'ja', 'fil-PH', 'iw-IL', 'zh-TW', 123, '', 'en'] as unknown[],
       'en',
     )
-    expect(normalized).toEqual(['ko', 'ja'])
+    expect(normalized).toEqual(['ko', 'ja', 'tl', 'he', 'zh'])
   })
 
   it('parses translation JSON and strips marker tokens', () => {
@@ -42,6 +45,15 @@ describe('translate/finalize utils', () => {
     expect(parseTranslations(raw)).toEqual({
       en: 'hello',
       es: 'hola',
+    })
+  })
+
+  it('canonicalizes translation payload keys from known aliases', () => {
+    const raw = '{"fil":" kamusta ","iw":" שלום ","zh-cn":"你好"}'
+    expect(parseTranslations(raw)).toEqual({
+      tl: 'kamusta',
+      he: 'שלום',
+      zh: '你好',
     })
   })
 

@@ -1,7 +1,6 @@
-import { draftScreenDictionaries } from "@/i18n/dictionaries/draft-screen-locales";
-import type { AppDictionary } from "@/i18n/types";
+import type { BaseAppDictionary } from "@/i18n/types";
 
-export const koDictionary: AppDictionary = {
+export const koDictionary: BaseAppDictionary = {
   demo: {
     tapPlayToStart: "재생 버튼을 눌러 시작하세요",
     usageLimitReached: "사용 한도에 도달했습니다",
@@ -11,7 +10,6 @@ export const koDictionary: AppDictionary = {
     muteTts: "음성 끄기",
     unmuteTts: "음성 켜기",
   },
-  navigation: draftScreenDictionaries.ko.navigation,
   tabs: {
     chats: "채팅",
     connect: "친구 찾기",
@@ -49,8 +47,21 @@ export const koDictionary: AppDictionary = {
     likesLabel: "좋아요",
     commentsLabel: "댓글",
   },
-  conversations: draftScreenDictionaries.ko.conversations,
-  myPage: draftScreenDictionaries.ko.myPage,
+  authLauncher: {
+    title: "로그인으로 이동 중",
+    description: "잠시만 기다려 주세요. 자동으로 로그인 화면으로 이동합니다.",
+    launching: "이동 중...",
+    retry: "다시 시도",
+  },
+  account: {
+    title: "계정",
+    description: "보호 라우트 검증을 위한 계정 페이지입니다.",
+    nameLabel: "이름",
+    emailLabel: "이메일",
+    unknownUser: "알 수 없는 사용자",
+    noEmail: "이메일 없음",
+    backHome: "홈으로 돌아가기",
+  },
   profile: {
     postsLabel: "게시물",
     followersLabel: "팔로워",

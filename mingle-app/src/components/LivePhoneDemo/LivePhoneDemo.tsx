@@ -11,6 +11,11 @@ import MingleWordmark from '@/components/mingle-wordmark'
 import useRealtimeSTT from './useRealtimeSTT'
 import { useTtsSettings } from '@/context/tts-settings'
 import {
+  DEFAULT_STT_LANGUAGES,
+  canonicalizeSttLanguageCode,
+  getSttLanguageFlag,
+} from '@/lib/stt-languages'
+import {
   AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
   deriveScrollAutoFollowState,
   deriveScrollUiVisibility,
@@ -35,7 +40,6 @@ const SCROLL_UI_HIDE_DELAY_MS = 1000
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 28
 const USER_SCROLL_INTENT_WINDOW_MS = 1400
 const NATIVE_TTS_EVENT_TIMEOUT_MS = 15000
-
 function isNativeApp(): boolean {
   return typeof window !== 'undefined'
     && typeof window.ReactNativeWebView?.postMessage === 'function'
@@ -57,11 +61,19 @@ async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 
-function getUiLocale(): string {
-  if (typeof window === 'undefined') return 'en'
-  const docLocale = (document.documentElement.lang || '').trim()
-  if (docLocale) return docLocale
-  return (window.navigator.languages?.find(Boolean) || window.navigator.language || 'en').trim() || 'en'
+function sanitizeSelectedLanguages(rawValue: unknown): string[] {
+  if (!Array.isArray(rawValue)) return [...DEFAULT_STT_LANGUAGES]
+
+  const deduped: string[] = []
+  for (const item of rawValue) {
+    if (typeof item !== 'string') continue
+    const normalized = canonicalizeSttLanguageCode(item)
+    if (!normalized || deduped.includes(normalized)) continue
+    deduped.push(normalized)
+    if (deduped.length >= 5) break
+  }
+
+  return deduped.length > 0 ? deduped : [...DEFAULT_STT_LANGUAGES]
 }
 
 function startOfLocalDay(date: Date): Date {
@@ -112,13 +124,6 @@ function findTopVisibleUtteranceDateLabel(container: HTMLDivElement, locale: str
   return ''
 }
 
-const FLAG_MAP: Record<string, string> = {
-  en: '🇺🇸', ko: '🇰🇷', ja: '🇯🇵', zh: '🇨🇳', es: '🇪🇸',
-  fr: '🇫🇷', de: '🇩🇪', ru: '🇷🇺', pt: '🇧🇷', ar: '🇸🇦',
-  hi: '🇮🇳', th: '🇹🇭', vi: '🇻🇳', it: '🇮🇹', id: '🇮🇩',
-  tr: '🇹🇷', pl: '🇵🇱', nl: '🇳🇱', sv: '🇸🇪', ms: '🇲🇾',
-}
-
 export interface LivePhoneDemoRef {
   startRecording: () => void
 }
@@ -143,6 +148,7 @@ interface LivePhoneDemoProps {
   onLogout: () => void
   onDeleteAccount: () => void
   isAuthActionPending?: boolean
+  showAccountMenu?: boolean
 }
 
 const TTS_AUDIO_WAIT_TIMEOUT_MS = 3000
@@ -193,13 +199,14 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   onLogout,
   onDeleteAccount,
   isAuthActionPending = false,
+  showAccountMenu = true,
 }, ref) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return ['en', 'ko', 'ja']
+    if (typeof window === 'undefined') return [...DEFAULT_STT_LANGUAGES]
     try {
       const stored = localStorage.getItem(LS_KEY_LANGUAGES)
-      return stored ? JSON.parse(stored) : ['en', 'ko', 'ja']
-    } catch { return ['en', 'ko', 'ja'] }
+      return stored ? sanitizeSelectedLanguages(JSON.parse(stored)) : [...DEFAULT_STT_LANGUAGES]
+    } catch { return [...DEFAULT_STT_LANGUAGES] }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -269,6 +276,18 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     }
   }, [menuOpen])
 
+  useEffect(() => {
+    if (showAccountMenu) return
+
+    const closeMenuState = window.setTimeout(() => {
+      setMenuOpen(false)
+      setDeleteAccountDialogOpen(false)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(closeMenuState)
+    }
+  }, [showAccountMenu])
   const closeDeleteAccountDialog = useCallback(() => {
     if (isAuthActionPending) return
     setDeleteAccountDialogOpen(false)
@@ -861,11 +880,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [forceStopTtsPlayback])
 
   const handleToggleLanguage = useCallback((code: string) => {
+    const normalizedCode = canonicalizeSttLanguageCode(code)
+    if (!normalizedCode) return
     setSelectedLanguages(prev => {
-      if (prev.includes(code)) {
-        return prev.filter(c => c !== code)
+      if (prev.includes(normalizedCode)) {
+        return prev.filter(c => c !== normalizedCode)
       }
-      return [...prev, code]
+      return [...prev, normalizedCode]
     })
   }, [])
 
@@ -985,7 +1006,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       })
     }
 
-    setScrollDateLabel(findTopVisibleUtteranceDateLabel(chatRef.current, getUiLocale()))
+    setScrollDateLabel(findTopVisibleUtteranceDateLabel(chatRef.current, uiLocale))
 
     if (
       allowAutoTopPaginationRef.current
@@ -995,7 +1016,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
     ) {
       handleLoadOlder()
     }
-  }, [hasOlderUtterances, handleLoadOlder])
+  }, [hasOlderUtterances, handleLoadOlder, uiLocale])
 
   const handleScroll = useCallback(() => {
     const fromUserScroll = isUserScrollIntentActive()
@@ -1179,7 +1200,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                     className="text-[1.35rem]"
                     title={lang.toUpperCase()}
                   >
-                    {FLAG_MAP[lang] || '🌐'}
+                    {getSttLanguageFlag(lang)}
                   </span>
                 ))}
               </button>
@@ -1193,53 +1214,55 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 triggerRef={langSelectorButtonRef}
               />
             </div>
-            <div className="relative">
-              <button
-                ref={menuButtonRef}
-                type="button"
-                onClick={() => {
-                  setLangSelectorOpen(false)
-                  setMenuOpen(o => !o)
-                }}
-                disabled={isAuthActionPending}
-                className={`inline-flex h-11 min-w-[44px] items-center justify-center px-2 text-gray-700 transition-colors hover:text-gray-900 active:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60 ${navSurfaceClassName}`}
-                aria-label={menuLabel}
-                aria-expanded={menuOpen}
-              >
-                <Menu size={16} strokeWidth={2} />
-              </button>
-              {menuOpen && (
-                <div
-                  ref={menuPanelRef}
-                  className={`absolute right-0 top-full z-50 mt-1 w-44 border border-gray-200 p-0 ${navSurfaceClassName}`}
+            {showAccountMenu ? (
+              <div className="relative">
+                <button
+                  ref={menuButtonRef}
+                  type="button"
+                  onClick={() => {
+                    setLangSelectorOpen(false)
+                    setMenuOpen(o => !o)
+                  }}
+                  disabled={isAuthActionPending}
+                  className={`inline-flex h-11 min-w-[44px] items-center justify-center px-2 text-gray-700 transition-colors hover:text-gray-900 active:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:cursor-not-allowed disabled:opacity-60 ${navSurfaceClassName}`}
+                  aria-label={menuLabel}
+                  aria-expanded={menuOpen}
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false)
-                      onLogout()
-                    }}
-                    disabled={isAuthActionPending}
-                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  <Menu size={16} strokeWidth={2} />
+                </button>
+                {menuOpen && (
+                  <div
+                    ref={menuPanelRef}
+                    className={`absolute right-0 top-full z-50 mt-1 w-44 border border-gray-200 p-0 ${navSurfaceClassName}`}
                   >
-                    <LogOut size={15} strokeWidth={2} />
-                    <span>{logoutLabel}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false)
-                      setDeleteAccountDialogOpen(true)
-                    }}
-                    disabled={isAuthActionPending}
-                    className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Trash2 size={15} strokeWidth={2} />
-                    <span>{deleteAccountLabel}</span>
-                  </button>
-                </div>
-              )}
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onLogout()
+                      }}
+                      disabled={isAuthActionPending}
+                      className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <LogOut size={15} strokeWidth={2} />
+                      <span>{logoutLabel}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        setDeleteAccountDialogOpen(true)
+                      }}
+                      disabled={isAuthActionPending}
+                      className="inline-flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Trash2 size={15} strokeWidth={2} />
+                      <span>{deleteAccountLabel}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -1277,6 +1300,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
               >
                 <ChatBubble
                   utterance={u}
+                  uiLocale={uiLocale}
                   isSpeaking={speakingItem?.utteranceId === u.id}
                   speakingLanguage={speakingItem?.language ?? null}
                 />
@@ -1303,7 +1327,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                    <span className="text-base">{getSttLanguageFlag(lang)}</span>
                   <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
                 </div>
                   <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
@@ -1316,7 +1340,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   className="ml-2.5 max-w-[80%] bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                    <span className="text-base">{getSttLanguageFlag(lang)}</span>
                     <span className="text-xs font-semibold text-amber-400 uppercase">{lang}</span>
                   </div>
                   <div className="flex items-center gap-0.5 h-4">
@@ -1338,7 +1362,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             >
               <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[demoTypingLang] || '🌐'}</span>
+                    <span className="text-base">{getSttLanguageFlag(demoTypingLang)}</span>
                     <span className="text-xs font-semibold text-gray-500 uppercase">{demoTypingLang}</span>
                   </div>
                 <p className="text-sm text-gray-600 leading-snug">
@@ -1355,7 +1379,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                    className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
                  >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                    <span className="text-base">{getSttLanguageFlag(lang)}</span>
                      <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
                   </div>
                   <p className="text-sm text-gray-500 leading-relaxed">
@@ -1452,7 +1476,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
         </div>
 
         <AnimatePresence>
-          {deleteAccountDialogOpen && (
+          {showAccountMenu && deleteAccountDialogOpen && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

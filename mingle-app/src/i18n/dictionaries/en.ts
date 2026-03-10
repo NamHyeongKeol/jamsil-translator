@@ -1,7 +1,6 @@
-import { draftScreenDictionaries } from "@/i18n/dictionaries/draft-screen-locales";
-import type { AppDictionary } from "@/i18n/types";
+import type { BaseAppDictionary } from "@/i18n/types";
 
-export const enDictionary: AppDictionary = {
+export const enDictionary: BaseAppDictionary = {
   demo: {
     tapPlayToStart: "Tap play to start",
     usageLimitReached: "Usage limit reached",
@@ -11,7 +10,6 @@ export const enDictionary: AppDictionary = {
     muteTts: "Mute TTS",
     unmuteTts: "Unmute TTS",
   },
-  navigation: draftScreenDictionaries.en.navigation,
   tabs: {
     chats: "Chats",
     connect: "Connect",
@@ -49,8 +47,21 @@ export const enDictionary: AppDictionary = {
     likesLabel: "Likes",
     commentsLabel: "Comments",
   },
-  conversations: draftScreenDictionaries.en.conversations,
-  myPage: draftScreenDictionaries.en.myPage,
+  authLauncher: {
+    title: "Redirecting to sign in",
+    description: "Please wait. We will open the sign-in flow automatically.",
+    launching: "Redirecting...",
+    retry: "Try again",
+  },
+  account: {
+    title: "Account",
+    description: "This is an account page for protected route verification.",
+    nameLabel: "Name",
+    emailLabel: "Email",
+    unknownUser: "Unknown user",
+    noEmail: "No email",
+    backHome: "Back to home",
+  },
   profile: {
     postsLabel: "posts",
     followersLabel: "followers",

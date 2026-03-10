@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import NativeOAuthLauncher from "@/components/native-oauth-launcher";
-import { isSupportedLocale } from "@/i18n";
+import { getDictionary, isSupportedLocale } from "@/i18n";
 
 type NativeOAuthProvider = "apple" | "google";
 
@@ -47,6 +47,7 @@ export default async function NativeOAuthLaunchPage({
       locale={locale}
       provider={provider}
       callbackUrl={callbackUrl}
+      text={getDictionary(locale).authLauncher}
     />
   );
 }

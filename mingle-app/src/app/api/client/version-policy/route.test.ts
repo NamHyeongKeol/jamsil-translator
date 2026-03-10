@@ -49,6 +49,8 @@ const FORCE_LOCALIZATION_CASES = [
   { locale: 'hi', title: 'अपडेट आवश्यक', updateButtonLabel: 'अपडेट करें', laterButtonLabel: 'बाद में' },
   { locale: 'th', title: 'จำเป็นต้องอัปเดต', updateButtonLabel: 'อัปเดต', laterButtonLabel: 'ภายหลัง' },
   { locale: 'vi', title: 'Cần cập nhật', updateButtonLabel: 'Cập nhật', laterButtonLabel: 'Để sau' },
+  { locale: 'pl', title: 'Wymagana aktualizacja', updateButtonLabel: 'Aktualizacja', laterButtonLabel: 'Później' },
+  { locale: 'af', title: 'Opdatering vereis', updateButtonLabel: 'Dateer op', laterButtonLabel: 'Later' },
 ] as const
 
 describe('/api/client/version-policy route', () => {
@@ -208,6 +210,17 @@ describe('/api/client/version-policy route', () => {
     expect(json.title).toBe('Mise à jour recommandée')
     expect(json.updateButtonLabel).toBe('Mettre à jour')
     expect(json.laterButtonLabel).toBe('Plus tard')
+  })
+
+  it('returns localized copy for newly supported locales', async () => {
+    const POST = await loadLegacyRoutePost()
+    const response = await POST(makeRequest('0.9.9', 'pl-PL') as never)
+    const json = await response.json()
+
+    expect(json.locale).toBe('pl')
+    expect(json.title).toBe('Wymagana aktualizacja')
+    expect(json.updateButtonLabel).toBe('Aktualizacja')
+    expect(json.laterButtonLabel).toBe('Później')
   })
 
   it('falls back to English when locale is unsupported', async () => {

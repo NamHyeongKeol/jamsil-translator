@@ -1,55 +1,9 @@
-export type AppDictionary = {
-  demo: {
-    tapPlayToStart: string;
-    usageLimitReached: string;
-    usageLimitRetryHint: string;
-    connecting: string;
-    connectionFailed: string;
-    muteTts: string;
-    unmuteTts: string;
-  };
+export type DraftScreenDictionary = {
   navigation: {
     bottomTabBarLabel: string;
     conversationsTab: string;
     myPageTab: string;
     profileImageAlt: string;
-  };
-  tabs: {
-    chats: string;
-    connect: string;
-    moments: string;
-    my: string;
-  };
-  titles: {
-    chats: string;
-    connect: string;
-    moments: string;
-    my: string;
-  };
-  chat: {
-    searchPlaceholder: string;
-    saveConversation: string;
-    generateInvite: string;
-    recentInvite: string;
-    joinTitle: string;
-    inviteTokenPlaceholder: string;
-    join: string;
-    recordsTitle: string;
-    noConversation: string;
-    joinedSuffix: string;
-    joinNotFound: string;
-    unknownConversation: string;
-    joinSuccessSuffix: string;
-  };
-  connect: {
-    aboutTitle: string;
-    interestsTitle: string;
-  };
-  moments: {
-    minutesAgoSuffix: string;
-    videoLabel: string;
-    likesLabel: string;
-    commentsLabel: string;
   };
   conversations: {
     searchPlaceholder: string;
@@ -96,6 +50,70 @@ export type AppDictionary = {
     sharePostsTitle: string;
     sharePostsDescription: string;
     anonymousUser: string;
+  };
+};
+
+export type BaseAppDictionary = {
+  demo: {
+    tapPlayToStart: string;
+    usageLimitReached: string;
+    usageLimitRetryHint: string;
+    connecting: string;
+    connectionFailed: string;
+    muteTts: string;
+    unmuteTts: string;
+  };
+  tabs: {
+    chats: string;
+    connect: string;
+    moments: string;
+    my: string;
+  };
+  titles: {
+    chats: string;
+    connect: string;
+    moments: string;
+    my: string;
+  };
+  chat: {
+    searchPlaceholder: string;
+    saveConversation: string;
+    generateInvite: string;
+    recentInvite: string;
+    joinTitle: string;
+    inviteTokenPlaceholder: string;
+    join: string;
+    recordsTitle: string;
+    noConversation: string;
+    joinedSuffix: string;
+    joinNotFound: string;
+    unknownConversation: string;
+    joinSuccessSuffix: string;
+  };
+  connect: {
+    aboutTitle: string;
+    interestsTitle: string;
+  };
+  moments: {
+    minutesAgoSuffix: string;
+    videoLabel: string;
+    likesLabel: string;
+    commentsLabel: string;
+  };
+  authLauncher: {
+    title: string;
+    description: string;
+    launching: string;
+    retry: string;
+  };
+  account: {
+    title: string;
+    description: string;
+    nameLabel: string;
+    emailLabel: string;
+    unknownUser: string;
+    noEmail: string;
+    backHome: string;
   };
   profile: {
     postsLabel: string;
@@ -182,3 +200,5 @@ export type AppDictionary = {
     webLimited: string;
   };
 };
+
+export type AppDictionary = BaseAppDictionary & DraftScreenDictionary;

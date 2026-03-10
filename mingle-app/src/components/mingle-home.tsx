@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Mail, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import BottomTabBar from "@/components/bottom-tab-bar";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { resolveLegalDocumentPathSegment, type AppLocale } from "@/i18n";
 import type { AppDictionary } from "@/i18n/types";
 
 const LivePhoneDemo = dynamic(
@@ -18,7 +19,7 @@ type MingleHomeProps = {
   dictionary: AppDictionary;
   appleOAuthEnabled: boolean;
   googleOAuthEnabled: boolean;
-  locale: string;
+  locale: AppLocale;
 };
 
 const NATIVE_AUTH_EVENT = "mingle:native-auth";
@@ -245,15 +246,15 @@ export default function MingleHome(props: MingleHomeProps) {
     [props.locale],
   );
   const localeSegment = useMemo(
-    () => encodeURIComponent(props.locale),
+    () => resolveLegalDocumentPathSegment(props.locale),
     [props.locale],
   );
   const privacyPolicyUrl = useMemo(
-    () => `https://translator.minglelabs.xyz/${localeSegment}/privacy-policy`,
+    () => `/legal/${localeSegment}/privacy-policy.html`,
     [localeSegment],
   );
   const termsOfUseUrl = useMemo(
-    () => `https://translator.minglelabs.xyz/${localeSegment}/terms-of-use`,
+    () => `/legal/${localeSegment}/terms-of-use.html`,
     [localeSegment],
   );
   const hasAgreedAllRequiredTerms = agreedPrivacy && agreedTerms;
