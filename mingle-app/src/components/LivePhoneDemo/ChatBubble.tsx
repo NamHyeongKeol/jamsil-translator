@@ -215,7 +215,7 @@ function ChatBubble({ utterance, isSpeaking = false, speakingLanguage = null }: 
           className="ml-2.5 max-w-[80%] bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
         >
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+            <span className="text-base">{getSttLanguageFlag(lang)}</span>
             <span className="text-xs font-semibold text-amber-400 uppercase">{lang}</span>
           </div>
           <div className="flex items-center gap-0.5 h-4">

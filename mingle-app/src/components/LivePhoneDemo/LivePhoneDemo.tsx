@@ -1335,7 +1335,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                    <span className="text-base">{getSttLanguageFlag(lang)}</span>
                   <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
                 </div>
                   <p className="text-sm text-gray-500 leading-relaxed">{text}</p>
@@ -1348,7 +1348,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                   className="ml-2.5 max-w-[80%] bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                    <span className="text-base">{getSttLanguageFlag(lang)}</span>
                     <span className="text-xs font-semibold text-amber-400 uppercase">{lang}</span>
                   </div>
                   <div className="flex items-center gap-0.5 h-4">
@@ -1370,7 +1370,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
             >
               <div className="max-w-[85%] bg-white/80 border border-gray-200 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[demoTypingLang] || '🌐'}</span>
+                    <span className="text-base">{getSttLanguageFlag(demoTypingLang)}</span>
                     <span className="text-xs font-semibold text-gray-500 uppercase">{demoTypingLang}</span>
                   </div>
                 <p className="text-sm text-gray-600 leading-snug">
@@ -1387,7 +1387,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                    className="ml-2.5 max-w-[80%] bg-amber-50/80 border border-amber-100 rounded-2xl rounded-tl-sm px-3.5 py-2"
                  >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-base">{FLAG_MAP[lang] || '🌐'}</span>
+                    <span className="text-base">{getSttLanguageFlag(lang)}</span>
                      <span className="text-xs font-semibold text-amber-500 uppercase">{lang}</span>
                   </div>
                   <p className="text-sm text-gray-500 leading-relaxed">
