@@ -250,6 +250,24 @@ describe("/api/auth/forgot-password route", () => {
     });
   });
 
+  it("canonicalizes supported locale aliases before building the reset URL", async () => {
+    mockUserFindUnique.mockResolvedValue({ id: "user_1" });
+    mockSendPasswordResetEmail.mockResolvedValue(undefined);
+
+    const response = await POST(makeJsonRequest({
+      email: "member@example.com",
+      locale: "iw-IL",
+    }));
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toEqual({ ok: true });
+    expect(mockSendPasswordResetEmail).toHaveBeenCalledWith({
+      to: "member@example.com",
+      resetUrl: "http://localhost:3000/he/auth/reset-password?token=raw_token_123",
+    });
+  });
+
   it("returns 502 when email delivery fails", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user_1" });
     mockSendPasswordResetEmail.mockRejectedValue(new Error("upstream_failed"));

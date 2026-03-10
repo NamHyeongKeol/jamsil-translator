@@ -1,3 +1,5 @@
+import { canonicalizeTranslationLanguageCode } from "@/lib/translation-languages"
+
 export type RecentTurnContext = {
   sourceLanguage: string
   sourceText: string
@@ -49,7 +51,7 @@ function parseTranslationsPayload(raw: unknown, sourceLanguage: string): Record<
 }
 
 export function normalizeLang(input: string): string {
-  return input.trim().replace('_', '-').toLowerCase().split('-')[0] || ''
+  return canonicalizeTranslationLanguageCode(input)
 }
 
 export function normalizeTargetLanguages(raw: unknown[], sourceLanguage: string): string[] {
@@ -87,9 +89,11 @@ export function parseTranslations(raw: string): Record<string, string> {
 
   for (const [key, value] of Object.entries(parsed)) {
     if (typeof value !== 'string') continue
+    const normalizedKey = normalizeLang(key)
+    if (!normalizedKey) continue
     const cleaned = sanitizeMarkerText(value)
     if (!cleaned) continue
-    output[key] = cleaned
+    output[normalizedKey] = cleaned
   }
   return output
 }

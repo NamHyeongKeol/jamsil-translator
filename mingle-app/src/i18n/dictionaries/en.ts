@@ -47,6 +47,21 @@ export const enDictionary: AppDictionary = {
     likesLabel: "Likes",
     commentsLabel: "Comments",
   },
+  authLauncher: {
+    title: "Redirecting to sign in",
+    description: "Please wait. We will open the sign-in flow automatically.",
+    launching: "Redirecting...",
+    retry: "Try again",
+  },
+  account: {
+    title: "Account",
+    description: "This is an account page for protected route verification.",
+    nameLabel: "Name",
+    emailLabel: "Email",
+    unknownUser: "Unknown user",
+    noEmail: "No email",
+    backHome: "Back to home",
+  },
   profile: {
     postsLabel: "posts",
     followersLabel: "followers",
