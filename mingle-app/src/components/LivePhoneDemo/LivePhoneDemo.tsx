@@ -9,7 +9,7 @@ import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
 import { useTtsSettings } from '@/context/tts-settings'
-import { canonicalizeTranslationLanguageCode } from '@/lib/translation-languages'
+import { DEFAULT_STT_LANGUAGES, canonicalizeSttLanguageCode } from '@/lib/stt-languages'
 import {
   AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
   deriveScrollAutoFollowState,
@@ -35,8 +35,6 @@ const SCROLL_UI_HIDE_DELAY_MS = 1000
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 28
 const USER_SCROLL_INTENT_WINDOW_MS = 1400
 const NATIVE_TTS_EVENT_TIMEOUT_MS = 15000
-const DEFAULT_SELECTED_LANGUAGES = ['en', 'ko', 'ja']
-
 function isNativeApp(): boolean {
   return typeof window !== 'undefined'
     && typeof window.ReactNativeWebView?.postMessage === 'function'
@@ -66,18 +64,18 @@ function getUiLocale(): string {
 }
 
 function sanitizeSelectedLanguages(rawValue: unknown): string[] {
-  if (!Array.isArray(rawValue)) return DEFAULT_SELECTED_LANGUAGES
+  if (!Array.isArray(rawValue)) return [...DEFAULT_STT_LANGUAGES]
 
   const deduped: string[] = []
   for (const item of rawValue) {
     if (typeof item !== 'string') continue
-    const normalized = canonicalizeTranslationLanguageCode(item)
+    const normalized = canonicalizeSttLanguageCode(item)
     if (!normalized || deduped.includes(normalized)) continue
     deduped.push(normalized)
     if (deduped.length >= 5) break
   }
 
-  return deduped.length > 0 ? deduped : DEFAULT_SELECTED_LANGUAGES
+  return deduped.length > 0 ? deduped : [...DEFAULT_STT_LANGUAGES]
 }
 
 function startOfLocalDay(date: Date): Date {
@@ -213,11 +211,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   showAccountMenu = true,
 }, ref) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_SELECTED_LANGUAGES
+    if (typeof window === 'undefined') return [...DEFAULT_STT_LANGUAGES]
     try {
       const stored = localStorage.getItem(LS_KEY_LANGUAGES)
-      return stored ? sanitizeSelectedLanguages(JSON.parse(stored)) : DEFAULT_SELECTED_LANGUAGES
-    } catch { return DEFAULT_SELECTED_LANGUAGES }
+      return stored ? sanitizeSelectedLanguages(JSON.parse(stored)) : [...DEFAULT_STT_LANGUAGES]
+    } catch { return [...DEFAULT_STT_LANGUAGES] }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -892,7 +890,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [forceStopTtsPlayback])
 
   const handleToggleLanguage = useCallback((code: string) => {
-    const normalizedCode = canonicalizeTranslationLanguageCode(code)
+    const normalizedCode = canonicalizeSttLanguageCode(code)
     if (!normalizedCode) return
     setSelectedLanguages(prev => {
       if (prev.includes(normalizedCode)) {

@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useEffect, useMemo, type RefObject } from "react";
-import { TRANSLATION_LANGUAGES } from "@/lib/translation-languages";
+import { STT_LANGUAGE_OPTIONS } from "@/lib/stt-languages";
 
-const SORTED_LANGUAGES = [...TRANSLATION_LANGUAGES].sort((a, b) => {
+const SORTED_LANGUAGES = [...STT_LANGUAGE_OPTIONS].sort((a, b) => {
   if (a.code === "en") return -1;
   if (b.code === "en") return 1;
   return a.englishName.localeCompare(b.englishName, "en", {
