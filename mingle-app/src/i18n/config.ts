@@ -64,7 +64,11 @@ export const SUPPORTED_LOCALES = [
 
 export type AppLocale = (typeof SUPPORTED_LOCALES)[number];
 
-export const TRANSLATED_LOCALES = [
+export const TRANSLATED_LOCALES = SUPPORTED_LOCALES;
+
+export type TranslatedAppLocale = AppLocale;
+
+export const LEGAL_DOCUMENT_LOCALES = [
   "ko",
   "en",
   "ja",
@@ -82,7 +86,7 @@ export const TRANSLATED_LOCALES = [
   "vi",
 ] as const;
 
-export type TranslatedAppLocale = (typeof TRANSLATED_LOCALES)[number];
+export type LegalDocumentLocale = (typeof LEGAL_DOCUMENT_LOCALES)[number];
 
 export const DEFAULT_LOCALE: AppLocale = "ko";
 
@@ -91,10 +95,10 @@ export function isSupportedLocale(value: string): value is AppLocale {
 }
 
 export function isTranslatedLocale(value: AppLocale): value is TranslatedAppLocale {
-  return TRANSLATED_LOCALES.includes(value as TranslatedAppLocale);
+  return isSupportedLocale(value);
 }
 
-const DICTIONARY_LOCALE_MAP: Record<AppLocale, TranslatedAppLocale> = {
+const LEGAL_DOCUMENT_LOCALE_MAP: Record<AppLocale, LegalDocumentLocale> = {
   ko: "ko",
   en: "en",
   ja: "ja",
@@ -249,7 +253,11 @@ function resolveZhLocale(normalized: string): AppLocale | null {
 }
 
 export function resolveDictionaryLocale(locale: AppLocale): TranslatedAppLocale {
-  return DICTIONARY_LOCALE_MAP[locale];
+  return locale;
+}
+
+export function resolveLegalDocumentLocale(locale: AppLocale): LegalDocumentLocale {
+  return LEGAL_DOCUMENT_LOCALE_MAP[locale];
 }
 
 export function resolveSupportedLocaleTag(rawValue: string): AppLocale | null {

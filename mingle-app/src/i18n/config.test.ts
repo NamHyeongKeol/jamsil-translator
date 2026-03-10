@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  LEGAL_DOCUMENT_LOCALES,
   SUPPORTED_LOCALES,
   TRANSLATED_LOCALES,
   resolveDictionaryLocale,
+  resolveLegalDocumentLocale,
   resolveSupportedLocaleTag,
 } from "@/i18n";
 
@@ -20,7 +22,8 @@ describe("i18n config", () => {
       "uk",
       "cy",
     ]));
-    expect(TRANSLATED_LOCALES).toHaveLength(15);
+    expect(TRANSLATED_LOCALES).toEqual(SUPPORTED_LOCALES);
+    expect(LEGAL_DOCUMENT_LOCALES).toHaveLength(15);
   });
 
   it("normalizes locale aliases into supported locale tags", () => {
@@ -32,10 +35,11 @@ describe("i18n config", () => {
     expect(resolveSupportedLocaleTag("")).toBeNull();
   });
 
-  it("maps untranslated locales to the nearest shipped dictionary", () => {
-    expect(resolveDictionaryLocale("pl")).toBe("en");
-    expect(resolveDictionaryLocale("he")).toBe("en");
-    expect(resolveDictionaryLocale("hi")).toBe("hi");
+  it("resolves full app dictionaries while keeping legal document fallback mapping", () => {
+    expect(resolveDictionaryLocale("pl")).toBe("pl");
+    expect(resolveDictionaryLocale("he")).toBe("he");
     expect(resolveDictionaryLocale("zh-TW")).toBe("zh-TW");
+    expect(resolveLegalDocumentLocale("pl")).toBe("en");
+    expect(resolveLegalDocumentLocale("hi")).toBe("hi");
   });
 });
