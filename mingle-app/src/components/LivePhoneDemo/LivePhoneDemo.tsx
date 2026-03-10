@@ -9,7 +9,7 @@ import type { Utterance } from './ChatBubble'
 import LanguageSelector from './LanguageSelector'
 import useRealtimeSTT from './useRealtimeSTT'
 import { useTtsSettings } from '@/context/tts-settings'
-import { buildClientApiPath } from '@/lib/api-contract'
+import { canonicalizeTranslationLanguageCode } from '@/lib/translation-languages'
 import {
   AUTO_SCROLL_BOTTOM_THRESHOLD_PX,
   deriveScrollAutoFollowState,
@@ -35,6 +35,7 @@ const SCROLL_UI_HIDE_DELAY_MS = 1000
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 28
 const USER_SCROLL_INTENT_WINDOW_MS = 1400
 const NATIVE_TTS_EVENT_TIMEOUT_MS = 15000
+const DEFAULT_SELECTED_LANGUAGES = ['en', 'ko', 'ja']
 
 function isNativeApp(): boolean {
   return typeof window !== 'undefined'
@@ -62,6 +63,21 @@ function getUiLocale(): string {
   const docLocale = (document.documentElement.lang || '').trim()
   if (docLocale) return docLocale
   return (window.navigator.languages?.find(Boolean) || window.navigator.language || 'en').trim() || 'en'
+}
+
+function sanitizeSelectedLanguages(rawValue: unknown): string[] {
+  if (!Array.isArray(rawValue)) return DEFAULT_SELECTED_LANGUAGES
+
+  const deduped: string[] = []
+  for (const item of rawValue) {
+    if (typeof item !== 'string') continue
+    const normalized = canonicalizeTranslationLanguageCode(item)
+    if (!normalized || deduped.includes(normalized)) continue
+    deduped.push(normalized)
+    if (deduped.length >= 5) break
+  }
+
+  return deduped.length > 0 ? deduped : DEFAULT_SELECTED_LANGUAGES
 }
 
 function startOfLocalDay(date: Date): Date {
@@ -174,35 +190,6 @@ function EchoInputRouteIcon({ echoAllowed }: { echoAllowed: boolean }) {
   )
 }
 
-async function saveConversation(utterances: Utterance[], selectedLanguages: string[], usageSec: number) {
-  try {
-    await fetch(buildClientApiPath('/log/client-event'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        eventType: 'stt_session_stopped',
-        metadata: {
-          utterances,
-          selectedLanguages,
-          usageSec,
-        },
-        clientContext: {
-          screenWidth: window.screen.width,
-          screenHeight: window.screen.height,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          platform: navigator.platform,
-          language: navigator.language,
-          referrer: document.referrer || null,
-          pathname: window.location.pathname,
-          fullUrl: window.location.href,
-          queryParams: window.location.search || null,
-          usageSec,
-        },
-      }),
-    })
-  } catch { /* silently fail */ }
-}
-
 const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function LivePhoneDemo({
   onLimitReached,
   enableAutoTTS = false,
@@ -226,11 +213,11 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   showAccountMenu = true,
 }, ref) {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return ['en', 'ko', 'ja']
+    if (typeof window === 'undefined') return DEFAULT_SELECTED_LANGUAGES
     try {
       const stored = localStorage.getItem(LS_KEY_LANGUAGES)
-      return stored ? JSON.parse(stored) : ['en', 'ko', 'ja']
-    } catch { return ['en', 'ko', 'ja'] }
+      return stored ? sanitizeSelectedLanguages(JSON.parse(stored)) : DEFAULT_SELECTED_LANGUAGES
+    } catch { return DEFAULT_SELECTED_LANGUAGES }
   })
   const [langSelectorOpen, setLangSelectorOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -302,8 +289,15 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
 
   useEffect(() => {
     if (showAccountMenu) return
-    setMenuOpen(false)
-    setDeleteAccountDialogOpen(false)
+
+    const closeMenuState = window.setTimeout(() => {
+      setMenuOpen(false)
+      setDeleteAccountDialogOpen(false)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(closeMenuState)
+    }
   }, [showAccountMenu])
 
   const closeDeleteAccountDialog = useCallback(() => {
@@ -898,11 +892,13 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
   }, [forceStopTtsPlayback])
 
   const handleToggleLanguage = useCallback((code: string) => {
+    const normalizedCode = canonicalizeTranslationLanguageCode(code)
+    if (!normalizedCode) return
     setSelectedLanguages(prev => {
-      if (prev.includes(code)) {
-        return prev.filter(c => c !== code)
+      if (prev.includes(normalizedCode)) {
+        return prev.filter(c => c !== normalizedCode)
       }
-      return [...prev, code]
+      return [...prev, normalizedCode]
     })
   }, [])
 

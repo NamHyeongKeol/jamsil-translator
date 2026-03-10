@@ -267,6 +267,39 @@ describe('/api/translate/finalize route', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('accepts canonicalized target language aliases in requests and model responses', async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => '{"fil":"Kamusta","iw":"שלום","zh-cn":"你好"}',
+        usageMetadata: {},
+      },
+    })
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const POST = await importRouteWithEnv()
+
+    const res = await POST(makeJsonRequest({
+      text: 'hello',
+      sourceLanguage: 'en-US',
+      targetLanguages: ['fil-PH', 'iw-IL', 'zh-TW'],
+    }) as never)
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.translations).toEqual({
+      tl: 'Kamusta',
+      he: 'שלום',
+      zh: '你好',
+    })
+
+    const modelConfig = mockGetGenerativeModel.mock.calls[0]?.[0] as {
+      generationConfig?: { responseSchema?: { required?: string[] } }
+    }
+    expect(modelConfig.generationConfig?.responseSchema?.required).toEqual(['tl', 'he', 'zh'])
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('builds compact prompt with previous state first and no recent-turns section', async () => {
     mockGenerateContent.mockResolvedValue({
       response: {

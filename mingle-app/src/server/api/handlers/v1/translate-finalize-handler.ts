@@ -4,6 +4,7 @@ import {
   ensureTrackingContext,
   sanitizeNonNegativeInt,
 } from '@/lib/app-analytics'
+import { getTranslationLanguageName } from '@/lib/translation-languages'
 import { getInworldAuthHeaderValue } from '@/server/api/shared/inworld-auth'
 import { decodeAudioContent, detectAudioMime } from '@/server/api/shared/audio-utils'
 import { resolveVoiceId, INWORLD_API_BASE } from '@/server/api/shared/inworld-voice'
@@ -25,14 +26,6 @@ const DEFAULT_MODEL = process.env.DEMO_TRANSLATE_MODEL || 'gemini-2.5-flash-lite
 const DEFAULT_TTS_MODEL_ID = process.env.INWORLD_TTS_MODEL_ID || 'inworld-tts-1.5-mini'
 const DEFAULT_TTS_SPEAKING_RATE = Number(process.env.INWORLD_TTS_SPEAKING_RATE || '1.3')
 const IMMEDIATE_PREVIOUS_TURN_MAX_AGE_MS = 5_000
-
-const LANG_NAMES: Record<string, string> = {
-  en: 'English', ko: 'Korean', zh: 'Chinese', ja: 'Japanese',
-  es: 'Spanish', fr: 'French', de: 'German', ru: 'Russian',
-  pt: 'Portuguese', ar: 'Arabic', hi: 'Hindi', vi: 'Vietnamese',
-  it: 'Italian', id: 'Indonesian', tr: 'Turkish', pl: 'Polish',
-  nl: 'Dutch', sv: 'Swedish', th: 'Thai', ms: 'Malay',
-}
 
 
 
@@ -186,7 +179,7 @@ function buildGeminiResponseSchema(targetLanguages: string[]): ResponseSchema {
   for (const language of targetLanguages) {
     properties[language] = {
       type: SchemaType.STRING,
-      description: `Translated text in ${LANG_NAMES[language] || language}.`,
+      description: `Translated text in ${getTranslationLanguageName(language) || language}.`,
     }
   }
 

@@ -1,25 +1,9 @@
 "use client";
 
 import { useRef, useEffect, useMemo, type RefObject } from "react";
+import { TRANSLATION_LANGUAGES } from "@/lib/translation-languages";
 
-const LANGUAGES = [
-  { code: "en", flag: "🇺🇸", englishName: "English" },
-  { code: "ko", flag: "🇰🇷", englishName: "Korean" },
-  { code: "ja", flag: "🇯🇵", englishName: "Japanese" },
-  { code: "zh", flag: "🇨🇳", englishName: "Chinese" },
-  { code: "es", flag: "🇪🇸", englishName: "Spanish" },
-  { code: "fr", flag: "🇫🇷", englishName: "French" },
-  { code: "de", flag: "🇩🇪", englishName: "German" },
-  { code: "ru", flag: "🇷🇺", englishName: "Russian" },
-  { code: "pt", flag: "🇧🇷", englishName: "Portuguese" },
-  { code: "ar", flag: "🇸🇦", englishName: "Arabic" },
-  { code: "hi", flag: "🇮🇳", englishName: "Hindi" },
-  { code: "th", flag: "🇹🇭", englishName: "Thai" },
-  { code: "vi", flag: "🇻🇳", englishName: "Vietnamese" },
-  { code: "it", flag: "🇮🇹", englishName: "Italian" },
-];
-
-const SORTED_LANGUAGES = [...LANGUAGES].sort((a, b) => {
+const SORTED_LANGUAGES = [...TRANSLATION_LANGUAGES].sort((a, b) => {
   if (a.code === "en") return -1;
   if (b.code === "en") return 1;
   return a.englishName.localeCompare(b.englishName, "en", {
@@ -127,7 +111,9 @@ export default function LanguageSelector({
             >
               {isSelected && "✓"}
             </span>
-            <span>{lang.flag}</span>
+            <span className="w-7 rounded bg-gray-100 px-1 py-0.5 text-center text-[10px] font-medium uppercase text-gray-500">
+              {lang.code}
+            </span>
             <span className="text-gray-700 truncate">{localizedName}</span>
           </button>
         );
