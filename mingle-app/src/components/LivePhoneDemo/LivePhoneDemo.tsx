@@ -60,13 +60,6 @@ async function blobToBase64(blob: Blob): Promise<string> {
 }
 
 
-function getUiLocale(): string {
-  if (typeof window === 'undefined') return 'en'
-  const docLocale = (document.documentElement.lang || '').trim()
-  if (docLocale) return docLocale
-  return (window.navigator.languages?.find(Boolean) || window.navigator.language || 'en').trim() || 'en'
-}
-
 function sanitizeSelectedLanguages(rawValue: unknown): string[] {
   if (!Array.isArray(rawValue)) return [...DEFAULT_STT_LANGUAGES]
 
@@ -1013,7 +1006,7 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
       })
     }
 
-    setScrollDateLabel(findTopVisibleUtteranceDateLabel(chatRef.current, getUiLocale()))
+    setScrollDateLabel(findTopVisibleUtteranceDateLabel(chatRef.current, uiLocale))
 
     if (
       allowAutoTopPaginationRef.current
