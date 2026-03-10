@@ -1,68 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { DEFAULT_LOCALE, isSupportedLocale, type AppLocale } from "@/i18n";
+import { DEFAULT_LOCALE, isSupportedLocale, resolveSupportedLocaleTag, type AppLocale } from "@/i18n";
 
-const LOCALE_ALIASES: Record<string, AppLocale> = {
-  ko: "ko",
-  en: "en",
-  ja: "ja",
-  "zh-cn": "zh-CN",
-  "zh-tw": "zh-TW",
-  fr: "fr",
-  de: "de",
-  es: "es",
-  pt: "pt",
-  it: "it",
-  ru: "ru",
-  ar: "ar",
-  hi: "hi",
-  th: "th",
-  vi: "vi",
-  zh: "zh-CN",
-  "zh-hans": "zh-CN",
-  "zh-sg": "zh-CN",
-  "zh-hant": "zh-TW",
-  "zh-hk": "zh-TW",
-  "zh-mo": "zh-TW",
-};
-
-function resolveZhLocale(normalized: string): AppLocale | null {
-  if (normalized === "zh" || normalized.startsWith("zh-")) {
-    if (
-      normalized.includes("-tw")
-      || normalized.includes("-hant")
-      || normalized.includes("-hk")
-      || normalized.includes("-mo")
-    ) {
-      return "zh-TW";
-    }
-    return "zh-CN";
-  }
-  return null;
-}
-
-export function resolveSupportedLocaleTag(rawValue: string): AppLocale | null {
-  const normalized = rawValue.trim().replace(/_/g, "-").toLowerCase();
-  if (!normalized) return null;
-
-  const directMatch = LOCALE_ALIASES[normalized];
-  if (directMatch && isSupportedLocale(directMatch)) {
-    return directMatch;
-  }
-
-  const zhResolved = resolveZhLocale(normalized);
-  if (zhResolved) {
-    return zhResolved;
-  }
-
-  const base = normalized.split("-")[0];
-  if (!base) return null;
-  const baseMatch = LOCALE_ALIASES[base];
-  if (baseMatch && isSupportedLocale(baseMatch)) {
-    return baseMatch;
-  }
-
-  return null;
-}
+export { resolveSupportedLocaleTag } from "@/i18n";
 
 function pickPreferredLocale(headerValue: string | null): AppLocale {
   if (!headerValue) {

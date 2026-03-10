@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, type AppLocale } from "@/i18n/config";
+import { DEFAULT_LOCALE, resolveDictionaryLocale, type AppLocale, type TranslatedAppLocale } from "@/i18n/config";
 import { arDictionary } from "@/i18n/dictionaries/ar";
 import { deDictionary } from "@/i18n/dictionaries/de";
 import { enDictionary } from "@/i18n/dictionaries/en";
@@ -16,7 +16,7 @@ import { zhCnDictionary } from "@/i18n/dictionaries/zh-cn";
 import { zhTwDictionary } from "@/i18n/dictionaries/zh-tw";
 import type { AppDictionary } from "@/i18n/types";
 
-const dictionaries: Record<AppLocale, AppDictionary> = {
+const dictionaries: Record<TranslatedAppLocale, AppDictionary> = {
   ko: koDictionary,
   en: enDictionary,
   ja: jaDictionary,
@@ -35,5 +35,5 @@ const dictionaries: Record<AppLocale, AppDictionary> = {
 };
 
 export function getDictionary(locale: AppLocale): AppDictionary {
-  return dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE];
+  return dictionaries[resolveDictionaryLocale(locale)] ?? dictionaries[resolveDictionaryLocale(DEFAULT_LOCALE)];
 }

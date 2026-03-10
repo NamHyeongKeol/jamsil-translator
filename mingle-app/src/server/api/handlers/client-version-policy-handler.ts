@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  resolveDictionaryLocale,
+  resolveSupportedLocaleTag,
+  type AppLocale,
+  type TranslatedAppLocale,
+} from '@/i18n'
 import { prisma } from '@/lib/prisma'
 
 type VersionTuple = [number, number, number]
 type VersionPolicyAction = 'force_update' | 'recommend_update' | 'none'
 type ClientPlatform = 'ios' | 'android'
-type SupportedLocale =
-  | 'ko'
-  | 'en'
-  | 'ja'
-  | 'zh-CN'
-  | 'zh-TW'
-  | 'fr'
-  | 'de'
-  | 'es'
-  | 'pt'
-  | 'it'
-  | 'ru'
-  | 'ar'
-  | 'hi'
-  | 'th'
-  | 'vi'
 
 type VersionPolicySnapshot = {
   minSupportedVersion: VersionTuple
@@ -50,7 +40,7 @@ const CLIENT_PLATFORM_ALIASES: Record<string, ClientPlatform> = {
   aos: 'android',
 }
 
-const FORCE_MESSAGES: Record<SupportedLocale, string> = {
+const FORCE_MESSAGES: Record<TranslatedAppLocale, string> = {
   ko: '현재 버전에서는 서비스를 사용할 수 없습니다. 최신 버전으로 업데이트해 주세요.',
   en: 'This version is no longer supported. Please update to the latest version.',
   ja: 'このバージョンはサポートされていません。最新バージョンにアップデートしてください。',
@@ -68,7 +58,7 @@ const FORCE_MESSAGES: Record<SupportedLocale, string> = {
   vi: 'Phiên bản này không còn được hỗ trợ. Vui lòng cập nhật lên phiên bản mới nhất.',
 }
 
-const RECOMMEND_MESSAGES: Record<SupportedLocale, string> = {
+const RECOMMEND_MESSAGES: Record<TranslatedAppLocale, string> = {
   ko: '새 버전이 출시되었습니다. 더 안정적인 사용을 위해 업데이트를 권장합니다.',
   en: 'A new version is available. We recommend updating for a better experience.',
   ja: '新しいバージョンが利用可能です。より安定した利用のためにアップデートをお勧めします。',
@@ -86,7 +76,7 @@ const RECOMMEND_MESSAGES: Record<SupportedLocale, string> = {
   vi: 'Đã có phiên bản mới. Chúng tôi khuyên bạn nên cập nhật để có trải nghiệm ổn định hơn.',
 }
 
-const FORCE_UPDATE_TITLE: Record<SupportedLocale, string> = {
+const FORCE_UPDATE_TITLE: Record<TranslatedAppLocale, string> = {
   ko: '업데이트 필요',
   en: 'Update Required',
   ja: 'アップデートが必要です',
@@ -104,7 +94,7 @@ const FORCE_UPDATE_TITLE: Record<SupportedLocale, string> = {
   vi: 'Cần cập nhật',
 }
 
-const RECOMMEND_UPDATE_TITLE: Record<SupportedLocale, string> = {
+const RECOMMEND_UPDATE_TITLE: Record<TranslatedAppLocale, string> = {
   ko: '업데이트 권장',
   en: 'Update Recommended',
   ja: 'アップデート推奨',
@@ -122,7 +112,7 @@ const RECOMMEND_UPDATE_TITLE: Record<SupportedLocale, string> = {
   vi: 'Khuyến nghị cập nhật',
 }
 
-const UPDATE_BUTTON_LABEL: Record<SupportedLocale, string> = {
+const UPDATE_BUTTON_LABEL: Record<TranslatedAppLocale, string> = {
   ko: '업데이트',
   en: 'Update',
   ja: 'アップデート',
@@ -140,7 +130,7 @@ const UPDATE_BUTTON_LABEL: Record<SupportedLocale, string> = {
   vi: 'Cập nhật',
 }
 
-const LATER_BUTTON_LABEL: Record<SupportedLocale, string> = {
+const LATER_BUTTON_LABEL: Record<TranslatedAppLocale, string> = {
   ko: '나중에',
   en: 'Later',
   ja: 'あとで',
@@ -158,68 +148,11 @@ const LATER_BUTTON_LABEL: Record<SupportedLocale, string> = {
   vi: 'Để sau',
 }
 
-const SUPPORTED_LOCALES = new Set<SupportedLocale>([
-  'ko',
-  'en',
-  'ja',
-  'zh-CN',
-  'zh-TW',
-  'fr',
-  'de',
-  'es',
-  'pt',
-  'it',
-  'ru',
-  'ar',
-  'hi',
-  'th',
-  'vi',
-])
-const LOCALE_ALIAS_MAP: Record<string, SupportedLocale> = {
-  ko: 'ko',
-  en: 'en',
-  ja: 'ja',
-  fr: 'fr',
-  de: 'de',
-  es: 'es',
-  pt: 'pt',
-  it: 'it',
-  ru: 'ru',
-  ar: 'ar',
-  hi: 'hi',
-  th: 'th',
-  vi: 'vi',
-  zh: 'zh-CN',
-  'zh-cn': 'zh-CN',
-  'zh-hans': 'zh-CN',
-  'zh-sg': 'zh-CN',
-  'zh-tw': 'zh-TW',
-  'zh-hant': 'zh-TW',
-  'zh-hk': 'zh-TW',
-  'zh-mo': 'zh-TW',
-}
-const DEFAULT_LOCALE: SupportedLocale = 'en'
+const DEFAULT_LOCALE: AppLocale = 'en'
 
-function resolveLocale(raw: unknown): SupportedLocale {
+function resolveLocale(raw: unknown): AppLocale {
   if (typeof raw !== 'string') return DEFAULT_LOCALE
-  const normalized = raw.trim().replace(/_/g, '-').toLowerCase()
-  if (!normalized) return DEFAULT_LOCALE
-
-  const directMatch = LOCALE_ALIAS_MAP[normalized]
-  if (directMatch && SUPPORTED_LOCALES.has(directMatch)) return directMatch
-
-  if (normalized.startsWith('zh-')) {
-    if (normalized.includes('-tw') || normalized.includes('-hant') || normalized.includes('-hk') || normalized.includes('-mo')) {
-      return 'zh-TW'
-    }
-    return 'zh-CN'
-  }
-
-  const base = normalized.split('-')[0] || ''
-  const baseMatch = LOCALE_ALIAS_MAP[base]
-  if (baseMatch && SUPPORTED_LOCALES.has(baseMatch)) return baseMatch
-
-  return DEFAULT_LOCALE
+  return resolveSupportedLocaleTag(raw) || DEFAULT_LOCALE
 }
 
 function resolveClientPlatform(raw: unknown): ClientPlatform {
@@ -434,6 +367,7 @@ export async function handleClientVersionPolicy(
   }
 
   const locale = resolveLocale(body.locale)
+  const localizedLocale = resolveDictionaryLocale(locale)
   const clientPlatform = options?.platformOverride || resolveClientPlatform(body.platform)
   const clientVersionRaw = typeof body.clientVersion === 'string' ? body.clientVersion : ''
   const clientBuildRaw = typeof body.clientBuild === 'string' ? body.clientBuild.trim() : ''
@@ -454,15 +388,15 @@ export async function handleClientVersionPolicy(
     : 'force_update'
 
   const message = action === 'force_update'
-    ? FORCE_MESSAGES[locale]
+    ? FORCE_MESSAGES[localizedLocale]
     : action === 'recommend_update'
-      ? RECOMMEND_MESSAGES[locale]
+      ? RECOMMEND_MESSAGES[localizedLocale]
       : ''
 
   const title = action === 'force_update'
-    ? FORCE_UPDATE_TITLE[locale]
+    ? FORCE_UPDATE_TITLE[localizedLocale]
     : action === 'recommend_update'
-      ? RECOMMEND_UPDATE_TITLE[locale]
+      ? RECOMMEND_UPDATE_TITLE[localizedLocale]
       : ''
 
   const responseBody = {
@@ -478,8 +412,8 @@ export async function handleClientVersionPolicy(
     updateUrl: policyRead.snapshot.updateUrl,
     title,
     message,
-    updateButtonLabel: UPDATE_BUTTON_LABEL[locale],
-    laterButtonLabel: LATER_BUTTON_LABEL[locale],
+    updateButtonLabel: UPDATE_BUTTON_LABEL[localizedLocale],
+    laterButtonLabel: LATER_BUTTON_LABEL[localizedLocale],
   }
 
   return NextResponse.json(responseBody, { status: 200 })

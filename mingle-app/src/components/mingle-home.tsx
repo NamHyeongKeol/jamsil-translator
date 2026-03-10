@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { ArrowLeft, Loader2, Mail, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { resolveDictionaryLocale, type AppLocale } from "@/i18n";
 import type { AppDictionary } from "@/i18n/types";
 
 const LivePhoneDemo = dynamic(
@@ -17,7 +18,7 @@ type MingleHomeProps = {
   dictionary: AppDictionary;
   appleOAuthEnabled: boolean;
   googleOAuthEnabled: boolean;
-  locale: string;
+  locale: AppLocale;
 };
 
 // Keep auth implementation intact for future re-enable, but disable auth gate for App Review.
@@ -247,7 +248,7 @@ export default function MingleHome(props: MingleHomeProps) {
     [props.locale],
   );
   const localeSegment = useMemo(
-    () => encodeURIComponent(props.locale),
+    () => encodeURIComponent(resolveDictionaryLocale(props.locale)),
     [props.locale],
   );
   const privacyPolicyUrl = useMemo(

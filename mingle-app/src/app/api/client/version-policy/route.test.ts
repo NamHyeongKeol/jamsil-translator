@@ -210,6 +210,17 @@ describe('/api/client/version-policy route', () => {
     expect(json.laterButtonLabel).toBe('Plus tard')
   })
 
+  it('keeps newly supported locales while falling back copy to English when untranslated', async () => {
+    const POST = await loadLegacyRoutePost()
+    const response = await POST(makeRequest('0.9.9', 'pl-PL') as never)
+    const json = await response.json()
+
+    expect(json.locale).toBe('pl')
+    expect(json.title).toBe('Update Required')
+    expect(json.updateButtonLabel).toBe('Update')
+    expect(json.laterButtonLabel).toBe('Later')
+  })
+
   it('falls back to English when locale is unsupported', async () => {
     const POST = await loadLegacyRoutePost()
     const response = await POST(makeRequest('0.9.9', 'xx-YY') as never)

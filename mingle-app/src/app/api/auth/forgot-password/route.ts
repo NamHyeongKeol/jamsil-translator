@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createOpaqueToken, hashOpaqueToken, isValidEmail, normalizeEmail } from "@/lib/email-password-auth";
+import { DEFAULT_LOCALE, resolveSupportedLocaleTag } from "@/i18n";
 import { prisma } from "@/lib/prisma";
 import { isResendConfigured, sendPasswordResetEmail } from "@/lib/resend-email";
 
@@ -27,10 +28,8 @@ function resolvePublicBaseUrl(): string {
 }
 
 function resolveLocale(rawValue: unknown): string {
-  if (typeof rawValue !== "string") return "ko";
-  const trimmed = rawValue.trim();
-  if (!trimmed) return "ko";
-  return trimmed.slice(0, 16);
+  if (typeof rawValue !== "string") return DEFAULT_LOCALE;
+  return resolveSupportedLocaleTag(rawValue) ?? DEFAULT_LOCALE;
 }
 
 function resolveResetExpiryMinutes(): number {

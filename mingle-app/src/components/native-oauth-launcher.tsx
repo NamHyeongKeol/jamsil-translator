@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AppLocale } from "@/i18n";
+import { resolveDictionaryLocale, type AppLocale, type TranslatedAppLocale } from "@/i18n";
 
 type NativeOAuthProvider = "apple" | "google";
 
@@ -20,7 +20,7 @@ type LauncherText = {
   retry: string;
 };
 
-const LAUNCHER_TEXT: Record<AppLocale, LauncherText> = {
+const LAUNCHER_TEXT: Record<TranslatedAppLocale, LauncherText> = {
   ko: {
     title: "로그인으로 이동 중",
     description: "잠시만 기다려 주세요. 자동으로 로그인 화면으로 이동합니다.",
@@ -135,7 +135,10 @@ export default function NativeOAuthLauncher({
   const router = useRouter();
   const launchedRef = useRef(false);
   const [isLaunching, setIsLaunching] = useState(true);
-  const text = useMemo(() => LAUNCHER_TEXT[locale] ?? LAUNCHER_TEXT.ko, [locale]);
+  const text = useMemo(() => {
+    const dictionaryLocale = resolveDictionaryLocale(locale);
+    return LAUNCHER_TEXT[dictionaryLocale] ?? LAUNCHER_TEXT.ko;
+  }, [locale]);
 
   const beginSignIn = useCallback(async () => {
     const safeCallbackUrl = resolveSafeCallbackUrl(callbackUrl);
