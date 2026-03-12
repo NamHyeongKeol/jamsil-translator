@@ -34,7 +34,7 @@ const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABA
 // iOS .playAndRecord reduces speaker output; this compensates in software.
 const TTS_STT_GAIN = 1.0
 const NATIVE_TTS_EVENT = 'mingle:native-tts'
-const SCROLL_TO_BOTTOM_BUTTON_THRESHOLD_PX = 400
+const SCROLL_TO_BOTTOM_BUTTON_THRESHOLD_PX = 600
 const SCROLL_UI_HIDE_DELAY_MS = 1000
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 28
 const USER_SCROLL_INTENT_WINDOW_MS = 1400
