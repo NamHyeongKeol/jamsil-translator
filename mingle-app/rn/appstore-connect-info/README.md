@@ -19,12 +19,14 @@
 
 - `scripts/ios-appstore-media.sh` writes to `generated/` by default.
 - `scripts/ios-appstore-upload.sh` reads from `upload/` by default.
+- `scripts/ios-appstore-sync-upload-assets.sh` removes local preview videos and downloads the preferred ASC iPhone screenshot set into `upload/`.
 - `scripts/devbox ios-appstore-sync-metadata` reads `appstore-connect-info.i18n.json` by default.
 ## Quick commands
 
 ```bash
 scripts/ios-appstore-media.sh --no-build
 scripts/ios-appstore-upload.sh --locale en-US
+scripts/ios-appstore-sync-upload-assets.sh
 scripts/devbox ios-appstore-sync-metadata --dry-run
 scripts/devbox ios-appstore-sync-metadata
 pnpm dlx tsx scripts/ios-appstore-preview-clone-locale.ts --locale ja --target-project-name "Mingle 일본어"
