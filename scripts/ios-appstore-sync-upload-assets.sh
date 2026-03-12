@@ -6,6 +6,7 @@ UPLOAD_DIR="${UPLOAD_DIR:-$REPO_ROOT/mingle-app/rn/appstore-connect-info/upload}
 API_KEY_JSON="${API_KEY_JSON:-/tmp/asc_api_key.json}"
 APP_IDENTIFIER="${APP_IDENTIFIER:-com.minglelabs.mingle.rn}"
 PRESERVE_LOCALES="${PRESERVE_LOCALES:-ko,en-US}"
+PREFERRED_SCREENSHOT_TYPES="${PREFERRED_SCREENSHOT_TYPES:-APP_IPHONE_67,APP_IPHONE_65,APP_IPHONE_61,APP_IPHONE_58}"
 
 usage() {
   cat <<EOF
@@ -16,10 +17,11 @@ Options:
   --api-key-json <path>      App Store Connect API key JSON path (default: $API_KEY_JSON)
   --app-id <bundle-id>       App bundle identifier (default: $APP_IDENTIFIER)
   --preserve-locales <list>  Comma-separated locales to skip downloading (default: $PRESERVE_LOCALES)
+  --screenshot-types <list>  Preferred screenshot display types, in order (default: $PREFERRED_SCREENSHOT_TYPES)
   -h, --help                 Show help
 
 Environment overrides:
-  UPLOAD_DIR, API_KEY_JSON, APP_IDENTIFIER, PRESERVE_LOCALES
+  UPLOAD_DIR, API_KEY_JSON, APP_IDENTIFIER, PRESERVE_LOCALES, PREFERRED_SCREENSHOT_TYPES
   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH
 EOF
 }
@@ -40,6 +42,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --preserve-locales)
       PRESERVE_LOCALES="${2:-}"
+      shift 2
+      ;;
+    --screenshot-types)
+      PREFERRED_SCREENSHOT_TYPES="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -85,7 +91,7 @@ find "$UPLOAD_DIR" -type f \( -name '*.mp4' -o -name '*.mov' -o -name '*-aac.mp4
 PATH="/opt/homebrew/opt/ruby/bin:/opt/homebrew/Cellar/fastlane/2.232.2/libexec/bin:$PATH" \
 GEM_HOME="${FASTLANE_GEM_HOME:-$HOME/.local/share/fastlane/4.0.0}" \
 GEM_PATH="${FASTLANE_GEM_HOME:-$HOME/.local/share/fastlane/4.0.0}:/opt/homebrew/Cellar/fastlane/2.232.2/libexec" \
-API_KEY_JSON="$API_KEY_JSON" APP_IDENTIFIER="$APP_IDENTIFIER" UPLOAD_DIR="$UPLOAD_DIR" PRESERVE_LOCALES="$PRESERVE_LOCALES" \
+API_KEY_JSON="$API_KEY_JSON" APP_IDENTIFIER="$APP_IDENTIFIER" UPLOAD_DIR="$UPLOAD_DIR" PRESERVE_LOCALES="$PRESERVE_LOCALES" PREFERRED_SCREENSHOT_TYPES="$PREFERRED_SCREENSHOT_TYPES" \
 ruby - <<'RUBY'
 require 'fileutils'
 require 'json'
@@ -156,6 +162,16 @@ def unique_output_path(locale_dir, file_name, display_type)
   end
 end
 
+def choose_screenshot_set(set_payloads, preferred_types)
+  preferred_types.each do |ptype|
+    match = set_payloads.find { |payload| payload[:display_type] == ptype }
+    return match if match
+  end
+
+  iphone_fallback = set_payloads.find { |payload| payload[:display_type].start_with?('APP_IPHONE_') }
+  iphone_fallback || set_payloads.first
+end
+
 client = Spaceship::ConnectAPI.client.tunes_request_client
 app = Spaceship::ConnectAPI::App.find(ENV.fetch('APP_IDENTIFIER'))
 raise "app not found: #{ENV['APP_IDENTIFIER']}" unless app
@@ -191,12 +207,20 @@ loc_refs.each do |ref|
   end
 
   set_refs = client.get("https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/#{ref['id']}/relationships/appScreenshotSets").body['data'] || []
+  preferred_types = ENV.fetch('PREFERRED_SCREENSHOT_TYPES').split(',').map(&:strip).reject(&:empty?)
+  set_payloads = set_refs.map do |set_ref|
+    set = client.get("https://api.appstoreconnect.apple.com/v1/appScreenshotSets/#{set_ref['id']}").body['data']
+    {
+      id: set_ref['id'],
+      display_type: set.dig('attributes', 'screenshotDisplayType').to_s
+    }
+  end
+  selected_set = choose_screenshot_set(set_payloads, preferred_types)
   downloaded = 0
 
-  set_refs.each do |set_ref|
-    set = client.get("https://api.appstoreconnect.apple.com/v1/appScreenshotSets/#{set_ref['id']}").body['data']
-    display_type = set.dig('attributes', 'screenshotDisplayType').to_s
-    shot_refs = client.get("https://api.appstoreconnect.apple.com/v1/appScreenshotSets/#{set_ref['id']}/relationships/appScreenshots").body['data'] || []
+  if selected_set
+    display_type = selected_set[:display_type]
+    shot_refs = client.get("https://api.appstoreconnect.apple.com/v1/appScreenshotSets/#{selected_set[:id]}/relationships/appScreenshots").body['data'] || []
 
     shot_refs.each do |shot_ref|
       shot = client.get("https://api.appstoreconnect.apple.com/v1/appScreenshots/#{shot_ref['id']}").body['data']
@@ -214,6 +238,7 @@ loc_refs.each do |ref|
     end
   end
 
-  puts "[downloaded] #{locale} screenshots=#{downloaded}"
+  selected_type = selected_set ? selected_set[:display_type] : 'none'
+  puts "[downloaded] #{locale} screenshots=#{downloaded} display_type=#{selected_type}"
 end
 RUBY
