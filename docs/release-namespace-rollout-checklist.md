@@ -6,7 +6,7 @@
 |---|---|---|
 | Web App (legacy) | `/api/{path}` | `NEXT_PUBLIC_API_NAMESPACE=` |
 | iOS App (versioned) | `/api/ios/v1.0.0/{path}` | `NEXT_PUBLIC_API_NAMESPACE=ios/v1.0.0` |
-| Android App (legacy) | `/api/{path}` | `NEXT_PUBLIC_API_NAMESPACE=` (optional) |
+| Android App (versioned) | `/api/android/v1.0.0/{path}` | `NEXT_PUBLIC_API_NAMESPACE=android/v1.0.0` |
 
 iOS version policy env (optional):
 
@@ -28,13 +28,14 @@ pnpm --dir mingle-app build:release:android
 - 클라이언트는 `/api/{namespace?}/{path}` 형식으로 호출합니다.
 - URL query override:
   - `apiNamespace` 또는 `apiNs`
-  - allow-list: `''`, `ios/v1.0.0`
-  - 예: `?apiNamespace=ios/v1.0.0`
+  - allow-list: `''`, `ios/v1.0.0`, `android/v1.0.0`
+  - 예: `?apiNamespace=android/v1.0.0`
 
-## 4) Legacy + iOS v1.0.0 Policy
+## 4) Legacy + Mobile v1.0.0 Policy
 
 - legacy 무버전 경로는 현재 유지합니다.
 - iOS versioned 경로(`/api/ios/v1.0.0/*`)는 legacy와 동일 로직을 사용합니다.
+- Android versioned 경로(`/api/android/v1.0.0/*`)도 legacy와 동일 로직을 사용합니다.
 
 ## 5) Contract Test Coverage
 

@@ -6,23 +6,26 @@ This is the `mingle-app/rn` React Native workspace.
 - `pnpm rn:start`
 - `pnpm rn:ios:env-check`
 - `pnpm rn:ios`
+- `pnpm rn:android:env-check`
+- `pnpm rn:android`
 
 RN 앱은 아래 env를 필요로 합니다.
 
 - `NEXT_PUBLIC_SITE_URL`
 - `NEXT_PUBLIC_WS_URL`
-- `NEXT_PUBLIC_API_NAMESPACE` (iOS 필수: `ios/v1.0.0`)
-- `RN_CLIENT_VERSION` (optional, fallback: `CFBundleShortVersionString`)
-- `RN_CLIENT_BUILD` (optional, fallback: `CFBundleVersion`)
+- `NEXT_PUBLIC_API_NAMESPACE` (iOS: `ios/v1.0.0`, Android: `android/v1.0.0`)
+- `RN_CLIENT_VERSION` (optional, fallback: iOS `CFBundleShortVersionString`, Android `BuildConfig.MINGLE_CLIENT_VERSION`)
+- `RN_CLIENT_BUILD` (optional, fallback: iOS `CFBundleVersion`, Android `BuildConfig.MINGLE_CLIENT_BUILD`)
 
 RN WebView는 `apiNamespace` 쿼리로 웹에 전달합니다.
 값이 없거나 플랫폼 기준값과 다르면 WebView를 로드하지 않고 오류를 표시합니다.
 `pnpm rn:ios`는 실행 전에 `NEXT_PUBLIC_API_NAMESPACE=ios/v1.0.0`을 검증합니다.
+`pnpm rn:android`는 실행 전에 `NEXT_PUBLIC_API_NAMESPACE=android/v1.0.0`을 검증합니다.
 
 RN 앱은 시작 시 버전 정책 API를 호출해 `force_update | recommend_update | none`을 반영합니다.
 
 - iOS: `/api/ios/v1.0.0/client/version-policy`
-- Android: `/api/client/version-policy` (또는 `/api/android/v1.0.0/client/version-policy`)
+- Android: `/api/android/v1.0.0/client/version-policy`
 - 요청 body에 `platform` (`ios` | `android`)를 포함합니다.
 
 iOS 런타임 URL은 `Info.plist`의 아래 키를 우선 사용합니다.
@@ -33,6 +36,8 @@ iOS 런타임 URL은 `Info.plist`의 아래 키를 우선 사용합니다.
 `scripts/devbox`는 iOS 디바이스 빌드 시 `rn/ios/devbox.runtime.xcconfig`를 생성/주입해
 위 값을 워크트리/ngrok URL로 덮어씁니다. devbox를 쓰지 않는 일반 빌드는
 Xcode 프로젝트 기본값(프로덕션 URL)을 사용합니다.
+
+Android 런타임 URL과 namespace는 Gradle `BuildConfig`와 `NativeRuntimeConfigModule`로 주입됩니다.
 
 This project was bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 

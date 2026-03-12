@@ -93,7 +93,15 @@ function readRuntimeEnvValue(keys: string[]): string {
 }
 
 function readNativeRuntimeConfig(): NativeRuntimeConfig {
-  const runtimeConfig = (NativeModules.NativeSTTModule as
+  const runtimeConfigModule = (NativeModules as {
+    NativeRuntimeConfigModule?: {
+      runtimeConfig?: NativeRuntimeConfig;
+    };
+    NativeSTTModule?: {
+      runtimeConfig?: NativeRuntimeConfig;
+    };
+  }).NativeRuntimeConfigModule;
+  const runtimeConfig = runtimeConfigModule?.runtimeConfig ?? (NativeModules.NativeSTTModule as
     | {
         runtimeConfig?: NativeRuntimeConfig;
       }
@@ -884,8 +892,9 @@ function AppInner(): React.JSX.Element {
       ? `&apiNamespace=${encodeURIComponent(VALIDATED_API_NAMESPACE)}`
       : '';
     const debugParams = __DEV__ ? '&sttDebug=1&ttsDebug=1' : '';
-    return `${WEB_APP_BASE_URL}/${webLocale}?nativeStt=1&nativeUi=1&nativeAuth=1${apiNamespaceQuery}${debugParams}`;
-  }, [webLocale]);
+    const nativeSttQuery = nativeAvailable ? '1' : '0';
+    return `${WEB_APP_BASE_URL}/${webLocale}?nativeStt=${nativeSttQuery}&nativeUi=1&nativeAuth=1${apiNamespaceQuery}${debugParams}`;
+  }, [nativeAvailable, webLocale]);
   const trustedNativeAuthOrigin = useMemo(() => resolveTrustedOrigin(WEB_APP_BASE_URL), []);
   const [safeAreaPalette, setSafeAreaPalette] = useState<SafeAreaPalette>(() => resolveSafeAreaPaletteForUrl(webUrl));
 
@@ -919,14 +928,7 @@ function AppInner(): React.JSX.Element {
     let active = true;
     let settled = false;
     const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const nativeRuntimeConfig = (NativeModules.NativeSTTModule as
-      | {
-          runtimeConfig?: {
-            clientVersion?: string;
-            clientBuild?: string;
-          };
-        }
-      | undefined)?.runtimeConfig;
+    const nativeRuntimeConfig = readNativeRuntimeConfig();
     const envClientVersion = readRuntimeEnvValue(['RN_CLIENT_VERSION']);
     const envClientBuild = readRuntimeEnvValue(['RN_CLIENT_BUILD']);
     const clientVersion = normalizeClientVersion(

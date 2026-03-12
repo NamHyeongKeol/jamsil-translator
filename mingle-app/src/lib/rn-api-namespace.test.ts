@@ -13,7 +13,7 @@ describe('RN api namespace validation contract', () => {
 
   it('returns expected namespace by runtime os', () => {
     expect(resolveExpectedApiNamespace('ios')).toBe('ios/v1.0.0')
-    expect(resolveExpectedApiNamespace('android')).toBe('')
+    expect(resolveExpectedApiNamespace('android')).toBe('android/v1.0.0')
     expect(resolveExpectedApiNamespace('web')).toBe('')
   })
 
@@ -27,13 +27,23 @@ describe('RN api namespace validation contract', () => {
     expect(result.validatedApiNamespace).toBe('ios/v1.0.0')
   })
 
-  it('rejects namespace when runtime does not define a versioned namespace', () => {
+  it('accepts only matching Android namespace', () => {
+    const result = validateRnApiNamespace({
+      runtimeOs: 'android',
+      configuredApiNamespace: 'android/v1.0.0',
+    })
+
+    expect(result.expectedApiNamespace).toBe('android/v1.0.0')
+    expect(result.validatedApiNamespace).toBe('android/v1.0.0')
+  })
+
+  it('rejects mismatched namespace for Android runtime', () => {
     const result = validateRnApiNamespace({
       runtimeOs: 'android',
       configuredApiNamespace: 'ios/v1.0.0',
     })
 
-    expect(result.expectedApiNamespace).toBe('')
+    expect(result.expectedApiNamespace).toBe('android/v1.0.0')
     expect(result.validatedApiNamespace).toBe('')
   })
 
