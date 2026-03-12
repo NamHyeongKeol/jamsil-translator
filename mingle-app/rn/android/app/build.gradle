@@ -3,6 +3,7 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 def resolveHermesCommandPath = {
+    def rnNodeModulesDir = file("../../node_modules")
     def osBin = org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_MAC)
         ? "osx-bin"
         : (org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_WINDOWS)
@@ -12,12 +13,12 @@ def resolveHermesCommandPath = {
         ? "hermesc.exe"
         : "hermesc"
 
-    def directBinary = file("../node_modules/hermes-compiler/hermesc/${osBin}/${hermesBinaryName}")
+    def directBinary = new File(rnNodeModulesDir, "hermes-compiler/hermesc/${osBin}/${hermesBinaryName}")
     if (directBinary.exists()) {
         return directBinary.absolutePath
     }
 
-    def pnpmStoreDir = file("../node_modules/.pnpm")
+    def pnpmStoreDir = new File(rnNodeModulesDir, ".pnpm")
     if (pnpmStoreDir.exists()) {
         def pnpmEntries = pnpmStoreDir.listFiles()
             ?.findAll { it.name.startsWith("hermes-compiler@") }
