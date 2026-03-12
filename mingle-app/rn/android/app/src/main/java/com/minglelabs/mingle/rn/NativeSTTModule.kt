@@ -3,6 +3,8 @@ package com.minglelabs.mingle.rn
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
@@ -10,6 +12,7 @@ import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.NoiseSuppressor
 import android.os.Build
+import android.os.SystemClock
 import android.util.Base64
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -32,6 +35,8 @@ import okhttp3.WebSocketListener
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 
@@ -77,7 +82,13 @@ class NativeSTTModule(
   @Volatile private var activeNoiseSuppressor: NoiseSuppressor? = null
   @Volatile private var pendingStartRequest: PendingStartRequest? = null
   @Volatile private var recordingCallback: AudioManager.AudioRecordingCallback? = null
+  @Volatile private var audioDeviceCallback: AudioDeviceCallback? = null
+  @Volatile private var stallMonitor: ScheduledExecutorService? = null
   @Volatile private var lastClientSilenced: Boolean? = null
+  @Volatile private var foregroundServiceActive = false
+  @Volatile private var lastAudioChunkAtMs: Long = 0L
+  @Volatile private var lastAudioRecoveryAtMs: Long = 0L
+  private val isRecoveringAudio = AtomicBoolean(false)
 
   override fun getName(): String = "NativeSTTModule"
 
@@ -202,7 +213,7 @@ class NativeSTTModule(
     }
 
     try {
-      recreateAudioCapture(enabled)
+      recreateAudioCapture(enabled, "set_aec")
       promise.resolve(Arguments.createMap().apply { putBoolean("ok", true) })
     } catch (error: Throwable) {
       emitError("audio_reconfigure_failed: ${error.message ?: "unknown"}")
@@ -251,10 +262,6 @@ class NativeSTTModule(
 
     try {
       prepareAudioMode(profile)
-      if (profile.foregroundServiceEnabled) {
-        NativeSTTForegroundService.start(reactApplicationContext)
-      }
-
       val capture = createAudioCapture(
         profile = profile,
         preferredSampleRate = null,
@@ -322,6 +329,9 @@ class NativeSTTModule(
       })
 
       startAudioThread(capture)
+      registerAudioDeviceCallback()
+      startStallMonitor()
+      setForegroundServiceEnabled(profile.foregroundServiceEnabled)
       emitStatus("running")
       promise.resolve(Arguments.createMap().apply {
         putInt("sampleRate", currentSampleRate)
@@ -335,28 +345,77 @@ class NativeSTTModule(
 
   private fun recreateAudioCapture(
     aecEnabled: Boolean,
+    reason: String,
   ) {
-    val current = audioRecord ?: throw IllegalStateException("audio_record_unavailable")
+    val previousRecord = audioRecord ?: throw IllegalStateException("audio_record_unavailable")
     val preferredSampleRate = currentSampleRate
-    val profile = NativeSttCapturePolicy.resolve(aecEnabled)
+    val previousProfile = currentProfile ?: NativeSttCapturePolicy.resolve(requestedAecEnabled)
+    val nextProfile = NativeSttCapturePolicy.resolve(aecEnabled)
+
+    prepareAudioMode(nextProfile)
+    val nextCapture = try {
+      createAudioCapture(
+        profile = nextProfile,
+        preferredSampleRate = preferredSampleRate,
+      )
+    } catch (error: Throwable) {
+      prepareAudioMode(previousProfile)
+      throw error
+    }
+
     stopAudioThread()
     unregisterRecordingCallback()
     releaseAudioEffects()
-    current.stopSafely()
-    current.release()
+    previousRecord.stopSafely()
 
-    prepareAudioMode(profile)
-    val capture = createAudioCapture(
-      profile = profile,
-      preferredSampleRate = preferredSampleRate,
-    )
-    audioRecord = capture.record
-    currentSampleRate = capture.sampleRate
-    currentProfile = capture.profile
-    attachAudioEffects(capture.record.audioSessionId, capture.profile)
-    registerRecordingCallback(capture.record)
-    startAudioThread(capture)
-    emitStatus("running")
+    try {
+      audioRecord = nextCapture.record
+      currentSampleRate = nextCapture.sampleRate
+      currentProfile = nextCapture.profile
+      attachAudioEffects(nextCapture.record.audioSessionId, nextCapture.profile)
+      registerRecordingCallback(nextCapture.record)
+      startAudioThread(nextCapture)
+      previousRecord.release()
+      setForegroundServiceEnabled(nextCapture.profile.foregroundServiceEnabled)
+      emitStatus("running")
+      Log.i(TAG, "audio capture recreated reason=$reason profile=${nextCapture.profile.label}")
+    } catch (switchError: Throwable) {
+      nextCapture.record.stopSafely()
+      nextCapture.record.release()
+
+      prepareAudioMode(previousProfile)
+      audioRecord = previousRecord
+      currentSampleRate = preferredSampleRate
+      currentProfile = previousProfile
+      attachAudioEffects(previousRecord.audioSessionId, previousProfile)
+      registerRecordingCallback(previousRecord)
+
+      try {
+        startAudioThread(
+          AudioCaptureHandle(
+            record = previousRecord,
+            sampleRate = preferredSampleRate,
+            bufferSizeInBytes = 0,
+            profile = previousProfile,
+          ),
+        )
+        setForegroundServiceEnabled(previousProfile.foregroundServiceEnabled)
+        emitStatus("running")
+      } catch (rollbackError: Throwable) {
+        previousRecord.release()
+        cleanup(reason = "audio_capture_recover_failed", emitClose = true)
+        throw IllegalStateException(
+          "audio_capture_swap_failed(${switchError.message ?: "unknown"}); rollback_failed(${rollbackError.message ?: "unknown"})",
+          rollbackError,
+        )
+      }
+
+      Log.w(TAG, "audio capture rollback applied reason=$reason error=${switchError.message ?: "unknown"}")
+      throw IllegalStateException(
+        "audio_capture_swap_failed(${switchError.message ?: "unknown"})",
+        switchError,
+      )
+    }
   }
 
   private fun prepareAudioMode(
@@ -433,16 +492,22 @@ class NativeSTTModule(
     if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
       throw IllegalStateException("audio_record_start_failed(${record.recordingState})")
     }
+    lastAudioChunkAtMs = SystemClock.elapsedRealtime()
 
     val thread = Thread({
       while (isRunning.get() && audioRecord === record) {
         val bytesRead = record.read(chunkBuffer, 0, chunkBuffer.size)
         if (bytesRead <= 0) {
+          if (bytesRead == AudioRecord.ERROR_DEAD_OBJECT) {
+            scheduleAudioRecovery("audio_dead_object")
+          }
           if (bytesRead != AudioRecord.ERROR_INVALID_OPERATION && bytesRead != AudioRecord.ERROR_BAD_VALUE) {
             emitError("audio_read_failed: $bytesRead")
           }
           continue
         }
+
+        lastAudioChunkAtMs = SystemClock.elapsedRealtime()
 
         val socket = webSocket
         if (!webSocketReady || socket == null) {
@@ -539,6 +604,113 @@ class NativeSTTModule(
     lastClientSilenced = null
   }
 
+  private fun registerAudioDeviceCallback() {
+    unregisterAudioDeviceCallback()
+    val callback = object : AudioDeviceCallback() {
+      override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+        if (addedDevices.isNotEmpty()) {
+          scheduleAudioRecovery("route_change_added")
+        }
+      }
+
+      override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+        if (removedDevices.isNotEmpty()) {
+          scheduleAudioRecovery("route_change_removed")
+        }
+      }
+    }
+    audioManager.registerAudioDeviceCallback(callback, null)
+    audioDeviceCallback = callback
+  }
+
+  private fun unregisterAudioDeviceCallback() {
+    val callback = audioDeviceCallback ?: return
+    audioManager.unregisterAudioDeviceCallback(callback)
+    audioDeviceCallback = null
+  }
+
+  private fun startStallMonitor() {
+    stopStallMonitor()
+    lastAudioChunkAtMs = SystemClock.elapsedRealtime()
+    val executor = Executors.newSingleThreadScheduledExecutor { runnable ->
+      Thread(runnable, "NativeSTT-StallMonitor").apply { isDaemon = true }
+    }
+    stallMonitor = executor
+    executor.scheduleAtFixedRate(
+      {
+        if (!isRunning.get()) {
+          return@scheduleAtFixedRate
+        }
+        val activeRecord = audioRecord ?: return@scheduleAtFixedRate
+        val threadDead = audioThread?.isAlive == false
+        val stalledForMs = SystemClock.elapsedRealtime() - lastAudioChunkAtMs
+        if (threadDead || (webSocketReady && activeRecord.recordingState == AudioRecord.RECORDSTATE_RECORDING && stalledForMs > AUDIO_STALL_THRESHOLD_MS)) {
+          scheduleAudioRecovery(
+            if (threadDead) "audio_thread_dead" else "audio_stall_${stalledForMs}ms",
+          )
+        }
+      },
+      AUDIO_STALL_CHECK_INTERVAL_MS,
+      AUDIO_STALL_CHECK_INTERVAL_MS,
+      TimeUnit.MILLISECONDS,
+    )
+  }
+
+  private fun stopStallMonitor() {
+    val monitor = stallMonitor
+    stallMonitor = null
+    monitor?.shutdownNow()
+  }
+
+  private fun scheduleAudioRecovery(reason: String) {
+    if (!isRunning.get() || audioRecord == null) {
+      return
+    }
+    val now = SystemClock.elapsedRealtime()
+    if (now - lastAudioRecoveryAtMs < AUDIO_RECOVERY_COOLDOWN_MS) {
+      return
+    }
+    if (!isRecoveringAudio.compareAndSet(false, true)) {
+      return
+    }
+    lastAudioRecoveryAtMs = now
+    emitStatus("recovering")
+    Thread(
+      {
+        try {
+          if (!isRunning.get()) {
+            return@Thread
+          }
+          recreateAudioCapture(
+            aecEnabled = requestedAecEnabled,
+            reason = reason,
+          )
+        } catch (error: Throwable) {
+          emitError("audio_recovery_failed($reason): ${error.message ?: "unknown"}")
+          cleanup(reason = "audio_recovery_failed", emitClose = true)
+        } finally {
+          isRecoveringAudio.set(false)
+        }
+      },
+      "NativeSTT-Recovery",
+    ).start()
+  }
+
+  private fun setForegroundServiceEnabled(enabled: Boolean) {
+    if (enabled) {
+      if (!foregroundServiceActive) {
+        NativeSTTForegroundService.start(reactApplicationContext)
+        foregroundServiceActive = true
+      }
+      return
+    }
+
+    if (foregroundServiceActive) {
+      NativeSTTForegroundService.stop(reactApplicationContext)
+      foregroundServiceActive = false
+    }
+  }
+
   private fun cleanup(
     reason: String?,
     emitClose: Boolean,
@@ -555,6 +727,8 @@ class NativeSTTModule(
     webSocketClient = null
 
     stopAudioThread()
+    stopStallMonitor()
+    unregisterAudioDeviceCallback()
     unregisterRecordingCallback()
     releaseAudioEffects()
 
@@ -567,10 +741,9 @@ class NativeSTTModule(
 
     restoreAudioMode()
 
-    if (currentProfile?.foregroundServiceEnabled == true) {
-      NativeSTTForegroundService.stop(reactApplicationContext)
-    }
+    setForegroundServiceEnabled(false)
     currentProfile = null
+    isRecoveringAudio.set(false)
 
     if (emitClose && wasRunning && reason != null) {
       emitClose(reason)
@@ -657,5 +830,8 @@ class NativeSTTModule(
   companion object {
     private const val TAG = "NativeSTTModule"
     private const val REQUEST_RECORD_AUDIO = 44_002
+    private const val AUDIO_STALL_THRESHOLD_MS = 4_000L
+    private const val AUDIO_STALL_CHECK_INTERVAL_MS = 2_000L
+    private const val AUDIO_RECOVERY_COOLDOWN_MS = 1_500L
   }
 }
