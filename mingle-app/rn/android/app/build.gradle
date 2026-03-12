@@ -58,6 +58,31 @@ react {
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
 def enableProguardInReleaseBuilds = false
+def appVersionCode = 12
+def appVersionName = "1.0.0"
+
+def readEnvOrDefault = { String key, String fallback ->
+    def value = System.getenv(key)
+    if (value == null) {
+        return fallback
+    }
+    def trimmed = value.trim()
+    return trimmed.isEmpty() ? fallback : trimmed
+}
+
+def quoteBuildConfigString = { String value ->
+    def escaped = value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+    return "\"${escaped}\""
+}
+
+def runtimeSiteUrl = readEnvOrDefault("NEXT_PUBLIC_SITE_URL", "https://mingle-app-xi.vercel.app")
+def runtimeWsUrl = readEnvOrDefault("NEXT_PUBLIC_WS_URL", "wss://mingle.up.railway.app")
+def runtimeApiNamespace = readEnvOrDefault("NEXT_PUBLIC_API_NAMESPACE", "android/v1.0.0")
+def runtimeClientVersion = readEnvOrDefault("RN_CLIENT_VERSION", appVersionName)
+def runtimeClientBuild = readEnvOrDefault("RN_CLIENT_BUILD", String.valueOf(appVersionCode))
+def allowCleartextTraffic = runtimeSiteUrl.toLowerCase().startsWith("http://")
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -77,13 +102,21 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.mingle"
+    namespace "com.minglelabs.mingle.rn"
     defaultConfig {
-        applicationId "com.mingle"
+        applicationId "com.minglelabs.mingle.rn"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
+        manifestPlaceholders = [
+            usesCleartextTraffic: allowCleartextTraffic.toString(),
+        ]
+        buildConfigField "String", "MINGLE_WEB_APP_BASE_URL", quoteBuildConfigString(runtimeSiteUrl)
+        buildConfigField "String", "MINGLE_DEFAULT_WS_URL", quoteBuildConfigString(runtimeWsUrl)
+        buildConfigField "String", "MINGLE_API_NAMESPACE", quoteBuildConfigString(runtimeApiNamespace)
+        buildConfigField "String", "MINGLE_CLIENT_VERSION", quoteBuildConfigString(runtimeClientVersion)
+        buildConfigField "String", "MINGLE_CLIENT_BUILD", quoteBuildConfigString(runtimeClientBuild)
     }
     signingConfigs {
         debug {

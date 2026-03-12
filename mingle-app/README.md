@@ -63,8 +63,9 @@ MINGLE_TEST_TTS_OUTPUT_DIR=/absolute/path/to/tts-output
 
 클라이언트는 런타임 분기 없이 `NEXT_PUBLIC_API_NAMESPACE`로 API 경로를 결정합니다.
 
-- 기본값(legacy): 빈 값(`''`) -> `/api/{기존경로}`
-- iOS versioned: `ios/v1.0.0` -> `/api/ios/v1.0.0/{기존경로}`
+- 기본값(legacy): 빈 값(`''`) -> `/api/{existing-path}`
+- iOS versioned: `ios/v1.0.0` -> `/api/ios/v1.0.0/{existing-path}`
+- Android versioned: `android/v1.0.0` -> `/api/android/v1.0.0/{existing-path}`
 
 Release build commands:
 
@@ -77,8 +78,8 @@ pnpm build:release:android
 URL override (optional):
 
 - 브라우저 URL 쿼리 `apiNamespace`(또는 `apiNs`)는 allow-list 값만 반영됩니다.
-- 허용값: `''`, `ios/v1.0.0`
-- 예: `https://your-app/ko?apiNamespace=ios/v1.0.0`
+- 허용값: `''`, `ios/v1.0.0`, `android/v1.0.0`
+- 예: `https://your-app/ko?apiNamespace=android/v1.0.0`
 - 허용되지 않은 값은 무시되고 env/default를 사용합니다.
 
 ### Client Version Policy
@@ -357,6 +358,7 @@ VALUES (
 
 루트 `pnpm rn:start|ios|android` 스크립트는 `.env.local`을 먼저 로드한 뒤 RN CLI를 실행합니다.
 `pnpm rn:ios`는 실행 전에 `NEXT_PUBLIC_API_NAMESPACE=ios/v1.0.0` 검증을 강제합니다.
+`pnpm rn:android`는 실행 전에 `NEXT_PUBLIC_API_NAMESPACE=android/v1.0.0` 검증을 강제합니다.
 
 - iOS native STT bridge lives in:
   - `rn/ios/mingle/NativeSTTModule.swift`

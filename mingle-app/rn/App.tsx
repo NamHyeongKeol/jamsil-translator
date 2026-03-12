@@ -93,7 +93,15 @@ function readRuntimeEnvValue(keys: string[]): string {
 }
 
 function readNativeRuntimeConfig(): NativeRuntimeConfig {
-  const runtimeConfig = (NativeModules.NativeSTTModule as
+  const runtimeConfigModule = (NativeModules as {
+    NativeRuntimeConfigModule?: {
+      runtimeConfig?: NativeRuntimeConfig;
+    };
+    NativeSTTModule?: {
+      runtimeConfig?: NativeRuntimeConfig;
+    };
+  }).NativeRuntimeConfigModule;
+  const runtimeConfig = runtimeConfigModule?.runtimeConfig ?? (NativeModules.NativeSTTModule as
     | {
         runtimeConfig?: NativeRuntimeConfig;
       }
@@ -907,14 +915,7 @@ function AppInner(): React.JSX.Element {
     let active = true;
     let settled = false;
     const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const nativeRuntimeConfig = (NativeModules.NativeSTTModule as
-      | {
-          runtimeConfig?: {
-            clientVersion?: string;
-            clientBuild?: string;
-          };
-        }
-      | undefined)?.runtimeConfig;
+    const nativeRuntimeConfig = readNativeRuntimeConfig();
     const envClientVersion = readRuntimeEnvValue(['RN_CLIENT_VERSION']);
     const envClientBuild = readRuntimeEnvValue(['RN_CLIENT_BUILD']);
     const clientVersion = normalizeClientVersion(

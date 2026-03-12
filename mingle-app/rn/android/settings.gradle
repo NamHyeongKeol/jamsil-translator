@@ -1,3 +1,24 @@
+pluginManagement {
+    def directDir = file("../node_modules/@react-native/gradle-plugin")
+    def reactNativeGradlePluginDir = directDir
+    def pnpmStoreDir = file("../node_modules/.pnpm")
+    if (!directDir.exists() && pnpmStoreDir.exists()) {
+        def pnpmEntries = pnpmStoreDir.listFiles()
+            ?.findAll { it.name.startsWith("@react-native+gradle-plugin@") }
+            ?.sort { a, b -> a.name <=> b.name }
+        if (pnpmEntries != null && !pnpmEntries.isEmpty()) {
+            reactNativeGradlePluginDir = new File(pnpmEntries.last(), "node_modules/@react-native/gradle-plugin")
+        }
+    }
+    if (!reactNativeGradlePluginDir.exists()) {
+        throw new GradleException("Unable to locate @react-native/gradle-plugin in node_modules.")
+    }
+    includeBuild(reactNativeGradlePluginDir.absolutePath)
+}
+
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+
 def resolveReactNativeGradlePluginDir = {
     def directDir = file("../node_modules/@react-native/gradle-plugin")
     if (directDir.exists()) {
@@ -19,15 +40,6 @@ def resolveReactNativeGradlePluginDir = {
     return directDir
 }
 
-pluginManagement {
-    def reactNativeGradlePluginDir = resolveReactNativeGradlePluginDir()
-    if (!reactNativeGradlePluginDir.exists()) {
-        throw new GradleException("Unable to locate @react-native/gradle-plugin in node_modules.")
-    }
-    includeBuild(reactNativeGradlePluginDir.absolutePath)
-}
-plugins { id("com.facebook.react.settings") }
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
 rootProject.name = 'mingle'
 include ':app'
 def reactNativeGradlePluginDir = resolveReactNativeGradlePluginDir()

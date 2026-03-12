@@ -5,11 +5,17 @@ import { POST as postLegacyTranslateFinalize } from '@/app/api/translate/finaliz
 import { POST as postLegacyTtsInworld } from '@/app/api/tts/inworld/route'
 import { POST as postLegacyClientVersionPolicy } from '@/app/api/client/version-policy/route'
 import { POST as postAndroidV100ClientVersionPolicy } from '@/app/api/android/v1.0.0/client/version-policy/route'
+import { POST as postAndroidV100LogClientEvent } from '@/app/api/android/v1.0.0/log/client-event/route'
+import { POST as postAndroidV100TranslateFinalize } from '@/app/api/android/v1.0.0/translate/finalize/route'
+import { POST as postAndroidV100TtsInworld } from '@/app/api/android/v1.0.0/tts/inworld/route'
 import { POST as postIosV100ClientVersionPolicy } from '@/app/api/ios/v1.0.0/client/version-policy/route'
 import { POST as postIosV100LogClientEvent } from '@/app/api/ios/v1.0.0/log/client-event/route'
 import { POST as postIosV100TranslateFinalize } from '@/app/api/ios/v1.0.0/translate/finalize/route'
 import { POST as postIosV100TtsInworld } from '@/app/api/ios/v1.0.0/tts/inworld/route'
 import { postAndroidClientVersionPolicyForAndroidV1_0_0 } from '@/server/api/controllers/android/v1.0.0/client-version-policy-controller'
+import { postLogClientEventForAndroidV1_0_0 } from '@/server/api/controllers/android/v1.0.0/log-client-event-controller'
+import { postTranslateFinalizeForAndroidV1_0_0 } from '@/server/api/controllers/android/v1.0.0/translate-finalize-controller'
+import { postTtsInworldForAndroidV1_0_0 } from '@/server/api/controllers/android/v1.0.0/tts-inworld-controller'
 import { postIosClientVersionPolicyForIosV1_0_0 } from '@/server/api/controllers/ios/v1.0.0/client-version-policy-controller'
 import { postLogClientEventForIosV1_0_0 } from '@/server/api/controllers/ios/v1.0.0/log-client-event-controller'
 import { postTranslateFinalizeForIosV1_0_0 } from '@/server/api/controllers/ios/v1.0.0/translate-finalize-controller'
@@ -29,6 +35,9 @@ describe('mingle-app namespace route wiring', () => {
   })
 
   it('maps /android/v1.0.0 routes to Android v1.0.0 controllers', () => {
+    expect(postAndroidV100TranslateFinalize).toBe(postTranslateFinalizeForAndroidV1_0_0)
+    expect(postAndroidV100TtsInworld).toBe(postTtsInworldForAndroidV1_0_0)
+    expect(postAndroidV100LogClientEvent).toBe(postLogClientEventForAndroidV1_0_0)
     expect(postAndroidV100ClientVersionPolicy).toBe(postAndroidClientVersionPolicyForAndroidV1_0_0)
   })
 
@@ -44,5 +53,11 @@ describe('mingle-app namespace route wiring', () => {
     expect(postTtsInworldForIosV1_0_0).toBe(postTtsInworldForLegacy)
     expect(postLogClientEventForIosV1_0_0).toBe(postLogClientEventForLegacy)
     expect(postIosClientVersionPolicyForIosV1_0_0).toBe(postIosClientVersionPolicyForLegacy)
+  })
+
+  it('keeps Android v1.0.0 controller code identical to legacy controllers', () => {
+    expect(postTranslateFinalizeForAndroidV1_0_0).toBe(postTranslateFinalizeForLegacy)
+    expect(postTtsInworldForAndroidV1_0_0).toBe(postTtsInworldForLegacy)
+    expect(postLogClientEventForAndroidV1_0_0).toBe(postLogClientEventForLegacy)
   })
 })
