@@ -35,6 +35,8 @@ const SILENT_WAV_DATA_URI = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABA
 const TTS_STT_GAIN = 1.0
 const NATIVE_TTS_EVENT = 'mingle:native-tts'
 const SCROLL_TO_BOTTOM_BUTTON_THRESHOLD_PX = 600
+const SCROLL_TO_BOTTOM_BUTTON_BOTTOM_PX = 12
+const SCROLL_TO_BOTTOM_BUTTON_SIZE_PX = 44
 const SCROLL_UI_HIDE_DELAY_MS = 1000
 const SCROLLBAR_MIN_THUMB_HEIGHT_PX = 28
 const USER_SCROLL_INTENT_WINDOW_MS = 1400
@@ -1462,12 +1464,18 @@ const LivePhoneDemo = forwardRef<LivePhoneDemoRef, LivePhoneDemoProps>(function 
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.98 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="pointer-events-none absolute inset-x-0 bottom-10 z-20 flex justify-center"
+                className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
+                style={{ bottom: SCROLL_TO_BOTTOM_BUTTON_BOTTOM_PX }}
               >
                 <button
                   type="button"
                   onClick={handleScrollToBottom}
-                  className="pointer-events-auto inline-flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border border-black/10 bg-white text-black shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
+                  className="pointer-events-auto inline-flex items-center justify-center rounded-full border border-black/10 bg-white text-black shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
+                  style={{
+                    width: SCROLL_TO_BOTTOM_BUTTON_SIZE_PX,
+                    minWidth: SCROLL_TO_BOTTOM_BUTTON_SIZE_PX,
+                    height: SCROLL_TO_BOTTOM_BUTTON_SIZE_PX,
+                  }}
                   aria-label="Scroll to latest"
                 >
                   <ChevronDown size={28} strokeWidth={1.85} />
