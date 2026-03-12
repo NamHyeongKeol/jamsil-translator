@@ -20,7 +20,6 @@
 - `scripts/ios-appstore-media.sh` writes to `generated/` by default.
 - `scripts/ios-appstore-upload.sh` reads from `upload/` by default.
 - `scripts/devbox ios-appstore-sync-metadata` reads `appstore-connect-info.i18n.json` by default.
-
 ## Quick commands
 
 ```bash
