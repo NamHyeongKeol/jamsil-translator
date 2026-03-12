@@ -7,7 +7,10 @@ import com.facebook.react.uimanager.ViewManager
 
 class NativeRuntimeConfigPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
-    listOf(NativeRuntimeConfigModule(reactContext))
+    listOf(
+      NativeRuntimeConfigModule(reactContext),
+      NativeSTTModule(reactContext),
+    )
 
   override fun createViewManagers(
     reactContext: ReactApplicationContext,
