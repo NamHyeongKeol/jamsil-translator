@@ -1,0 +1,661 @@
+{
+  "meta": {
+    "shots": 8,
+    "locales": [
+      "ar",
+      "de",
+      "en",
+      "es",
+      "fr",
+      "hi",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "ru",
+      "th",
+      "vi",
+      "zh-cn",
+      "zh-tw"
+    ]
+  },
+  "googlePlay": {
+    "release": {
+      "version": "1.0.0",
+      "screenshots": {
+        "ko": [
+          {
+            "line1": "언어 장벽은 이제 끝",
+            "line2": "대화에만 집중하세요"
+          },
+          {
+            "line1": "세개 이상 언어도",
+            "line2": "전방향 통번역"
+          },
+          {
+            "line1": "끊김 없는 번역과",
+            "line2": "실시간 스크립트"
+          },
+          {
+            "line1": "다른 앱 음성까지",
+            "line2": "실시간 자막으로"
+          },
+          {
+            "line1": "외국인과 통화도",
+            "line2": "자동 번역 자막"
+          },
+          {
+            "line1": "번역을 음성으로",
+            "line2": "실시간 동시 통역"
+          },
+          {
+            "line1": "백그라운드 실행",
+            "line2": "앱 전환 자유롭게"
+          },
+          {
+            "line1": "자동 언어 감지",
+            "line2": "자동 언어 스위칭"
+          }
+        ],
+        "en": [
+          {
+            "line1": "No More",
+            "line2": "Language Barriers"
+          },
+          {
+            "line1": "3+ Languages",
+            "line2": "All Directions"
+          },
+          {
+            "line1": "Uninterrupted",
+            "line2": "Live Transcripts"
+          },
+          {
+            "line1": "Audio from Any App",
+            "line2": "Live Captions"
+          },
+          {
+            "line1": "International Calls",
+            "line2": "Auto Translated Captions"
+          },
+          {
+            "line1": "Voice Translation",
+            "line2": "Live Interpreting"
+          },
+          {
+            "line1": "Runs in the Background",
+            "line2": "Switch Apps Freely"
+          },
+          {
+            "line1": "Language Detect",
+            "line2": "Auto Switch"
+          }
+        ],
+        "ja": [
+          {
+            "line1": "言語の壁はもう終わり",
+            "line2": "会話にだけ集中"
+          },
+          {
+            "line1": "3言語以上でも",
+            "line2": "全方向の通訳・翻訳"
+          },
+          {
+            "line1": "途切れない翻訳と",
+            "line2": "リアルタイム字幕"
+          },
+          {
+            "line1": "他アプリの音声まで",
+            "line2": "リアルタイム字幕で"
+          },
+          {
+            "line1": "外国人との通話も",
+            "line2": "自動翻訳字幕"
+          },
+          {
+            "line1": "翻訳を音声で",
+            "line2": "リアルタイム同時通訳"
+          },
+          {
+            "line1": "バックグラウンド実行",
+            "line2": "アプリ切替も自由に"
+          },
+          {
+            "line1": "自動言語検出",
+            "line2": "自動言語スイッチング"
+          }
+        ],
+        "zh-cn": [
+          {
+            "line1": "语言障碍到此为止",
+            "line2": "只需专注对话"
+          },
+          {
+            "line1": "三种以上语言也可",
+            "line2": "全方向口译与翻译"
+          },
+          {
+            "line1": "无缝翻译不断线",
+            "line2": "实时字幕"
+          },
+          {
+            "line1": "其他应用的语音也能",
+            "line2": "实时字幕显示"
+          },
+          {
+            "line1": "与外国人通话也可",
+            "line2": "自动翻译字幕"
+          },
+          {
+            "line1": "翻译可转为语音",
+            "line2": "实时同声传译"
+          },
+          {
+            "line1": "后台也能运行",
+            "line2": "自由切换应用"
+          },
+          {
+            "line1": "自动语言检测",
+            "line2": "自动语言切换"
+          }
+        ],
+        "zh-tw": [
+          {
+            "line1": "語言隔閡就此結束",
+            "line2": "只需專注對話"
+          },
+          {
+            "line1": "三種以上語言也可",
+            "line2": "全方向口譯與翻譯"
+          },
+          {
+            "line1": "不間斷翻譯",
+            "line2": "即時字幕"
+          },
+          {
+            "line1": "其他App語音也能",
+            "line2": "即時字幕顯示"
+          },
+          {
+            "line1": "與外國人通話也可",
+            "line2": "自動翻譯字幕"
+          },
+          {
+            "line1": "翻譯可轉成語音",
+            "line2": "即時同步口譯"
+          },
+          {
+            "line1": "背景也能執行",
+            "line2": "自由切換App"
+          },
+          {
+            "line1": "自動語言偵測",
+            "line2": "自動語言切換"
+          }
+        ],
+        "th": [
+          {
+            "line1": "กำแพงภาษา จบแล้ว",
+            "line2": "โฟกัสแค่บทสนทนา"
+          },
+          {
+            "line1": "มากกว่า 3 ภาษา ก็ได้",
+            "line2": "แปลและล่ามได้ทุกทิศทาง"
+          },
+          {
+            "line1": "แปลต่อเนื่องไม่สะดุด",
+            "line2": "พร้อมสคริปต์เรียลไทม์"
+          },
+          {
+            "line1": "เสียงจากแอปอื่นก็ได้",
+            "line2": "แสดงซับแบบเรียลไทม์"
+          },
+          {
+            "line1": "คุยโทรศัพท์กับชาวต่างชาติ",
+            "line2": "ซับแปลอัตโนมัติ"
+          },
+          {
+            "line1": "แปลออกเป็นเสียง",
+            "line2": "ล่ามพร้อมกันแบบเรียลไทม์"
+          },
+          {
+            "line1": "ทำงานเบื้องหลัง",
+            "line2": "สลับแอปได้อิสระ"
+          },
+          {
+            "line1": "ตรวจจับภาษาอัตโนมัติ",
+            "line2": "สลับภาษาอัตโนมัติ"
+          }
+        ],
+        "vi": [
+          {
+            "line1": "Hết rào cản ngôn ngữ",
+            "line2": "Chỉ tập trung hội thoại"
+          },
+          {
+            "line1": "Hơn 3 ngôn ngữ",
+            "line2": "Phiên dịch đa chiều"
+          },
+          {
+            "line1": "Dịch liền mạch",
+            "line2": "Kèm transcript trực tiếp"
+          },
+          {
+            "line1": "Âm thanh từ app khác",
+            "line2": "Phụ đề thời gian thực"
+          },
+          {
+            "line1": "Gọi với người nước ngoài",
+            "line2": "Phụ đề dịch tự động"
+          },
+          {
+            "line1": "Bản dịch thành giọng nói",
+            "line2": "Phiên dịch đồng thời"
+          },
+          {
+            "line1": "Chạy nền",
+            "line2": "Chuyển app tự do"
+          },
+          {
+            "line1": "Tự động nhận diện",
+            "line2": "Tự chuyển ngôn ngữ"
+          }
+        ],
+        "hi": [
+          {
+            "line1": "अब नहीं",
+            "line2": "भाषा की बाधाएँ"
+          },
+          {
+            "line1": "3+ भाषाएँ",
+            "line2": "हर दिशा में"
+          },
+          {
+            "line1": "बिना रुकावट",
+            "line2": "लाइव ट्रांसक्रिप्ट"
+          },
+          {
+            "line1": "किसी भी ऐप का ऑडियो",
+            "line2": "लाइव कैप्शन"
+          },
+          {
+            "line1": "अंतरराष्ट्रीय कॉल",
+            "line2": "स्वतः अनूदित कैप्शन"
+          },
+          {
+            "line1": "वॉइस अनुवाद",
+            "line2": "लाइव इंटरप्रेटिंग"
+          },
+          {
+            "line1": "बैकग्राउंड में चलता है",
+            "line2": "ऐप्स आसानी से बदलें"
+          },
+          {
+            "line1": "भाषा पहचान",
+            "line2": "ऑटो स्विच"
+          }
+        ],
+        "de": [
+          {
+            "line1": "Keine",
+            "line2": "Sprachbarrieren mehr"
+          },
+          {
+            "line1": "3+ Sprachen",
+            "line2": "In alle Richtungen"
+          },
+          {
+            "line1": "Unterbrechungsfrei",
+            "line2": "Live-Transkripte"
+          },
+          {
+            "line1": "Audio aus jeder App",
+            "line2": "Live-Untertitel"
+          },
+          {
+            "line1": "Internationale Anrufe",
+            "line2": "Auto-übersetzte Subs"
+          },
+          {
+            "line1": "Sprachübersetzung",
+            "line2": "Live-Dolmetschen"
+          },
+          {
+            "line1": "Läuft im Hintergrund",
+            "line2": "Apps frei wechseln"
+          },
+          {
+            "line1": "Spracherkennung",
+            "line2": "Auto-Umschaltung"
+          }
+        ],
+        "es": [
+          {
+            "line1": "No más",
+            "line2": "barreras de idioma"
+          },
+          {
+            "line1": "3+ idiomas",
+            "line2": "en todas direcciones"
+          },
+          {
+            "line1": "Sin interrupciones",
+            "line2": "transcripción en vivo"
+          },
+          {
+            "line1": "Audio de cualquier app",
+            "line2": "subtítulos en vivo"
+          },
+          {
+            "line1": "Llamadas al exterior",
+            "line2": "subtítulos traducidos"
+          },
+          {
+            "line1": "Traducción por voz",
+            "line2": "interpretación en vivo"
+          },
+          {
+            "line1": "En segundo plano",
+            "line2": "cambia app libremente"
+          },
+          {
+            "line1": "Detección de idioma",
+            "line2": "cambio automático"
+          }
+        ],
+        "fr": [
+          {
+            "line1": "Fini les barrières",
+            "line2": "de langue"
+          },
+          {
+            "line1": "3+ langues",
+            "line2": "dans tous les sens"
+          },
+          {
+            "line1": "Sans interruption",
+            "line2": "transcription en direct"
+          },
+          {
+            "line1": "Audio de toute app",
+            "line2": "sous-titres en direct"
+          },
+          {
+            "line1": "Appels internationaux",
+            "line2": "sous-titres auto-traduits"
+          },
+          {
+            "line1": "Traduction vocale",
+            "line2": "interprétation en direct"
+          },
+          {
+            "line1": "En arrière-plan",
+            "line2": "changez d’app librement"
+          },
+          {
+            "line1": "Détection de langue",
+            "line2": "bascule auto"
+          }
+        ],
+        "it": [
+          {
+            "line1": "Basta",
+            "line2": "barriere linguistiche"
+          },
+          {
+            "line1": "3+ lingue",
+            "line2": "in tutte le direzioni"
+          },
+          {
+            "line1": "Senza interruzioni",
+            "line2": "trascrizione live"
+          },
+          {
+            "line1": "Audio da qualsiasi app",
+            "line2": "sottotitoli live"
+          },
+          {
+            "line1": "Chiamate internazionali",
+            "line2": "sottotitoli auto-tradotti"
+          },
+          {
+            "line1": "Traduzione vocale",
+            "line2": "interpretazione live"
+          },
+          {
+            "line1": "Funziona in background",
+            "line2": "cambia app liberamente"
+          },
+          {
+            "line1": "Rilevamento lingua",
+            "line2": "cambio automatico"
+          }
+        ],
+        "pt": [
+          {
+            "line1": "Chega de",
+            "line2": "barreiras de idioma"
+          },
+          {
+            "line1": "3+ idiomas",
+            "line2": "em todas as direções"
+          },
+          {
+            "line1": "Sem interrupções",
+            "line2": "transcrição ao vivo"
+          },
+          {
+            "line1": "Áudio de qualquer app",
+            "line2": "legendas ao vivo"
+          },
+          {
+            "line1": "Chamadas globais",
+            "line2": "legendas traduzidas"
+          },
+          {
+            "line1": "Tradução por voz",
+            "line2": "interpretação ao vivo"
+          },
+          {
+            "line1": "Em segundo plano",
+            "line2": "troque de app livremente"
+          },
+          {
+            "line1": "Detecção de idioma",
+            "line2": "troca automática"
+          }
+        ],
+        "ru": [
+          {
+            "line1": "Больше никаких",
+            "line2": "языковых барьеров"
+          },
+          {
+            "line1": "3+ языка",
+            "line2": "во всех направлениях"
+          },
+          {
+            "line1": "Без прерываний",
+            "line2": "живые субтитры"
+          },
+          {
+            "line1": "Звук из приложений",
+            "line2": "живые субтитры"
+          },
+          {
+            "line1": "Звонки за границу",
+            "line2": "автоперевод субтитров"
+          },
+          {
+            "line1": "Голосовой перевод",
+            "line2": "синхронный перевод"
+          },
+          {
+            "line1": "Работает в фоне",
+            "line2": "меняйте приложения"
+          },
+          {
+            "line1": "Определение языка",
+            "line2": "авто-переключение"
+          }
+        ],
+        "ar": [
+          {
+            "line1": "لا مزيد من",
+            "line2": "حواجز اللغة"
+          },
+          {
+            "line1": "3+ لغات",
+            "line2": "بكل الاتجاهات"
+          },
+          {
+            "line1": "بدون انقطاع",
+            "line2": "نصوص مباشرة"
+          },
+          {
+            "line1": "صوت من أي تطبيق",
+            "line2": "تسميات توضيحية مباشرة"
+          },
+          {
+            "line1": "مكالمات دولية",
+            "line2": "تسميات مترجمة تلقائياً"
+          },
+          {
+            "line1": "ترجمة صوتية",
+            "line2": "ترجمة فورية مباشرة"
+          },
+          {
+            "line1": "يعمل في الخلفية",
+            "line2": "بدّل التطبيقات بحرية"
+          },
+          {
+            "line1": "اكتشاف اللغة",
+            "line2": "تبديل تلقائي"
+          }
+        ]
+      }
+    },
+    "storeListing": {
+      "defaultMetadataLocale": "en",
+      "title": {
+        "ar": "Mingle: أصدقاء حول العالم",
+        "de": "Mingle: Freunde weltweit",
+        "en": "Mingle: Global Hangout",
+        "es": "Mingle: Amigos del mundo",
+        "fr": "Mingle : Amis du monde entier",
+        "hi": "Mingle: दुनिया भर के दोस्त",
+        "it": "Mingle: Amici nel mondo",
+        "ja": "Mingle: 世界中の友達づくり",
+        "ko": "Mingle: 글로벌 친구 만들기",
+        "pt": "Mingle: Amigos no mundo todo",
+        "ru": "Mingle: Друзья по всему миру",
+        "th": "Mingle: หาเพื่อนทั่วโลก",
+        "vi": "Mingle: Kết bạn toàn cầu",
+        "zh-cn": "Mingle：全球交友",
+        "zh-tw": "Mingle：全球交友"
+      },
+      "shortDescription": {
+        "ar": "مترجم صوتي فوري",
+        "de": "Echtzeit-Sprachübersetzer",
+        "en": "Real-Time Voice Translator",
+        "es": "Traductor de voz en vivo",
+        "fr": "Traducteur vocal en temps réel",
+        "hi": "रीयल-टाइम वॉइस अनुवादक",
+        "it": "Traduttore vocale live",
+        "ja": "リアルタイム音声翻訳機",
+        "ko": "실시간 음성 번역기",
+        "pt": "Tradutor de voz em tempo real",
+        "ru": "Голосовой переводчик онлайн",
+        "th": "เครื่องแปลเสียงแบบเรียลไทม์",
+        "vi": "Dịch giọng nói trực tiếp",
+        "zh-cn": "实时语音翻译器",
+        "zh-tw": "即時語音翻譯器"
+      },
+      "promotionalText": {
+        "en": "Language barriers are over. Continuous real-time interpreting, live captions, and 3+ language translation. The easiest way to befriend anyone, Mingle.",
+        "ar": "انتهت حواجز اللغة. ترجمة فورية مستمرة، وتسميات مباشرة، وترجمة لأكثر من 3 لغات. أسهل طريقة لتكوين صداقة مع أي شخص، Mingle.",
+        "de": "Sprachbarrieren sind vorbei. Mingle dolmetscht in Echtzeit mit Live-Untertiteln und Übersetzung in 3+ Sprachen. So schließen Sie weltweit leichter Freundschaften.",
+        "es": "Se acabaron las barreras del idioma. Mingle interpreta en tiempo real con subtítulos en vivo y traducción en 3+ idiomas. La forma más simple de conectar con cualquiera.",
+        "fr": "Les barrières linguistiques, c'est fini. Mingle interprète en temps réel avec sous-titres en direct et traduction en 3+ langues. Le moyen simple de créer du lien partout.",
+        "hi": "भाषा की दीवारें अब खत्म। लगातार रियल-टाइम दुभाषिया, लाइव कैप्शन और 3+ भाषाओं में अनुवाद। किसी से भी दोस्ती करने का सबसे आसान तरीका, Mingle.",
+        "it": "Le barriere linguistiche sono finite. Mingle offre interpretariato in tempo reale, sottotitoli live e traduzione in 3+ lingue. Per fare amicizia ovunque, usa Mingle.",
+        "pt": "As barreiras de idioma acabaram. Mingle traz interpretação em tempo real, legendas ao vivo e tradução em mais de 3 idiomas. A forma mais simples de se conectar.",
+        "ru": "Языковые барьеры в прошлом. Mingle дает синхронный перевод в реальном времени, живые субтитры и перевод на 3+ языках. Самый простой способ легче знакомиться.",
+        "ko": "언어 장벽은 이제 끝났습니다. 마치 동시 통역가를 대동한 듯한 대화 번역.\nMingle은 긴 대화도 끊김 없이 계속해서 통번역해요. 한 문장씩 멈추는 번역기는 그만 사용하세요.\n세 개 이상의 언어도 전방향 실시간 번역을 해드립니다.\n외국인과 친해지는 가장 쉬운 방법, Mingle.",
+        "zh-cn": "语言障碍到此为止。Mingle 可为长对话提供不中断的实时口译，支持三种以上语言的全方向翻译。",
+        "zh-tw": "語言隔閡就此結束。Mingle 為長對話提供不中斷的即時口譯，支援三種以上語言的全方向翻譯。",
+        "ja": "言語の壁はもう終わり。Mingleなら長い会話も途切れずリアルタイム通訳。3言語以上でも全方向に翻訳できます。",
+        "vi": "Rào cản ngôn ngữ đã kết thúc. Mingle phiên dịch thời gian thực liên tục cho hội thoại dài và hỗ trợ dịch đa chiều 3+ ngôn ngữ.",
+        "th": "จบปัญหากำแพงภาษา Mingle แปลและล่ามแบบเรียลไทม์ต่อเนื่องสำหรับบทสนทนายาว รองรับ 3+ ภาษาแบบทุกทิศทาง"
+      },
+      "fullDescription": {
+        "en": "• Mingle supports all-direction interpreting and translation across 3+ languages. Even when multiple languages are mixed in the same conversation, everything is translated in real time, so you do not need to manually choose or switch languages whenever speakers change.\n• Get uninterrupted translation with live transcripts. Instead of stopping after each sentence, Mingle continuously translates along the full flow of your conversation or meeting, helping you follow context naturally.\n• See real-time captions and translations even for audio from other apps. If you run voice apps such as phone calls, radio, or Discord in the background on speakerphone while Mingle is in the foreground, that audio is captured as Mingle input and shown instantly as transcripts and translations.\n• Listen to translation as real-time voice interpreting. Turn on voice output to hear translated content like having an interpreter beside you, so you can understand without looking at the screen, even while running.\n• Keep it running in the background and switch apps freely. Even if you lock your screen or move Mingle to the background, it stays active and continues writing live conversation logs and translations.",
+        "ar": "• يدعم Mingle الترجمة الفورية والتحريرية في جميع الاتجاهات عبر أكثر من 3 لغات. حتى عند مزج عدة لغات في المحادثة نفسها، تتم ترجمة كل شيء في الوقت الحقيقي، لذلك لا تحتاج إلى اختيار اللغة أو تبديلها يدويًا عند تغير المتحدث.\n• احصل على ترجمة مستمرة مع نصوص مباشرة. بدلا من التوقف بعد كل جملة، يواصل Mingle الترجمة عبر كامل تدفق المحادثة أو الاجتماع، ما يساعدك على متابعة السياق بشكل طبيعي.\n• شاهد التسميات المباشرة والترجمة في الوقت الحقيقي حتى لصوت التطبيقات الأخرى. عند تشغيل تطبيقات الصوت مثل المكالمات أو الراديو أو Discord في الخلفية على مكبر الصوت بينما يكون Mingle في الواجهة، يتم التقاط هذا الصوت كمدخلات لـ Mingle ويعرض فورا كنص وترجمة.\n• استمع إلى الترجمة كتفسير صوتي فوري. فعل الإخراج الصوتي لتسمع المحتوى المترجم كما لو أن مترجما بجانبك، لتفهم دون النظر إلى الشاشة حتى أثناء الجري.\n• أبقه يعمل في الخلفية وبدل بين التطبيقات بحرية. حتى إذا قفلت الشاشة أو نقلت Mingle إلى الخلفية، يظل نشطا ويواصل كتابة سجلات المحادثة والترجمة مباشرة.",
+        "de": "• Mingle unterstützt Dolmetschen und Übersetzen in alle Richtungen für 3+ Sprachen. Selbst wenn in einem Gespräch mehrere Sprachen gemischt werden, wird alles in Echtzeit übersetzt, sodass Sie bei Sprecherwechseln keine Sprache manuell auswählen oder umschalten müssen.\n• Erhalten Sie unterbrechungsfreie Übersetzung mit Live-Transkripten. Statt nach jedem Satz zu stoppen, übersetzt Mingle kontinuierlich entlang des gesamten Gesprächs- oder Meetingverlaufs, damit Sie den Kontext natürlich verfolgen können.\n• Sehen Sie Echtzeit-Untertitel und Übersetzungen auch für Audio aus anderen Apps. Wenn Sprach-Apps wie Telefonate, Radio oder Discord im Hintergrund über den Lautsprecher laufen, während Mingle im Vordergrund ist, wird dieses Audio als Mingle-Eingabe erfasst und sofort als Transkript und Übersetzung angezeigt.\n• Hören Sie Übersetzungen als Echtzeit-Sprachdolmetschen. Aktivieren Sie die Sprachausgabe, um übersetzte Inhalte zu hören, als wäre ein Dolmetscher neben Ihnen, sodass Sie auch ohne Blick auf den Bildschirm alles verstehen, sogar beim Laufen.\n• Lassen Sie Mingle im Hintergrund laufen und wechseln Sie Apps frei. Selbst wenn Sie den Bildschirm sperren oder Mingle in den Hintergrund verschieben, bleibt es aktiv und schreibt Gesprächsprotokolle und Übersetzungen in Echtzeit weiter.",
+        "es": "• Mingle admite interpretación y traducción en todas las direcciones en 3+ idiomas. Incluso cuando se mezclan varios idiomas en la misma conversación, todo se traduce en tiempo real, por lo que no necesita elegir ni cambiar manualmente el idioma cuando cambia el hablante.\n• Obtenga traducción ininterrumpida con transcripciones en vivo. En lugar de detenerse después de cada frase, Mingle traduce de forma continua durante todo el flujo de la conversación o la reunión, para que siga el contexto de forma natural.\n• Vea subtítulos y traducciones en tiempo real incluso para audio de otras apps. Si ejecuta apps de voz como llamadas, radio o Discord en segundo plano con altavoz mientras Mingle está en primer plano, ese audio se captura como entrada de Mingle y se muestra al instante como transcripción y traducción.\n• Escuche la traducción como interpretación de voz en tiempo real. Active la salida de voz para oír el contenido traducido como si tuviera un intérprete a su lado, y así entender sin mirar la pantalla, incluso mientras corre.\n• Mantenga la app activa en segundo plano y cambie de aplicación libremente. Aunque bloquee la pantalla o envíe Mingle al fondo, sigue activa y continúa registrando conversaciones y traducciones en tiempo real.",
+        "fr": "• Mingle prend en charge l'interprétation et la traduction dans tous les sens sur plus de 3 langues. Même lorsque plusieurs langues sont mélangées dans une même conversation, tout est traduit en temps réel, vous n'avez donc pas besoin de choisir ou de changer de langue manuellement quand l'interlocuteur change.\n• Profitez d'une traduction continue avec transcription en direct. Au lieu de s'arrêter après chaque phrase, Mingle traduit en continu tout au long de la conversation ou de la réunion, pour vous aider à suivre le contexte naturellement.\n• Affichez des sous-titres et des traductions en temps réel, même pour l'audio provenant d'autres apps. Si vous utilisez des apps vocales comme les appels, la radio ou Discord en arrière-plan sur haut-parleur pendant que Mingle est au premier plan, cet audio est capté comme entrée Mingle et affiché instantanément en transcription et traduction.\n• Écoutez la traduction comme une interprétation vocale en temps réel. Activez la sortie audio pour entendre le contenu traduit comme si un interprète était à vos côtés, afin de comprendre sans regarder l'écran, même en courant.\n• Laissez Mingle actif en arrière-plan et passez d'une app à l'autre librement. Même si vous verrouillez l'écran ou mettez Mingle en arrière-plan, l'app reste active et continue d'écrire les journaux de conversation et les traductions en temps réel.",
+        "hi": "• Mingle 3+ भाषाओं में सभी दिशाओं में दुभाषिया और अनुवाद का समर्थन करता है। एक ही बातचीत में कई भाषाएं मिली हों तब भी सब कुछ रियल-टाइम में अनुवादित होता है, इसलिए वक्ता बदलने पर आपको भाषा हाथ से चुननी या बदलनी नहीं पड़ती।\n• लाइव ट्रांसक्रिप्ट के साथ बिना रुके अनुवाद पाएं। हर वाक्य के बाद रुकने के बजाय, Mingle बातचीत या मीटिंग के पूरे प्रवाह में लगातार अनुवाद करता है, जिससे संदर्भ स्वाभाविक रूप से समझ आता है।\n• अन्य ऐप्स की ऑडियो के लिए भी रियल-टाइम कैप्शन और अनुवाद देखें। अगर आप कॉल, रेडियो या Discord जैसे वॉइस ऐप्स को स्पीकरफोन पर बैकग्राउंड में चलाएं और Mingle को फोरग्राउंड में रखें, तो वह ऑडियो Mingle इनपुट के रूप में कैप्चर होकर तुरंत ट्रांसक्रिप्ट और अनुवाद के रूप में दिखता है।\n• अनुवाद को रियल-टाइम वॉइस इंटरप्रिटेशन की तरह सुनें। वॉइस आउटपुट चालू करें, और अनुवादित सामग्री ऐसे सुनें जैसे दुभाषिया आपके पास हो, ताकि स्क्रीन देखे बिना भी समझ सकें, यहां तक कि दौड़ते समय भी।\n• इसे बैकग्राउंड में चलने दें और ऐप्स को स्वतंत्र रूप से बदलें। स्क्रीन लॉक करने या Mingle को बैकग्राउंड में भेजने पर भी यह सक्रिय रहता है और लाइव बातचीत लॉग व अनुवाद लिखता रहता है।",
+        "it": "• Mingle supporta interpretariato e traduzione in tutte le direzioni in 3+ lingue. Anche quando nella stessa conversazione si mescolano più lingue, tutto viene tradotto in tempo reale, quindi non è necessario scegliere o cambiare lingua manualmente quando cambia chi parla.\n• Ottieni traduzione continua con trascrizioni live. Invece di fermarsi dopo ogni frase, Mingle traduce in modo continuo lungo tutto il flusso della conversazione o della riunione, aiutandoti a seguire il contesto in modo naturale.\n• Visualizza sottotitoli e traduzioni in tempo reale anche per audio proveniente da altre app. Se usi app vocali come chiamate, radio o Discord in background con vivavoce mentre Mingle è in primo piano, quell'audio viene acquisito come input di Mingle e mostrato subito come trascrizione e traduzione.\n• Ascolta la traduzione come interpretazione vocale in tempo reale. Attiva l'uscita vocale per sentire i contenuti tradotti come se avessi un interprete accanto, così puoi capire senza guardare lo schermo, anche mentre corri.\n• Tienilo attivo in background e passa liberamente tra le app. Anche se blocchi lo schermo o mandi Mingle in background, resta attivo e continua a scrivere log conversazionali e traduzioni in tempo reale.",
+        "pt": "• O Mingle oferece interpretação e tradução em todas as direções em mais de 3 idiomas. Mesmo quando vários idiomas se misturam na mesma conversa, tudo é traduzido em tempo real, então você não precisa escolher ou alternar idiomas manualmente quando o falante muda.\n• Tenha tradução contínua com transcrições ao vivo. Em vez de parar após cada frase, o Mingle traduz continuamente ao longo de toda a conversa ou reunião, ajudando você a acompanhar o contexto naturalmente.\n• Veja legendas e traduções em tempo real até para áudio de outros apps. Se você executar apps de voz como chamadas, rádio ou Discord em segundo plano no viva-voz enquanto o Mingle está em primeiro plano, esse áudio é capturado como entrada do Mingle e exibido instantaneamente como transcrição e tradução.\n• Ouça a tradução como interpretação de voz em tempo real. Ative a saída de voz para ouvir o conteúdo traduzido como se houvesse um intérprete ao seu lado, assim você entende sem olhar para a tela, até mesmo correndo.\n• Mantenha o app rodando em segundo plano e troque de aplicativo livremente. Mesmo se bloquear a tela ou mover o Mingle para o fundo, ele continua ativo e segue registrando conversas e traduções em tempo real.",
+        "ru": "• Mingle поддерживает перевод и устный синхронный перевод во всех направлениях на 3+ языках. Даже если в одном разговоре смешиваются несколько языков, все переводится в реальном времени, поэтому вам не нужно вручную выбирать или переключать язык при смене говорящего.\n• Получайте непрерывный перевод с живыми расшифровками. Вместо остановки после каждого предложения Mingle переводит непрерывно по всему ходу разговора или встречи, помогая естественно удерживать контекст.\n• Смотрите субтитры и перевод в реальном времени даже для аудио из других приложений. Если запустить голосовые приложения, например звонки, радио или Discord, в фоне на громкой связи, пока Mingle открыт на переднем плане, этот звук захватывается как вход Mingle и сразу показывается как расшифровка и перевод.\n• Слушайте перевод как голосовой синхронный перевод в реальном времени. Включите голосовой вывод, чтобы слышать перевод как будто рядом переводчик, и понимать без взгляда на экран даже во время бега.\n• Оставляйте Mingle работать в фоне и свободно переключайтесь между приложениями. Даже если вы заблокируете экран или свернете Mingle, он остается активным и продолжает вести живой журнал разговора и перевода.",
+        "ko": "• 세 개 이상의 언어도 전방향으로 통번역해 드립니다. 여러 언어가 동시에 섞여 말해져도 모두 실시간으로 통번역되며, 발화자가 바뀔 때마다 언어를 직접 선택하거나 스위칭하실 필요가 없습니다.\n• 끊김 없는 번역과 실시간 스크립트를 제공합니다. 한 문장씩 끊어 번역하는 방식이 아니라, 대화나 회의의 전체 흐름을 따라 실시간으로 연속 번역되어 맥락까지 자연스럽게 확인하실 수 있습니다.\n• 다른 앱의 음성까지 실시간 자막과 번역으로 확인하실 수 있습니다. 스피커폰을 켠 상태로 통화, 라디오, 디스코드 같은 보이스 앱을 백그라운드에서 실행하고 Mingle을 포그라운드에서 켜두시면, 해당 앱의 음성이 Mingle 입력으로 들어와 실시간 스크립트와 번역을 바로 확인하실 수 있습니다.\n• 번역을 음성으로 실시간 동시 통역해 드립니다. 음성 출력을 켜면 동시통역사를 곁에 둔 것처럼 내용을 모두 음성으로 들려드려, 화면을 보지 않고 듣기만으로도 이해하실 수 있으며 러닝 중에도 편하게 사용하실 수 있습니다.\n• 백그라운드 실행으로 앱을 자유롭게 전환할 수 있습니다. 필요할 때 화면을 잠그거나 Mingle을 백그라운드로 전환해도 꺼지지 않고, 대화 기록과 번역본을 계속 실시간으로 작성합니다.",
+        "zh-cn": "• Mingle 支持 3 种以上语言的全方向口译与翻译。即使在同一段对话中混合多种语言，也能全部实时翻译；发言人切换时，您无需手动选择或切换语言。\n• 提供不中断的翻译与实时文字稿。不是一句一句停顿翻译，而是沿着对话或会议的整体流程连续翻译，让您自然把握上下文。\n• 其他应用的音频也可实时显示字幕与翻译。开启扬声器后，在后台运行通话、广播或 Discord 等语音应用，并将 Mingle 保持在前台时，这些音频会作为 Mingle 输入，立即显示文字稿与翻译。\n• 可将翻译内容以语音实时播报。打开语音输出后，就像身边有同声传译员一样，您可通过聆听直接理解内容，不看屏幕也能使用，跑步时也方便。\n• 后台运行时可自由切换应用。即使锁屏或将 Mingle 切到后台，它也不会中断，并会持续实时记录对话与翻译内容。",
+        "zh-tw": "• Mingle 支援三種以上語言的全方向口譯與翻譯。即使同一段對話混合多種語言，也能全部即時翻譯；說話者切換時，您不需要手動選擇或切換語言。\n• 提供不中斷翻譯與即時逐字稿。不是每句停下來翻譯，而是沿著對話或會議的整體流程連續翻譯，讓您自然掌握上下文。\n• 其他 App 的音訊也能即時顯示字幕與翻譯。開啟擴音後，在背景執行通話、廣播或 Discord 等語音 App，並將 Mingle 保持在前景時，這些音訊會作為 Mingle 輸入，立即顯示逐字稿與翻譯。\n• 可將翻譯內容以語音即時播報。開啟語音輸出後，就像身邊有同步口譯員一樣，您可只靠聆聽理解內容，不看螢幕也能使用，跑步時也方便。\n• 背景執行時可自由切換 App。即使鎖定螢幕或把 Mingle 切到背景，它也不會中斷，並會持續即時記錄對話與翻譯內容。",
+        "ja": "• Mingleは3言語以上でも全方向の通訳・翻訳を提供します。複数言語が同時に混ざる会話でもリアルタイムで翻訳されるため、話者が変わるたびに言語を手動で選択・切り替えする必要はありません。\n• 途切れない翻訳とリアルタイム字幕を提供します。一文ごとに止まって翻訳するのではなく、会話や会議の流れ全体に沿って連続翻訳されるため、文脈まで自然に把握できます。\n• 他アプリの音声もリアルタイム字幕と翻訳で確認できます。スピーカーフォンで通話、ラジオ、Discordなどの音声アプリをバックグラウンドで動かし、Mingleをフォアグラウンドで開いておくと、その音声がMingle入力として取り込まれ、字幕と翻訳がすぐ表示されます。\n• 翻訳結果を音声でリアルタイム同時通訳できます。音声出力をオンにすると、通訳者がそばにいるように内容を聞けるため、画面を見なくても理解でき、ランニング中でも使えます。\n• バックグラウンド実行のままアプリを自由に切り替えできます。画面をロックしたりMingleをバックグラウンドにしても停止せず、会話ログと翻訳をリアルタイムで記録し続けます。",
+        "vi": "• Mingle hỗ trợ phiên dịch và dịch thuật đa chiều với hơn 3 ngôn ngữ. Ngay cả khi nhiều ngôn ngữ được dùng xen kẽ trong cùng một cuộc trò chuyện, mọi nội dung vẫn được dịch theo thời gian thực, nên bạn không cần tự chọn hay chuyển ngôn ngữ mỗi khi đổi người nói.\n• Cung cấp bản dịch liên tục và transcript thời gian thực. Thay vì dừng lại sau từng câu, Mingle dịch liên tục theo toàn bộ mạch hội thoại hoặc cuộc họp để bạn nắm được ngữ cảnh tự nhiên.\n• Ngay cả âm thanh từ ứng dụng khác cũng có thể hiển thị phụ đề và bản dịch theo thời gian thực. Khi bật loa ngoài cho cuộc gọi, radio hoặc ứng dụng thoại như Discord chạy nền và giữ Mingle ở tiền cảnh, âm thanh đó sẽ đi vào Mingle để hiển thị transcript và bản dịch ngay lập tức.\n• Có thể phát bản dịch bằng giọng nói theo thời gian thực. Khi bật đầu ra giọng nói, nội dung dịch sẽ được đọc như có thông dịch viên bên cạnh, giúp bạn hiểu chỉ bằng nghe mà không cần nhìn màn hình, kể cả khi đang chạy bộ.\n• Chạy nền và chuyển ứng dụng tự do. Dù khóa màn hình hay đưa Mingle xuống nền, ứng dụng vẫn tiếp tục hoạt động và ghi lại hội thoại cùng bản dịch theo thời gian thực.",
+        "th": "• Mingle รองรับการล่ามและแปลแบบทุกทิศทางมากกว่า 3 ภาษา แม้ในบทสนทนาเดียวจะมีหลายภาษาปะปนกัน ระบบก็แปลแบบเรียลไทม์ทั้งหมดได้ โดยไม่ต้องเลือกหรือสลับภาษาเองทุกครั้งที่ผู้พูดเปลี่ยน\n• ให้การแปลต่อเนื่องพร้อมสคริปต์แบบเรียลไทม์ ไม่ได้หยุดแปลทีละประโยค แต่แปลต่อเนื่องตามทั้งบริบทของบทสนทนาหรือการประชุม ทำให้เข้าใจเนื้อหาได้เป็นธรรมชาติ\n• แม้เป็นเสียงจากแอปอื่นก็แสดงซับและคำแปลแบบเรียลไทม์ได้ เมื่อเปิดลำโพงสำหรับสายโทร วิทยุ หรือแอปเสียงอย่าง Discord ไว้เบื้องหลัง และเปิด Mingle ไว้ด้านหน้า เสียงนั้นจะเข้ามาเป็นอินพุตของ Mingle และแสดงสคริปต์กับคำแปลทันที\n• สามารถฟังคำแปลเป็นเสียงแบบล่ามพร้อมกันเรียลไทม์ได้ เมื่อเปิดเสียงออก ระบบจะอ่านคำแปลเหมือนมีล่ามอยู่ข้าง ๆ ทำให้เข้าใจได้แม้ไม่ต้องมองหน้าจอ และใช้งานระหว่างวิ่งได้สะดวก\n• ทำงานต่อได้ในเบื้องหลังและสลับแอปได้อิสระ แม้ล็อกหน้าจอหรือย้าย Mingle ไปเบื้องหลัง ระบบก็ไม่หยุด และยังบันทึกบทสนทนากับคำแปลแบบเรียลไทม์ต่อเนื่อง"
+      },
+      "keywords": {
+        "en": "voice translator,live captions,call translation,simultaneous,multilingual",
+        "ar": "مترجم صوتي,ترجمة فورية,تسميات مباشرة,ترجمة متزامنة,متعدد اللغات,ترجمة المكالمات",
+        "de": "Sprachübersetzer,Live-Untertitel,Anrufübersetzung,Simultanübersetzung",
+        "es": "traductor voz,subtítulos vivos,trad. llamadas,intérprete simultáneo",
+        "fr": "traducteur vocal,sous-titres live,traduction appels,interprétation",
+        "hi": "वॉइसअनुवाद,लाइवकैप्शन,कॉलअनुवाद,तुरंतअनुवाद",
+        "it": "traduttore vocale,sottotitoli live,traduzione chiamate,simultaneo",
+        "pt": "tradutor voz,legendas ao vivo,tradução chamadas,interpretação",
+        "ru": "переводчик,живые субтитры,перевод звонков,синхроперевод",
+        "ko": "동시통역,대화통역,통화통역,실시간자막,자동언어감지,다국어번역,보이스번역",
+        "zh-cn": "同声传译,对话口译,通话口译,实时字幕,自动语言检测,多语言翻译,语音翻译",
+        "zh-tw": "同步口譯,對話口譯,通話口譯,即時字幕,自動語言偵測,多語翻譯,語音翻譯",
+        "ja": "同時通訳,会話通訳,通話通訳,リアルタイム字幕,自動言語検出,多言語翻訳,音声翻訳",
+        "vi": "dịchgiọngnói,phụđềtrực tiếp,dịchcuộcgọi,dịchtứcthì",
+        "th": "แปลเสียง,ซับสด,แปลสายโทร,แปลทันที"
+      },
+      "supportUrl": {
+        "en": "https://mingle-landing.vercel.app/normal",
+        "ar": "https://mingle-landing.vercel.app/normal",
+        "de": "https://mingle-landing.vercel.app/normal",
+        "es": "https://mingle-landing.vercel.app/normal",
+        "fr": "https://mingle-landing.vercel.app/normal",
+        "hi": "https://mingle-landing.vercel.app/normal",
+        "it": "https://mingle-landing.vercel.app/normal",
+        "pt": "https://mingle-landing.vercel.app/normal",
+        "ru": "https://mingle-landing.vercel.app/normal",
+        "ko": "https://mingle-landing.vercel.app/normal",
+        "zh-cn": "https://mingle-landing.vercel.app/normal",
+        "zh-tw": "https://mingle-landing.vercel.app/normal",
+        "ja": "https://mingle-landing.vercel.app/normal",
+        "vi": "https://mingle-landing.vercel.app/normal",
+        "th": "https://mingle-landing.vercel.app/normal"
+      },
+      "marketingUrl": {
+        "en": "https://mingle-landing.vercel.app/normal",
+        "ar": "https://mingle-landing.vercel.app/normal",
+        "de": "https://mingle-landing.vercel.app/normal",
+        "es": "https://mingle-landing.vercel.app/normal",
+        "fr": "https://mingle-landing.vercel.app/normal",
+        "hi": "https://mingle-landing.vercel.app/normal",
+        "it": "https://mingle-landing.vercel.app/normal",
+        "pt": "https://mingle-landing.vercel.app/normal",
+        "ru": "https://mingle-landing.vercel.app/normal",
+        "ko": "https://mingle-landing.vercel.app/normal",
+        "zh-cn": "https://mingle-landing.vercel.app/normal",
+        "zh-tw": "https://mingle-landing.vercel.app/normal",
+        "ja": "https://mingle-landing.vercel.app/normal",
+        "vi": "https://mingle-landing.vercel.app/normal",
+        "th": "https://mingle-landing.vercel.app/normal"
+      }
+    }
+  }
+}

@@ -13,6 +13,9 @@
   - `ios.submission.screenshots`: "iOS 앱 > 1.0.0 제출 준비 중" screenshot copy
   - `ios.submission.appStoreInfo`: version metadata (promo text, description, keywords, URLs)
   - `ios.generalInfo.appInfo`: app info metadata (title, subtitle)
+- `google-play-console-info.i18n.json`: Google Play Console metadata source
+  - `googlePlay.release.screenshots`: Play listing screenshot copy
+  - `googlePlay.storeListing`: localized title, short description, full description, and URLs
 - `RUNBOOK.appstore-preview-localization.md`: appstore-preview API localization workflow
 
 ## Default behavior
@@ -20,6 +23,7 @@
 - `scripts/ios-appstore-media.sh` writes to `generated/` by default.
 - `scripts/ios-appstore-upload.sh` reads from `upload/` by default.
 - `scripts/devbox ios-appstore-sync-metadata` reads `appstore-connect-info.i18n.json` by default.
+- No scripts read `google-play-console-info.i18n.json` yet; it is a prepared source file for Play Console metadata.
 
 ## Quick commands
 
