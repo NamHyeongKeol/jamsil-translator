@@ -535,6 +535,18 @@
         ]
       }
     },
+    "appDetails": {
+      "packageName": "com.minglelabs.mingle.rn",
+      "defaultLanguage": "en-US",
+      "contactEmail": "minglelabs.dev@gmail.com",
+      "contactPhone": "",
+      "contactWebsite": "https://app.minglelabs.xyz"
+    },
+    "assets": {
+      "iconPath": "assets/icon-512.png",
+      "featureGraphicPath": "",
+      "phoneScreenshotsDir": "upload"
+    },
     "storeListing": {
       "defaultMetadataLocale": "en",
       "title": {
@@ -656,6 +668,17 @@
         "vi": "https://mingle-landing.vercel.app/normal",
         "th": "https://mingle-landing.vercel.app/normal"
       }
+    },
+    "manualOnly": {
+      "privacyPolicyUrl": "https://app.minglelabs.xyz/legal/privacy-policy.html",
+      "termsOfUseUrl": "https://app.minglelabs.xyz/legal/terms-of-use.html",
+      "category": null,
+      "appType": "APPLICATION",
+      "dataSafety": null,
+      "contentRating": null,
+      "targetAudience": null,
+      "adsDeclaration": null,
+      "accountDeletionUrl": null
     }
   }
 }
