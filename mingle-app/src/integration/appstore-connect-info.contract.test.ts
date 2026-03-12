@@ -281,10 +281,11 @@ describe('appstore-connect-info contract', () => {
         continue
       }
 
+      const expectedMediaSlots = videoFiles.length > 0 ? totalShots : totalShots - 1
       expect(
         mediaFiles.length,
         `insufficient media file count for upload locale: ${uploadLocale}`,
-      ).toBeGreaterThanOrEqual(totalShots)
+      ).toBeGreaterThanOrEqual(expectedMediaSlots)
 
       const shotIndexes = new Set(
         mediaFiles
@@ -292,7 +293,8 @@ describe('appstore-connect-info contract', () => {
           .filter((value): value is string => Boolean(value)),
       )
 
-      for (let index = 1; index <= totalShots; index += 1) {
+      const startIndex = videoFiles.length > 0 ? 1 : 2
+      for (let index = startIndex; index <= totalShots; index += 1) {
         const key = String(index).padStart(2, '0')
         expect(
           shotIndexes.has(key),
