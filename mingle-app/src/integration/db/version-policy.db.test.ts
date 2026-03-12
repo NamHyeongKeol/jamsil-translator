@@ -72,7 +72,7 @@ async function seedVersionPolicyFixture() {
         minSupportedVersion: '2.0.0',
         recommendedBelowVersion: '2.1.0',
         latestVersion: '2.2.0',
-        updateUrl: 'https://play.google.com/store/apps/details?id=com.minglelabs.mingle',
+        updateUrl: 'https://play.google.com/store/apps/details?id=com.minglelabs.mingle.rn',
         note: '[itest] android current policy',
         createdAt: oneDayAgo,
         updatedAt: oneDayAgo,

@@ -2,6 +2,40 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+def resolveHermesCommandPath = {
+    def osBin = org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_MAC)
+        ? "osx-bin"
+        : (org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_WINDOWS)
+            ? "win64-bin"
+            : "linux64-bin")
+    def hermesBinaryName = org.apache.tools.ant.taskdefs.condition.Os.isFamily(org.apache.tools.ant.taskdefs.condition.Os.FAMILY_WINDOWS)
+        ? "hermesc.exe"
+        : "hermesc"
+
+    def directBinary = file("../node_modules/hermes-compiler/hermesc/${osBin}/${hermesBinaryName}")
+    if (directBinary.exists()) {
+        return directBinary.absolutePath
+    }
+
+    def pnpmStoreDir = file("../node_modules/.pnpm")
+    if (pnpmStoreDir.exists()) {
+        def pnpmEntries = pnpmStoreDir.listFiles()
+            ?.findAll { it.name.startsWith("hermes-compiler@") }
+            ?.sort { a, b -> a.name <=> b.name }
+        if (pnpmEntries != null && !pnpmEntries.isEmpty()) {
+            def pnpmBinary = new File(
+                pnpmEntries.last(),
+                "node_modules/hermes-compiler/hermesc/${osBin}/${hermesBinaryName}"
+            )
+            if (pnpmBinary.exists()) {
+                return pnpmBinary.absolutePath
+            }
+        }
+    }
+
+    return ""
+}
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -45,7 +79,7 @@ react {
 
     /* Hermes Commands */
     //   The hermes compiler command to run. By default it is 'hermesc'
-    // hermesCommand = "$rootDir/my-custom-hermesc/bin/hermesc"
+    hermesCommand = resolveHermesCommandPath()
     //
     //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
     // hermesFlags = ["-O", "-output-source-map"]
@@ -58,6 +92,31 @@ react {
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
 def enableProguardInReleaseBuilds = false
+def appVersionCode = 12
+def appVersionName = "1.0.0"
+
+def readEnvOrDefault = { String key, String fallback ->
+    def value = System.getenv(key)
+    if (value == null) {
+        return fallback
+    }
+    def trimmed = value.trim()
+    return trimmed.isEmpty() ? fallback : trimmed
+}
+
+def quoteBuildConfigString = { String value ->
+    def escaped = value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+    return "\"${escaped}\""
+}
+
+def runtimeSiteUrl = readEnvOrDefault("NEXT_PUBLIC_SITE_URL", "https://mingle-app-xi.vercel.app")
+def runtimeWsUrl = readEnvOrDefault("NEXT_PUBLIC_WS_URL", "wss://mingle.up.railway.app")
+def runtimeApiNamespace = readEnvOrDefault("NEXT_PUBLIC_API_NAMESPACE", "android/v1.0.0")
+def runtimeClientVersion = readEnvOrDefault("RN_CLIENT_VERSION", appVersionName)
+def runtimeClientBuild = readEnvOrDefault("RN_CLIENT_BUILD", String.valueOf(appVersionCode))
+def allowCleartextTraffic = runtimeSiteUrl.toLowerCase().startsWith("http://")
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -77,13 +136,21 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.mingle"
+    namespace "com.minglelabs.mingle.rn"
     defaultConfig {
-        applicationId "com.mingle"
+        applicationId "com.minglelabs.mingle.rn"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
+        manifestPlaceholders = [
+            usesCleartextTraffic: allowCleartextTraffic.toString(),
+        ]
+        buildConfigField "String", "MINGLE_WEB_APP_BASE_URL", quoteBuildConfigString(runtimeSiteUrl)
+        buildConfigField "String", "MINGLE_DEFAULT_WS_URL", quoteBuildConfigString(runtimeWsUrl)
+        buildConfigField "String", "MINGLE_API_NAMESPACE", quoteBuildConfigString(runtimeApiNamespace)
+        buildConfigField "String", "MINGLE_CLIENT_VERSION", quoteBuildConfigString(runtimeClientVersion)
+        buildConfigField "String", "MINGLE_CLIENT_BUILD", quoteBuildConfigString(runtimeClientBuild)
     }
     signingConfigs {
         debug {

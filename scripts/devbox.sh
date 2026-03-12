@@ -17,6 +17,7 @@ MINGLE_IOS_TEST_SCRIPT="$MINGLE_IOS_DIR/scripts/test-ios.sh"
 MANAGED_START="# >>> devbox managed (auto)"
 MANAGED_END="# <<< devbox managed (auto)"
 IOS_RN_REQUIRED_API_NAMESPACE="ios/v1.0.0"
+ANDROID_RN_REQUIRED_API_NAMESPACE="android/v1.0.0"
 DEVBOX_FIXED_WEB_PORT=3518
 DEVBOX_FIXED_STT_PORT=5518
 DEVBOX_FIXED_METRO_PORT=8518
@@ -1748,7 +1749,7 @@ resolve_ios_bundle_id() {
     awk -F'= ' '/PRODUCT_BUNDLE_IDENTIFIER = /{gsub(/;$/, "", $2); print $2; exit}' "$project_file"
     return 0
   fi
-  printf '%s' "com.mingle"
+  printf '%s' "com.minglelabs.mingle.rn"
 }
 
 resolve_rn_ios_development_team() {
@@ -1766,7 +1767,7 @@ resolve_android_application_id() {
     awk -F'"' '/applicationId[[:space:]]+"/{print $2; exit}' "$gradle_file"
     return 0
   fi
-  printf '%s' "com.mingle"
+  printf '%s' "com.minglelabs.mingle.rn"
 }
 
 resolve_ios_simulator_udid_for_uninstall() {
@@ -2030,6 +2031,7 @@ run_android_mobile_install() {
     ANDROID_SERIAL="$serial" \
     NEXT_PUBLIC_SITE_URL="$DEVBOX_SITE_URL" \
     NEXT_PUBLIC_WS_URL="$DEVBOX_RN_WS_URL" \
+    NEXT_PUBLIC_API_NAMESPACE="$ANDROID_RN_REQUIRED_API_NAMESPACE" \
       ./gradlew "$gradle_task"
   )
 
@@ -4324,7 +4326,7 @@ iOS Web     : $DEVBOX_SITE_URL
 Android Web : $DEVBOX_SITE_URL
 iOS App     : NEXT_PUBLIC_SITE_URL=$DEVBOX_SITE_URL | NEXT_PUBLIC_WS_URL=$DEVBOX_RN_WS_URL | NEXT_PUBLIC_API_NAMESPACE=$IOS_RN_REQUIRED_API_NAMESPACE
 iOS Native  : NEXT_PUBLIC_SITE_URL=$DEVBOX_SITE_URL | NEXT_PUBLIC_WS_URL=$DEVBOX_RN_WS_URL
-Android App : NEXT_PUBLIC_SITE_URL=$DEVBOX_SITE_URL | NEXT_PUBLIC_WS_URL=$DEVBOX_RN_WS_URL
+Android App : NEXT_PUBLIC_SITE_URL=$DEVBOX_SITE_URL | NEXT_PUBLIC_WS_URL=$DEVBOX_RN_WS_URL | NEXT_PUBLIC_API_NAMESPACE=$ANDROID_RN_REQUIRED_API_NAMESPACE
 Live Test   : MINGLE_TEST_API_BASE_URL=$DEVBOX_TEST_API_BASE_URL | MINGLE_TEST_WS_URL=$DEVBOX_TEST_WS_URL
 Vault App   : ${DEVBOX_VAULT_APP_PATH:-"(unset)"}
 Vault STT   : ${DEVBOX_VAULT_STT_PATH:-"(unset)"}

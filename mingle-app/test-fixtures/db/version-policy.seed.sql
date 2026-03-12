@@ -55,7 +55,7 @@ VALUES
     '2.0.0',
     '2.1.0',
     '2.2.0',
-    'https://play.google.com/store/apps/details?id=com.minglelabs.mingle',
+    'https://play.google.com/store/apps/details?id=com.minglelabs.mingle.rn',
     '[test-fixture] android current policy',
     NOW() - INTERVAL '1 day',
     NOW() - INTERVAL '1 day'

@@ -1,4 +1,4 @@
-package com.mingle
+package com.minglelabs.mingle.rn
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
